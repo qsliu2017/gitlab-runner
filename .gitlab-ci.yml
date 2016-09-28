@@ -201,6 +201,7 @@ unit test: &unit_tests
   parallel: 5
   script:
     - source ci/touch_make_dependencies
+    - useradd -r test-user
     - make parallel_test_execute
   artifacts:
     paths:
