@@ -169,7 +169,7 @@ func (s *RegisterCommand) askRunner() {
 
 		result := s.network.RegisterRunner(s.RunnerCredentials, parameters)
 		if result == nil {
-			log.Panicln("Failed to register this runner. Perhaps you are having network problems")
+			log.Panicln("Failed to register this runner.")
 		}
 
 		s.Token = result.Token
