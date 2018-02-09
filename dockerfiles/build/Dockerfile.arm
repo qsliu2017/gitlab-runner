@@ -4,3 +4,6 @@ RUN apk add --update bash ca-certificates git miniperl \
 	&& ln -s miniperl /usr/bin/perl
 
 COPY ./ /usr/bin
+
+RUN rm -f /usr/bin/gitlab-runner-helper.x86_64 && \
+  ln -s /usr/bin/gitlab-runner-helper.arm /usr/bin/gitlab-runner-helper

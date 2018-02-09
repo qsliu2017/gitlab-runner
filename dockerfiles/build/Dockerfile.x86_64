@@ -19,3 +19,6 @@ RUN cd /tmp && \
 
 COPY ./ /usr/bin
 
+RUN rm -f /usr/bin/gitlab-runner-helper.arm && \
+  ln -s /usr/bin/gitlab-runner-helper.x86_64 /usr/bin/gitlab-runner-helper
+

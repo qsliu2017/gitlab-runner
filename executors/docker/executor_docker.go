@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 	"path"
 	"path/filepath"
 	"regexp"
@@ -20,7 +21,9 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/pkg/stdcopy"
+	"github.com/kardianos/osext"
 	"github.com/mattn/go-zglob"
+	"github.com/sirupsen/logrus"
 
 	"gitlab.com/gitlab-org/gitlab-runner/common"
 	"gitlab.com/gitlab-org/gitlab-runner/executors"
@@ -38,6 +41,8 @@ const (
 	DockerExecutorStageCreatingUserVolumes  common.ExecutorStage = "docker_creating_user_volumes"
 	DockerExecutorStagePullingImage         common.ExecutorStage = "docker_pulling_image"
 )
+
+var DockerPrebuiltImagesPath string
 
 var neverRestartPolicy = container.RestartPolicy{Name: "no"}
 
@@ -59,6 +64,15 @@ type executor struct {
 
 	usedImages     map[string]string
 	usedImagesLock sync.RWMutex
+}
+
+func init() {
+	runnerFolder, err := osext.ExecutableFolder()
+	if err != nil {
+		logrus.Errorln("Docker executor: unable to detect gitlab-runner folder, prebuilt image helpers will be loaded from Docker HUB.", err)
+	}
+
+	DockerPrebuiltImagesPath = filepath.Join(runnerFolder, "helper-images")
 }
 
 func (s *executor) getServiceVariables() []string {
@@ -255,16 +269,18 @@ func (s *executor) getPrebuiltImage() (*types.ImageInspect, error) {
 		return &image, nil
 	}
 
-	data, err := Asset("prebuilt-" + architecture + prebuiltImageExtension)
+	prebuiltImageFile := filepath.Join(DockerPrebuiltImagesPath, "prebuilt-"+architecture+prebuiltImageExtension)
+	file, err := os.OpenFile(prebuiltImageFile, os.O_RDONLY, 0600)
 	if err != nil {
 		return nil, fmt.Errorf("Unsupported architecture: %s: %q", architecture, err.Error())
 	}
+	defer file.Close()
 
 	s.Debugln("Loading prebuilt image...")
 
 	ref := prebuiltImageName
 	source := types.ImageImportSource{
-		Source:     bytes.NewBuffer(data),
+		Source:     file,
 		SourceName: "-",
 	}
 	options := types.ImageImportOptions{
