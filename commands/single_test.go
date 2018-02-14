@@ -4,11 +4,11 @@ import (
 	"context"
 	"io/ioutil"
 	"os"
-	"syscall"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/mock"
+	"golang.org/x/sys/unix"
 
 	"gitlab.com/gitlab-org/gitlab-runner/common"
 )
@@ -35,7 +35,7 @@ func TestSingleRunnerSigquit(t *testing.T) {
 	defer cleanup()
 
 	sendQuitSignal = func() {
-		single.interruptSignals <- syscall.SIGQUIT
+		single.interruptSignals <- unix.SIGQUIT
 	}
 
 	single.Execute(nil)

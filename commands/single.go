@@ -3,12 +3,12 @@ package commands
 import (
 	"os"
 	"os/signal"
-	"syscall"
 	"time"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/tevino/abool"
 	"github.com/urfave/cli"
+	"golang.org/x/sys/unix"
 
 	"gitlab.com/gitlab-org/gitlab-runner/common"
 	"gitlab.com/gitlab-org/gitlab-runner/network"
@@ -29,7 +29,7 @@ func waitForInterrupts(finished *abool.AtomicBool, abortSignal chan os.Signal, d
 	if interruptSignals == nil {
 		interruptSignals = make(chan os.Signal)
 	}
-	signal.Notify(interruptSignals, os.Interrupt, syscall.SIGTERM, syscall.SIGQUIT)
+	signal.Notify(interruptSignals, os.Interrupt, unix.SIGTERM, unix.SIGQUIT)
 
 	interrupt := <-interruptSignals
 	if finished != nil {
@@ -37,7 +37,7 @@ func waitForInterrupts(finished *abool.AtomicBool, abortSignal chan os.Signal, d
 	}
 
 	// request stop, but wait for force exit
-	for interrupt == syscall.SIGQUIT {
+	for interrupt == unix.SIGQUIT {
 		log.Warningln("Requested quit, waiting for builds to finish")
 		interrupt = <-interruptSignals
 	}

@@ -26,6 +26,10 @@ ignored = ["test", "appengine"]
   non-go = true
 
 [[constraint]]
+  branch = "master"
+  name = "golang.org/x/sys"
+
+[[constraint]]
   name = "github.com/BurntSushi/toml"
   # version = "v0.2.0"
   revision = "a368813c5e648fee92e5f6c30e3944ff9d5e8895"

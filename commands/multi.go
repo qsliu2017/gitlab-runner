@@ -9,7 +9,6 @@ import (
 	"os"
 	"os/signal"
 	"runtime"
-	"syscall"
 	"time"
 
 	"github.com/ayufan/golang-kardianos-service"
@@ -17,6 +16,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
+	"golang.org/x/sys/unix"
 
 	"gitlab.com/gitlab-org/gitlab-runner/common"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers"
@@ -551,8 +551,8 @@ func (mr *RunCommand) Run() {
 	runners := make(chan *common.RunnerConfig)
 	go mr.feedRunners(runners)
 
-	signal.Notify(mr.stopSignals, syscall.SIGQUIT, syscall.SIGTERM, os.Interrupt, os.Kill)
-	signal.Notify(mr.reloadSignal, syscall.SIGHUP)
+	signal.Notify(mr.stopSignals, unix.SIGQUIT, unix.SIGTERM, os.Interrupt, os.Kill)
+	signal.Notify(mr.reloadSignal, unix.SIGHUP)
 
 	startWorker := make(chan int)
 	stopWorker := make(chan bool)
@@ -597,7 +597,7 @@ func (mr *RunCommand) abortAllBuilds() {
 
 func (mr *RunCommand) handleGracefulShutdown() error {
 	// We wait till we have a SIGQUIT
-	for mr.stopSignal == syscall.SIGQUIT {
+	for mr.stopSignal == unix.SIGQUIT {
 		mr.log().Warningln("Requested quit, waiting for builds to finish")
 
 		// Wait for other signals to finish builds

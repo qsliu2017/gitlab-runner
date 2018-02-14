@@ -6,9 +6,9 @@ import (
 	"os"
 	"os/signal"
 	"runtime"
-	"syscall"
 
 	"github.com/sirupsen/logrus"
+	"golang.org/x/sys/unix"
 )
 
 func watchForGoroutinesDump(logger *logrus.Logger, stopCh chan bool) (chan bool, chan bool) {
@@ -17,7 +17,7 @@ func watchForGoroutinesDump(logger *logrus.Logger, stopCh chan bool) (chan bool,
 
 	dumpStacksCh := make(chan os.Signal, 1)
 	// On USR1 dump stacks of all go routines
-	signal.Notify(dumpStacksCh, syscall.SIGUSR1)
+	signal.Notify(dumpStacksCh, unix.SIGUSR1)
 
 	go func() {
 		for {

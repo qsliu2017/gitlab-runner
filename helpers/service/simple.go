@@ -2,10 +2,11 @@ package service_helpers
 
 import (
 	"errors"
-	service "github.com/ayufan/golang-kardianos-service"
 	"os"
 	"os/signal"
-	"syscall"
+
+	service "github.com/ayufan/golang-kardianos-service"
+	"golang.org/x/sys/unix"
 )
 
 var (
@@ -28,7 +29,7 @@ func (s *SimpleService) Run() (err error) {
 	}
 
 	sigChan := make(chan os.Signal, 3)
-	signal.Notify(sigChan, syscall.SIGTERM, os.Interrupt)
+	signal.Notify(sigChan, unix.SIGTERM, os.Interrupt)
 
 	<-sigChan
 

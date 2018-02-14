@@ -4,13 +4,13 @@ package log
 
 import (
 	"os"
-	"syscall"
 	"testing"
 
 	"github.com/sirupsen/logrus"
 	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/sys/unix"
 )
 
 func TestStackDumping(t *testing.T) {
@@ -25,7 +25,7 @@ func TestStackDumping(t *testing.T) {
 
 	proc, err := os.FindProcess(os.Getpid())
 	require.NoError(t, err)
-	proc.Signal(syscall.SIGUSR1)
+	proc.Signal(unix.SIGUSR1)
 
 	<-dumpedCh
 	logrusOutput, err := hook.LastEntry().String()
