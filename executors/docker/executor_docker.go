@@ -262,7 +262,13 @@ func (s *executor) getPrebuiltImage() (*types.ImageInspect, error) {
 		return nil, errors.New("unsupported docker architecture")
 	}
 
-	imageName := prebuiltImageName + ":" + architecture + "-" + common.REVISION
+	revision := "latest"
+	if common.REVISION != "HEAD" {
+		revision = common.REVISION
+	}
+
+	tag := fmt.Sprintf("%s-%s", architecture, revision)
+	imageName := fmt.Sprintf("%s:%s", prebuiltImageName, tag)
 	s.Debugln("Looking for prebuilt image", imageName, "...")
 	image, _, err := s.client.ImageInspectWithRaw(s.Context, imageName)
 	if err == nil {
@@ -272,6 +278,11 @@ func (s *executor) getPrebuiltImage() (*types.ImageInspect, error) {
 	prebuiltImageFile := filepath.Join(DockerPrebuiltImagesPath, "prebuilt-"+architecture+prebuiltImageExtension)
 	file, err := os.OpenFile(prebuiltImageFile, os.O_RDONLY, 0600)
 	if err != nil {
+		if os.IsNotExist(err) {
+			s.Debugln("Loading image from registry:", imageName)
+			return s.getDockerImage(imageName)
+		}
+
 		return nil, fmt.Errorf("Unsupported architecture: %s: %q", architecture, err.Error())
 	}
 	defer file.Close()
@@ -283,9 +294,7 @@ func (s *executor) getPrebuiltImage() (*types.ImageInspect, error) {
 		Source:     file,
 		SourceName: "-",
 	}
-	options := types.ImageImportOptions{
-		Tag: architecture + "-" + common.REVISION,
-	}
+	options := types.ImageImportOptions{Tag: tag}
 
 	if err := s.client.ImageImportBlocking(s.Context, source, ref, options); err != nil {
 		return nil, fmt.Errorf("Failed to import image: %s", err)
