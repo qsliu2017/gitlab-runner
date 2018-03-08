@@ -13,6 +13,9 @@ import (
 
 	"github.com/sirupsen/logrus"
 
+	"gitlab.com/gitlab-org/gitlab-runner/core"
+	"gitlab.com/gitlab-org/gitlab-runner/core/formatter"
+	"gitlab.com/gitlab-org/gitlab-runner/core/network"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers/tls"
 )
@@ -80,7 +83,7 @@ type Build struct {
 	CurrentState BuildRuntimeState
 
 	executorStageResolver func() ExecutorStage
-	logger                BuildLogger
+	logger                formatter.BuildLogger
 	allVariables          JobVariables
 }
 
@@ -308,7 +311,7 @@ func (b *Build) run(ctx context.Context, executor Executor) (err error) {
 	return err
 }
 
-func (b *Build) retryCreateExecutor(options ExecutorPrepareOptions, provider ExecutorProvider, logger BuildLogger) (executor Executor, err error) {
+func (b *Build) retryCreateExecutor(options ExecutorPrepareOptions, provider ExecutorProvider, logger formatter.BuildLogger) (executor Executor, err error) {
 	for tries := 0; tries < PreparationRetries; tries++ {
 		executor = provider.Create()
 		if executor == nil {
@@ -352,8 +355,8 @@ func (b *Build) CurrentExecutorStage() ExecutorStage {
 func (b *Build) Run(globalConfig *Config, trace JobTrace) (err error) {
 	var executor Executor
 
-	b.logger = NewBuildLogger(trace, b.Log())
-	b.logger.Println("Running with", AppVersion.Line())
+	b.logger = formatter.NewBuildLogger(trace, trace.IsStdout(), b.Log())
+	b.logger.Println("Running with", core.AppVersion.Line())
 	if b.Runner != nil && b.Runner.ShortDescription() != "" {
 		b.logger.Println("  on", b.Runner.Name, b.Runner.ShortDescription())
 	}
@@ -452,6 +455,15 @@ func (b *Build) GetGitTLSVariables() JobVariables {
 	return variables
 }
 
+func (b *Build) GetRunnerVariables() JobVariables {
+	v := core.AppVersion
+	return JobVariables{
+		{Key: "CI_RUNNER_VERSION", Value: v.Version, Public: true, Internal: true, File: false},
+		{Key: "CI_RUNNER_REVISION", Value: v.Revision, Public: true, Internal: true, File: false},
+		{Key: "CI_RUNNER_EXECUTABLE_ARCH", Value: fmt.Sprintf("%s/%s", v.OS, v.Architecture), Public: true, Internal: true, File: false},
+	}
+}
+
 func (b *Build) IsSharedEnv() bool {
 	return b.ExecutorFeatures.Shared
 }
@@ -469,7 +481,7 @@ func (b *Build) GetAllVariables() JobVariables {
 	variables = append(variables, b.GetCITLSVariables()...)
 	variables = append(variables, b.Variables...)
 	variables = append(variables, b.GetSharedEnvVariable())
-	variables = append(variables, AppVersion.Variables()...)
+	variables = append(variables, b.GetRunnerVariables()...)
 
 	b.allVariables = variables.Expand()
 	return b.allVariables
@@ -596,7 +608,7 @@ func (b *Build) GetRestoreCacheAttempts() int {
 func (b *Build) GetCacheRequestTimeout() int {
 	timeout, err := strconv.Atoi(b.GetAllVariables().Get("CACHE_REQUEST_TIMEOUT"))
 	if err != nil {
-		return DefaultCacheRequestTimeout
+		return network.DefaultCacheRequestTimeout
 	}
 	return timeout
 }

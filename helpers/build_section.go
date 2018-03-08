@@ -3,6 +3,8 @@ package helpers
 import (
 	"fmt"
 	"time"
+
+	"gitlab.com/gitlab-org/gitlab-runner/core/formatter"
 )
 
 type RawLogger interface {
@@ -16,8 +18,8 @@ type BuildSection struct {
 }
 
 const (
-	traceSectionStart = "section_start:%v:%s\r" + ANSI_CLEAR
-	traceSectionEnd   = "section_end:%v:%s\r" + ANSI_CLEAR
+	traceSectionStart = "section_start:%v:%s\r" + formatter.ANSI_CLEAR
+	traceSectionEnd   = "section_end:%v:%s\r" + formatter.ANSI_CLEAR
 )
 
 func nowUnixUTC() int64 {

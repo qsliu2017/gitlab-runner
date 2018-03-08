@@ -1,0 +1,87 @@
+package commands
+
+import (
+	"errors"
+	"io"
+	"os"
+	"path"
+	"time"
+
+	"github.com/sirupsen/logrus"
+	"github.com/urfave/cli"
+
+	"gitlab.com/gitlab-org/gitlab-runner/core/archives"
+	"gitlab.com/gitlab-org/gitlab-runner/core/formatter"
+	"gitlab.com/gitlab-org/gitlab-runner/core/network"
+)
+
+type ArtifactsUploaderCommand struct {
+	network.JobCredentials
+	fileArchiver
+	retryHelper
+	client network.ArtifactsClient
+
+	Name     string `long:"name" description:"The name of the archive"`
+	ExpireIn string `long:"expire-in" description:"When to expire artifacts"`
+}
+
+func (c *ArtifactsUploaderCommand) createAndUpload() (bool, error) {
+	pr, pw := io.Pipe()
+	defer pr.Close()
+
+	// Create the archive
+	go func() {
+		err := archives.CreateZipArchive(pw, c.sortedFiles())
+		pw.CloseWithError(err)
+	}()
+
+	artifactsName := path.Base(c.Name) + ".zip"
+
+	// Upload the data
+	switch c.client.UploadRawArtifacts(c.JobCredentials, pr, artifactsName, c.ExpireIn) {
+	case network.UploadSucceeded:
+		return false, nil
+	case network.UploadForbidden:
+		return false, os.ErrPermission
+	case network.UploadTooLarge:
+		return false, errors.New("Too large")
+	case network.UploadFailed:
+		return true, os.ErrInvalid
+	default:
+		return false, os.ErrInvalid
+	}
+}
+
+func (c *ArtifactsUploaderCommand) Execute(*cli.Context) {
+	formatter.SetRunnerFormatter()
+
+	if len(c.URL) == 0 || len(c.Token) == 0 {
+		logrus.Fatalln("Missing runner credentials")
+	}
+	if c.ID <= 0 {
+		logrus.Fatalln("Missing build ID")
+	}
+
+	// Enumerate files
+	err := c.enumerate()
+	if err != nil {
+		logrus.Fatalln(err)
+	}
+
+	// If the upload fails, exit with a non-zero exit code to indicate an issue?
+	err = c.doRetry(c.createAndUpload)
+	if err != nil {
+		logrus.Fatalln(err)
+	}
+}
+
+func init() {
+	RegisterCommand2("artifacts-uploader", "create and upload build artifacts (internal)", &ArtifactsUploaderCommand{
+		client: network.NewArtifactsClient(),
+		retryHelper: retryHelper{
+			Retry:     2,
+			RetryTime: time.Second,
+		},
+		Name: "artifacts",
+	})
+}

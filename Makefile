@@ -123,6 +123,8 @@ check_race_conditions:
 test: docker
 	# Running tests...
 	go test $(OUR_PACKAGES) $(TESTFLAGS)
+	# Cecking core dependencies ...
+	./scripts/core-import-check
 
 install:
 	go install --ldflags="$(GO_LDFLAGS)" $(PKG)
@@ -138,6 +140,7 @@ mocks: $(MOCKERY)
 	GOPATH=$(ORIGINAL_GOPATH) mockery $(MOCKERY_FLAGS) -dir=./helpers/docker -all -inpkg
 	GOPATH=$(ORIGINAL_GOPATH) mockery $(MOCKERY_FLAGS) -dir=./common -all -inpkg
 	GOPATH=$(ORIGINAL_GOPATH) mockery $(MOCKERY_FLAGS) -dir=./shells -name fakeIAMCredentialsProvider -inpkg
+	GOPATH=$(ORIGINAL_GOPATH) mockery $(MOCKERY_FLAGS) -dir=./core/network -all -inpkg
 
 test-docker:
 	make test-docker-image IMAGE=centos:6 TYPE=rpm

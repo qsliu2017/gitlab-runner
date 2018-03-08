@@ -20,8 +20,11 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"gitlab.com/gitlab-org/gitlab-runner/common"
+	"gitlab.com/gitlab-org/gitlab-runner/core"
+	"gitlab.com/gitlab-org/gitlab-runner/core/commands"
+	"gitlab.com/gitlab-org/gitlab-runner/core/formatter"
+	core_network "gitlab.com/gitlab-org/gitlab-runner/core/network"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers"
-	"gitlab.com/gitlab-org/gitlab-runner/helpers/cli"
 	prometheus_helper "gitlab.com/gitlab-org/gitlab-runner/helpers/prometheus"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers/sentry"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers/service"
@@ -144,7 +147,7 @@ func (mr *RunCommand) processRunner(id int, runner *common.RunnerConfig, runners
 	}
 
 	// Make sure to always close output
-	jobCredentials := &common.JobCredentials{
+	jobCredentials := &core_network.JobCredentials{
 		ID:    jobData.ID,
 		Token: jobData.Token,
 	}
@@ -211,7 +214,7 @@ func (mr *RunCommand) loadConfig() error {
 	}
 
 	// Set log level
-	if !cli_helpers.CustomLogLevelSet && mr.config.LogLevel != nil {
+	if !formatter.CustomLogLevelSet && mr.config.LogLevel != nil {
 		level, err := log.ParseLevel(*mr.config.LogLevel)
 		if err != nil {
 			log.Fatalf(err.Error())
@@ -355,7 +358,7 @@ func (mr *RunCommand) serveMetrics() {
 	// Metrics about catched errors
 	registry.MustRegister(&mr.prometheusLogHook)
 	// Metrics about the program's build version.
-	registry.MustRegister(common.AppVersion.NewMetricsCollector())
+	registry.MustRegister(core.AppVersion.NewMetricsCollector())
 	// Go-specific metrics about the process (GC stats, goroutines, etc.).
 	registry.MustRegister(prometheus.NewGoCollector())
 	// Go-unrelated process metrics (memory usage, file descriptors, etc.).
@@ -541,7 +544,7 @@ func (mr *RunCommand) Execute(context *cli.Context) {
 }
 
 func init() {
-	common.RegisterCommand2("run", "run multi runner service", &RunCommand{
+	commands.RegisterCommand2("run", "run multi runner service", &RunCommand{
 		ServiceName:       defaultServiceName,
 		network:           network.NewGitLabClient(),
 		prometheusLogHook: prometheus_helper.NewLogHook(),

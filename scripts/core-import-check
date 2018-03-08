@@ -1,0 +1,15 @@
+#!/bin/sh
+
+base_package=${PKG:-gitlab.com/gitlab-org/gitlab-runner}
+template='{{range .Deps}}{{println .}}{{end}}'
+
+unallowed_deps=$(go list -f "$template" "./core/..." "./apps/..." | grep "^$base_package" \
+  | grep -v "^$base_package/core" | grep -v "^$base_package/vendor/")
+
+if [ "$unallowed_deps" != "" ]; then
+  echo "Not allowed dependencies:"
+  echo "$unallowed_deps"
+  exit 1
+fi
+
+echo "Ok"

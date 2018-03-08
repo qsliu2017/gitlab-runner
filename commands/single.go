@@ -11,6 +11,8 @@ import (
 	"github.com/urfave/cli"
 
 	"gitlab.com/gitlab-org/gitlab-runner/common"
+	"gitlab.com/gitlab-org/gitlab-runner/core/commands"
+	core_network "gitlab.com/gitlab-org/gitlab-runner/core/network"
 	"gitlab.com/gitlab-org/gitlab-runner/network"
 )
 
@@ -95,7 +97,7 @@ func (r *RunSingleCommand) processBuild(data common.ExecutorData, abortSignal ch
 		ExecutorData:    data,
 	}
 
-	jobCredentials := &common.JobCredentials{
+	jobCredentials := &core_network.JobCredentials{
 		ID:    jobData.ID,
 		Token: jobData.Token,
 	}
@@ -163,7 +165,7 @@ func (r *RunSingleCommand) Execute(c *cli.Context) {
 }
 
 func init() {
-	common.RegisterCommand2("run-single", "start single runner", &RunSingleCommand{
+	commands.RegisterCommand2("run-single", "start single runner", &RunSingleCommand{
 		network: network.NewGitLabClient(),
 	})
 }

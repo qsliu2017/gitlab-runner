@@ -1,6 +1,6 @@
 docker: helper-images/prebuilt-x86_64.tar.xz helper-images/prebuilt-arm.tar.xz
 
-HELPER_GO_FILES ?= $(shell find common network vendor -name '*.go')
+HELPER_GO_FILES ?= $(shell find core apps/gitlab-runner-helper -name '*.go')
 
 GO_x86_64_ARCH = amd64
 GO_arm_ARCH = arm

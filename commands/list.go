@@ -3,7 +3,8 @@ package commands
 import (
 	log "github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
-	"gitlab.com/gitlab-org/gitlab-runner/common"
+
+	"gitlab.com/gitlab-org/gitlab-runner/core/commands"
 )
 
 type ListCommand struct {
@@ -31,5 +32,5 @@ func (c *ListCommand) Execute(context *cli.Context) {
 }
 
 func init() {
-	common.RegisterCommand2("list", "List all configured runners", &ListCommand{})
+	commands.RegisterCommand2("list", "List all configured runners", &ListCommand{})
 }

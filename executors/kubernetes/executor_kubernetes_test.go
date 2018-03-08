@@ -27,6 +27,7 @@ import (
 	"k8s.io/kubernetes/pkg/client/unversioned/fake"
 
 	"gitlab.com/gitlab-org/gitlab-runner/common"
+	"gitlab.com/gitlab-org/gitlab-runner/core/formatter"
 	"gitlab.com/gitlab-org/gitlab-runner/executors"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers"
 )
@@ -376,7 +377,7 @@ func TestCleanup(t *testing.T) {
 				},
 			}
 			ex.AbstractExecutor.Trace = buildTrace
-			ex.AbstractExecutor.BuildLogger = common.NewBuildLogger(buildTrace, logrus.WithFields(logrus.Fields{}))
+			ex.AbstractExecutor.BuildLogger = formatter.NewBuildLogger(buildTrace, buildTrace.IsStdout(), logrus.WithFields(logrus.Fields{}))
 
 			ex.Cleanup()
 

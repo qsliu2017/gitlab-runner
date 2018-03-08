@@ -26,8 +26,9 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"gitlab.com/gitlab-org/gitlab-runner/common"
+	"gitlab.com/gitlab-org/gitlab-runner/core"
+	"gitlab.com/gitlab-org/gitlab-runner/core/formatter"
 	"gitlab.com/gitlab-org/gitlab-runner/executors"
-	"gitlab.com/gitlab-org/gitlab-runner/helpers"
 	docker_helpers "gitlab.com/gitlab-org/gitlab-runner/helpers/docker"
 )
 
@@ -263,8 +264,8 @@ func (s *executor) getPrebuiltImage() (*types.ImageInspect, error) {
 	}
 
 	revision := "latest"
-	if common.REVISION != "HEAD" {
-		revision = common.REVISION
+	if core.REVISION != "HEAD" {
+		revision = core.REVISION
 	}
 
 	tag := fmt.Sprintf("%s-%s", architecture, revision)
@@ -1294,7 +1295,7 @@ func (s *executor) waitForServiceContainer(service *types.Container, timeout tim
 
 	var buffer bytes.Buffer
 	buffer.WriteString("\n")
-	buffer.WriteString(helpers.ANSI_YELLOW + "*** WARNING:" + helpers.ANSI_RESET + " Service " + service.Names[0] + " probably didn't start properly.\n")
+	buffer.WriteString(formatter.ANSI_YELLOW + "*** WARNING:" + formatter.ANSI_RESET + " Service " + service.Names[0] + " probably didn't start properly.\n")
 	buffer.WriteString("\n")
 	buffer.WriteString(strings.TrimSpace(err.Error()) + "\n")
 
@@ -1320,7 +1321,7 @@ func (s *executor) waitForServiceContainer(service *types.Container, timeout tim
 	}
 
 	buffer.WriteString("\n")
-	buffer.WriteString(helpers.ANSI_YELLOW + "*********" + helpers.ANSI_RESET + "\n")
+	buffer.WriteString(formatter.ANSI_YELLOW + "*********" + formatter.ANSI_RESET + "\n")
 	buffer.WriteString("\n")
 	io.Copy(s.Trace, &buffer)
 	return err

@@ -6,12 +6,12 @@ import (
 
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
-	"gitlab.com/gitlab-org/gitlab-runner/common"
+	"gitlab.com/gitlab-org/gitlab-runner/core"
+	"gitlab.com/gitlab-org/gitlab-runner/core/commands"
+	"gitlab.com/gitlab-org/gitlab-runner/core/formatter"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers/cli"
-	"gitlab.com/gitlab-org/gitlab-runner/helpers/formatter"
 
 	_ "gitlab.com/gitlab-org/gitlab-runner/commands"
-	_ "gitlab.com/gitlab-org/gitlab-runner/commands/helpers"
 	_ "gitlab.com/gitlab-org/gitlab-runner/executors/docker"
 	_ "gitlab.com/gitlab-org/gitlab-runner/executors/docker/machine"
 	_ "gitlab.com/gitlab-org/gitlab-runner/executors/kubernetes"
@@ -38,8 +38,8 @@ func main() {
 	app := cli.NewApp()
 	app.Name = path.Base(os.Args[0])
 	app.Usage = "a GitLab Runner"
-	app.Version = common.AppVersion.ShortLine()
-	cli.VersionPrinter = common.AppVersion.Printer
+	app.Version = core.AppVersion.ShortLine()
+	cli.VersionPrinter = core.AppVersion.Printer
 	app.Authors = []cli.Author{
 		{
 			Name:  "GitLab Inc.",
@@ -47,10 +47,10 @@ func main() {
 		},
 	}
 	cli_helpers.LogRuntimePlatform(app)
-	cli_helpers.SetupLogLevelOptions(app)
+	formatter.SetupLogLevelOptions(app)
 	cli_helpers.SetupCPUProfile(app)
 	cli_helpers.FixHOME(app)
-	app.Commands = common.GetCommands()
+	app.Commands = commands.GetCommands()
 	app.CommandNotFound = func(context *cli.Context, command string) {
 		logrus.Fatalln("Command", command, "not found.")
 	}

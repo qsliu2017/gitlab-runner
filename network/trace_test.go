@@ -12,11 +12,12 @@ import (
 	"github.com/stretchr/testify/mock"
 
 	"gitlab.com/gitlab-org/gitlab-runner/common"
+	"gitlab.com/gitlab-org/gitlab-runner/core/network"
 )
 
 var (
 	jobConfig      = common.RunnerConfig{}
-	jobCredentials = &common.JobCredentials{ID: -1}
+	jobCredentials = &network.JobCredentials{ID: -1}
 	jobOutputLimit = common.RunnerConfig{OutputLimit: 1}
 
 	noTrace *string
@@ -73,7 +74,7 @@ func TestJobTraceUpdateSucceeded(t *testing.T) {
 	for idx, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			var wg sync.WaitGroup
-			jobCredentials := &common.JobCredentials{ID: idx}
+			jobCredentials := &network.JobCredentials{ID: idx}
 
 			net := new(common.MockNetwork)
 

@@ -1,0 +1,411 @@
+package network
+
+import (
+	"crypto/rsa"
+	"crypto/tls"
+	"crypto/x509"
+	"encoding/pem"
+	"errors"
+	"fmt"
+	"io"
+	"io/ioutil"
+	"net"
+	"net/http"
+	"net/http/httptest"
+	"net/url"
+	"os"
+	"path/filepath"
+	"strconv"
+	"testing"
+
+	"github.com/sirupsen/logrus"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
+func clientHandler(w http.ResponseWriter, r *http.Request) {
+	body, _ := ioutil.ReadAll(r.Body)
+	logrus.Debugln(r.Method, r.URL.String(),
+		"Content-Type:", r.Header.Get("Content-Type"),
+		"Accept:", r.Header.Get("Accept"),
+		"Body:", string(body))
+
+	switch r.URL.Path {
+	case "/api/v4/test/ok":
+	case "/api/v4/test/auth":
+		w.WriteHeader(http.StatusForbidden)
+	case "/api/v4/test/json":
+		if r.Header.Get("Content-Type") != "application/json" {
+			w.WriteHeader(http.StatusBadRequest)
+		} else if r.Header.Get("Accept") != "application/json" {
+			w.WriteHeader(http.StatusNotAcceptable)
+		} else {
+			w.Header().Set("Content-Type", "application/json")
+			fmt.Fprint(w, "{\"key\":\"value\"}")
+		}
+	default:
+		w.WriteHeader(http.StatusNotFound)
+	}
+}
+
+func writeTLSCertificate(s *httptest.Server, file string) error {
+	c := s.TLS.Certificates[0]
+	if c.Certificate == nil || c.Certificate[0] == nil {
+		return errors.New("no predefined certificate")
+	}
+
+	encoded := pem.EncodeToMemory(&pem.Block{
+		Type:  "CERTIFICATE",
+		Bytes: c.Certificate[0],
+	})
+
+	return ioutil.WriteFile(file, encoded, 0600)
+}
+
+func writeTLSKeyPair(s *httptest.Server, certFile string, keyFile string) error {
+	c := s.TLS.Certificates[0]
+	if c.Certificate == nil || c.Certificate[0] == nil {
+		return errors.New("no predefined certificate")
+	}
+
+	encodedCert := pem.EncodeToMemory(&pem.Block{
+		Type:  "CERTIFICATE",
+		Bytes: c.Certificate[0],
+	})
+
+	if err := ioutil.WriteFile(certFile, encodedCert, 0600); err != nil {
+		return err
+	}
+
+	switch k := c.PrivateKey.(type) {
+	case *rsa.PrivateKey:
+		encodedKey := pem.EncodeToMemory(&pem.Block{
+			Type:  "RSA PRIVATE KEY",
+			Bytes: x509.MarshalPKCS1PrivateKey(k),
+		})
+		return ioutil.WriteFile(keyFile, encodedKey, 0600)
+	default:
+		return errors.New("unexpected private key type")
+	}
+}
+
+func newTLSCredentials(url, CAFile, cert, key string) *MockRequestCredentials {
+	cred := new(MockRequestCredentials)
+
+	cred.On("GetURL").Return(url)
+	cred.On("GetTLSCAFile").Return(CAFile)
+	cred.On("GetTLSCertFile").Return(cert)
+	cred.On("GetTLSKeyFile").Return(key)
+
+	return cred
+}
+
+func newCredentials(url string) *MockRequestCredentials {
+	return newTLSCredentials(url, "", "", "")
+}
+
+func TestNewClient(t *testing.T) {
+	c, err := NewClient(newCredentials("http://test.example.com/ci///"))
+	assert.NoError(t, err)
+	assert.NotNil(t, c)
+	assert.Equal(t, "http://test.example.com/api/v4/", c.url.String())
+}
+
+func TestInvalidUrl(t *testing.T) {
+	_, err := NewClient(newCredentials("address.com/ci///"))
+	assert.Error(t, err)
+}
+
+func TestClientDo(t *testing.T) {
+	s := httptest.NewServer(http.HandlerFunc(clientHandler))
+	defer s.Close()
+
+	c, err := NewClient(newCredentials(s.URL))
+	assert.NoError(t, err)
+	assert.NotNil(t, c)
+
+	statusCode, statusText, _ := c.DoJSON("test/auth", "GET", http.StatusOK, nil, nil)
+	assert.Equal(t, http.StatusForbidden, statusCode, statusText)
+
+	req := struct {
+		Query bool `json:"query"`
+	}{
+		true,
+	}
+
+	res := struct {
+		Key string `json:"key"`
+	}{}
+
+	statusCode, statusText, _ = c.DoJSON("test/json", "GET", http.StatusOK, nil, &res)
+	assert.Equal(t, http.StatusBadRequest, statusCode, statusText)
+
+	statusCode, statusText, _ = c.DoJSON("test/json", "GET", http.StatusOK, &req, nil)
+	assert.Equal(t, http.StatusNotAcceptable, statusCode, statusText)
+
+	statusCode, statusText, _ = c.DoJSON("test/json", "GET", http.StatusOK, nil, nil)
+	assert.Equal(t, http.StatusBadRequest, statusCode, statusText)
+
+	statusCode, statusText, _ = c.DoJSON("test/json", "GET", http.StatusOK, &req, &res)
+	assert.Equal(t, http.StatusOK, statusCode, statusText)
+	assert.Equal(t, "value", res.Key, statusText)
+}
+
+func TestClientInvalidSSL(t *testing.T) {
+	s := httptest.NewTLSServer(http.HandlerFunc(clientHandler))
+	defer s.Close()
+
+	c, _ := NewClient(newCredentials(s.URL))
+	statusCode, statusText, _ := c.DoJSON("test/ok", "GET", http.StatusOK, nil, nil)
+	assert.Equal(t, -1, statusCode, statusText)
+	assert.Contains(t, statusText, "certificate signed by unknown authority")
+}
+
+func TestClientTLSCAFile(t *testing.T) {
+	s := httptest.NewTLSServer(http.HandlerFunc(clientHandler))
+	defer s.Close()
+
+	file, err := ioutil.TempFile("", "cert_")
+	assert.NoError(t, err)
+	file.Close()
+	defer os.Remove(file.Name())
+
+	err = writeTLSCertificate(s, file.Name())
+	assert.NoError(t, err)
+
+	c, _ := NewClient(newTLSCredentials(s.URL, file.Name(), "", ""))
+	statusCode, statusText, tlsData := c.DoJSON("test/ok", "GET", http.StatusOK, nil, nil)
+	assert.Equal(t, http.StatusOK, statusCode, statusText)
+	assert.NotEmpty(t, tlsData.CAChain)
+}
+
+func TestClientCertificateInPredefinedDirectory(t *testing.T) {
+	s := httptest.NewTLSServer(http.HandlerFunc(clientHandler))
+	defer s.Close()
+
+	serverURL, err := url.Parse(s.URL)
+	require.NoError(t, err)
+	hostname, _, err := net.SplitHostPort(serverURL.Host)
+	require.NoError(t, err)
+
+	tempDir, err := ioutil.TempDir("", "certs")
+	assert.NoError(t, err)
+	defer os.RemoveAll(tempDir)
+	CertificateDirectory = tempDir
+
+	err = writeTLSCertificate(s, filepath.Join(tempDir, hostname+".crt"))
+	assert.NoError(t, err)
+
+	c, _ := NewClient(newCredentials(s.URL))
+	statusCode, statusText, tlsData := c.DoJSON("test/ok", "GET", http.StatusOK, nil, nil)
+	assert.Equal(t, http.StatusOK, statusCode, statusText)
+	assert.NotEmpty(t, tlsData.CAChain)
+}
+
+func TestClientInvalidTLSAuth(t *testing.T) {
+	s := httptest.NewUnstartedServer(http.HandlerFunc(clientHandler))
+	s.TLS = new(tls.Config)
+	s.TLS.ClientAuth = tls.RequireAnyClientCert
+	s.StartTLS()
+	defer s.Close()
+
+	ca, err := ioutil.TempFile("", "cert_")
+	assert.NoError(t, err)
+	ca.Close()
+	defer os.Remove(ca.Name())
+
+	err = writeTLSCertificate(s, ca.Name())
+	assert.NoError(t, err)
+
+	c, _ := NewClient(newTLSCredentials(s.URL, ca.Name(), "", ""))
+	statusCode, statusText, _ := c.DoJSON("test/ok", "GET", http.StatusOK, nil, nil)
+	assert.Equal(t, -1, statusCode, statusText)
+	assert.Contains(t, statusText, "tls: bad certificate")
+}
+
+func TestClientTLSAuth(t *testing.T) {
+	s := httptest.NewUnstartedServer(http.HandlerFunc(clientHandler))
+	s.TLS = new(tls.Config)
+	s.TLS.ClientAuth = tls.RequireAnyClientCert
+	s.StartTLS()
+	defer s.Close()
+
+	ca, err := ioutil.TempFile("", "cert_")
+	assert.NoError(t, err)
+	ca.Close()
+	defer os.Remove(ca.Name())
+
+	err = writeTLSCertificate(s, ca.Name())
+	assert.NoError(t, err)
+
+	cert, err := ioutil.TempFile("", "cert_")
+	assert.NoError(t, err)
+	cert.Close()
+	defer os.Remove(cert.Name())
+
+	key, err := ioutil.TempFile("", "key_")
+	assert.NoError(t, err)
+	key.Close()
+	defer os.Remove(key.Name())
+
+	err = writeTLSKeyPair(s, cert.Name(), key.Name())
+	assert.NoError(t, err)
+
+	c, _ := NewClient(newTLSCredentials(s.URL, ca.Name(), cert.Name(), key.Name()))
+	statusCode, statusText, tlsData := c.DoJSON("test/ok", "GET", http.StatusOK, nil, nil)
+	assert.Equal(t, http.StatusOK, statusCode, statusText)
+	assert.NotEmpty(t, tlsData.CAChain)
+	assert.Equal(t, cert.Name(), tlsData.CertFile)
+	assert.Equal(t, key.Name(), tlsData.KeyFile)
+}
+
+func TestClientTLSAuthCertificatesInPredefinedDirectory(t *testing.T) {
+	s := httptest.NewUnstartedServer(http.HandlerFunc(clientHandler))
+	s.TLS = new(tls.Config)
+	s.TLS.ClientAuth = tls.RequireAnyClientCert
+	s.StartTLS()
+	defer s.Close()
+
+	tempDir, err := ioutil.TempDir("", "certs")
+	assert.NoError(t, err)
+	defer os.RemoveAll(tempDir)
+	CertificateDirectory = tempDir
+
+	serverURL, err := url.Parse(s.URL)
+	require.NoError(t, err)
+	hostname, _, err := net.SplitHostPort(serverURL.Host)
+	require.NoError(t, err)
+
+	err = writeTLSCertificate(s, filepath.Join(tempDir, hostname+".crt"))
+	assert.NoError(t, err)
+
+	err = writeTLSKeyPair(s,
+		filepath.Join(tempDir, hostname+".auth.crt"),
+		filepath.Join(tempDir, hostname+".auth.key"))
+	assert.NoError(t, err)
+
+	c, _ := NewClient(newCredentials(s.URL))
+	statusCode, statusText, tlsData := c.DoJSON("test/ok", "GET", http.StatusOK, nil, nil)
+	assert.Equal(t, http.StatusOK, statusCode, statusText)
+	assert.NotEmpty(t, tlsData.CAChain)
+	assert.NotEmpty(t, tlsData.CertFile)
+	assert.NotEmpty(t, tlsData.KeyFile)
+}
+
+func TestUrlFixing(t *testing.T) {
+	assert.Equal(t, "https://gitlab.example.com", fixCIURL("https://gitlab.example.com/ci///"))
+	assert.Equal(t, "https://gitlab.example.com", fixCIURL("https://gitlab.example.com/ci/"))
+	assert.Equal(t, "https://gitlab.example.com", fixCIURL("https://gitlab.example.com/ci"))
+	assert.Equal(t, "https://gitlab.example.com", fixCIURL("https://gitlab.example.com/"))
+	assert.Equal(t, "https://gitlab.example.com", fixCIURL("https://gitlab.example.com///"))
+	assert.Equal(t, "https://gitlab.example.com", fixCIURL("https://gitlab.example.com"))
+	assert.Equal(t, "https://example.com/gitlab", fixCIURL("https://example.com/gitlab/ci/"))
+	assert.Equal(t, "https://example.com/gitlab", fixCIURL("https://example.com/gitlab/ci///"))
+	assert.Equal(t, "https://example.com/gitlab", fixCIURL("https://example.com/gitlab/ci"))
+	assert.Equal(t, "https://example.com/gitlab", fixCIURL("https://example.com/gitlab/"))
+	assert.Equal(t, "https://example.com/gitlab", fixCIURL("https://example.com/gitlab///"))
+	assert.Equal(t, "https://example.com/gitlab", fixCIURL("https://example.com/gitlab"))
+}
+
+func charsetTestClientHandler(w http.ResponseWriter, r *http.Request) {
+	switch r.URL.Path {
+	case "/api/v4/with-charset":
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprint(w, "{\"key\":\"value\"}")
+	case "/api/v4/without-charset":
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprint(w, "{\"key\":\"value\"}")
+	case "/api/v4/without-json":
+		w.Header().Set("Content-Type", "application/octet-stream")
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprint(w, "{\"key\":\"value\"}")
+	case "/api/v4/invalid-header":
+		w.Header().Set("Content-Type", "application/octet-stream, test, a=b")
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprint(w, "{\"key\":\"value\"}")
+	}
+}
+
+func TestClientHandleCharsetInContentType(t *testing.T) {
+	s := httptest.NewServer(http.HandlerFunc(charsetTestClientHandler))
+	defer s.Close()
+
+	c, _ := NewClient(newCredentials(s.URL))
+
+	res := struct {
+		Key string `json:"key"`
+	}{}
+
+	statusCode, statusText, _ := c.DoJSON("with-charset", "GET", http.StatusOK, nil, &res)
+	assert.Equal(t, http.StatusOK, statusCode, statusText)
+
+	statusCode, statusText, _ = c.DoJSON("without-charset", "GET", http.StatusOK, nil, &res)
+	assert.Equal(t, http.StatusOK, statusCode, statusText)
+
+	statusCode, statusText, _ = c.DoJSON("without-json", "GET", http.StatusOK, nil, &res)
+	assert.Equal(t, -1, statusCode, statusText)
+
+	statusCode, statusText, _ = c.DoJSON("invalid-header", "GET", http.StatusOK, nil, &res)
+	assert.Equal(t, -1, statusCode, statusText)
+}
+
+type backoffTestCase struct {
+	responseStatus int
+	mustBackoff    bool
+}
+
+func tooManyRequestsHandler(w http.ResponseWriter, r *http.Request) {
+	status, err := strconv.Atoi(r.Header.Get("responseStatus"))
+	if err != nil {
+		w.WriteHeader(599)
+	} else {
+		w.WriteHeader(status)
+	}
+}
+
+func TestRequestsBackOff(t *testing.T) {
+	s := httptest.NewServer(http.HandlerFunc(tooManyRequestsHandler))
+	defer s.Close()
+
+	c, _ := NewClient(newCredentials(s.URL))
+
+	testCases := []backoffTestCase{
+		{http.StatusCreated, false},
+		{http.StatusInternalServerError, true},
+		{http.StatusBadGateway, true},
+		{http.StatusServiceUnavailable, true},
+		{http.StatusOK, false},
+		{http.StatusConflict, true},
+		{http.StatusTooManyRequests, true},
+		{http.StatusCreated, false},
+		{http.StatusInternalServerError, true},
+		{http.StatusTooManyRequests, true},
+		{599, true},
+		{499, true},
+	}
+
+	backoff := c.ensureBackoff("POST", "")
+	for id, testCase := range testCases {
+		t.Run(fmt.Sprintf("%d-%d", id, testCase.responseStatus), func(t *testing.T) {
+			backoff.Reset()
+			assert.Zero(t, backoff.Attempt())
+
+			var body io.Reader
+			headers := make(http.Header)
+			headers.Add("responseStatus", strconv.Itoa(testCase.responseStatus))
+
+			res, err := c.Do("/", "POST", body, "application/json", headers)
+
+			assert.NoError(t, err)
+			assert.Equal(t, testCase.responseStatus, res.StatusCode)
+
+			var expected float64
+			if testCase.mustBackoff {
+				expected = 1.0
+			}
+			assert.Equal(t, expected, backoff.Attempt())
+		})
+	}
+}

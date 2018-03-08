@@ -11,7 +11,8 @@ import (
 	"time"
 
 	"gitlab.com/gitlab-org/gitlab-runner/common"
-	"gitlab.com/gitlab-org/gitlab-runner/helpers"
+	"gitlab.com/gitlab-org/gitlab-runner/core/formatter"
+	"gitlab.com/gitlab-org/gitlab-runner/core/network"
 )
 
 type tracePatch struct {
@@ -63,7 +64,7 @@ type clientJobTrace struct {
 
 	client         common.Network
 	config         common.RunnerConfig
-	jobCredentials *common.JobCredentials
+	jobCredentials *network.JobCredentials
 	id             int
 	bytesLimit     int
 	cancelFunc     context.CancelFunc
@@ -234,7 +235,7 @@ func (c *clientJobTrace) incrementalUpdate() common.UpdateState {
 	return update
 }
 
-func (c *clientJobTrace) resendPatch(id int, config common.RunnerConfig, jobCredentials *common.JobCredentials, tracePatch common.JobTracePatch) (update common.UpdateState) {
+func (c *clientJobTrace) resendPatch(id int, config common.RunnerConfig, jobCredentials *network.JobCredentials, tracePatch common.JobTracePatch) (update common.UpdateState) {
 	if !tracePatch.ValidateRange() {
 		config.Log().Warningln(id, "Full job update is needed")
 		fullTrace := c.log.String()
@@ -326,10 +327,10 @@ func (c *clientJobTrace) setupLogLimit() {
 }
 
 func (c *clientJobTrace) limitExceededMessage() string {
-	return fmt.Sprintf("\n%sJob's log exceeded limit of %v bytes.%s\n", helpers.ANSI_BOLD_RED, c.bytesLimit, helpers.ANSI_RESET)
+	return fmt.Sprintf("\n%sJob's log exceeded limit of %v bytes.%s\n", formatter.ANSI_BOLD_RED, c.bytesLimit, formatter.ANSI_RESET)
 }
 
-func newJobTrace(client common.Network, config common.RunnerConfig, jobCredentials *common.JobCredentials) *clientJobTrace {
+func newJobTrace(client common.Network, config common.RunnerConfig, jobCredentials *network.JobCredentials) *clientJobTrace {
 	return &clientJobTrace{
 		client:              client,
 		config:              config,

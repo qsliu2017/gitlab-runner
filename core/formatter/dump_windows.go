@@ -1,0 +1,4 @@
+package formatter
+
+func watchForGoroutinesDump() {
+}

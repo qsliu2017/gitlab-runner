@@ -3,18 +3,17 @@ package network
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
-	"os"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"gitlab.com/gitlab-org/gitlab-runner/core/network"
 
 	. "gitlab.com/gitlab-org/gitlab-runner/common"
 )
@@ -561,7 +560,7 @@ func TestUpdateJob(t *testing.T) {
 		},
 	}
 
-	jobCredentials := &JobCredentials{
+	jobCredentials := &network.JobCredentials{
 		Token: "token",
 	}
 
@@ -655,7 +654,7 @@ func TestUnknownPatchTrace(t *testing.T) {
 	defer server.Close()
 
 	tracePatch := getTracePatch(patchTraceString, 0)
-	state := client.PatchTrace(config, &JobCredentials{ID: 1, Token: patchToken}, tracePatch)
+	state := client.PatchTrace(config, &network.JobCredentials{ID: 1, Token: patchToken}, tracePatch)
 	assert.Equal(t, UpdateNotFound, state)
 }
 
@@ -668,7 +667,7 @@ func TestForbiddenPatchTrace(t *testing.T) {
 	defer server.Close()
 
 	tracePatch := getTracePatch(patchTraceString, 0)
-	state := client.PatchTrace(config, &JobCredentials{ID: 1, Token: patchToken}, tracePatch)
+	state := client.PatchTrace(config, &network.JobCredentials{ID: 1, Token: patchToken}, tracePatch)
 	assert.Equal(t, UpdateAbort, state)
 }
 
@@ -683,15 +682,15 @@ func TestPatchTrace(t *testing.T) {
 	defer server.Close()
 
 	tracePatch := getTracePatch(patchTraceString, 0)
-	state := client.PatchTrace(config, &JobCredentials{ID: 1, Token: patchToken}, tracePatch)
+	state := client.PatchTrace(config, &network.JobCredentials{ID: 1, Token: patchToken}, tracePatch)
 	assert.Equal(t, UpdateSucceeded, state)
 
 	tracePatch = getTracePatch(patchTraceString, 3)
-	state = client.PatchTrace(config, &JobCredentials{ID: 1, Token: patchToken}, tracePatch)
+	state = client.PatchTrace(config, &network.JobCredentials{ID: 1, Token: patchToken}, tracePatch)
 	assert.Equal(t, UpdateSucceeded, state)
 
 	tracePatch = getTracePatch(patchTraceString[:10], 3)
-	state = client.PatchTrace(config, &JobCredentials{ID: 1, Token: patchToken}, tracePatch)
+	state = client.PatchTrace(config, &network.JobCredentials{ID: 1, Token: patchToken}, tracePatch)
 	assert.Equal(t, UpdateSucceeded, state)
 }
 
@@ -709,15 +708,15 @@ func TestRangeMismatchPatchTrace(t *testing.T) {
 	defer server.Close()
 
 	tracePatch := getTracePatch(patchTraceString, 11)
-	state := client.PatchTrace(config, &JobCredentials{ID: 1, Token: patchToken}, tracePatch)
+	state := client.PatchTrace(config, &network.JobCredentials{ID: 1, Token: patchToken}, tracePatch)
 	assert.Equal(t, UpdateRangeMismatch, state)
 
 	tracePatch = getTracePatch(patchTraceString, 15)
-	state = client.PatchTrace(config, &JobCredentials{ID: 1, Token: patchToken}, tracePatch)
+	state = client.PatchTrace(config, &network.JobCredentials{ID: 1, Token: patchToken}, tracePatch)
 	assert.Equal(t, UpdateRangeMismatch, state)
 
 	tracePatch = getTracePatch(patchTraceString, 5)
-	state = client.PatchTrace(config, &JobCredentials{ID: 1, Token: patchToken}, tracePatch)
+	state = client.PatchTrace(config, &network.JobCredentials{ID: 1, Token: patchToken}, tracePatch)
 	assert.Equal(t, UpdateSucceeded, state)
 }
 
@@ -735,10 +734,10 @@ func TestResendPatchTrace(t *testing.T) {
 	defer server.Close()
 
 	tracePatch := getTracePatch(patchTraceString, 11)
-	state := client.PatchTrace(config, &JobCredentials{ID: 1, Token: patchToken}, tracePatch)
+	state := client.PatchTrace(config, &network.JobCredentials{ID: 1, Token: patchToken}, tracePatch)
 	assert.Equal(t, UpdateRangeMismatch, state)
 
-	state = client.PatchTrace(config, &JobCredentials{ID: 1, Token: patchToken}, tracePatch)
+	state = client.PatchTrace(config, &network.JobCredentials{ID: 1, Token: patchToken}, tracePatch)
 	assert.Equal(t, UpdateSucceeded, state)
 }
 
@@ -761,7 +760,7 @@ func TestResendDoubledJobPatchTrace(t *testing.T) {
 	defer server.Close()
 
 	tracePatch := getTracePatch(patchTraceString, 11)
-	state := client.PatchTrace(config, &JobCredentials{ID: 1, Token: patchToken}, tracePatch)
+	state := client.PatchTrace(config, &network.JobCredentials{ID: 1, Token: patchToken}, tracePatch)
 	assert.Equal(t, UpdateRangeMismatch, state)
 	assert.False(t, tracePatch.ValidateRange())
 }
@@ -776,141 +775,6 @@ func TestJobFailedStatePatchTrace(t *testing.T) {
 	defer server.Close()
 
 	tracePatch := getTracePatch(patchTraceString, 0)
-	state := client.PatchTrace(config, &JobCredentials{ID: 1, Token: patchToken}, tracePatch)
+	state := client.PatchTrace(config, &network.JobCredentials{ID: 1, Token: patchToken}, tracePatch)
 	assert.Equal(t, UpdateAbort, state)
-}
-
-func testArtifactsUploadHandler(w http.ResponseWriter, r *http.Request, t *testing.T) {
-	if r.URL.Path != "/api/v4/jobs/10/artifacts" {
-		w.WriteHeader(http.StatusNotFound)
-		return
-	}
-
-	if r.Method != "POST" {
-		w.WriteHeader(http.StatusNotAcceptable)
-		return
-	}
-
-	if r.Header.Get("JOB-TOKEN") != "token" {
-		w.WriteHeader(http.StatusForbidden)
-		return
-	}
-
-	file, _, err := r.FormFile("file")
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-
-	body, err := ioutil.ReadAll(file)
-	assert.NoError(t, err)
-
-	if string(body) != "content" {
-		w.WriteHeader(http.StatusRequestEntityTooLarge)
-	} else {
-		w.WriteHeader(http.StatusCreated)
-	}
-}
-
-func TestArtifactsUpload(t *testing.T) {
-	handler := func(w http.ResponseWriter, r *http.Request) {
-		testArtifactsUploadHandler(w, r, t)
-	}
-
-	s := httptest.NewServer(http.HandlerFunc(handler))
-	defer s.Close()
-
-	config := JobCredentials{
-		ID:    10,
-		URL:   s.URL,
-		Token: "token",
-	}
-	invalidToken := JobCredentials{
-		ID:    10,
-		URL:   s.URL,
-		Token: "invalid-token",
-	}
-
-	tempFile, err := ioutil.TempFile("", "artifacts")
-	assert.NoError(t, err)
-	defer tempFile.Close()
-	defer os.Remove(tempFile.Name())
-
-	c := NewGitLabClient()
-
-	fmt.Fprint(tempFile, "content")
-	state := c.UploadArtifacts(config, tempFile.Name())
-	assert.Equal(t, UploadSucceeded, state, "Artifacts should be uploaded")
-
-	fmt.Fprint(tempFile, "too large")
-	state = c.UploadArtifacts(config, tempFile.Name())
-	assert.Equal(t, UploadTooLarge, state, "Artifacts should be not uploaded, because of too large archive")
-
-	state = c.UploadArtifacts(config, "not/existing/file")
-	assert.Equal(t, UploadFailed, state, "Artifacts should fail to be uploaded")
-
-	state = c.UploadArtifacts(invalidToken, tempFile.Name())
-	assert.Equal(t, UploadForbidden, state, "Artifacts should be rejected if invalid token")
-}
-
-func testArtifactsDownloadHandler(w http.ResponseWriter, r *http.Request, t *testing.T) {
-	if r.URL.Path != "/api/v4/jobs/10/artifacts" {
-		w.WriteHeader(http.StatusNotFound)
-		return
-	}
-
-	if r.Method != "GET" {
-		w.WriteHeader(http.StatusNotAcceptable)
-		return
-	}
-
-	if r.Header.Get("JOB-TOKEN") != "token" {
-		w.WriteHeader(http.StatusForbidden)
-		return
-	}
-
-	w.WriteHeader(http.StatusOK)
-	w.Write(bytes.NewBufferString("Test artifact file content").Bytes())
-}
-
-func TestArtifactsDownload(t *testing.T) {
-	handler := func(w http.ResponseWriter, r *http.Request) {
-		testArtifactsDownloadHandler(w, r, t)
-	}
-
-	s := httptest.NewServer(http.HandlerFunc(handler))
-	defer s.Close()
-
-	credentials := JobCredentials{
-		ID:    10,
-		URL:   s.URL,
-		Token: "token",
-	}
-	invalidTokenCredentials := JobCredentials{
-		ID:    10,
-		URL:   s.URL,
-		Token: "invalid-token",
-	}
-	fileNotFoundTokenCredentials := JobCredentials{
-		ID:    11,
-		URL:   s.URL,
-		Token: "token",
-	}
-
-	c := NewGitLabClient()
-
-	tempDir, err := ioutil.TempDir("", "artifacts")
-	assert.NoError(t, err)
-
-	artifactsFileName := filepath.Join(tempDir, "downloaded-artifact")
-	defer os.Remove(artifactsFileName)
-
-	state := c.DownloadArtifacts(credentials, artifactsFileName)
-	assert.Equal(t, DownloadSucceeded, state, "Artifacts should be downloaded")
-
-	state = c.DownloadArtifacts(invalidTokenCredentials, artifactsFileName)
-	assert.Equal(t, DownloadForbidden, state, "Artifacts should be not downloaded if invalid token is used")
-
-	state = c.DownloadArtifacts(fileNotFoundTokenCredentials, artifactsFileName)
-	assert.Equal(t, DownloadNotFound, state, "Artifacts should be bit downloaded if it's not found")
 }

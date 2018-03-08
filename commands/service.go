@@ -8,7 +8,9 @@ import (
 	"github.com/ayufan/golang-kardianos-service"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
+
 	"gitlab.com/gitlab-org/gitlab-runner/common"
+	"gitlab.com/gitlab-org/gitlab-runner/core/commands"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers/service"
 )
@@ -223,37 +225,37 @@ func init() {
 		})
 	}
 
-	common.RegisterCommand(cli.Command{
+	commands.RegisterCommand(cli.Command{
 		Name:   "install",
 		Usage:  "install service",
 		Action: RunServiceControl,
 		Flags:  installFlags,
 	})
-	common.RegisterCommand(cli.Command{
+	commands.RegisterCommand(cli.Command{
 		Name:   "uninstall",
 		Usage:  "uninstall service",
 		Action: RunServiceControl,
 		Flags:  flags,
 	})
-	common.RegisterCommand(cli.Command{
+	commands.RegisterCommand(cli.Command{
 		Name:   "start",
 		Usage:  "start service",
 		Action: RunServiceControl,
 		Flags:  flags,
 	})
-	common.RegisterCommand(cli.Command{
+	commands.RegisterCommand(cli.Command{
 		Name:   "stop",
 		Usage:  "stop service",
 		Action: RunServiceControl,
 		Flags:  flags,
 	})
-	common.RegisterCommand(cli.Command{
+	commands.RegisterCommand(cli.Command{
 		Name:   "restart",
 		Usage:  "restart service",
 		Action: RunServiceControl,
 		Flags:  flags,
 	})
-	common.RegisterCommand(cli.Command{
+	commands.RegisterCommand(cli.Command{
 		Name:   "status",
 		Usage:  "get status of a service",
 		Action: RunServiceControl,

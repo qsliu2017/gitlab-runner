@@ -11,6 +11,7 @@ import (
 	"github.com/urfave/cli"
 
 	"gitlab.com/gitlab-org/gitlab-runner/common"
+	"gitlab.com/gitlab-org/gitlab-runner/core/commands"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers/ssh"
 	"gitlab.com/gitlab-org/gitlab-runner/network"
 )
@@ -283,7 +284,7 @@ func getHostname() string {
 }
 
 func init() {
-	common.RegisterCommand2("register", "register a new runner", &RegisterCommand{
+	commands.RegisterCommand2("register", "register a new runner", &RegisterCommand{
 		RunnerConfig: common.RunnerConfig{
 			Name: getHostname(),
 			RunnerSettings: common.RunnerSettings{

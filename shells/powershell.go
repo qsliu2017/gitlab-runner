@@ -184,22 +184,22 @@ func (b *PsWriter) RmFile(path string) {
 }
 
 func (b *PsWriter) Print(format string, arguments ...interface{}) {
-	coloredText := helpers.ANSI_RESET + fmt.Sprintf(format, arguments...)
+	coloredText := normalText(format, arguments...)
 	b.Line("echo " + psQuoteVariable(coloredText))
 }
 
 func (b *PsWriter) Notice(format string, arguments ...interface{}) {
-	coloredText := helpers.ANSI_BOLD_GREEN + fmt.Sprintf(format, arguments...) + helpers.ANSI_RESET
+	coloredText := noticeText(format, arguments...)
 	b.Line("echo " + psQuoteVariable(coloredText))
 }
 
 func (b *PsWriter) Warning(format string, arguments ...interface{}) {
-	coloredText := helpers.ANSI_YELLOW + fmt.Sprintf(format, arguments...) + helpers.ANSI_RESET
+	coloredText := warningText(format, arguments...)
 	b.Line("echo " + psQuoteVariable(coloredText))
 }
 
 func (b *PsWriter) Error(format string, arguments ...interface{}) {
-	coloredText := helpers.ANSI_BOLD_RED + fmt.Sprintf(format, arguments...) + helpers.ANSI_RESET
+	coloredText := errorText(format, arguments...)
 	b.Line("echo " + psQuoteVariable(coloredText))
 }
 

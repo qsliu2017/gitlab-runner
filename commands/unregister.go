@@ -1,10 +1,11 @@
 package commands
 
 import (
+	log "github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
 
-	log "github.com/sirupsen/logrus"
 	"gitlab.com/gitlab-org/gitlab-runner/common"
+	"gitlab.com/gitlab-org/gitlab-runner/core/commands"
 	"gitlab.com/gitlab-org/gitlab-runner/network"
 )
 
@@ -83,7 +84,7 @@ func (c *UnregisterCommand) Execute(context *cli.Context) {
 }
 
 func init() {
-	common.RegisterCommand2("unregister", "unregister specific runner", &UnregisterCommand{
+	commands.RegisterCommand2("unregister", "unregister specific runner", &UnregisterCommand{
 		network: network.NewGitLabClient(),
 	})
 }

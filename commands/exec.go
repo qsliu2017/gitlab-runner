@@ -9,6 +9,7 @@ import (
 	"github.com/urfave/cli"
 	"gitlab.com/ayufan/golang-cli-helpers"
 	"gitlab.com/gitlab-org/gitlab-runner/common"
+	"gitlab.com/gitlab-org/gitlab-runner/core/commands"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers/gitlab_ci_yaml_parser"
 
 	// Force to load all executors, executes init() on them
@@ -159,5 +160,5 @@ func init() {
 		cliCmd.Subcommands = append(cliCmd.Subcommands, subCmd)
 	}
 
-	common.RegisterCommand(cliCmd)
+	commands.RegisterCommand(cliCmd)
 }

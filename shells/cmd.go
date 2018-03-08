@@ -178,22 +178,22 @@ func (b *CmdWriter) RmFile(path string) {
 }
 
 func (b *CmdWriter) Print(format string, arguments ...interface{}) {
-	coloredText := helpers.ANSI_RESET + fmt.Sprintf(format, arguments...) + helpers.ANSI_RESET
+	coloredText := normalText(format, arguments...)
 	b.Line("echo " + batchEscapeVariable(coloredText))
 }
 
 func (b *CmdWriter) Notice(format string, arguments ...interface{}) {
-	coloredText := helpers.ANSI_BOLD_GREEN + fmt.Sprintf(format, arguments...) + helpers.ANSI_RESET
+	coloredText := noticeText(format, arguments...)
 	b.Line("echo " + batchEscapeVariable(coloredText))
 }
 
 func (b *CmdWriter) Warning(format string, arguments ...interface{}) {
-	coloredText := helpers.ANSI_YELLOW + fmt.Sprintf(format, arguments...) + helpers.ANSI_RESET
+	coloredText := warningText(format, arguments...)
 	b.Line("echo " + batchEscapeVariable(coloredText))
 }
 
 func (b *CmdWriter) Error(format string, arguments ...interface{}) {
-	coloredText := helpers.ANSI_BOLD_RED + fmt.Sprintf(format, arguments...) + helpers.ANSI_RESET
+	coloredText := errorText(format, arguments...)
 	b.Line("echo " + batchEscapeVariable(coloredText))
 }
 

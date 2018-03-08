@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"gitlab.com/gitlab-org/gitlab-runner/common"
+	"gitlab.com/gitlab-org/gitlab-runner/core/formatter"
 )
 
 func buildOverwriteVariables(namespace, serviceAccount, bearerToken string, podAnnotations map[string]string) common.JobVariables {
@@ -31,8 +32,8 @@ func buildOverwriteVariables(namespace, serviceAccount, bearerToken string, podA
 	return variables
 }
 
-func stdoutLogger() common.BuildLogger {
-	return common.NewBuildLogger(&common.Trace{Writer: os.Stdout}, logrus.WithFields(logrus.Fields{}))
+func stdoutLogger() formatter.BuildLogger {
+	return formatter.NewBuildLogger(&common.Trace{Writer: os.Stdout}, true, logrus.WithFields(logrus.Fields{}))
 }
 
 func TestOverwrites(t *testing.T) {

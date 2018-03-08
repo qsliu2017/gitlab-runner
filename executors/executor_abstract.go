@@ -4,7 +4,10 @@ import (
 	"context"
 	"os"
 
+	"github.com/sirupsen/logrus"
+
 	"gitlab.com/gitlab-org/gitlab-runner/common"
+	"gitlab.com/gitlab-org/gitlab-runner/core/formatter"
 )
 
 type ExecutorOptions struct {
@@ -17,7 +20,7 @@ type ExecutorOptions struct {
 
 type AbstractExecutor struct {
 	ExecutorOptions
-	common.BuildLogger
+	formatter.BuildLogger
 	Config       common.RunnerConfig
 	Build        *common.Build
 	Trace        common.JobTrace
@@ -78,7 +81,7 @@ func (e *AbstractExecutor) Prepare(options common.ExecutorPrepareOptions) error 
 	e.Config = *options.Config
 	e.Build = options.Build
 	e.Trace = options.Trace
-	e.BuildLogger = common.NewBuildLogger(options.Trace, options.Build.Log())
+	e.BuildLogger = prepareBuildLogger(options.Trace, options.Build.Log())
 
 	err := e.startBuild()
 	if err != nil {
@@ -111,4 +114,13 @@ func (e *AbstractExecutor) GetCurrentStage() common.ExecutorStage {
 
 func (e *AbstractExecutor) SetCurrentStage(stage common.ExecutorStage) {
 	e.currentStage = stage
+}
+
+func prepareBuildLogger(trace common.JobTrace, log *logrus.Entry) formatter.BuildLogger {
+	var isStdout bool
+	if trace != nil {
+		isStdout = trace.IsStdout()
+	}
+
+	return formatter.NewBuildLogger(trace, isStdout, log)
 }

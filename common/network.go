@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"io"
 
-	"gitlab.com/gitlab-org/gitlab-runner/helpers/url"
+	"gitlab.com/gitlab-org/gitlab-runner/core/formatter"
+	"gitlab.com/gitlab-org/gitlab-runner/core/network"
 )
 
 type UpdateState int
-type UploadState int
 type DownloadState int
 type JobState string
 type JobFailureReason string
@@ -33,20 +33,6 @@ const (
 	UpdateAbort
 	UpdateFailed
 	UpdateRangeMismatch
-)
-
-const (
-	UploadSucceeded UploadState = iota
-	UploadTooLarge
-	UploadForbidden
-	UploadFailed
-)
-
-const (
-	DownloadSucceeded DownloadState = iota
-	DownloadForbidden
-	DownloadFailed
-	DownloadNotFound
 )
 
 type FeaturesInfo struct {
@@ -266,7 +252,7 @@ type JobResponse struct {
 }
 
 func (j *JobResponse) RepoCleanURL() string {
-	return url_helpers.CleanURL(j.GitInfo.RepoURL)
+	return formatter.CleanURL(j.GitInfo.RepoURL)
 }
 
 type UpdateJobRequest struct {
@@ -275,35 +261,6 @@ type UpdateJobRequest struct {
 	State         JobState         `json:"state,omitempty"`
 	FailureReason JobFailureReason `json:"failure_reason,omitempty"`
 	Trace         *string          `json:"trace,omitempty"`
-}
-
-type JobCredentials struct {
-	ID          int    `long:"id" env:"CI_JOB_ID" description:"The build ID to upload artifacts for"`
-	Token       string `long:"token" env:"CI_JOB_TOKEN" required:"true" description:"Build token"`
-	URL         string `long:"url" env:"CI_SERVER_URL" required:"true" description:"GitLab CI URL"`
-	TLSCAFile   string `long:"tls-ca-file" env:"CI_SERVER_TLS_CA_FILE" description:"File containing the certificates to verify the peer when using HTTPS"`
-	TLSCertFile string `long:"tls-cert-file" env:"CI_SERVER_TLS_CERT_FILE" description:"File containing certificate for TLS client auth with runner when using HTTPS"`
-	TLSKeyFile  string `long:"tls-key-file" env:"CI_SERVER_TLS_KEY_FILE" description:"File containing private key for TLS client auth with runner when using HTTPS"`
-}
-
-func (j *JobCredentials) GetURL() string {
-	return j.URL
-}
-
-func (j *JobCredentials) GetTLSCAFile() string {
-	return j.TLSCAFile
-}
-
-func (j *JobCredentials) GetTLSCertFile() string {
-	return j.TLSCertFile
-}
-
-func (j *JobCredentials) GetTLSKeyFile() string {
-	return j.TLSKeyFile
-}
-
-func (j *JobCredentials) GetToken() string {
-	return j.Token
 }
 
 type UpdateJobInfo struct {
@@ -339,10 +296,7 @@ type Network interface {
 	VerifyRunner(config RunnerCredentials) bool
 	UnregisterRunner(config RunnerCredentials) bool
 	RequestJob(config RunnerConfig) (*JobResponse, bool)
-	UpdateJob(config RunnerConfig, jobCredentials *JobCredentials, jobInfo UpdateJobInfo) UpdateState
-	PatchTrace(config RunnerConfig, jobCredentials *JobCredentials, tracePart JobTracePatch) UpdateState
-	DownloadArtifacts(config JobCredentials, artifactsFile string) DownloadState
-	UploadRawArtifacts(config JobCredentials, reader io.Reader, baseName string, expireIn string) UploadState
-	UploadArtifacts(config JobCredentials, artifactsFile string) UploadState
-	ProcessJob(config RunnerConfig, buildCredentials *JobCredentials) JobTrace
+	UpdateJob(config RunnerConfig, jobCredentials *network.JobCredentials, jobInfo UpdateJobInfo) UpdateState
+	PatchTrace(config RunnerConfig, jobCredentials *network.JobCredentials, tracePart JobTracePatch) UpdateState
+	ProcessJob(config RunnerConfig, buildCredentials *network.JobCredentials) JobTrace
 }

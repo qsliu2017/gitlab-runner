@@ -6,11 +6,10 @@ import (
 
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
-	"gitlab.com/gitlab-org/gitlab-runner/common"
-	"gitlab.com/gitlab-org/gitlab-runner/helpers/cli"
-	"gitlab.com/gitlab-org/gitlab-runner/helpers/formatter"
 
-	_ "gitlab.com/gitlab-org/gitlab-runner/commands/helpers"
+	"gitlab.com/gitlab-org/gitlab-runner/core"
+	"gitlab.com/gitlab-org/gitlab-runner/core/commands"
+	"gitlab.com/gitlab-org/gitlab-runner/core/formatter"
 )
 
 func main() {
@@ -25,21 +24,21 @@ func main() {
 	}()
 
 	formatter.SetRunnerFormatter()
-	cli_helpers.AddSecretsCleanupLogHook()
+	formatter.AddSecretsCleanupLogHook()
 
 	app := cli.NewApp()
 	app.Name = path.Base(os.Args[0])
 	app.Usage = "a GitLab Runner Helper"
-	app.Version = common.AppVersion.ShortLine()
-	cli.VersionPrinter = common.AppVersion.Printer
+	app.Version = core.AppVersion.ShortLine()
+	cli.VersionPrinter = core.AppVersion.Printer
 	app.Authors = []cli.Author{
 		{
 			Name:  "GitLab Inc.",
 			Email: "support@gitlab.com",
 		},
 	}
-	cli_helpers.SetupLogLevelOptions(app)
-	app.Commands = common.GetCommands()
+	formatter.SetupLogLevelOptions(app)
+	app.Commands = commands.GetCommands()
 	app.CommandNotFound = func(context *cli.Context, command string) {
 		logrus.Fatalln("Command", command, "not found")
 	}

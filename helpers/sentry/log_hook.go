@@ -9,7 +9,7 @@ import (
 	"github.com/getsentry/raven-go"
 	"github.com/sirupsen/logrus"
 
-	"gitlab.com/gitlab-org/gitlab-runner/common"
+	"gitlab.com/gitlab-org/gitlab-runner/core"
 )
 
 type LogHook struct {
@@ -49,10 +49,10 @@ func (s *LogHook) Fire(entry *logrus.Entry) error {
 
 func NewLogHook(dsn string) (lh LogHook, err error) {
 	tags := make(map[string]string)
-	tags["built"] = common.BUILT
-	tags["version"] = common.VERSION
-	tags["revision"] = common.REVISION
-	tags["branch"] = common.BRANCH
+	tags["built"] = core.BUILT
+	tags["version"] = core.VERSION
+	tags["revision"] = core.REVISION
+	tags["branch"] = core.BRANCH
 	tags["go-version"] = runtime.Version()
 	tags["go-os"] = runtime.GOOS
 	tags["go-arch"] = runtime.GOARCH

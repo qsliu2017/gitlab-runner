@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"gitlab.com/gitlab-org/gitlab-runner/common"
+	"gitlab.com/gitlab-org/gitlab-runner/core/formatter"
 )
 
 const (
@@ -26,7 +27,7 @@ type overwrites struct {
 	podAnnotations map[string]string
 }
 
-func createOverwrites(config *common.KubernetesConfig, variables common.JobVariables, logger common.BuildLogger) (*overwrites, error) {
+func createOverwrites(config *common.KubernetesConfig, variables common.JobVariables, logger formatter.BuildLogger) (*overwrites, error) {
 	var err error
 	o := &overwrites{}
 
@@ -56,14 +57,14 @@ func createOverwrites(config *common.KubernetesConfig, variables common.JobVaria
 	return o, nil
 }
 
-func (o *overwrites) evaluateBoolControlledOverwrite(fieldName, value string, canOverride bool, overwriteValue string, logger common.BuildLogger) (string, error) {
+func (o *overwrites) evaluateBoolControlledOverwrite(fieldName, value string, canOverride bool, overwriteValue string, logger formatter.BuildLogger) (string, error) {
 	if canOverride {
 		return o.evaluateOverwrite(fieldName, value, ".+", overwriteValue, logger)
 	}
 	return o.evaluateOverwrite(fieldName, value, "", overwriteValue, logger)
 }
 
-func (o *overwrites) evaluateOverwrite(fieldName, value, regex, overwriteValue string, logger common.BuildLogger) (string, error) {
+func (o *overwrites) evaluateOverwrite(fieldName, value, regex, overwriteValue string, logger formatter.BuildLogger) (string, error) {
 	if regex == "" {
 		logger.Debugln("Regex allowing overrides for", fieldName, "is empty, disabling override.")
 		return value, nil
@@ -109,7 +110,7 @@ func splitMapOverwrite(str string) (string, string, error) {
 	return "", "", fmt.Errorf("Provided value %q is malformed, does not match k=v", str)
 }
 
-func (o *overwrites) evaluateMapOverwrite(fieldName string, values map[string]string, regex string, variables common.JobVariables, variablesSelector string, logger common.BuildLogger) (map[string]string, error) {
+func (o *overwrites) evaluateMapOverwrite(fieldName string, values map[string]string, regex string, variables common.JobVariables, variablesSelector string, logger formatter.BuildLogger) (map[string]string, error) {
 	if regex == "" {
 		logger.Debugln("Regex allowing overrides for", fieldName, "is empty, disabling override.")
 		return values, nil

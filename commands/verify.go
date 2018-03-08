@@ -7,6 +7,7 @@ import (
 	"github.com/urfave/cli"
 
 	"gitlab.com/gitlab-org/gitlab-runner/common"
+	"gitlab.com/gitlab-org/gitlab-runner/core/commands"
 	"gitlab.com/gitlab-org/gitlab-runner/network"
 )
 
@@ -81,7 +82,7 @@ func (c *VerifyCommand) selectRunners() (toVerify []*common.RunnerConfig, okRunn
 }
 
 func init() {
-	common.RegisterCommand2("verify", "verify all registered runners", &VerifyCommand{
+	commands.RegisterCommand2("verify", "verify all registered runners", &VerifyCommand{
 		network: network.NewGitLabClient(),
 	})
 }

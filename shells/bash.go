@@ -4,13 +4,14 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
-	"gitlab.com/gitlab-org/gitlab-runner/common"
-	"gitlab.com/gitlab-org/gitlab-runner/helpers"
 	"io"
 	"path"
 	"runtime"
 	"strconv"
 	"strings"
+
+	"gitlab.com/gitlab-org/gitlab-runner/common"
+	"gitlab.com/gitlab-org/gitlab-runner/helpers"
 )
 
 const bashDetectShell = `if [ -x /usr/local/bin/bash ]; then
@@ -157,22 +158,22 @@ func (b *BashWriter) Absolute(dir string) string {
 }
 
 func (b *BashWriter) Print(format string, arguments ...interface{}) {
-	coloredText := helpers.ANSI_RESET + fmt.Sprintf(format, arguments...)
+	coloredText := normalText(format, arguments...)
 	b.Line("echo " + helpers.ShellEscape(coloredText))
 }
 
 func (b *BashWriter) Notice(format string, arguments ...interface{}) {
-	coloredText := helpers.ANSI_BOLD_GREEN + fmt.Sprintf(format, arguments...) + helpers.ANSI_RESET
+	coloredText := noticeText(format, arguments...)
 	b.Line("echo " + helpers.ShellEscape(coloredText))
 }
 
 func (b *BashWriter) Warning(format string, arguments ...interface{}) {
-	coloredText := helpers.ANSI_YELLOW + fmt.Sprintf(format, arguments...) + helpers.ANSI_RESET
+	coloredText := warningText(format, arguments...)
 	b.Line("echo " + helpers.ShellEscape(coloredText))
 }
 
 func (b *BashWriter) Error(format string, arguments ...interface{}) {
-	coloredText := helpers.ANSI_BOLD_RED + fmt.Sprintf(format, arguments...) + helpers.ANSI_RESET
+	coloredText := errorText(format, arguments...)
 	b.Line("echo " + helpers.ShellEscape(coloredText))
 }
 

@@ -15,7 +15,8 @@ import (
 	"github.com/BurntSushi/toml"
 	log "github.com/sirupsen/logrus"
 
-	"gitlab.com/gitlab-org/gitlab-runner/helpers"
+	"gitlab.com/gitlab-org/gitlab-runner/core"
+	"gitlab.com/gitlab-org/gitlab-runner/core/formatter"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers/docker"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers/ssh"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers/timeperiod"
@@ -291,7 +292,7 @@ func (c *KubernetesConfig) GetHelperImage() string {
 		return c.HelperImage
 	}
 
-	rev := REVISION
+	rev := core.REVISION
 	if rev == "HEAD" {
 		rev = "latest"
 	}
@@ -369,7 +370,7 @@ func (c *RunnerCredentials) GetToken() string {
 }
 
 func (c *RunnerCredentials) ShortDescription() string {
-	return helpers.ShortenToken(c.Token)
+	return formatter.ShortenToken(c.Token)
 }
 
 func (c *RunnerCredentials) UniqueID() string {
