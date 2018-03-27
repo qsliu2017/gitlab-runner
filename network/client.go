@@ -173,6 +173,7 @@ func (n *client) createTransport() {
 }
 
 func (n *client) getCAChain(tls *tls.ConnectionState) string {
+	logrus.Debug("Attempting CA Chain extraction")
 	if len(n.caData) != 0 {
 		return string(n.caData)
 	}
@@ -185,18 +186,24 @@ func (n *client) getCAChain(tls *tls.ConnectionState) string {
 	var certificates []*x509.Certificate
 	seenCertificates := make(map[string]bool, 0)
 
-	for _, verifiedChain := range tls.VerifiedChains {
+	logrus.WithField("len", len(tls.VerifiedChains)).Debug("VerifiedChains lookup")
+	for idx, verifiedChain := range tls.VerifiedChains {
+		logrus.WithField("index", idx).WithField("len", len(verifiedChain)).Debug("Chain lookup")
 		for _, certificate := range verifiedChain {
 			signature := hex.EncodeToString(certificate.Signature)
+			logrus.Debugf("Certificate lookup - %s", signature)
 			if seenCertificates[signature] {
+				logrus.Debug("skipped")
 				continue
 			}
 
 			seenCertificates[signature] = true
 			certificates = append(certificates, certificate)
+			logrus.Debug("appended")
 		}
 	}
 
+	logrus.WithField("len", len(certificates)).Debug("Dumping CA Chain")
 	out := bytes.NewBuffer(nil)
 	for _, certificate := range certificates {
 		if err := pem.Encode(out, &pem.Block{Type: "CERTIFICATE", Bytes: certificate.Raw}); err != nil {
