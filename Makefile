@@ -214,7 +214,7 @@ package-deb-fpm:
 		-a $(PACKAGE_ARCH) \
 		packaging/root/=/ \
 		out/binaries/$(NAME)-linux-$(ARCH)=/usr/lib/gitlab-runner/gitlab-runner \
-		helper-images/=/usr/lib/gitlab-runner/helper-images/
+		out/helper-images/=/usr/lib/gitlab-runner/helper-images/
 
 package-rpm-fpm:
 	@mkdir -p out/rpm/
@@ -240,7 +240,7 @@ package-rpm-fpm:
 		-a $(PACKAGE_ARCH) \
 		packaging/root/=/ \
 		out/binaries/$(NAME)-linux-$(ARCH)=/usr/lib/gitlab-runner/gitlab-runner \
-		helper-images/=/usr/lib/gitlab-runner/helper-images/
+		out/helper-images/=/usr/lib/gitlab-runner/helper-images/
 
 packagecloud: packagecloud-deps packagecloud-deb packagecloud-rpm
 
@@ -299,7 +299,7 @@ release_s3: prepare_windows_zip prepare_zoneinfo prepare_index
 
 out/binaries/gitlab-runner-windows-%.zip: out/binaries/gitlab-runner-windows-%.exe
 	zip --junk-paths $@ $<
-	zip -r $@ helper-images
+	cd out/ && zip -r ../$@ helper-images
 
 prepare_windows_zip: out/binaries/gitlab-runner-windows-386.zip out/binaries/gitlab-runner-windows-amd64.zip
 

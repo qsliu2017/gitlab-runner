@@ -69,7 +69,7 @@ helper images:
   - make docker
   artifacts:
     paths:
-    - helper-images/
+    - out/helper-images/
     - .gopath/bin
     - .gopath/.ok
     expire_in: 7d

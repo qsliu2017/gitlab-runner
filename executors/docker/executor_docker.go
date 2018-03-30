@@ -69,7 +69,7 @@ type executor struct {
 func init() {
 	runnerFolder, err := osext.ExecutableFolder()
 	if err != nil {
-		logrus.Errorln("Docker executor: unable to detect gitlab-runner folder, prebuilt image helpers will be loaded from Docker HUB.", err)
+		logrus.Errorln("Docker executor: unable to detect gitlab-runner folder, prebuilt image helpers will be loaded from DockerHub.", err)
 	}
 
 	DockerPrebuiltImagesPath = filepath.Join(runnerFolder, "helper-images")
@@ -283,7 +283,7 @@ func (s *executor) getPrebuiltImage() (*types.ImageInspect, error) {
 			return s.getDockerImage(imageName)
 		}
 
-		return nil, fmt.Errorf("Unsupported architecture: %s: %q", architecture, err.Error())
+		return nil, fmt.Errorf("Cannot load prebuilt image: %s: %q", architecture, err.Error())
 	}
 	defer file.Close()
 

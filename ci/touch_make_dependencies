@@ -1,6 +1,3 @@
-for file in $(find out helper-images .gopath -type f); do
+for file in $(find out .gopath -type f); do
     touch $file
 done
-
-test -f helper-images/prebuilt-x86_64.tar.xz
-test -f helper-images/prebuilt-arm.tar.xz

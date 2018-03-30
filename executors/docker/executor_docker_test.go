@@ -27,7 +27,7 @@ import (
 )
 
 func TestMain(m *testing.M) {
-	DockerPrebuiltImagesPath = "../../helper-images/"
+	DockerPrebuiltImagesPath = "../../out/helper-images/"
 
 	flag.Parse()
 	os.Exit(m.Run())
