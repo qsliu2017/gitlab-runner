@@ -17,6 +17,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -107,8 +108,9 @@ func (n *client) addTLSCA(tlsConfig *tls.Config) {
 
 		data, err := ioutil.ReadFile(file)
 		if err == nil {
+			// x509.SystemCertPool() isn't available on windows
 			pool, err := x509.SystemCertPool()
-			if err != nil {
+			if err != nil && runtime.GOOS != "windows" {
 				logrus.Warningln("Failed to load system CertPool:", err)
 			}
 			if pool == nil {
