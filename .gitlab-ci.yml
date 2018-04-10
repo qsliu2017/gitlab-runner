@@ -1,5 +1,6 @@
 include:
-  template: License-Management.gitlab-ci.yml
+  - template: License-Management.gitlab-ci.yml
+  - template: SAST.gitlab-ci.yml
 
 stages:
 - prepare
@@ -249,6 +250,9 @@ code_quality:
   artifacts:
     paths: [gl-code-quality-report.json]
     expire_in: 7d
+
+sast:
+  <<: *except_docs
 
 unit test: &unit_tests
   <<: *docker
