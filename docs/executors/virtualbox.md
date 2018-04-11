@@ -22,6 +22,10 @@ To overwrite the `~/builds` directory, specify the `builds_dir` option under
 the `[[runners]]` section in
 [`config.toml`](../configuration/advanced-configuration.md).
 
+You can also define [custom build
+directories](https://docs.gitlab.com/ce/ci/yaml/README.html#custom-build-directories) per job using the
+`CI_PROJECT_DIR`.
+
 ## Create a new base virtual machine
 
 1. Install [VirtualBox](https://www.virtualbox.org) and if running from Windows,

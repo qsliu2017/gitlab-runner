@@ -2,6 +2,7 @@ package executors
 
 import (
 	"context"
+	"errors"
 	"os"
 
 	"gitlab.com/gitlab-org/gitlab-runner/common"
@@ -57,13 +58,25 @@ func (e *AbstractExecutor) startBuild() error {
 
 	// Start actual build
 	rootDir := e.Config.BuildsDir
+	projectDir := e.Build.Variables.Get("CI_PROJECT_DIR")
+
+	if err := e.disallowedCustomBuildDir(projectDir); err != nil {
+		return err
+	}
+
+	if projectDir != "" {
+		rootDir = projectDir
+	}
+
 	if rootDir == "" {
 		rootDir = e.DefaultBuildsDir
 	}
+
 	cacheDir := e.Config.CacheDir
 	if cacheDir == "" {
 		cacheDir = e.DefaultCacheDir
 	}
+
 	e.Build.StartBuild(rootDir, cacheDir, e.SharedBuildsDir)
 	return nil
 }
@@ -111,4 +124,20 @@ func (e *AbstractExecutor) GetCurrentStage() common.ExecutorStage {
 
 func (e *AbstractExecutor) SetCurrentStage(stage common.ExecutorStage) {
 	e.currentStage = stage
+}
+
+func (e *AbstractExecutor) disallowedCustomBuildDir(projectDir string) error {
+	if projectDir == "" {
+		return nil
+	}
+
+	if e.Config.CustomBuildDir == nil || !e.Config.CustomBuildDir.Enable {
+		return errors.New("Setting custom CI_PROJECT_DIR is not allowed when custom_build_dir disabled in runner configuration")
+	}
+
+	if e.Build.Concurrent > 1 && e.SharedBuildsDir {
+		return errors.New("Setting custom CI_PROJECT_DIR is not allowed when running concurrent jobs with shared build directories")
+	}
+
+	return nil
 }

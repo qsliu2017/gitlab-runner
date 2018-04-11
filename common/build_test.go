@@ -1,11 +1,10 @@
 package common
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"testing"
-
-	"errors"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -525,5 +524,164 @@ func TestGetRemoteURL(t *testing.T) {
 		}
 
 		assert.Equal(t, tc.result, build.GetRemoteURL())
+	}
+}
+
+func TestStartBuild(t *testing.T) {
+	type startBuildArgs struct {
+		rootDir   string
+		cacheDir  string
+		sharedDir bool
+	}
+
+	tests := []struct {
+		name             string
+		args             startBuildArgs
+		jobVariables     JobVariables
+		expectedBuildDir string
+		expectedCacheDir string
+	}{
+		{
+			name: "no job specific build dir with no shared dir",
+			args: startBuildArgs{
+				rootDir:   "/build",
+				cacheDir:  "/cache",
+				sharedDir: false,
+			},
+			jobVariables:     JobVariables{},
+			expectedBuildDir: "/build/test-namespace/test-repo",
+			expectedCacheDir: "/cache/test-namespace/test-repo",
+		},
+		{
+			name: "no job specified build dir with shared dir",
+			args: startBuildArgs{
+				rootDir:   "/build",
+				cacheDir:  "/cache",
+				sharedDir: true,
+			},
+			jobVariables:     JobVariables{},
+			expectedBuildDir: "/build/1234/0/test-namespace/test-repo",
+			expectedCacheDir: "/cache/test-namespace/test-repo",
+		},
+		{
+			name: "job specific build dir with no shared dir",
+			args: startBuildArgs{
+				rootDir:   "/go/src/gitlab.com/test-namespace/test-repo",
+				cacheDir:  "/cache",
+				sharedDir: false,
+			},
+			jobVariables: JobVariables{
+				{Key: "CI_PROJECT_DIR", Value: "/go/src/gitlab.com/test-namespace/test-repo", Public: true, Internal: true, File: false},
+			},
+			expectedBuildDir: "/go/src/gitlab.com/test-namespace/test-repo",
+			expectedCacheDir: "/cache/test-namespace/test-repo",
+		},
+		{
+			name: "job specific build dir with shared dir",
+			args: startBuildArgs{
+				rootDir:   "/go/src/gitlab.com/test-namespace/test-repo",
+				cacheDir:  "/cache",
+				sharedDir: true,
+			},
+			jobVariables: JobVariables{
+				{Key: "CI_PROJECT_DIR", Value: "/go/src/gitlab.com/test-namespace/test-repo", Public: true, Internal: true, File: false},
+			},
+			expectedBuildDir: "/go/src/gitlab.com/test-namespace/test-repo",
+			expectedCacheDir: "/cache/test-namespace/test-repo",
+		},
+		{
+			name: "job specific build dir does not match root dir",
+			args: startBuildArgs{
+				rootDir:   "/build",
+				cacheDir:  "/cache",
+				sharedDir: false,
+			},
+			jobVariables: JobVariables{
+				{Key: "CI_PROJECT_DIR", Value: "/go/src/gitlab.com/test-namespace/test-repo", Public: true, Internal: true, File: false},
+			},
+			expectedBuildDir: "/build/test-namespace/test-repo",
+			expectedCacheDir: "/cache/test-namespace/test-repo",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			build := Build{
+				JobResponse: JobResponse{
+					GitInfo: GitInfo{
+						RepoURL: "https://gitlab.com/test-namespace/test-repo.git",
+					},
+					Variables: tt.jobVariables,
+				},
+				Runner: &RunnerConfig{
+					RunnerCredentials: RunnerCredentials{
+						Token: "1234",
+					},
+				},
+			}
+
+			build.StartBuild(tt.args.rootDir, tt.args.cacheDir, tt.args.sharedDir)
+
+			assert.Equal(t, tt.expectedBuildDir, build.BuildDir)
+			assert.Equal(t, tt.args.rootDir, build.RootDir)
+			assert.Equal(t, tt.expectedCacheDir, build.CacheDir)
+		})
+	}
+}
+
+func TestDefaultVariables(t *testing.T) {
+	tests := []struct {
+		name          string
+		jobVariables  JobVariables
+		rootDir       string
+		key           string
+		expectedValue string
+	}{
+		{
+			name:          "get default CI_SERVER value",
+			jobVariables:  JobVariables{},
+			rootDir:       "/builds",
+			key:           "CI_SERVER",
+			expectedValue: "yes",
+		},
+		{
+			name:          "CI_PROJECT_DIR not specified in job fallback to project path",
+			jobVariables:  JobVariables{},
+			rootDir:       "/builds",
+			key:           "CI_PROJECT_DIR",
+			expectedValue: "/builds/test-namespace/test-repo",
+		},
+		{
+			name: "CI_PROJECT_DIR specified in job take precedence",
+			jobVariables: JobVariables{
+				{Key: "CI_PROJECT_DIR", Value: "/my/specific/path", Public: true, Internal: false, File: false},
+			},
+			rootDir:       "/my/specific/path",
+			key:           "CI_PROJECT_DIR",
+			expectedValue: "/my/specific/path",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			build := Build{
+				JobResponse: JobResponse{
+					GitInfo: GitInfo{
+						RepoURL: "https://gitlab.com/test-namespace/test-repo.git",
+					},
+					Variables: test.jobVariables,
+				},
+				Runner: &RunnerConfig{
+					RunnerCredentials: RunnerCredentials{
+						Token: "1234",
+					},
+				},
+			}
+
+			build.StartBuild(test.rootDir, "/cache", false)
+			variable := build.GetAllVariables().Get(test.key)
+
+			assert.Equal(t, test.expectedValue, variable)
+		})
 	}
 }

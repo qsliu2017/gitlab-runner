@@ -78,7 +78,6 @@ This defines one runner entry.
 | `executor`           | Select how a project should be built, see next section |
 | `shell`              | The name of shell to generate the script (default value is platform dependent) |
 | `builds_dir`         | Directory where builds will be stored in context of selected executor (Locally, Docker, SSH) |
-| `builds_dir`         | Directory where builds will be stored in context of selected executor (Locally, Docker, SSH) |
 | `cache_dir`          | Directory where build caches will be stored in context of selected executor (locally, Docker, SSH). If the `docker` executor is used, this directory needs to be included in its `volumes` parameter. |
 | `environment`        | Append or overwrite environment variables |
 | `request_concurrency` | Limit number of concurrent requests for new jobs from GitLab (default 1) |
@@ -542,6 +541,23 @@ Example:
 		gitlab = "true"
 ```
 
+## The `[runners.custom_build_dir]` section
+
+> [Introduced][gitlab-runner-876] in Gitlab Runner 11.1
+
+This defines custom build directories parameters.
+
+| Parameter | Type    | Description |
+|-----------|---------|-------------|
+| `enable`  | boolean | Allow user to define a custom build directory for a job |
+
+Example:
+
+```bash
+[runners.custom_build_dir]
+	enable = true 
+```
+
 ## Note
 
 If you'd like to deploy to multiple servers using GitLab CI, you can create a
@@ -556,3 +572,4 @@ It depends on what you'd like to do.
 [priv-example]: https://docs.gitlab.com/ce/ci/docker/using_docker_images.html#define-an-image-from-a-private-docker-registry
 [secret variable]: https://docs.gitlab.com/ce/ci/variables/#secret-variables
 [cronvendor]: https://gitlab.com/gitlab-org/gitlab-runner/blob/master/vendor/github.com/gorhill/cronexpr/README.md
+[gitlab-runner-876]: https://gitlab.com/gitlab-org/gitlab-runner/merge_requests/876

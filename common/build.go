@@ -76,6 +76,9 @@ type Build struct {
 	// Unique ID for all running builds on this runner and this project
 	ProjectRunnerID int `json:"project_runner_id"`
 
+	// Allowed concurrent builds
+	Concurrent int
+
 	CurrentStage BuildStage
 	CurrentState BuildRuntimeState
 
@@ -139,8 +142,15 @@ func (b *Build) FullProjectDir() string {
 
 func (b *Build) StartBuild(rootDir, cacheDir string, sharedDir bool) {
 	b.RootDir = rootDir
-	b.BuildDir = path.Join(rootDir, b.ProjectUniqueDir(sharedDir))
 	b.CacheDir = path.Join(cacheDir, b.ProjectUniqueDir(false))
+
+	// Job Specific build dir
+	if b.Variables.Get("CI_PROJECT_DIR") == rootDir {
+		b.BuildDir = rootDir
+		return
+	}
+
+	b.BuildDir = path.Join(rootDir, b.ProjectUniqueDir(sharedDir))
 }
 
 func (b *Build) executeStage(ctx context.Context, buildStage BuildStage, executor Executor) error {
@@ -352,6 +362,7 @@ func (b *Build) CurrentExecutorStage() ExecutorStage {
 func (b *Build) Run(globalConfig *Config, trace JobTrace) (err error) {
 	var executor Executor
 
+	b.Concurrent = globalConfig.Concurrent
 	b.logger = NewBuildLogger(trace, b.Log())
 	b.logger.Println("Running with", AppVersion.Line())
 	if b.Runner != nil && b.Runner.ShortDescription() != "" {
