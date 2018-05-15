@@ -185,16 +185,14 @@ func (n *client) getCAChain(tls *tls.ConnectionState) string {
 	var certificates []*x509.Certificate
 	seenCertificates := make(map[string]bool, 0)
 
-	for _, verifiedChain := range tls.VerifiedChains {
-		for _, certificate := range verifiedChain {
-			signature := hex.EncodeToString(certificate.Signature)
-			if seenCertificates[signature] {
-				continue
-			}
-
-			seenCertificates[signature] = true
-			certificates = append(certificates, certificate)
+	for _, certificate := range tls.PeerCertificates {
+		signature := hex.EncodeToString(certificate.Signature)
+		if seenCertificates[signature] {
+			continue
 		}
+
+		seenCertificates[signature] = true
+		certificates = append(certificates, certificate)
 	}
 
 	out := bytes.NewBuffer(nil)
