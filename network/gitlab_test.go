@@ -17,6 +17,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	. "gitlab.com/gitlab-org/gitlab-runner/common"
+	_ "gitlab.com/gitlab-org/gitlab-runner/executors/shell"
 )
 
 var brokenCredentials = RunnerCredentials{
@@ -413,6 +414,10 @@ func testRequestJobHandler(w http.ResponseWriter, r *http.Request, t *testing.T)
 	err = json.Unmarshal(body, &req)
 	assert.NoError(t, err)
 
+	features := req["info"].(map[string]interface{})["features"].(map[string]interface{})
+	assert.Equal(t, true, features["variables"])
+	assert.Equal(t, true, features["raw_variables"])
+
 	switch req["token"].(string) {
 	case "valid":
 	case "no-jobs":
@@ -455,6 +460,10 @@ func TestRequestJob(t *testing.T) {
 			URL:   s.URL,
 			Token: "valid",
 		},
+		RunnerSettings: RunnerSettings{
+			Executor: "shell",
+			Shell: "bash",
+		},
 	}
 
 	noJobsToken := RunnerConfig{
@@ -462,12 +471,20 @@ func TestRequestJob(t *testing.T) {
 			URL:   s.URL,
 			Token: "no-jobs",
 		},
+		RunnerSettings: RunnerSettings{
+			Executor: "shell",
+			Shell: "bash",
+		},
 	}
 
 	invalidToken := RunnerConfig{
 		RunnerCredentials: RunnerCredentials{
 			URL:   s.URL,
 			Token: "invalid",
+		},
+		RunnerSettings: RunnerSettings{
+			Executor: "shell",
+			Shell: "bash",
 		},
 	}
 
