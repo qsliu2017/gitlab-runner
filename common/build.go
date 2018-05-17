@@ -431,11 +431,11 @@ func (b *Build) GetSharedEnvVariable() JobVariable {
 func (b *Build) GetCITLSVariables() JobVariables {
 	variables := JobVariables{}
 	if b.TLSCAChain != "" {
-		variables = append(variables, JobVariable{tls.VariableCAFile, b.TLSCAChain, true, true, true})
+		variables = append(variables, JobVariable{Key: tls.VariableCAFile, Value: b.TLSCAChain, Public: true, Internal: true, File: true, Raw: true})
 	}
 	if b.TLSAuthCert != "" && b.TLSAuthKey != "" {
-		variables = append(variables, JobVariable{tls.VariableCertFile, b.TLSAuthCert, true, true, true})
-		variables = append(variables, JobVariable{tls.VariableKeyFile, b.TLSAuthKey, true, true, true})
+		variables = append(variables, JobVariable{Key: tls.VariableCertFile, Value: b.TLSAuthCert, Public: true, Internal: true, File: true, Raw: true})
+		variables = append(variables, JobVariable{Key: tls.VariableKeyFile, Value: b.TLSAuthKey, Public: true, Internal: true, File: true, Raw: true})
 	}
 	return variables
 }
@@ -443,11 +443,11 @@ func (b *Build) GetCITLSVariables() JobVariables {
 func (b *Build) GetGitTLSVariables() JobVariables {
 	variables := JobVariables{}
 	if b.TLSCAChain != "" {
-		variables = append(variables, JobVariable{"GIT_SSL_CAINFO", b.TLSCAChain, true, true, true})
+		variables = append(variables, JobVariable{Key: "GIT_SSL_CAINFO", Value: b.TLSCAChain, Public: true, Internal: true, File: true, Raw: true})
 	}
 	if b.TLSAuthCert != "" && b.TLSAuthKey != "" {
-		variables = append(variables, JobVariable{"GIT_SSL_CERT", b.TLSAuthCert, true, true, true})
-		variables = append(variables, JobVariable{"GIT_SSL_KEY", b.TLSAuthKey, true, true, true})
+		variables = append(variables, JobVariable{Key: "GIT_SSL_CERT", Value: b.TLSAuthCert, Public: true, Internal: true, File: true, Raw: true})
+		variables = append(variables, JobVariable{Key: "GIT_SSL_KEY", Value: b.TLSAuthKey, Public: true, Internal: true, File: true, Raw: true})
 	}
 	return variables
 }

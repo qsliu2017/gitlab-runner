@@ -443,7 +443,7 @@ func TestDebugTrace(t *testing.T) {
 	successfulBuild, err := GetSuccessfulBuild()
 	assert.NoError(t, err)
 
-	successfulBuild.Variables = append(successfulBuild.Variables, JobVariable{"CI_DEBUG_TRACE", "false", true, true, false})
+	successfulBuild.Variables = append(successfulBuild.Variables, JobVariable{Key: "CI_DEBUG_TRACE", Value: "false", Public: true, Internal: true, File: false, Raw: false})
 	build = &Build{
 		JobResponse: successfulBuild,
 	}
@@ -452,7 +452,7 @@ func TestDebugTrace(t *testing.T) {
 	successfulBuild, err = GetSuccessfulBuild()
 	assert.NoError(t, err)
 
-	successfulBuild.Variables = append(successfulBuild.Variables, JobVariable{"CI_DEBUG_TRACE", "true", true, true, false})
+	successfulBuild.Variables = append(successfulBuild.Variables, JobVariable{Key: "CI_DEBUG_TRACE", Value: "true", Public: true, Internal: true, File: false, Raw: false})
 	build = &Build{
 		JobResponse: successfulBuild,
 	}

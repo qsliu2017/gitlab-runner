@@ -13,6 +13,7 @@ type JobVariable struct {
 	Public   bool   `json:"public"`
 	Internal bool   `json:"-"`
 	File     bool   `json:"file"`
+	Raw      bool   `json:"raw"`
 }
 
 type JobVariables []JobVariable
@@ -58,7 +59,10 @@ func (b JobVariables) ExpandValue(value string) string {
 
 func (b JobVariables) Expand() (variables JobVariables) {
 	for _, variable := range b {
-		variable.Value = b.ExpandValue(variable.Value)
+		if !variable.Raw {
+			variable.Value = b.ExpandValue(variable.Value)
+		}
+
 		variables = append(variables, variable)
 	}
 	return variables

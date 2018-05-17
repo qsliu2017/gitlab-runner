@@ -19,6 +19,7 @@ type AbstractShell struct {
 func (b *AbstractShell) GetFeatures(features *common.FeaturesInfo) {
 	features.Artifacts = true
 	features.Cache = true
+	features.RawVariables = true
 }
 
 func (b *AbstractShell) writeCdBuildDir(w ShellWriter, info common.ShellScriptInfo) {
