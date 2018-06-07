@@ -918,6 +918,7 @@ func (s *executor) waitForContainer(id string) error {
 
 	// Use active wait
 	for {
+		s.Debugln("Inspecting container", id, "...")
 		container, err := s.client.ContainerInspect(s.Context, id)
 		if err != nil {
 			if docker_helpers.IsErrNotFound(err) {
@@ -937,6 +938,7 @@ func (s *executor) waitForContainer(id string) error {
 		retries = 0
 
 		if container.State.Running {
+			s.Debugln("Inspecting container", id, "container in running state, sleeping 1s")
 			time.Sleep(time.Second)
 			continue
 		}
@@ -977,19 +979,23 @@ func (s *executor) watchContainer(ctx context.Context, id string, input io.Reade
 
 	// Copy any output to the build trace
 	go func() {
+		s.Debugln("Receiving output from ", id, "...")
 		_, err := stdcopy.StdCopy(s.Trace, s.Trace, hijacked.Reader)
 		if err != nil {
 			attachCh <- err
 		}
+		s.Debugln("Receiving output from ", id, "finished with", err)
 	}()
 
 	// Write the input to the container and close its STDIN to get it to finish
 	go func() {
+		s.Debugln("Sending input to STDIN of", id, "...")
 		_, err := io.Copy(hijacked.Conn, input)
 		hijacked.CloseWrite()
 		if err != nil {
 			attachCh <- err
 		}
+		s.Debugln("Sending input to STDIN of", id, "finished with", err)
 	}()
 
 	waitCh := make(chan error, 1)
