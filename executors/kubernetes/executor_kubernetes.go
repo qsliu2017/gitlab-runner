@@ -18,7 +18,8 @@ import (
 
 var (
 	executorOptions = executors.ExecutorOptions{
-		SharedBuildsDir: false,
+		DefaultCustomBuildsDirEnabled: true,
+		SharedBuildsDir:               false,
 		Shell: common.ShellScriptInfo{
 			Shell:         "bash",
 			Type:          common.NormalShell,

@@ -86,25 +86,42 @@ func TestStartBuild(t *testing.T) {
 			},
 			concurrent: 1,
 			execOptions: ExecutorOptions{
-				DefaultBuildsDir: "/builds/default",
+				DefaultCustomBuildsDirEnabled: true,
+				DefaultBuildsDir:              "/builds/default",
 			},
 			ciProjectDir:    "/builds/job-specific-location",
 			expectedRootDir: "",
 			expectedErr:     true,
 		},
 		{
-			name: "CI_PROJECT_DIR specified custom build dir not defined in config",
+			name: "CI_PROJECT_DIR specified custom build dir not defined in config when default is false",
 			settings: common.RunnerSettings{
 				BuildsDir:      "/builds",
 				CustomBuildDir: nil,
 			},
 			concurrent: 1,
 			execOptions: ExecutorOptions{
-				DefaultBuildsDir: "/builds/default",
+				DefaultCustomBuildsDirEnabled: false,
+				DefaultBuildsDir:              "/builds/default",
 			},
 			ciProjectDir:    "/builds/job-specific-location",
 			expectedRootDir: "",
 			expectedErr:     true,
+		},
+		{
+			name: "CI_PROJECT_DIR specified custom build dir not defined in config when default is true",
+			settings: common.RunnerSettings{
+				BuildsDir:      "/builds",
+				CustomBuildDir: nil,
+			},
+			concurrent: 1,
+			execOptions: ExecutorOptions{
+				DefaultCustomBuildsDirEnabled: true,
+				DefaultBuildsDir:              "/builds/default",
+			},
+			ciProjectDir:    "/builds/job-specific-location",
+			expectedRootDir: "/builds/job-specific-location",
+			expectedErr:     false,
 		},
 		{
 			name: "CI_PROJECT_DIR specified when shared dir is true with 1 concurrent runner",

@@ -9,11 +9,12 @@ import (
 )
 
 type ExecutorOptions struct {
-	DefaultBuildsDir string
-	DefaultCacheDir  string
-	SharedBuildsDir  bool
-	Shell            common.ShellScriptInfo
-	ShowHostname     bool
+	DefaultCustomBuildsDirEnabled bool
+	DefaultBuildsDir              string
+	DefaultCacheDir               string
+	SharedBuildsDir               bool
+	Shell                         common.ShellScriptInfo
+	ShowHostname                  bool
 }
 
 type AbstractExecutor struct {
@@ -131,7 +132,7 @@ func (e *AbstractExecutor) disallowedCustomBuildDir(projectDir string) error {
 		return nil
 	}
 
-	if e.Config.CustomBuildDir == nil || !e.Config.CustomBuildDir.Enable {
+	if !e.GetCustomBuildDir().Enable {
 		return errors.New("Setting custom CI_PROJECT_DIR is not allowed when custom_build_dir disabled in runner configuration")
 	}
 
@@ -140,4 +141,14 @@ func (e *AbstractExecutor) disallowedCustomBuildDir(projectDir string) error {
 	}
 
 	return nil
+}
+
+func (e *AbstractExecutor) GetCustomBuildDir() *common.CustomBuildDir {
+	if e.Config.CustomBuildDir != nil {
+		return e.Config.CustomBuildDir
+	}
+
+	return &common.CustomBuildDir{
+		Enable: e.DefaultCustomBuildsDirEnabled,
+	}
 }
