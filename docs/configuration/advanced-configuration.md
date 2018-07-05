@@ -543,9 +543,20 @@ Example:
 
 ## The `[runners.custom_build_dir]` section
 
-> [Introduced][gitlab-runner-876] in Gitlab Runner 11.1
+NOTE: **Note:**
+[Introduced][gitlab-runner-876] in Gitlab Runner 11.1
 
-This defines custom build directories parameters.
+This section defines [custom build directories][custom-build-dir-docs] parameters.
+
+Please notice, that the feature - if not configured explicitly - will be
+enabled by default for `kubernetes`, `docker`, `docker-ssh`, `docker+machine`
+and `docker-ssh+machine` executors. It will be disabled by default for all other
+executors.
+
+The feature will be also disabled when _shared_ environments (`shell`, `ssh`
+executors and all `docker*` executors when working directory is mounted
+as host volume shared between jobs) will be used together with `concurrent = 1`
+set in global section.
 
 | Parameter | Type    | Description |
 |-----------|---------|-------------|
@@ -573,3 +584,4 @@ It depends on what you'd like to do.
 [secret variable]: https://docs.gitlab.com/ce/ci/variables/#secret-variables
 [cronvendor]: https://gitlab.com/gitlab-org/gitlab-runner/blob/master/vendor/github.com/gorhill/cronexpr/README.md
 [gitlab-runner-876]: https://gitlab.com/gitlab-org/gitlab-runner/merge_requests/876
+[gitlab-buil-dir-docs]: https://docs.gitlab.com/ee/ci/yaml/README.html#custom-build-directories
