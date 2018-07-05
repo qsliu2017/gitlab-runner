@@ -413,8 +413,8 @@ func (n *GitLabClient) UploadRawArtifacts(config common.JobCredentials, reader i
 	if options.ExpireIn != "" {
 		query.Set("expire_in", options.ExpireIn)
 	}
-	if options.Format != "" {
-		query.Set("artifact_format", string(options.Format))
+	if options.Compression != "" {
+		query.Set("compression", string(options.Compression))
 	}
 	if options.Type != "" {
 		query.Set("artifact_type", options.Type)

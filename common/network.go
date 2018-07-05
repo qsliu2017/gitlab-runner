@@ -191,21 +191,21 @@ func (when ArtifactWhen) OnFailure() bool {
 	return when == ArtifactWhenOnFailure || when == ArtifactWhenAlways
 }
 
-type ArtifactFormat string
+type ArtifactCompression string
 
 const (
-	ArtifactFormatZip  ArtifactFormat = "zip"
-	ArtifactFormatGzip ArtifactFormat = "gzip"
+	ArtifactCompressionZip  ArtifactCompression = "zip"
+	ArtifactCompressionGzip ArtifactCompression = "gzip"
 )
 
 type Artifact struct {
-	Name      string         `json:"name"`
-	Untracked bool           `json:"untracked"`
-	Paths     ArtifactPaths  `json:"paths"`
-	When      ArtifactWhen   `json:"when"`
-	Type      string         `json:"artifact_type"`
-	Format    ArtifactFormat `json:"artifact_format"`
-	ExpireIn  string         `json:"expire_in"`
+	Name        string              `json:"name"`
+	Untracked   bool                `json:"untracked"`
+	Paths       ArtifactPaths       `json:"paths"`
+	When        ArtifactWhen        `json:"when"`
+	Type        string              `json:"artifact_type"`
+	Compression ArtifactCompression `json:"compression"`
+	ExpireIn    string              `json:"expire_in"`
 }
 
 func (a Artifact) ShouldUpload(state error) bool {
@@ -330,10 +330,10 @@ type UpdateJobInfo struct {
 }
 
 type ArtifactsOptions struct {
-	BaseName string
-	ExpireIn string
-	Format   ArtifactFormat
-	Type     string
+	BaseName    string
+	ExpireIn    string
+	Compression ArtifactCompression
+	Type        string
 }
 
 type FailuresCollector interface {

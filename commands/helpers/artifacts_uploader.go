@@ -25,10 +25,10 @@ type ArtifactsUploaderCommand struct {
 	retryHelper
 	network common.Network
 
-	Name     string                `long:"name" description:"The name of the archive"`
-	ExpireIn string                `long:"expire-in" description:"When to expire artifacts"`
-	Format   common.ArtifactFormat `long:"artifact-format" description:"Format of generated artifacts"`
-	Type     string                `long:"artifact-type" description:"Type of generated artifacts"`
+	Name        string                     `long:"name" description:"The name of the archive"`
+	ExpireIn    string                     `long:"expire-in" description:"When to expire artifacts"`
+	Compression common.ArtifactCompression `long:"compression" description:"Compression algorithm of generated artifacts"`
+	Type        string                     `long:"artifact-type" description:"Type of generated artifacts"`
 }
 
 func (c *ArtifactsUploaderCommand) generateZipArchive(w *io.PipeWriter) {
@@ -67,13 +67,13 @@ func (c *ArtifactsUploaderCommand) generateGzipStream(w *io.PipeWriter) {
 func (c *ArtifactsUploaderCommand) createReadStream() (string, io.ReadCloser, error) {
 	artifactsName := path.Base(c.Name)
 
-	switch c.Format {
-	case common.ArtifactFormatZip, "":
+	switch c.Compression {
+	case common.ArtifactCompressionZip, "":
 		pr, pw := io.Pipe()
 		go c.generateZipArchive(pw)
 		return artifactsName + ".zip", pr, nil
 
-	case common.ArtifactFormatGzip:
+	case common.ArtifactCompressionGzip:
 		if len(c.files) == 0 {
 			return "", nil, errors.New("no file to upload")
 		}
@@ -88,7 +88,7 @@ func (c *ArtifactsUploaderCommand) createReadStream() (string, io.ReadCloser, er
 		return artifactsName + ".gz", pr, nil
 
 	default:
-		return "", nil, fmt.Errorf("unsupported archive format: %s", c.Format)
+		return "", nil, fmt.Errorf("unsupported compression algorithm: %s", c.Compression)
 	}
 }
 
@@ -101,10 +101,10 @@ func (c *ArtifactsUploaderCommand) createAndUpload() (bool, error) {
 
 	// Create the archive
 	options := common.ArtifactsOptions{
-		BaseName: artifactsName,
-		ExpireIn: c.ExpireIn,
-		Format:   c.Format,
-		Type:     c.Type,
+		BaseName:    artifactsName,
+		ExpireIn:    c.ExpireIn,
+		Compression: c.Compression,
+		Type:        c.Type,
 	}
 
 	// Upload the data
