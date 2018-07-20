@@ -2,6 +2,7 @@ package docker
 
 import (
 	"bytes"
+	"errors"
 	"flag"
 	"fmt"
 	"io/ioutil"
@@ -1087,6 +1088,58 @@ func TestDockerSysctlsSetting(t *testing.T) {
 	}
 
 	testDockerConfigurationWithJobContainer(t, dockerConfig, cce)
+}
+
+func TestContainerAttachToSucceed(t *testing.T) {
+	var c docker_helpers.MockClient
+	defer c.AssertExpectations(t)
+
+	e := executor{client: &c}
+
+	c.On("ContainerAttach", mock.Anything, "id", mock.Anything).
+		Return(types.HijackedResponse{}, nil).
+		Once()
+
+	hijacked, err := e.attachContainer(context.Background(), "id")
+	assert.NoError(t, err)
+	assert.NotNil(t, hijacked)
+}
+
+func TestContainerAttachToFail(t *testing.T) {
+	var c docker_helpers.MockClient
+	defer c.AssertExpectations(t)
+
+	dockerAttachRetryTime = 0
+
+	e := executor{client: &c}
+
+	c.On("ContainerAttach", mock.Anything, "id", mock.Anything).
+		Return(types.HijackedResponse{}, errors.New("error message")).
+		Times(dockerAttachRetries)
+
+	_, err := e.attachContainer(context.Background(), "id")
+	assert.EqualError(t, err, "error message")
+}
+
+func TestContainerAttachToRecover(t *testing.T) {
+	var c docker_helpers.MockClient
+	defer c.AssertExpectations(t)
+
+	dockerAttachRetryTime = 0
+
+	e := executor{client: &c}
+
+	c.On("ContainerAttach", mock.Anything, "id", mock.Anything).
+		Return(types.HijackedResponse{}, errors.New("error message")).
+		Once()
+
+	c.On("ContainerAttach", mock.Anything, "id", mock.Anything).
+		Return(types.HijackedResponse{}, nil).
+		Once()
+
+	hijacked, err := e.attachContainer(context.Background(), "id")
+	assert.NoError(t, err)
+	assert.NotNil(t, hijacked)
 }
 
 func init() {

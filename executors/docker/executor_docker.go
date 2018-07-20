@@ -995,7 +995,7 @@ func (e *executor) waitForContainer(id string) error {
 	}
 }
 
-func (e *executor) watchContainer(ctx context.Context, id string, input io.Reader) (err error) {
+func (e *executor) attachContainer(ctx context.Context, id string) (hijacked types.HijackedResponse, err error) {
 	options := types.ContainerAttachOptions{
 		Stream: true,
 		Stdin:  true,
@@ -1003,8 +1003,21 @@ func (e *executor) watchContainer(ctx context.Context, id string, input io.Reade
 		Stderr: true,
 	}
 
-	e.Debugln("Attaching to container", id, "...")
-	hijacked, err := e.client.ContainerAttach(ctx, id, options)
+	for i := 0; i < dockerAttachRetries; i++ {
+		e.Debugln("Attaching to container", id, "...")
+		hijacked, err = e.client.ContainerAttach(ctx, id, options)
+		if err == nil {
+			return
+		}
+
+		time.Sleep(dockerAttachRetryTime)
+	}
+
+	return
+}
+
+func (e *executor) watchContainer(ctx context.Context, id string, input io.Reader) (err error) {
+	hijacked, err := e.attachContainer(ctx, id)
 	if err != nil {
 		return
 	}
