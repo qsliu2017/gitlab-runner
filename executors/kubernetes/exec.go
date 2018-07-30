@@ -26,6 +26,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	api "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
 	restclient "k8s.io/client-go/rest"
@@ -45,6 +46,17 @@ func (*DefaultRemoteExecutor) Execute(method string, url *url.URL, config *restc
 	if err != nil {
 		return err
 	}
+
+	logError := func(err error) {
+		log.Errorln(fmt.Sprintf("k8s stream error: %v", err))
+	}
+	runtime.ErrorHandlers = append(runtime.ErrorHandlers, logError)
+
+	logPanic := func(r interface{}) {
+		log.Errorln(fmt.Sprintf("k8s stream panic: %v", r))
+	}
+	runtime.PanicHandlers = append(runtime.PanicHandlers, logPanic)
+
 	return exec.Stream(remotecommand.StreamOptions{
 		Stdin:  stdin,
 		Stdout: stdout,
