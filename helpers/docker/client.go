@@ -28,6 +28,7 @@ type Client interface {
 	NetworkList(ctx context.Context, options types.NetworkListOptions) ([]types.NetworkResource, error)
 
 	Info(ctx context.Context) (types.Info, error)
+	Ping(ctx context.Context) (types.Ping, error)
 
 	Close() error
 }

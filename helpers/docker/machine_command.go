@@ -259,13 +259,27 @@ func (m *machineCommand) CanConnect(name string, skipCache bool) bool {
 }
 
 func (m *machineCommand) canConnect(name string) bool {
-	// Execute docker-machine config which actively ask the machine if it is up and online
-	cmd := exec.Command("docker-machine", "config", name)
-	cmd.Env = os.Environ()
-	err := cmd.Run()
-	if err == nil {
+	if m.Exist(name) {
+		credentials, err := m.Credentials(name)
+		if err != nil {
+			return false
+		}
+
+		client, err := New(credentials, "1.24")
+		if err != nil {
+			return false
+		}
+
+		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+		defer cancel()
+
+		if _, err := client.Ping(ctx); err != nil {
+			return false
+		}
+
 		return true
 	}
+
 	return false
 }
 

@@ -140,6 +140,12 @@ func (c *officialDockerClient) Info(ctx context.Context) (types.Info, error) {
 	return info, wrapError("Info", err, started)
 }
 
+func (c *officialDockerClient) Ping(ctx context.Context) (types.Ping, error) {
+	started := time.Now()
+	ping, err := c.client.Ping(ctx)
+	return ping, wrapError("Ping", err, started)
+}
+
 func (c *officialDockerClient) ImageImportBlocking(ctx context.Context, source types.ImageImportSource, ref string, options types.ImageImportOptions) error {
 	started := time.Now()
 	readCloser, err := c.client.ImageImport(ctx, source, ref, options)
