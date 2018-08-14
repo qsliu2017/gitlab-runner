@@ -239,6 +239,8 @@ unit test with race:
 integration windows:
   <<: *except_docs
   stage: test
+  variables:
+    GOROOT: C:\Go
   before_script:
   - $GODIR = "$env:GOPATH\src\gitlab.com\gitlab-org"
   - $target_path = "$GODIR\gitlab-runner"
