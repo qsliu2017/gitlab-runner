@@ -243,7 +243,7 @@ type CacheConfig struct {
 	Path   string `toml:"Path,omitempty" long:"s3-cache-path" env:"S3_CACHE_PATH" description:"Name of the path to prepend to the cache URL"`
 	Shared bool   `toml:"Shared,omitempty" long:"cache-shared" env:"CACHE_SHARED" description:"Enable cache sharing between runners."`
 
-	S3  *CacheS3Config  `toml:"s3,omitempty" json:"s3" namespace:"s3"`
+	S3  *CacheS3Config  `toml:"s3,omitempty" json:"s3" namespace:"s3-interface"`
 	GCS *CacheGCSConfig `toml:"gcs,omitempty" json:"gcs" namespace:"gcs"`
 
 	// TODO: Remove in 12.0
