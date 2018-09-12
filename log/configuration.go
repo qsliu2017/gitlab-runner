@@ -162,21 +162,17 @@ func Configuration() *Config {
 	return configuration
 }
 
-func ConfigureLogging(app *cli.App) {
+func AddFlags(app *cli.App) {
 	app.Flags = append(app.Flags, logFlags...)
+}
 
-	appBefore := app.Before
-	app.Before = func(cliCtx *cli.Context) error {
-		Configuration().logger.SetOutput(os.Stderr)
+func ConfigureLogging(cliCtx *cli.Context) error {
+	Configuration().logger.SetOutput(os.Stderr)
 
-		err := Configuration().handleCliCtx(cliCtx)
-		if err != nil {
-			logrus.WithError(err).Fatal("Error while setting up logging configuration")
-		}
-
-		if appBefore != nil {
-			return appBefore(cliCtx)
-		}
-		return nil
+	err := Configuration().handleCliCtx(cliCtx)
+	if err != nil {
+		return fmt.Errorf("error while setting up logging configuration: %v", err)
 	}
+
+	return nil
 }

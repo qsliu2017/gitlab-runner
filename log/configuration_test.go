@@ -6,10 +6,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"github.com/urfave/cli"
-
-	"gitlab.com/gitlab-org/gitlab-runner/helpers"
 )
 
 func prepareFakeConfiguration(logger *logrus.Logger) func() {
@@ -22,7 +19,7 @@ func prepareFakeConfiguration(logger *logrus.Logger) func() {
 	}
 }
 
-func testCommandRun(args ...string) {
+func testCommandRun(t *testing.T, args ...string) error {
 	app := cli.NewApp()
 	app.Commands = []cli.Command{
 		{
@@ -31,12 +28,13 @@ func testCommandRun(args ...string) {
 		},
 	}
 
-	ConfigureLogging(app)
+	AddFlags(app)
+	app.Before = ConfigureLogging
 
 	args = append([]string{"binary"}, args...)
 	args = append(args, "logtest")
 
-	app.Run(args)
+	return app.Run(args)
 }
 
 type handleCliCtxTestCase struct {
@@ -96,46 +94,25 @@ func TestHandleCliCtx(t *testing.T) {
 			logger, _ := test.NewNullLogger()
 
 			defer prepareFakeConfiguration(logger)()
-			defer helpers.MakeFatalToPanic()()
 
-			testFunc := func() {
-				testCommandRun(testCase.args...)
-				if testCase.expectedError == "" {
-					assert.Equal(t, testCase.expectedLevel, Configuration().level)
-					assert.Equal(t, testCase.expectedFormatter, Configuration().format)
-					assert.Equal(t, testCase.expectedLevelSetWithCli, Configuration().IsLevelSetWithCli())
-					assert.Equal(t, testCase.expectedFormatSetWithCli, Configuration().IsFormatSetWithCli())
+			err := testCommandRun(t, testCase.args...)
 
-					if testCase.goroutinesDumpStopChExists {
-						assert.NotNil(t, Configuration().goroutinesDumpStopCh)
-					} else {
-						assert.Nil(t, Configuration().goroutinesDumpStopCh)
-					}
+			if testCase.expectedError == "" {
+				assert.NoError(t, err)
+
+				assert.Equal(t, testCase.expectedLevel, Configuration().level)
+				assert.Equal(t, testCase.expectedFormatter, Configuration().format)
+				assert.Equal(t, testCase.expectedLevelSetWithCli, Configuration().IsLevelSetWithCli())
+				assert.Equal(t, testCase.expectedFormatSetWithCli, Configuration().IsFormatSetWithCli())
+
+				if testCase.goroutinesDumpStopChExists {
+					assert.NotNil(t, Configuration().goroutinesDumpStopCh)
+				} else {
+					assert.Nil(t, Configuration().goroutinesDumpStopCh)
 				}
-			}
-
-			if testCase.expectedError != "" {
-				var message *logrus.Entry
-				var ok bool
-
-				func() {
-					defer func() {
-						message, ok = recover().(*logrus.Entry)
-					}()
-
-					testFunc()
-				}()
-
-				require.True(t, ok)
-
-				panicMessage, err := message.String()
-				require.NoError(t, err)
-
-				assert.Contains(t, panicMessage, "Error while setting up logging configuration")
-				assert.Contains(t, panicMessage, testCase.expectedError)
-
 			} else {
-				assert.NotPanics(t, testFunc)
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), "error while setting up logging configuration")
 			}
 		})
 	}
