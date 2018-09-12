@@ -11,7 +11,7 @@ GO_x86_64_ARCH = amd64
 GO_arm_ARCH = arm
 
 dockerfiles/build/binaries/gitlab-runner-helper.%: $(HELPER_GO_FILES) $(GOX)
-	gox -osarch=linux/$(GO_$*_ARCH) -ldflags "$(GO_LDFLAGS)" -output=$@ $(PKG)/apps/gitlab-runner-helper
+	gox -osarch=linux/$(GO_$*_ARCH) -ldflags "$(GO_LDFLAGS)" -output=$@ $(PKG)/cmd/gitlab-runner-helper
 
 out/helper-images/prebuilt-%.tar: dockerfiles/build/binaries/gitlab-runner-helper.%
 	@mkdir -p $$(dirname $@_)

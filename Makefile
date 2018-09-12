@@ -107,14 +107,14 @@ build: $(GOX)
 	gox $(BUILD_PLATFORMS) \
 		-ldflags "$(GO_LDFLAGS)" \
 		-output="out/binaries/$(NAME)-{{.OS}}-{{.Arch}}" \
-		$(PKG)
+		$(PKG)/cmd/gitlab-runner
 
 build_simple: $(GOPATH_SETUP)
 	# Building $(NAME) in version $(VERSION) for current platform
 	go build \
 		-ldflags "$(GO_LDFLAGS)" \
 		-o "out/binaries/$(NAME)" \
-		$(PKG)
+		$(PKG)/cmd/gitlab-runner
 
 build_current: docker build_simple
 
@@ -142,7 +142,7 @@ pull_images_for_tests: $(GOPATH_SETUP)
 	@go run ./scripts/pull-images-for-tests/main.go
 
 install:
-	go install --ldflags="$(GO_LDFLAGS)" $(PKG)
+	go install --ldflags="$(GO_LDFLAGS)" $(PKG)/cmd/gitlab-runner
 
 dockerfiles:
 	make -C dockerfiles all
