@@ -1,22 +1,49 @@
 package terminal
 
 import (
+	"errors"
+	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"time"
 
-	log "github.com/sirupsen/logrus"
 	"github.com/gorilla/websocket"
-	"fmt"
-	"errors"
+	log "github.com/sirupsen/logrus"
 )
 
 var (
 	// See doc/terminal.md for documentation of this subprotocol
-	subprotocols             = []string{"terminal.gitlab.com", "base64.terminal.gitlab.com"}
-	upgrader                 = &websocket.Upgrader{Subprotocols: subprotocols}
-	BrowserPingInterval      = 30 * time.Second
+	subprotocols        = []string{"terminal.gitlab.com", "base64.terminal.gitlab.com"}
+	upgrader            = &websocket.Upgrader{Subprotocols: subprotocols}
+	BrowserPingInterval = 30 * time.Second
 )
+
+func ProxyDocker(w http.ResponseWriter, r *http.Request, docker io.ReadWriteCloser, proxy *DockerProxy) {
+	clientAddr := getClientAddr(r) // We can't know the port with confidence
+	serverAddr := "docker"
+
+	logger := log.WithFields(log.Fields{
+		"clientAddr": clientAddr,
+		"serverAddr": serverAddr,
+		"pkg":        "terminal",
+		"executor":   "docker",
+	})
+
+	client, err := upgradeClient(w, r)
+	if err != nil {
+		logger.WithError(err).Error("failed to upgrade client connection to websocket")
+		return
+	}
+
+	// Regularly send ping messages to the browser to keep the websocket from
+	// being timed out by intervening proxies.
+	go pingLoop(client)
+
+	if err := proxy.Serve(client, docker, logger); err != nil {
+		logger.WithError(err).Error("failed to proxy docker container")
+	}
+}
 
 func ProxyWebSocket(w http.ResponseWriter, r *http.Request, terminal *TerminalSettings, proxy *WebSocketProxy) {
 	server, err := connectToServer(terminal, r)
