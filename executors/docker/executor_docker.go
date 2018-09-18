@@ -28,7 +28,7 @@ import (
 	"gitlab.com/gitlab-org/gitlab-runner/common"
 	"gitlab.com/gitlab-org/gitlab-runner/executors"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers"
-	docker_helpers "gitlab.com/gitlab-org/gitlab-runner/helpers/docker"
+	"gitlab.com/gitlab-org/gitlab-runner/helpers/docker"
 )
 
 const (
@@ -835,25 +835,8 @@ func (e *executor) getValidContainers(containers []string) []string {
 	return newContainers
 }
 
-func (e *executor) createContainer(containerType string, imageDefinition common.Image, cmd []string, allowedInternalImages []string) (*types.ContainerJSON, error) {
-	image, err := e.expandAndGetDockerImage(imageDefinition.Name, allowedInternalImages)
-	if err != nil {
-		return nil, err
-	}
-
-	hostname := e.Config.Docker.Hostname
-	if hostname == "" {
-		hostname = e.Build.ProjectUniqueName()
-	}
-
-	// Always create unique, but sequential name
-	containerIndex := len(e.builds)
-	containerName := e.Build.ProjectUniqueName() + "-" +
-		containerType + "-" + strconv.Itoa(containerIndex)
-
+func (e *executor) createAttachableContainer(containerType string, imageDefinition common.Image, cmd []string, allowedInternalImages []string) (*types.ContainerJSON, error) {
 	config := &container.Config{
-		Image:        image.ID,
-		Hostname:     hostname,
 		Cmd:          cmd,
 		Labels:       e.getLabels(containerType),
 		Tty:          false,
@@ -864,6 +847,42 @@ func (e *executor) createContainer(containerType string, imageDefinition common.
 		StdinOnce:    true,
 		Env:          append(e.Build.GetAllVariables().StringList(), e.BuildShell.Environment...),
 	}
+
+	return e.createContainer(containerType, imageDefinition, allowedInternalImages, config)
+}
+
+func (e *executor) createExecutableContainer(containerType string, imageDefinition common.Image, cmd []string, allowedInternalImages []string) (*types.ContainerJSON, error) {
+	config := &container.Config{
+		Cmd:          cmd,
+		Labels:       e.getLabels(containerType),
+		Tty:          true,
+		AttachStdin:  false,
+		AttachStdout: false,
+		AttachStderr: false,
+		OpenStdin:    false,
+		StdinOnce:    false,
+		Env:          append(e.Build.GetAllVariables().StringList(), e.BuildShell.Environment...),
+	}
+
+	return e.createContainer(containerType, imageDefinition, allowedInternalImages, config)
+}
+
+func (e *executor) createContainer(containerType string, imageDefinition common.Image, allowedInternalImages []string, config *container.Config) (*types.ContainerJSON, error) {
+	image, err := e.expandAndGetDockerImage(imageDefinition.Name, allowedInternalImages)
+	if err != nil {
+		return nil, err
+	}
+	config.Image = image.ID
+
+	config.Hostname = e.Config.Docker.Hostname
+	if config.Hostname == "" {
+		config.Hostname = e.Build.ProjectUniqueName()
+	}
+
+	// Always create unique, but sequential name
+	containerIndex := len(e.builds)
+	containerName := e.Build.ProjectUniqueName() + "-" +
+		containerType + "-" + strconv.Itoa(containerIndex)
 
 	config.Entrypoint = e.overwriteEntrypoint(&imageDefinition)
 
@@ -996,7 +1015,47 @@ func (e *executor) waitForContainer(ctx context.Context, id string) error {
 	return ctx.Err()
 }
 
-func (e *executor) watchContainer(ctx context.Context, id string, input io.Reader) (err error) {
+func (e *executor) waitForContainerExec(id string) error {
+	e.Debugln("Waiting for container exec", id, "...")
+
+	retries := 0
+
+	// Use active wait
+	for {
+		exec, err := e.client.ContainerExecInspect(e.Context, id)
+		if err != nil {
+			if docker_helpers.IsErrNotFound(err) {
+				return err
+			}
+
+			if retries > 3 {
+				return err
+			}
+
+			retries++
+			time.Sleep(time.Second)
+			continue
+		}
+
+		// Reset retry timer
+		retries = 0
+
+		if exec.Running {
+			time.Sleep(time.Second)
+			continue
+		}
+
+		if exec.ExitCode != 0 {
+			return &common.BuildError{
+				Inner: fmt.Errorf("exit code %d", exec.ExitCode),
+			}
+		}
+
+		return nil
+	}
+}
+
+func (e *executor) attachContainer(ctx context.Context, id string, input io.Reader) error {
 	options := types.ContainerAttachOptions{
 		Stream: true,
 		Stdin:  true,
@@ -1007,14 +1066,14 @@ func (e *executor) watchContainer(ctx context.Context, id string, input io.Reade
 	e.Debugln("Attaching to container", id, "...")
 	hijacked, err := e.client.ContainerAttach(ctx, id, options)
 	if err != nil {
-		return
+		return err
 	}
 	defer hijacked.Close()
 
 	e.Debugln("Starting container", id, "...")
 	err = e.client.ContainerStart(ctx, id, types.ContainerStartOptions{})
 	if err != nil {
-		return
+		return err
 	}
 
 	e.Debugln("Waiting for attach to finish", id, "...")
@@ -1045,16 +1104,80 @@ func (e *executor) watchContainer(ctx context.Context, id string, input io.Reade
 	select {
 	case <-ctx.Done():
 		e.killContainer(id, waitCh)
-		err = errors.New("Aborted")
+		return errors.New("Aborted")
 
-	case err = <-attachCh:
+	case err := <-attachCh:
 		e.killContainer(id, waitCh)
 		e.Debugln("Container", id, "finished with", err)
+		return err
 
-	case err = <-waitCh:
+	case err := <-waitCh:
 		e.Debugln("Container", id, "finished with", err)
+		return err
 	}
-	return
+}
+
+func (e *executor) execContainer(ctx context.Context, id string, input string) error {
+	e.Debugln("Starting container", id, "...")
+	err := e.client.ContainerStart(ctx, id, types.ContainerStartOptions{})
+	if err != nil {
+		return err
+	}
+
+	execCfg := types.ExecConfig{
+		Tty:          false,
+		AttachStdin:  false,
+		AttachStderr: true,
+		AttachStdout: true,
+		Detach:       false,
+		Cmd:          []string{"sh", "-c", input},
+	}
+
+	e.Debugln("Exec into container", id, "...")
+	exec, err := e.client.ContainerExecCreate(ctx, id, execCfg)
+	if err != nil {
+		return err
+	}
+
+	resp, err := e.client.ContainerExecAttach(ctx, exec.ID, execCfg)
+	if err != nil {
+		return err
+	}
+
+	defer resp.Close()
+
+	err = e.client.ContainerExecStart(ctx, exec.ID, types.ExecStartCheck{Detach: false, Tty: false})
+	if err != nil {
+		return err
+	}
+
+	execCh := make(chan error, 1)
+	go func() {
+		_, err = stdcopy.StdCopy(e.Trace, e.Trace, resp.Reader)
+		if err != nil {
+			execCh <- err
+		}
+	}()
+
+	waitCh := make(chan error, 1)
+	go func() {
+		waitCh <- e.waitForContainerExec(exec.ID)
+	}()
+
+	select {
+	case <-ctx.Done():
+		e.killContainer(id, waitCh)
+		return errors.New("Aborted")
+
+	case err := <-execCh:
+		e.killContainer(id, waitCh)
+		e.Debugln("Container exec", id, "finished with", err)
+		return err
+
+	case err := <-waitCh:
+		e.Debugln("Container exec", id, "finished with", err)
+		return err
+	}
 }
 
 func (e *executor) removeContainer(ctx context.Context, id string) error {

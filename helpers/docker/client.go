@@ -25,6 +25,8 @@ type Client interface {
 	ContainerLogs(ctx context.Context, container string, options types.ContainerLogsOptions) (io.ReadCloser, error)
 	ContainerExecCreate(ctx context.Context, container string, config types.ExecConfig) (types.IDResponse, error)
 	ContainerExecAttach(ctx context.Context, execID string, config types.ExecConfig) (types.HijackedResponse, error)
+	ContainerExecStart(ctx context.Context, execID string, config types.ExecStartCheck) error
+	ContainerExecInspect(ctx context.Context, execID string) (types.ContainerExecInspect, error)
 
 	NetworkDisconnect(ctx context.Context, networkID, containerID string, force bool) error
 	NetworkList(ctx context.Context, options types.NetworkListOptions) ([]types.NetworkResource, error)

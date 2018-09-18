@@ -57,7 +57,7 @@ func (s *commandExecutor) requestNewPredefinedContainer() (*types.ContainerJSON,
 		Name: prebuildImage.ID,
 	}
 
-	containerJSON, err := s.createContainer("predefined", buildImage, common.ContainerCommandBuild, []string{prebuildImage.ID})
+	containerJSON, err := s.createAttachableContainer("predefined", buildImage, common.ContainerCommandBuild, []string{prebuildImage.ID})
 	if err != nil {
 		return nil, err
 	}
@@ -73,7 +73,7 @@ func (s *commandExecutor) requestBuildContainer() (*types.ContainerJSON, error) 
 		var err error
 
 		// Start build container which will run actual build
-		s.buildContainer, err = s.createContainer("build", s.Build.Image, s.BuildShell.DockerCommand, []string{})
+		s.buildContainer, err = s.createExecutableContainer("build", s.Build.Image, s.BuildShell.DockerCommand, []string{})
 		if err != nil {
 			return nil, err
 		}
@@ -98,7 +98,11 @@ func (s *commandExecutor) Run(cmd common.ExecutorCommand) error {
 
 	s.SetCurrentStage(DockerExecutorStageRun)
 
-	return s.watchContainer(cmd.Context, runOn.ID, bytes.NewBufferString(cmd.Script))
+	if cmd.Predefined {
+		return s.attachContainer(cmd.Context, runOn.ID, bytes.NewBufferString(cmd.Script))
+	}
+
+	return s.execContainer(cmd.Context, runOn.ID, cmd.Script)
 }
 
 func init() {

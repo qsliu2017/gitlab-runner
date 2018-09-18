@@ -128,10 +128,22 @@ func (c *officialDockerClient) ContainerExecCreate(ctx context.Context, containe
 	return resp, wrapError("ContainerExecCreate", err, started)
 }
 
+func (c *officialDockerClient) ContainerExecStart(ctx context.Context, execID string, config types.ExecStartCheck) error {
+	started := time.Now()
+	err := c.client.ContainerExecStart(ctx, execID, config)
+	return wrapError("ContainerExecStart", err, started)
+}
+
 func (c *officialDockerClient) ContainerExecAttach(ctx context.Context, execID string, config types.ExecConfig) (types.HijackedResponse, error) {
 	started := time.Now()
 	resp, err := c.client.ContainerExecAttach(ctx, execID, config)
 	return resp, wrapError("ContainerExecAttach", err, started)
+}
+
+func (c *officialDockerClient) ContainerExecInspect(ctx context.Context, execID string) (types.ContainerExecInspect, error) {
+	started := time.Now()
+	resp, err := c.client.ContainerExecInspect(ctx, execID)
+	return resp, wrapError("ContainerExecInspect", err, started)
 }
 
 func (c *officialDockerClient) NetworkDisconnect(ctx context.Context, networkID string, containerID string, force bool) error {

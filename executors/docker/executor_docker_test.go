@@ -887,7 +887,7 @@ func TestDockerWatchOn_1_12_4(t *testing.T) {
 	err := e.connectDocker()
 	assert.NoError(t, err)
 
-	container, err := e.createContainer("build", common.Image{Name: common.TestAlpineImage}, []string{"/bin/sh"}, []string{})
+	container, err := e.createAttachableContainer("build", common.Image{Name: common.TestAlpineImage}, []string{"/bin/sh"}, []string{})
 	assert.NoError(t, err)
 	assert.NotNil(t, container)
 
@@ -897,7 +897,7 @@ func TestDockerWatchOn_1_12_4(t *testing.T) {
 	wg := &sync.WaitGroup{}
 	wg.Add(1) // Avoid a race where assert.NoError() is called too late in the goroutine
 	go func() {
-		err = e.watchContainer(e.Context, container.ID, input)
+		err = e.attachContainer(e.Context, container.ID, input)
 		assert.NoError(t, err)
 		finished <- true
 		wg.Done()
@@ -965,7 +965,7 @@ func testDockerConfigurationWithJobContainer(t *testing.T, dockerConfig *common.
 	c.On("ContainerInspect", mock.Anything, "abc").
 		Return(types.ContainerJSON{}, nil).Once()
 
-	_, err := e.createContainer("build", common.Image{Name: "alpine"}, []string{"/bin/sh"}, []string{})
+	_, err := e.createAttachableContainer("build", common.Image{Name: "alpine"}, []string{"/bin/sh"}, []string{})
 	assert.NoError(t, err, "Should create container without errors")
 }
 
