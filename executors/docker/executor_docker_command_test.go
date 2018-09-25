@@ -22,28 +22,37 @@ import (
 	"gitlab.com/gitlab-org/gitlab-runner/helpers/docker"
 )
 
+var dockerStrategies = [2]string{"attach", "exec"}
+
 func TestDockerCommandSuccessRun(t *testing.T) {
 	if helpers.SkipIntegrationTests(t, "docker", "info") {
 		return
 	}
 
-	successfulBuild, err := common.GetRemoteSuccessfulBuild()
-	assert.NoError(t, err)
-	build := &common.Build{
-		JobResponse: successfulBuild,
-		Runner: &common.RunnerConfig{
-			RunnerSettings: common.RunnerSettings{
-				Executor: "docker",
-				Docker: &common.DockerConfig{
-					Image:      common.TestAlpineImage,
-					PullPolicy: common.PullPolicyIfNotPresent,
+	for _, strategy := range dockerStrategies {
+		t.Run(strategy, func(t *testing.T) {
+			successfulBuild, err := common.GetRemoteSuccessfulBuild()
+			assert.NoError(t, err)
+			build := &common.Build{
+				JobResponse: successfulBuild,
+				Runner: &common.RunnerConfig{
+					RunnerSettings: common.RunnerSettings{
+						Executor: "docker",
+						Docker: &common.DockerConfig{
+							Image:      common.TestAlpineImage,
+							PullPolicy: common.PullPolicyIfNotPresent,
+						},
+					},
 				},
-			},
-		},
-	}
+			}
+			build.Variables = append(build.Variables, common.JobVariable{
+				Key: "DOCKER_STRATEGY", Value: strategy,
+			})
 
-	err = build.Run(&common.Config{}, &common.Trace{Writer: os.Stdout})
-	assert.NoError(t, err)
+			err = build.Run(&common.Config{}, &common.Trace{Writer: os.Stdout})
+			assert.NoError(t, err)
+		})
+	}
 }
 
 func TestDockerCommandNoRootImage(t *testing.T) {
@@ -51,24 +60,31 @@ func TestDockerCommandNoRootImage(t *testing.T) {
 		return
 	}
 
-	successfulBuild, err := common.GetRemoteSuccessfulBuildWithDumpedVariables()
+	for _, strategy := range dockerStrategies {
+		t.Run(strategy, func(t *testing.T) {
+			successfulBuild, err := common.GetRemoteSuccessfulBuildWithDumpedVariables()
 
-	assert.NoError(t, err)
-	successfulBuild.Image.Name = common.TestAlpineNoRootImage
-	build := &common.Build{
-		JobResponse: successfulBuild,
-		Runner: &common.RunnerConfig{
-			RunnerSettings: common.RunnerSettings{
-				Executor: "docker",
-				Docker: &common.DockerConfig{
-					PullPolicy: common.PullPolicyIfNotPresent,
+			assert.NoError(t, err)
+			successfulBuild.Image.Name = common.TestAlpineNoRootImage
+			build := &common.Build{
+				JobResponse: successfulBuild,
+				Runner: &common.RunnerConfig{
+					RunnerSettings: common.RunnerSettings{
+						Executor: "docker",
+						Docker: &common.DockerConfig{
+							PullPolicy: common.PullPolicyIfNotPresent,
+						},
+					},
 				},
-			},
-		},
-	}
+			}
+			build.Variables = append(build.Variables, common.JobVariable{
+				Key: "DOCKER_STRATEGY", Value: strategy,
+			})
 
-	err = build.Run(&common.Config{}, &common.Trace{Writer: os.Stdout})
-	assert.NoError(t, err)
+			err = build.Run(&common.Config{}, &common.Trace{Writer: os.Stdout})
+			assert.NoError(t, err)
+		})
+	}
 }
 
 func TestDockerCommandBuildFail(t *testing.T) {
@@ -76,25 +92,32 @@ func TestDockerCommandBuildFail(t *testing.T) {
 		return
 	}
 
-	failedBuild, err := common.GetRemoteFailedBuild()
-	assert.NoError(t, err)
-	build := &common.Build{
-		JobResponse: failedBuild,
-		Runner: &common.RunnerConfig{
-			RunnerSettings: common.RunnerSettings{
-				Executor: "docker",
-				Docker: &common.DockerConfig{
-					Image:      common.TestAlpineImage,
-					PullPolicy: common.PullPolicyIfNotPresent,
+	for _, strategy := range dockerStrategies {
+		t.Run(strategy, func(t *testing.T) {
+			failedBuild, err := common.GetRemoteFailedBuild()
+			assert.NoError(t, err)
+			build := &common.Build{
+				JobResponse: failedBuild,
+				Runner: &common.RunnerConfig{
+					RunnerSettings: common.RunnerSettings{
+						Executor: "docker",
+						Docker: &common.DockerConfig{
+							Image:      common.TestAlpineImage,
+							PullPolicy: common.PullPolicyIfNotPresent,
+						},
+					},
 				},
-			},
-		},
-	}
+			}
+			build.Variables = append(build.Variables, common.JobVariable{
+				Key: "DOCKER_STRATEGY", Value: strategy,
+			})
 
-	err = build.Run(&common.Config{}, &common.Trace{Writer: os.Stdout})
-	require.Error(t, err, "error")
-	assert.IsType(t, err, &common.BuildError{})
-	assert.Contains(t, err.Error(), "exit code 1")
+			err = build.Run(&common.Config{}, &common.Trace{Writer: os.Stdout})
+			require.Error(t, err, "error")
+			assert.IsType(t, err, &common.BuildError{})
+			assert.Contains(t, err.Error(), "exit code 1")
+		})
+	}
 }
 
 func TestDockerCommandWithAllowedImagesRun(t *testing.T) {
@@ -102,34 +125,41 @@ func TestDockerCommandWithAllowedImagesRun(t *testing.T) {
 		return
 	}
 
-	successfulBuild, err := common.GetRemoteSuccessfulBuild()
-	successfulBuild.Image = common.Image{Name: "$IMAGE_NAME"}
-	successfulBuild.Variables = append(successfulBuild.Variables, common.JobVariable{
-		Key:      "IMAGE_NAME",
-		Value:    common.TestAlpineImage,
-		Public:   true,
-		Internal: false,
-		File:     false,
-	})
-	successfulBuild.Services = append(successfulBuild.Services, common.Image{Name: common.TestDockerDindImage})
-	assert.NoError(t, err)
-	build := &common.Build{
-		JobResponse: successfulBuild,
-		Runner: &common.RunnerConfig{
-			RunnerSettings: common.RunnerSettings{
-				Executor: "docker",
-				Docker: &common.DockerConfig{
-					AllowedImages:   []string{common.TestAlpineImage},
-					AllowedServices: []string{common.TestDockerDindImage},
-					Privileged:      true,
-					PullPolicy:      common.PullPolicyIfNotPresent,
+	for _, strategy := range dockerStrategies {
+		t.Run(strategy, func(t *testing.T) {
+			successfulBuild, err := common.GetRemoteSuccessfulBuild()
+			successfulBuild.Image = common.Image{Name: "$IMAGE_NAME"}
+			successfulBuild.Variables = append(successfulBuild.Variables, common.JobVariable{
+				Key:      "IMAGE_NAME",
+				Value:    common.TestAlpineImage,
+				Public:   true,
+				Internal: false,
+				File:     false,
+			})
+			successfulBuild.Services = append(successfulBuild.Services, common.Image{Name: common.TestDockerDindImage})
+			assert.NoError(t, err)
+			build := &common.Build{
+				JobResponse: successfulBuild,
+				Runner: &common.RunnerConfig{
+					RunnerSettings: common.RunnerSettings{
+						Executor: "docker",
+						Docker: &common.DockerConfig{
+							AllowedImages:   []string{common.TestAlpineImage},
+							AllowedServices: []string{common.TestDockerDindImage},
+							Privileged:      true,
+							PullPolicy:      common.PullPolicyIfNotPresent,
+						},
+					},
 				},
-			},
-		},
-	}
+			}
+			build.Variables = append(build.Variables, common.JobVariable{
+				Key: "DOCKER_STRATEGY", Value: strategy,
+			})
 
-	err = build.Run(&common.Config{}, &common.Trace{Writer: os.Stdout})
-	assert.NoError(t, err)
+			err = build.Run(&common.Config{}, &common.Trace{Writer: os.Stdout})
+			assert.NoError(t, err)
+		})
+	}
 }
 
 func TestDockerCommandDisableEntrypointOverwrite(t *testing.T) {
@@ -231,27 +261,34 @@ func TestDockerCommandMissingImage(t *testing.T) {
 		return
 	}
 
-	build := &common.Build{
-		Runner: &common.RunnerConfig{
-			RunnerSettings: common.RunnerSettings{
-				Executor: "docker",
-				Docker: &common.DockerConfig{
-					Image: "some/non-existing/image",
+	for _, strategy := range dockerStrategies {
+		t.Run(strategy, func(t *testing.T) {
+			build := &common.Build{
+				Runner: &common.RunnerConfig{
+					RunnerSettings: common.RunnerSettings{
+						Executor: "docker",
+						Docker: &common.DockerConfig{
+							Image: "some/non-existing/image",
+						},
+					},
 				},
-			},
-		},
+			}
+			build.Variables = append(build.Variables, common.JobVariable{
+				Key: "DOCKER_STRATEGY", Value: strategy,
+			})
+
+			err := build.Run(&common.Config{}, &common.Trace{Writer: os.Stdout})
+			require.Error(t, err)
+			assert.IsType(t, &common.BuildError{}, err)
+
+			contains := "repository does not exist"
+			if isDockerOlderThan17_07(t) {
+				contains = "not found"
+			}
+
+			assert.Contains(t, err.Error(), contains)
+		})
 	}
-
-	err := build.Run(&common.Config{}, &common.Trace{Writer: os.Stdout})
-	require.Error(t, err)
-	assert.IsType(t, &common.BuildError{}, err)
-
-	contains := "repository does not exist"
-	if isDockerOlderThan17_07(t) {
-		contains = "not found"
-	}
-
-	assert.Contains(t, err.Error(), contains)
 }
 
 func TestDockerCommandMissingTag(t *testing.T) {
@@ -259,21 +296,29 @@ func TestDockerCommandMissingTag(t *testing.T) {
 		return
 	}
 
-	build := &common.Build{
-		Runner: &common.RunnerConfig{
-			RunnerSettings: common.RunnerSettings{
-				Executor: "docker",
-				Docker: &common.DockerConfig{
-					Image: "docker:missing-tag",
+	for _, strategy := range dockerStrategies {
+		t.Run(strategy, func(t *testing.T) {
+			build := &common.Build{
+				Runner: &common.RunnerConfig{
+					RunnerSettings: common.RunnerSettings{
+						Executor: "docker",
+						Docker: &common.DockerConfig{
+							Image: "docker:missing-tag",
+						},
+					},
 				},
-			},
-		},
-	}
+			}
+			build.Variables = append(build.Variables, common.JobVariable{
+				Key: "DOCKER_STRATEGY", Value: strategy,
+			})
 
-	err := build.Run(&common.Config{}, &common.Trace{Writer: os.Stdout})
-	require.Error(t, err)
-	assert.IsType(t, &common.BuildError{}, err)
-	assert.Contains(t, err.Error(), "not found")
+			err := build.Run(&common.Config{}, &common.Trace{Writer: os.Stdout})
+			require.Error(t, err)
+			assert.IsType(t, &common.BuildError{}, err)
+			assert.Contains(t, err.Error(), "not found")
+
+		})
+	}
 }
 
 func TestDockerCommandBuildAbort(t *testing.T) {
@@ -281,36 +326,44 @@ func TestDockerCommandBuildAbort(t *testing.T) {
 		return
 	}
 
-	longRunningBuild, err := common.GetRemoteLongRunningBuild()
-	assert.NoError(t, err)
-	build := &common.Build{
-		JobResponse: longRunningBuild,
-		Runner: &common.RunnerConfig{
-			RunnerSettings: common.RunnerSettings{
-				Executor: "docker",
-				Docker: &common.DockerConfig{
-					Image:      common.TestAlpineImage,
-					PullPolicy: common.PullPolicyIfNotPresent,
+	for _, strategy := range dockerStrategies {
+		t.Run(strategy, func(t *testing.T) {
+			longRunningBuild, err := common.GetRemoteLongRunningBuild()
+			assert.NoError(t, err)
+			build := &common.Build{
+				JobResponse: longRunningBuild,
+				Runner: &common.RunnerConfig{
+					RunnerSettings: common.RunnerSettings{
+						Executor: "docker",
+						Docker: &common.DockerConfig{
+							Image:      common.TestAlpineImage,
+							PullPolicy: common.PullPolicyIfNotPresent,
+						},
+					},
 				},
-			},
-		},
-		SystemInterrupt: make(chan os.Signal, 1),
+				SystemInterrupt: make(chan os.Signal, 1),
+			}
+			build.Variables = append(build.Variables, common.JobVariable{
+				Key: "DOCKER_STRATEGY", Value: strategy,
+			})
+
+			abortTimer := time.AfterFunc(time.Second, func() {
+				t.Log("Interrupt")
+				build.SystemInterrupt <- os.Interrupt
+			})
+
+			timeoutTimer := time.AfterFunc(time.Minute, func() {
+				t.Log("Timedout")
+				t.FailNow()
+			})
+
+			err = build.Run(&common.Config{}, &common.Trace{Writer: os.Stdout})
+			assert.EqualError(t, err, "aborted: interrupt")
+
+			abortTimer.Stop()
+			timeoutTimer.Stop()
+		})
 	}
-
-	abortTimer := time.AfterFunc(time.Second, func() {
-		t.Log("Interrupt")
-		build.SystemInterrupt <- os.Interrupt
-	})
-	defer abortTimer.Stop()
-
-	timeoutTimer := time.AfterFunc(time.Minute, func() {
-		t.Log("Timedout")
-		t.FailNow()
-	})
-	defer timeoutTimer.Stop()
-
-	err = build.Run(&common.Config{}, &common.Trace{Writer: os.Stdout})
-	assert.EqualError(t, err, "aborted: interrupt")
 }
 
 func TestDockerCommandBuildCancel(t *testing.T) {
@@ -318,73 +371,87 @@ func TestDockerCommandBuildCancel(t *testing.T) {
 		return
 	}
 
-	longRunningBuild, err := common.GetRemoteLongRunningBuild()
-	assert.NoError(t, err)
-	build := &common.Build{
-		JobResponse: longRunningBuild,
-		Runner: &common.RunnerConfig{
-			RunnerSettings: common.RunnerSettings{
-				Executor: "docker",
-				Docker: &common.DockerConfig{
-					Image:      common.TestAlpineImage,
-					PullPolicy: common.PullPolicyIfNotPresent,
+	for _, strategy := range dockerStrategies {
+		t.Run(strategy, func(t *testing.T) {
+			longRunningBuild, err := common.GetRemoteLongRunningBuild()
+			assert.NoError(t, err)
+			build := &common.Build{
+				JobResponse: longRunningBuild,
+				Runner: &common.RunnerConfig{
+					RunnerSettings: common.RunnerSettings{
+						Executor: "docker",
+						Docker: &common.DockerConfig{
+							Image:      common.TestAlpineImage,
+							PullPolicy: common.PullPolicyIfNotPresent,
+						},
+					},
 				},
-			},
-		},
+			}
+			build.Variables = append(build.Variables, common.JobVariable{
+				Key: "DOCKER_STRATEGY", Value: strategy,
+			})
+
+			trace := &common.Trace{Writer: os.Stdout}
+
+			abortTimer := time.AfterFunc(time.Second, func() {
+				t.Log("Interrupt")
+				trace.CancelFunc()
+			})
+
+			timeoutTimer := time.AfterFunc(time.Minute, func() {
+				t.Log("Timedout")
+				t.FailNow()
+			})
+
+			err = build.Run(&common.Config{}, trace)
+			assert.IsType(t, err, &common.BuildError{})
+			assert.EqualError(t, err, "canceled")
+
+			abortTimer.Stop()
+			timeoutTimer.Stop()
+		})
 	}
-
-	trace := &common.Trace{Writer: os.Stdout}
-
-	abortTimer := time.AfterFunc(time.Second, func() {
-		t.Log("Interrupt")
-		trace.CancelFunc()
-	})
-	defer abortTimer.Stop()
-
-	timeoutTimer := time.AfterFunc(time.Minute, func() {
-		t.Log("Timedout")
-		t.FailNow()
-	})
-	defer timeoutTimer.Stop()
-
-	err = build.Run(&common.Config{}, trace)
-	assert.IsType(t, err, &common.BuildError{})
-	assert.EqualError(t, err, "canceled")
 }
 
 func TestDockerCommandTwoServicesFromOneImage(t *testing.T) {
 	if helpers.SkipIntegrationTests(t, "docker", "info") {
 		return
 	}
-
-	successfulBuild, err := common.GetRemoteSuccessfulBuild()
-	successfulBuild.Services = common.Services{
-		{Name: common.TestAlpineImage, Alias: "service-1"},
-		{Name: common.TestAlpineImage, Alias: "service-2"},
-	}
-	assert.NoError(t, err)
-	build := &common.Build{
-		JobResponse: successfulBuild,
-		Runner: &common.RunnerConfig{
-			RunnerSettings: common.RunnerSettings{
-				Executor: "docker",
-				Docker: &common.DockerConfig{
-					Image:      common.TestAlpineImage,
-					PullPolicy: common.PullPolicyIfNotPresent,
+	for _, strategy := range dockerStrategies {
+		t.Run(strategy, func(t *testing.T) {
+			successfulBuild, err := common.GetRemoteSuccessfulBuild()
+			successfulBuild.Services = common.Services{
+				{Name: common.TestAlpineImage, Alias: "service-1"},
+				{Name: common.TestAlpineImage, Alias: "service-2"},
+			}
+			assert.NoError(t, err)
+			build := &common.Build{
+				JobResponse: successfulBuild,
+				Runner: &common.RunnerConfig{
+					RunnerSettings: common.RunnerSettings{
+						Executor: "docker",
+						Docker: &common.DockerConfig{
+							Image:      common.TestAlpineImage,
+							PullPolicy: common.PullPolicyIfNotPresent,
+						},
+					},
 				},
-			},
-		},
+			}
+			build.Variables = append(build.Variables, common.JobVariable{
+				Key: "DOCKER_STRATEGY", Value: strategy,
+			})
+
+			var buffer bytes.Buffer
+
+			err = build.Run(&common.Config{}, &common.Trace{Writer: &buffer})
+			assert.NoError(t, err)
+			str := buffer.String()
+
+			re, err := regexp.Compile("(?m)Conflict. The container name [^ ]+ is already in use by container")
+			require.NoError(t, err)
+			assert.NotRegexp(t, re, str, "Both service containers should be started and use different name")
+		})
 	}
-
-	var buffer bytes.Buffer
-
-	err = build.Run(&common.Config{}, &common.Trace{Writer: &buffer})
-	assert.NoError(t, err)
-	str := buffer.String()
-
-	re, err := regexp.Compile("(?m)Conflict. The container name [^ ]+ is already in use by container")
-	require.NoError(t, err)
-	assert.NotRegexp(t, re, str, "Both service containers should be started and use different name")
 }
 
 func TestDockerCommandOutput(t *testing.T) {
@@ -392,29 +459,36 @@ func TestDockerCommandOutput(t *testing.T) {
 		return
 	}
 
-	successfulBuild, err := common.GetRemoteSuccessfulBuild()
-	assert.NoError(t, err)
-	build := &common.Build{
-		JobResponse: successfulBuild,
-		Runner: &common.RunnerConfig{
-			RunnerSettings: common.RunnerSettings{
-				Executor: "docker",
-				Docker: &common.DockerConfig{
-					Image:      common.TestAlpineImage,
-					PullPolicy: common.PullPolicyIfNotPresent,
+	for _, strategy := range dockerStrategies {
+		t.Run(strategy, func(t *testing.T) {
+			successfulBuild, err := common.GetRemoteSuccessfulBuild()
+			assert.NoError(t, err)
+			build := &common.Build{
+				JobResponse: successfulBuild,
+				Runner: &common.RunnerConfig{
+					RunnerSettings: common.RunnerSettings{
+						Executor: "docker",
+						Docker: &common.DockerConfig{
+							Image:      common.TestAlpineImage,
+							PullPolicy: common.PullPolicyIfNotPresent,
+						},
+					},
 				},
-			},
-		},
+			}
+			build.Variables = append(build.Variables, common.JobVariable{
+				Key: "DOCKER_STRATEGY", Value: strategy,
+			})
+
+			var buffer bytes.Buffer
+
+			err = build.Run(&common.Config{}, &common.Trace{Writer: &buffer})
+			assert.NoError(t, err)
+
+			re, err := regexp.Compile("(?m)^Cloning into '/builds/gitlab-org/gitlab-test'...")
+			assert.NoError(t, err)
+			assert.Regexp(t, re, buffer.String())
+		})
 	}
-
-	var buffer bytes.Buffer
-
-	err = build.Run(&common.Config{}, &common.Trace{Writer: &buffer})
-	assert.NoError(t, err)
-
-	re, err := regexp.Compile("(?m)^Cloning into '/builds/gitlab-org/gitlab-test'...")
-	assert.NoError(t, err)
-	assert.Regexp(t, re, buffer.String())
 }
 
 func TestDockerPrivilegedServiceAccessingBuildsFolder(t *testing.T) {
@@ -428,48 +502,57 @@ func TestDockerPrivilegedServiceAccessingBuildsFolder(t *testing.T) {
 		"cat test",
 	}
 
-	strategies := []string{
+	gitStrategies := []string{
 		"fetch",
 		"clone",
 	}
 
-	for _, strategy := range strategies {
-		t.Log("Testing", strategy, "strategy...")
-		longRunningBuild, err := common.GetRemoteLongRunningBuild()
-		assert.NoError(t, err)
-		build := &common.Build{
-			JobResponse: longRunningBuild,
-			Runner: &common.RunnerConfig{
-				RunnerSettings: common.RunnerSettings{
-					Executor: "docker",
-					Docker: &common.DockerConfig{
-						Image:      common.TestAlpineImage,
-						PullPolicy: common.PullPolicyIfNotPresent,
-						Privileged: true,
+	for _, dockerStrategy := range dockerStrategies {
+		for _, gitStrategy := range gitStrategies {
+			t.Run(fmt.Sprintf("dockerStrategy-%s-gitStrategy-%s", dockerStrategy, gitStrategy), func(t *testing.T) {
+				longRunningBuild, err := common.GetRemoteLongRunningBuild()
+				assert.NoError(t, err)
+				build := &common.Build{
+					JobResponse: longRunningBuild,
+					Runner: &common.RunnerConfig{
+						RunnerSettings: common.RunnerSettings{
+							Executor: "docker",
+							Docker: &common.DockerConfig{
+								Image:      common.TestAlpineImage,
+								PullPolicy: common.PullPolicyIfNotPresent,
+								Privileged: true,
+							},
+						},
 					},
-				},
-			},
-		}
-		build.Steps = common.Steps{
-			common.Step{
-				Name:         common.StepNameScript,
-				Script:       common.StepScript(commands),
-				When:         common.StepWhenOnSuccess,
-				AllowFailure: false,
-			},
-		}
-		build.Image.Name = common.TestDockerGitImage
-		build.Services = common.Services{
-			common.Image{
-				Name: common.TestDockerDindImage,
-			},
-		}
-		build.Variables = append(build.Variables, common.JobVariable{
-			Key: "GIT_STRATEGY", Value: strategy,
-		})
+				}
+				build.Steps = common.Steps{
+					common.Step{
+						Name:         common.StepNameScript,
+						Script:       common.StepScript(commands),
+						When:         common.StepWhenOnSuccess,
+						AllowFailure: false,
+					},
+				}
+				build.Image.Name = common.TestDockerGitImage
+				build.Services = common.Services{
+					common.Image{
+						Name: common.TestDockerDindImage,
+					},
+				}
+				build.Variables = append(build.Variables, common.JobVariable{
+					Key: "GIT_STRATEGY", Value: gitStrategy,
+				})
+				build.Variables = append(build.Variables, common.JobVariable{
+					Key: "DOCKER_STRATEGY", Value: dockerStrategy,
+				})
+				build.Variables = append(build.Variables, common.JobVariable{
+					Key: "DOCKER_HOST", Value: "tcp://docker:2375",
+				})
 
-		err = build.Run(&common.Config{}, &common.Trace{Writer: os.Stdout})
-		assert.NoError(t, err)
+				err = build.Run(&common.Config{}, &common.Trace{Writer: os.Stdout})
+				assert.NoError(t, err)
+			})
+		}
 	}
 }
 
@@ -553,15 +636,20 @@ func TestDockerExtendedConfigurationFromJob(t *testing.T) {
 	}
 
 	for exampleID, example := range examples {
-		t.Run(fmt.Sprintf("example-%d", exampleID), func(t *testing.T) {
-			build := getTestDockerJob(t)
-			build.Image = example.image
-			build.Services = example.services
-			build.Variables = append(build.Variables, example.variables...)
+		for _, strategy := range dockerStrategies {
+			t.Run(fmt.Sprintf("example-%d-%s", exampleID, strategy), func(t *testing.T) {
+				build := getTestDockerJob(t)
+				build.Image = example.image
+				build.Services = example.services
+				build.Variables = append(build.Variables, example.variables...)
+				build.Variables = append(build.Variables, common.JobVariable{
+					Key: "DOCKER_STRATEGY", Value: strategy,
+				})
 
-			err := build.Run(&common.Config{}, &common.Trace{Writer: os.Stdout})
-			assert.NoError(t, err)
-		})
+				err := build.Run(&common.Config{}, &common.Trace{Writer: os.Stdout})
+				assert.NoError(t, err)
+			})
+		}
 	}
 }
 
@@ -580,61 +668,68 @@ func TestCacheInContainer(t *testing.T) {
 		return
 	}
 
-	successfulBuild, err := common.GetRemoteSuccessfulBuild()
-	assert.NoError(t, err)
+	for _, strategy := range dockerStrategies {
+		t.Run(strategy, func(t *testing.T) {
+			successfulBuild, err := common.GetRemoteSuccessfulBuild()
+			assert.NoError(t, err)
 
-	successfulBuild.JobInfo.ProjectID = int(time.Now().Unix())
-	successfulBuild.Steps[0].Script = common.StepScript{
-		"(test -d cached/ && ls -lh cached/) || echo \"no cached directory\"",
-		"(test -f cached/date && cat cached/date) || echo \"no cached date\"",
-		"mkdir -p cached",
-		"date > cached/date",
-	}
-	successfulBuild.Cache = common.Caches{
-		common.Cache{
-			Key:    "key",
-			Paths:  common.ArtifactPaths{"cached/*"},
-			Policy: common.CachePolicyPullPush,
-		},
-	}
-
-	build := &common.Build{
-		JobResponse: successfulBuild,
-		Runner: &common.RunnerConfig{
-			RunnerSettings: common.RunnerSettings{
-				Executor: "docker",
-				Docker: &common.DockerConfig{
-					Image:      common.TestAlpineImage,
-					PullPolicy: common.PullPolicyIfNotPresent,
-					Volumes:    []string{"/cache"},
+			successfulBuild.JobInfo.ProjectID = int(time.Now().Unix())
+			successfulBuild.Steps[0].Script = common.StepScript{
+				"(test -d cached/ && ls -lh cached/) || echo \"no cached directory\"",
+				"(test -f cached/date && cat cached/date) || echo \"no cached date\"",
+				"mkdir -p cached",
+				"date > cached/date",
+			}
+			successfulBuild.Cache = common.Caches{
+				common.Cache{
+					Key:    "key",
+					Paths:  common.ArtifactPaths{"cached/*"},
+					Policy: common.CachePolicyPullPush,
 				},
-			},
-		},
+			}
+
+			build := &common.Build{
+				JobResponse: successfulBuild,
+				Runner: &common.RunnerConfig{
+					RunnerSettings: common.RunnerSettings{
+						Executor: "docker",
+						Docker: &common.DockerConfig{
+							Image:      common.TestAlpineImage,
+							PullPolicy: common.PullPolicyIfNotPresent,
+							Volumes:    []string{"/cache"},
+						},
+					},
+				},
+			}
+			build.Variables = append(build.Variables, common.JobVariable{
+				Key: "DOCKER_STRATEGY", Value: strategy,
+			})
+
+			cacheNotPresentRE := regexp.MustCompile("(?m)^no cached directory")
+			skipCacheDownload := "Not downloading cache key due to policy"
+			skipCacheUpload := "Not uploading cache key due to policy"
+
+			// The first job lacks any cache to pull, but tries to both pull and push
+			output := runTestJobWithOutput(t, build)
+			assert.Regexp(t, cacheNotPresentRE, output, "First job execution should not have cached data")
+			assert.NotContains(t, output, skipCacheDownload, "Cache download should be performed with policy: %s", common.CachePolicyPullPush)
+			assert.NotContains(t, output, skipCacheUpload, "Cache upload should be performed with policy: %s", common.CachePolicyPullPush)
+
+			// pull-only jobs should skip the push step
+			build.JobResponse.Cache[0].Policy = common.CachePolicyPull
+			output = runTestJobWithOutput(t, build)
+			assert.NotRegexp(t, cacheNotPresentRE, output, "Second job execution should have cached data")
+			assert.NotContains(t, output, skipCacheDownload, "Cache download should be performed with policy: %s", common.CachePolicyPull)
+			assert.Contains(t, output, skipCacheUpload, "Cache upload should be skipped with policy: %s", common.CachePolicyPull)
+
+			// push-only jobs should skip the pull step
+			build.JobResponse.Cache[0].Policy = common.CachePolicyPush
+			output = runTestJobWithOutput(t, build)
+			assert.Regexp(t, cacheNotPresentRE, output, "Third job execution should not have cached data")
+			assert.Contains(t, output, skipCacheDownload, "Cache download be skipped with policy: push")
+			assert.NotContains(t, output, skipCacheUpload, "Cache upload should be performed with policy: push")
+		})
 	}
-
-	cacheNotPresentRE := regexp.MustCompile("(?m)^no cached directory")
-	skipCacheDownload := "Not downloading cache key due to policy"
-	skipCacheUpload := "Not uploading cache key due to policy"
-
-	// The first job lacks any cache to pull, but tries to both pull and push
-	output := runTestJobWithOutput(t, build)
-	assert.Regexp(t, cacheNotPresentRE, output, "First job execution should not have cached data")
-	assert.NotContains(t, output, skipCacheDownload, "Cache download should be performed with policy: %s", common.CachePolicyPullPush)
-	assert.NotContains(t, output, skipCacheUpload, "Cache upload should be performed with policy: %s", common.CachePolicyPullPush)
-
-	// pull-only jobs should skip the push step
-	build.JobResponse.Cache[0].Policy = common.CachePolicyPull
-	output = runTestJobWithOutput(t, build)
-	assert.NotRegexp(t, cacheNotPresentRE, output, "Second job execution should have cached data")
-	assert.NotContains(t, output, skipCacheDownload, "Cache download should be performed with policy: %s", common.CachePolicyPull)
-	assert.Contains(t, output, skipCacheUpload, "Cache upload should be skipped with policy: %s", common.CachePolicyPull)
-
-	// push-only jobs should skip the pull step
-	build.JobResponse.Cache[0].Policy = common.CachePolicyPush
-	output = runTestJobWithOutput(t, build)
-	assert.Regexp(t, cacheNotPresentRE, output, "Third job execution should not have cached data")
-	assert.Contains(t, output, skipCacheDownload, "Cache download be skipped with policy: push")
-	assert.NotContains(t, output, skipCacheUpload, "Cache upload should be performed with policy: push")
 }
 
 func TestDockerImageNameFromVariable(t *testing.T) {
@@ -642,33 +737,42 @@ func TestDockerImageNameFromVariable(t *testing.T) {
 		return
 	}
 
-	successfulBuild, err := common.GetRemoteSuccessfulBuild()
-	successfulBuild.Variables = append(successfulBuild.Variables, common.JobVariable{
-		Key:   "CI_REGISTRY_IMAGE",
-		Value: common.TestAlpineImage,
-	})
-	successfulBuild.Image = common.Image{
-		Name: "$CI_REGISTRY_IMAGE",
-	}
-	assert.NoError(t, err)
-	build := &common.Build{
-		JobResponse: successfulBuild,
-		Runner: &common.RunnerConfig{
-			RunnerSettings: common.RunnerSettings{
-				Executor: "docker",
-				Docker: &common.DockerConfig{
-					Image:           common.TestAlpineImage,
-					PullPolicy:      common.PullPolicyIfNotPresent,
-					AllowedServices: []string{common.TestAlpineImage},
+	for _, strategy := range dockerStrategies {
+		t.Run(strategy, func(t *testing.T) {
+			successfulBuild, err := common.GetRemoteSuccessfulBuild()
+			assert.NoError(t, err)
+			successfulBuild.Variables = append(successfulBuild.Variables, common.JobVariable{
+				Key:   "CI_REGISTRY_IMAGE",
+				Value: common.TestAlpineImage,
+			})
+			successfulBuild.Image = common.Image{
+				Name: "$CI_REGISTRY_IMAGE",
+			}
+
+			build := &common.Build{
+				JobResponse: successfulBuild,
+				Runner: &common.RunnerConfig{
+					RunnerSettings: common.RunnerSettings{
+						Executor: "docker",
+						Docker: &common.DockerConfig{
+							Image:           common.TestAlpineImage,
+							PullPolicy:      common.PullPolicyIfNotPresent,
+							AllowedServices: []string{common.TestAlpineImage},
+						},
+					},
 				},
-			},
-		},
+			}
+			build.Variables = append(build.Variables, common.JobVariable{
+				Key: "DOCKER_STRATEGY", Value: strategy,
+			})
+
+			re := regexp.MustCompile("(?m)^ERROR: The [^ ]+ is not present on list of allowed images")
+
+			output := runTestJobWithOutput(t, build)
+			assert.NotRegexp(t, re, output, "Image's name should be expanded from variable")
+
+		})
 	}
-
-	re := regexp.MustCompile("(?m)^ERROR: The [^ ]+ is not present on list of allowed images")
-
-	output := runTestJobWithOutput(t, build)
-	assert.NotRegexp(t, re, output, "Image's name should be expanded from variable")
 }
 
 func TestDockerServiceNameFromVariable(t *testing.T) {
@@ -676,33 +780,41 @@ func TestDockerServiceNameFromVariable(t *testing.T) {
 		return
 	}
 
-	successfulBuild, err := common.GetRemoteSuccessfulBuild()
-	successfulBuild.Variables = append(successfulBuild.Variables, common.JobVariable{
-		Key:   "CI_REGISTRY_IMAGE",
-		Value: common.TestAlpineImage,
-	})
-	successfulBuild.Services = append(successfulBuild.Services, common.Image{
-		Name: "$CI_REGISTRY_IMAGE",
-	})
-	assert.NoError(t, err)
-	build := &common.Build{
-		JobResponse: successfulBuild,
-		Runner: &common.RunnerConfig{
-			RunnerSettings: common.RunnerSettings{
-				Executor: "docker",
-				Docker: &common.DockerConfig{
-					Image:           common.TestAlpineImage,
-					PullPolicy:      common.PullPolicyIfNotPresent,
-					AllowedServices: []string{common.TestAlpineImage},
+	for _, strategy := range dockerStrategies {
+		t.Run(strategy, func(t *testing.T) {
+			successfulBuild, err := common.GetRemoteSuccessfulBuild()
+			successfulBuild.Variables = append(successfulBuild.Variables, common.JobVariable{
+				Key:   "CI_REGISTRY_IMAGE",
+				Value: common.TestAlpineImage,
+			})
+			successfulBuild.Services = append(successfulBuild.Services, common.Image{
+				Name: "$CI_REGISTRY_IMAGE",
+			})
+			assert.NoError(t, err)
+			build := &common.Build{
+				JobResponse: successfulBuild,
+				Runner: &common.RunnerConfig{
+					RunnerSettings: common.RunnerSettings{
+						Executor: "docker",
+						Docker: &common.DockerConfig{
+							Image:           common.TestAlpineImage,
+							PullPolicy:      common.PullPolicyIfNotPresent,
+							AllowedServices: []string{common.TestAlpineImage},
+						},
+					},
 				},
-			},
-		},
+			}
+			build.Variables = append(build.Variables, common.JobVariable{
+				Key: "DOCKER_STRATEGY", Value: strategy,
+			})
+
+			re := regexp.MustCompile("(?m)^ERROR: The [^ ]+ is not present on list of allowed services")
+
+			output := runTestJobWithOutput(t, build)
+			assert.NotRegexp(t, re, output, "Service's name should be expanded from variable")
+
+		})
 	}
-
-	re := regexp.MustCompile("(?m)^ERROR: The [^ ]+ is not present on list of allowed services")
-
-	output := runTestJobWithOutput(t, build)
-	assert.NotRegexp(t, re, output, "Service's name should be expanded from variable")
 }
 
 func runDockerInDocker(version string) (id string, err error) {
@@ -779,25 +891,33 @@ func testDockerVersion(t *testing.T, version string) {
 
 	t.Log("Docker", version, "is running at", credentials.Host)
 
-	successfulBuild, err := common.GetRemoteSuccessfulBuild()
-	assert.NoError(t, err)
-	build := &common.Build{
-		JobResponse: successfulBuild,
-		Runner: &common.RunnerConfig{
-			RunnerSettings: common.RunnerSettings{
-				Executor: "docker",
-				Docker: &common.DockerConfig{
-					Image:             common.TestAlpineImage,
-					PullPolicy:        common.PullPolicyIfNotPresent,
-					DockerCredentials: credentials,
-					CPUS:              "0.1",
+	for _, strategy := range dockerStrategies {
+		t.Run(strategy, func(t *testing.T) {
+			successfulBuild, err := common.GetRemoteSuccessfulBuild()
+			assert.NoError(t, err)
+			build := &common.Build{
+				JobResponse: successfulBuild,
+				Runner: &common.RunnerConfig{
+					RunnerSettings: common.RunnerSettings{
+						Executor: "docker",
+						Docker: &common.DockerConfig{
+							Image:             common.TestAlpineImage,
+							PullPolicy:        common.PullPolicyIfNotPresent,
+							DockerCredentials: credentials,
+							CPUS:              "0.1",
+						},
+					},
 				},
-			},
-		},
-	}
+			}
+			build.Variables = append(build.Variables, common.JobVariable{
+				Key: "DOCKER_STRATEGY", Value: strategy,
+			})
 
-	err = build.Run(&common.Config{}, &common.Trace{Writer: os.Stdout})
-	assert.NoError(t, err)
+			err = build.Run(&common.Config{}, &common.Trace{Writer: os.Stdout})
+			assert.NoError(t, err)
+
+		})
+	}
 }
 
 func TestDocker1_8Compatibility(t *testing.T) {
@@ -877,31 +997,38 @@ func TestDockerCommandWithBrokenGitSSLCAInfo(t *testing.T) {
 		return
 	}
 
-	successfulBuild, err := common.GetRemoteBrokenTLSBuild()
-	assert.NoError(t, err)
-	build := &common.Build{
-		JobResponse: successfulBuild,
-		Runner: &common.RunnerConfig{
-			RunnerCredentials: common.RunnerCredentials{
-				URL: "https://gitlab.com",
-			},
-			RunnerSettings: common.RunnerSettings{
-				Executor: "docker",
-				Docker: &common.DockerConfig{
-					Image:      common.TestAlpineImage,
-					PullPolicy: common.PullPolicyIfNotPresent,
+	for _, strategy := range dockerStrategies {
+		t.Run(strategy, func(t *testing.T) {
+			successfulBuild, err := common.GetRemoteBrokenTLSBuild()
+			assert.NoError(t, err)
+			build := &common.Build{
+				JobResponse: successfulBuild,
+				Runner: &common.RunnerConfig{
+					RunnerCredentials: common.RunnerCredentials{
+						URL: "https://gitlab.com",
+					},
+					RunnerSettings: common.RunnerSettings{
+						Executor: "docker",
+						Docker: &common.DockerConfig{
+							Image:      common.TestAlpineImage,
+							PullPolicy: common.PullPolicyIfNotPresent,
+						},
+					},
 				},
-			},
-		},
+			}
+			build.Variables = append(build.Variables, common.JobVariable{
+				Key: "DOCKER_STRATEGY", Value: strategy,
+			})
+
+			var buffer bytes.Buffer
+
+			err = build.Run(&common.Config{}, &common.Trace{Writer: &buffer})
+			assert.Error(t, err)
+			out := buffer.String()
+			assert.Contains(t, out, "Cloning repository")
+			assert.NotContains(t, out, "Updating/initializing submodules")
+		})
 	}
-
-	var buffer bytes.Buffer
-
-	err = build.Run(&common.Config{}, &common.Trace{Writer: &buffer})
-	assert.Error(t, err)
-	out := buffer.String()
-	assert.Contains(t, out, "Cloning repository")
-	assert.NotContains(t, out, "Updating/initializing submodules")
 }
 
 func TestDockerCommandWithGitSSLCAInfo(t *testing.T) {
@@ -909,31 +1036,38 @@ func TestDockerCommandWithGitSSLCAInfo(t *testing.T) {
 		return
 	}
 
-	successfulBuild, err := common.GetRemoteGitLabComTLSBuild()
-	assert.NoError(t, err)
-	build := &common.Build{
-		JobResponse: successfulBuild,
-		Runner: &common.RunnerConfig{
-			RunnerCredentials: common.RunnerCredentials{
-				URL: "https://gitlab.com",
-			},
-			RunnerSettings: common.RunnerSettings{
-				Executor: "docker",
-				Docker: &common.DockerConfig{
-					Image:      common.TestAlpineImage,
-					PullPolicy: common.PullPolicyIfNotPresent,
+	for _, strategy := range dockerStrategies {
+		t.Run(strategy, func(t *testing.T) {
+			successfulBuild, err := common.GetRemoteGitLabComTLSBuild()
+			assert.NoError(t, err)
+			build := &common.Build{
+				JobResponse: successfulBuild,
+				Runner: &common.RunnerConfig{
+					RunnerCredentials: common.RunnerCredentials{
+						URL: "https://gitlab.com",
+					},
+					RunnerSettings: common.RunnerSettings{
+						Executor: "docker",
+						Docker: &common.DockerConfig{
+							Image:      common.TestAlpineImage,
+							PullPolicy: common.PullPolicyIfNotPresent,
+						},
+					},
 				},
-			},
-		},
+			}
+			build.Variables = append(build.Variables, common.JobVariable{
+				Key: "DOCKER_STRATEGY", Value: strategy,
+			})
+
+			var buffer bytes.Buffer
+
+			err = build.Run(&common.Config{}, &common.Trace{Writer: &buffer})
+			assert.NoError(t, err)
+			out := buffer.String()
+			assert.Contains(t, out, "Cloning repository")
+			assert.Contains(t, out, "Updating/initializing submodules")
+		})
 	}
-
-	var buffer bytes.Buffer
-
-	err = build.Run(&common.Config{}, &common.Trace{Writer: &buffer})
-	assert.NoError(t, err)
-	out := buffer.String()
-	assert.Contains(t, out, "Cloning repository")
-	assert.Contains(t, out, "Updating/initializing submodules")
 }
 
 func TestDockerCommandWithHelperImageConfig(t *testing.T) {
@@ -943,27 +1077,34 @@ func TestDockerCommandWithHelperImageConfig(t *testing.T) {
 
 	helperImageConfig := "gitlab/gitlab-runner-helper:x86_64-64eea86c"
 
-	successfulBuild, err := common.GetRemoteSuccessfulBuild()
-	assert.NoError(t, err)
-	build := &common.Build{
-		JobResponse: successfulBuild,
-		Runner: &common.RunnerConfig{
-			RunnerSettings: common.RunnerSettings{
-				Executor: "docker",
-				Docker: &common.DockerConfig{
-					Image:       common.TestAlpineImage,
-					HelperImage: helperImageConfig,
-					PullPolicy:  common.PullPolicyIfNotPresent,
+	for _, strategy := range dockerStrategies {
+		t.Run(strategy, func(t *testing.T) {
+			successfulBuild, err := common.GetRemoteSuccessfulBuild()
+			assert.NoError(t, err)
+			build := &common.Build{
+				JobResponse: successfulBuild,
+				Runner: &common.RunnerConfig{
+					RunnerSettings: common.RunnerSettings{
+						Executor: "docker",
+						Docker: &common.DockerConfig{
+							Image:       common.TestAlpineImage,
+							HelperImage: helperImageConfig,
+							PullPolicy:  common.PullPolicyIfNotPresent,
+						},
+					},
 				},
-			},
-		},
-	}
+			}
+			build.Variables = append(build.Variables, common.JobVariable{
+				Key: "DOCKER_STRATEGY", Value: strategy,
+			})
 
-	var buffer bytes.Buffer
-	err = build.Run(&common.Config{}, &common.Trace{Writer: &buffer})
-	assert.NoError(t, err)
-	out := buffer.String()
-	assert.Contains(t, out, "Using docker image sha256:bbd86c6ba107ae2feb8dbf9024df4b48597c44e1b584a3d901bba91f7fc500e3 for gitlab/gitlab-runner-helper:x86_64-64eea86c ...")
+			var buffer bytes.Buffer
+			err = build.Run(&common.Config{}, &common.Trace{Writer: &buffer})
+			assert.NoError(t, err)
+			out := buffer.String()
+			assert.Contains(t, out, "Using docker image sha256:bbd86c6ba107ae2feb8dbf9024df4b48597c44e1b584a3d901bba91f7fc500e3 for gitlab/gitlab-runner-helper:x86_64-64eea86c ...")
+		})
+	}
 }
 
 func TestDockerCommandWithDoingPruneAndAfterScript(t *testing.T) {
@@ -971,37 +1112,44 @@ func TestDockerCommandWithDoingPruneAndAfterScript(t *testing.T) {
 		return
 	}
 
-	successfulBuild, err := common.GetRemoteSuccessfulBuildWithAfterScript()
+	for _, strategy := range dockerStrategies {
+		t.Run(strategy, func(t *testing.T) {
+			successfulBuild, err := common.GetRemoteSuccessfulBuildWithAfterScript()
 
-	// This scripts removes self-created containers that do exit
-	// It will fail if: cannot be removed, or no containers is found
-	// It is assuming that name of each runner created container starts
-	// with `runner-doprune-`
-	successfulBuild.Steps[0].Script = common.StepScript{
-		"docker ps -a -f status=exited | grep runner-doprune-",
-		"docker rm $(docker ps -a -f status=exited | grep runner-doprune- | awk '{print $1}')",
-	}
+			// This scripts removes self-created containers that do exit
+			// It will fail if: cannot be removed, or no containers is found
+			// It is assuming that name of each runner created container starts
+			// with `runner-doprune-`
+			successfulBuild.Steps[0].Script = common.StepScript{
+				"docker ps -a -f status=exited | grep runner-doprune-",
+				"docker rm $(docker ps -a -f status=exited | grep runner-doprune- | awk '{print $1}')",
+			}
 
-	assert.NoError(t, err)
-	build := &common.Build{
-		JobResponse: successfulBuild,
-		Runner: &common.RunnerConfig{
-			RunnerCredentials: common.RunnerCredentials{
-				Token: "doprune",
-			},
-			RunnerSettings: common.RunnerSettings{
-				Executor: "docker",
-				Docker: &common.DockerConfig{
-					Image:      common.TestDockerGitImage,
-					PullPolicy: common.PullPolicyIfNotPresent,
-					Volumes: []string{
-						"/var/run/docker.sock:/var/run/docker.sock",
+			assert.NoError(t, err)
+			build := &common.Build{
+				JobResponse: successfulBuild,
+				Runner: &common.RunnerConfig{
+					RunnerCredentials: common.RunnerCredentials{
+						Token: "doprune",
+					},
+					RunnerSettings: common.RunnerSettings{
+						Executor: "docker",
+						Docker: &common.DockerConfig{
+							Image:      common.TestDockerGitImage,
+							PullPolicy: common.PullPolicyIfNotPresent,
+							Volumes: []string{
+								"/var/run/docker.sock:/var/run/docker.sock",
+							},
+						},
 					},
 				},
-			},
-		},
-	}
+			}
+			build.Variables = append(build.Variables, common.JobVariable{
+				Key: "DOCKER_STRATEGY", Value: strategy,
+			})
 
-	err = build.Run(&common.Config{}, &common.Trace{Writer: os.Stdout})
-	assert.NoError(t, err)
+			err = build.Run(&common.Config{}, &common.Trace{Writer: os.Stdout})
+			assert.NoError(t, err)
+		})
+	}
 }

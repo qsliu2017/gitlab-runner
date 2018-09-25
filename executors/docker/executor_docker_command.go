@@ -69,10 +69,18 @@ func (s *commandExecutor) requestBuildContainer() (*types.ContainerJSON, error) 
 	s.Lock()
 	defer s.Unlock()
 
-	if s.buildContainer == nil {
-		var err error
+	if s.buildContainer != nil {
+		return s.buildContainer, nil
+	}
 
-		// Start build container which will run actual build
+	var err error
+	switch s.Build.GetDockerStrategy() {
+	case common.DockerAttach:
+		s.buildContainer, err = s.createAttachableContainer("build", s.Build.Image, s.BuildShell.DockerCommand, []string{})
+		if err != nil {
+			return nil, err
+		}
+	case common.DockerExec:
 		s.buildContainer, err = s.createExecutableContainer("build", s.Build.Image, s.BuildShell.DockerCommand, []string{})
 		if err != nil {
 			return nil, err
@@ -102,7 +110,14 @@ func (s *commandExecutor) Run(cmd common.ExecutorCommand) error {
 		return s.attachContainer(cmd.Context, runOn.ID, bytes.NewBufferString(cmd.Script))
 	}
 
-	return s.execContainer(cmd.Context, runOn.ID, cmd.Script)
+	switch s.Build.GetDockerStrategy() {
+	case common.DockerAttach:
+		return s.attachContainer(cmd.Context, runOn.ID, bytes.NewBufferString(cmd.Script))
+	case common.DockerExec:
+		return s.execContainer(cmd.Context, runOn.ID, cmd.Script)
+	}
+
+	return nil
 }
 
 func init() {

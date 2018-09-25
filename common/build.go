@@ -61,6 +61,13 @@ const (
 	BuildStageUploadOnFailureArtifacts BuildStage = "upload_artifacts_on_failure"
 )
 
+type DockerStrategy int
+
+const (
+	DockerAttach DockerStrategy = iota
+	DockerExec
+)
+
 type Build struct {
 	JobResponse `yaml:",inline"`
 
@@ -606,6 +613,19 @@ func (b *Build) GetSubmoduleStrategy() SubmoduleStrategy {
 	default:
 		// Will cause an error in AbstractShell) writeSubmoduleUpdateCmds
 		return SubmoduleInvalid
+	}
+}
+
+func (b *Build) GetDockerStrategy() DockerStrategy {
+	switch b.GetAllVariables().Get("DOCKER_STRATEGY") {
+	case "attach":
+		return DockerAttach
+
+	case "exec":
+		return DockerExec
+
+	default:
+		return DockerAttach
 	}
 }
 

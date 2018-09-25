@@ -661,3 +661,37 @@ func TestIsFeatureFlagOn(t *testing.T) {
 	}
 
 }
+
+func TestGetDockerStrategy(t *testing.T) {
+	cases := []struct {
+		strategy         string
+		expectedStrategy DockerStrategy
+	}{
+		{
+			strategy:         "attach",
+			expectedStrategy: DockerAttach,
+		},
+		{
+			strategy:         "exec",
+			expectedStrategy: DockerExec,
+		},
+		{
+			strategy:         "unkown",
+			expectedStrategy: DockerAttach,
+		},
+	}
+
+	for _, c := range cases {
+		t.Run(fmt.Sprintf("docker strategy %s", c.strategy), func(t *testing.T) {
+			build := &Build{
+				JobResponse: JobResponse{
+					Variables: JobVariables{
+						JobVariable{Key: "DOCKER_STRATEGY", Value: c.strategy},
+					},
+				},
+			}
+
+			assert.Equal(t, c.expectedStrategy, build.GetDockerStrategy())
+		})
+	}
+}
