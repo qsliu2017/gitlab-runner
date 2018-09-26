@@ -42,8 +42,8 @@ func (c *CacheExtractorCommand) download() (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	defer file.Close()
 	defer os.Remove(file.Name())
+	defer file.Close()
 
 	resp, err := c.getClient().Get(c.URL)
 	if err != nil {
