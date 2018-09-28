@@ -56,8 +56,6 @@ func NewSession(logger *logrus.Entry) (*Session, error) {
 		log: logger,
 	}
 
-	sess.setMux()
-
 	return sess, nil
 }
 
@@ -82,14 +80,6 @@ func generateToken() (string, error) {
 	}
 
 	return token, nil
-}
-
-func (s *Session) setMux() {
-	s.Lock()
-	defer s.Unlock()
-
-	s.mux = http.NewServeMux()
-	s.mux.HandleFunc(s.Endpoint+"/exec", s.execHandler)
 }
 
 func (s *Session) execHandler(w http.ResponseWriter, r *http.Request) {
@@ -174,10 +164,17 @@ func (s *Session) closeTerminalConn(conn terminal.Conn) {
 func (s *Session) SetInteractiveTerminal(interactiveTerminal terminal.InteractiveTerminal) {
 	s.Lock()
 	defer s.Unlock()
+
 	s.interactiveTerminal = interactiveTerminal
+
+	s.mux = http.NewServeMux()
+	s.mux.HandleFunc(s.Endpoint+"/exec", s.execHandler)
 }
 
 func (s *Session) Mux() *http.ServeMux {
+	s.Lock()
+	defer s.Unlock()
+
 	return s.mux
 }
 
