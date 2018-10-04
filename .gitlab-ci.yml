@@ -104,6 +104,7 @@ helper images:
   <<: *docker
   stage: prebuild
   script:
+  - docker run --rm --privileged multiarch/qemu-user-static:register --reset
   - make helper-build helper-docker
   artifacts:
     paths:
