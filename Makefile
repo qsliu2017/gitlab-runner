@@ -22,11 +22,11 @@ DEB_PLATFORMS ?= debian/jessie debian/stretch debian/buster \
     ubuntu/xenial ubuntu/bionic \
     raspbian/jessie raspbian/stretch raspbian/buster \
     linuxmint/sarah linuxmint/serena linuxmint/sonya
-DEB_ARCHS ?= amd64 i386 armel armhf
+DEB_ARCHS ?= amd64 i386 armel armhf arm64
 RPM_PLATFORMS ?= el/6 el/7 \
     ol/6 ol/7 \
     fedora/29 fedora/30
-RPM_ARCHS ?= x86_64 i686 arm armhf
+RPM_ARCHS ?= x86_64 i686 arm armhf arm64
 
 PKG = gitlab.com/gitlab-org/$(PACKAGE_NAME)
 COMMON_PACKAGE_NAMESPACE=$(PKG)/common
@@ -206,6 +206,7 @@ package-deb: package-deps package-prepare
 	make package-deb-fpm ARCH=386 PACKAGE_ARCH=i386
 	make package-deb-fpm ARCH=arm PACKAGE_ARCH=armel
 	make package-deb-fpm ARCH=arm PACKAGE_ARCH=armhf
+	make package-deb-fpm ARCH=arm64 PACKAGE_ARCH=arm64
 
 package-rpm: package-deps package-prepare
 	# Building RedHat compatible packages...
@@ -213,6 +214,7 @@ package-rpm: package-deps package-prepare
 	make package-rpm-fpm ARCH=386 PACKAGE_ARCH=i686
 	make package-rpm-fpm ARCH=arm PACKAGE_ARCH=arm
 	make package-rpm-fpm ARCH=arm PACKAGE_ARCH=armhf
+	make package-rpm-fpm ARCH=arm64 PACKAGE_ARCH=arm64
 
 package-deb-fpm:
 	@mkdir -p out/deb/

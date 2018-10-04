@@ -20,3 +20,4 @@ fi
 
 # launch gitlab-runner passing all arguments
 exec gitlab-runner "$@"
+

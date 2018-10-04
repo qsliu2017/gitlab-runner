@@ -1,1 +1,5 @@
 `gitlab/gitlab-runner:alpine` is image with minimal footprint based on Alpine Linux that runs GitLab Runner.
+
+`gitlab/gitlab-runner:arm` is image with minimal footprint based on Alpine Linux that runs GitLab Runner.
+
+`gitlab/gitlab-runner:arm64` is image with minimal footprint based on Alpine Linux that runs GitLab Runner.

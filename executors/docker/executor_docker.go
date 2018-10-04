@@ -10,6 +10,7 @@ import (
 	"path"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -20,7 +21,7 @@ import (
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/kardianos/osext"
-	"github.com/mattn/go-zglob"
+	zglob "github.com/mattn/go-zglob"
 	"github.com/sirupsen/logrus"
 
 	"gitlab.com/gitlab-org/gitlab-runner/common"
@@ -255,6 +256,29 @@ func (e *executor) expandAndGetDockerImage(imageName string, allowedImages []str
 	}
 
 	return image, nil
+}
+
+func (e *executor) getArchitecture() string {
+	architecture := e.info.Architecture
+	switch architecture {
+	case "armv6l", "armv7l":
+		architecture = "arm"
+	case "aarch64":
+		architecture = "arm64"
+	case "amd64":
+		architecture = "x86_64"
+	}
+
+	if architecture != "" {
+		return architecture
+	}
+
+	switch runtime.GOARCH {
+	case "amd64":
+		return "x86_64"
+	default:
+		return runtime.GOARCH
+	}
 }
 
 func (e *executor) loadPrebuiltImage(path, ref, tag string) (*types.ImageInspect, error) {
