@@ -23,8 +23,8 @@ import (
 
 	"github.com/jpillora/backoff"
 	"github.com/sirupsen/logrus"
-
 	"gitlab.com/gitlab-org/gitlab-runner/common"
+	"gitlab.com/gitlab-org/gitlab-runner/helpers"
 )
 
 type requestCredentials interface {
@@ -251,6 +251,9 @@ func (n *client) do(uri, method string, request io.Reader, requestType string, h
 		return
 	}
 
+	reqID, _ := helpers.GenerateRandomUUID(10)
+	dumpRequestBody(reqID, method, url, request)
+
 	req, err := http.NewRequest(method, url.String(), request)
 	if err != nil {
 		err = fmt.Errorf("failed to create NewRequest: %v", err)
@@ -269,7 +272,56 @@ func (n *client) do(uri, method string, request io.Reader, requestType string, h
 	n.ensureTLSConfig()
 
 	res, err = n.doBackoffRequest(req)
+
+	dumpResponseBody(reqID, method, url, res)
+
 	return
+}
+
+func dumpRequestBody(reqID string, method string, url *url.URL, request io.Reader) {
+	if logrus.GetLevel() < logrus.DebugLevel || request == nil {
+		return
+	}
+
+	req, ok := request.(*bytes.Reader)
+	if !ok {
+		return
+	}
+
+	body, err := ioutil.ReadAll(req)
+	req.Reset(body)
+
+	if err == nil {
+		logrus.WithFields(logrus.Fields{
+			"reqID":  reqID,
+			"Method": method,
+			"URI":    url.String(),
+		}).Debugf("Sending request: %s", string(body))
+	} else {
+		logrus.WithError(err).Debug("Error while LOGGING sent request.")
+	}
+}
+
+func dumpResponseBody(reqID string, method string, url *url.URL, response *http.Response) {
+	if logrus.GetLevel() < logrus.DebugLevel || response == nil || response.Body == nil {
+		return
+	}
+
+	body, err := ioutil.ReadAll(response.Body)
+	response.Body.Close()
+	response.Body = ioutil.NopCloser(bytes.NewReader(body))
+
+	if err == nil {
+		logrus.WithFields(logrus.Fields{
+			"reqID":      reqID,
+			"Method":     method,
+			"URI":        url.String(),
+			"StatusCode": response.StatusCode,
+			"Status":     response.Status,
+		}).Debugf("Received response: %s", string(body))
+	} else {
+		logrus.WithError(err).Debug("Error while LOGGING received response.")
+	}
 }
 
 func (n *client) doJSON(uri, method string, statusCode int, request interface{}, response interface{}) (int, string, ResponseTLSData, *http.Response) {

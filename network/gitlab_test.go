@@ -13,6 +13,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -118,7 +119,18 @@ func testRegisterRunnerHandler(w http.ResponseWriter, r *http.Request, t *testin
 	w.Write(output)
 }
 
+func setLogrusDebug() func() {
+	oldLevel := logrus.GetLevel()
+	logrus.SetLevel(logrus.DebugLevel)
+
+	return func() {
+		logrus.SetLevel(oldLevel)
+	}
+}
+
 func TestRegisterRunner(t *testing.T) {
+	defer setLogrusDebug()()
+
 	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		testRegisterRunnerHandler(w, r, t)
 	}))
@@ -188,6 +200,8 @@ func testUnregisterRunnerHandler(w http.ResponseWriter, r *http.Request, t *test
 }
 
 func TestUnregisterRunner(t *testing.T) {
+	defer setLogrusDebug()()
+
 	handler := func(w http.ResponseWriter, r *http.Request) {
 		testUnregisterRunnerHandler(w, r, t)
 	}
