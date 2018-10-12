@@ -1,7 +1,7 @@
 ---
-toc: false
+toc: true
 comments: false
-last_updated: 2017-10-09
+last_updated: 2017-10-12
 ---
 
 # GitLab Runner
