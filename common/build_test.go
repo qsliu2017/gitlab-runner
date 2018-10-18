@@ -661,3 +661,8 @@ func TestIsFeatureFlagOn(t *testing.T) {
 	}
 
 }
+
+func TestForceFailure(t *testing.T) {
+	t.Log("Temporary failure for junit integration testing purpose")
+	t.Fail()
+}
