@@ -419,7 +419,7 @@ func (e *executor) createCacheVolume(containerName, containerPath string) (strin
 	}
 
 	e.Debugln("Waiting for cache container", resp.ID, "...")
-	err = e.waitForContainer(e.Context, resp.ID)
+	err = e.waitForContainerAttach(e.Context, resp.ID)
 	if err != nil {
 		e.temporary = append(e.temporary, resp.ID)
 		return "", err
@@ -973,7 +973,7 @@ func (e *executor) killContainer(id string, waitCh chan error) (err error) {
 	}
 }
 
-func (e *executor) waitForContainer(ctx context.Context, id string) error {
+func (e *executor) waitForContainerAttach(ctx context.Context, id string) error {
 	e.Debugln("Waiting for container", id, "...")
 
 	retries := 0
@@ -1015,13 +1015,13 @@ func (e *executor) waitForContainer(ctx context.Context, id string) error {
 	return ctx.Err()
 }
 
-func (e *executor) waitForContainerExec(id string) error {
+func (e *executor) waitForContainerExec(ctx context.Context, id string) error {
 	e.Debugln("Waiting for container exec", id, "...")
 
 	retries := 0
 
 	// Use active wait
-	for {
+	for ctx.Err() == nil {
 		exec, err := e.client.ContainerExecInspect(e.Context, id)
 		if err != nil {
 			if docker_helpers.IsErrNotFound(err) {
@@ -1052,6 +1052,30 @@ func (e *executor) waitForContainerExec(id string) error {
 		}
 
 		return nil
+	}
+
+	return ctx.Err()
+}
+
+func (e *executor) waitForContainer(ctx context.Context, id string, logCh chan error, waitFunc func() error) error {
+	waitCh := make(chan error, 1)
+	go func() {
+		waitCh <- waitFunc()
+	}()
+
+	select {
+	case <-ctx.Done():
+		e.killContainer(id, waitCh)
+		return errors.New("Aborted")
+
+	case err := <-logCh:
+		e.killContainer(id, waitCh)
+		e.Debugln("Container", id, "finished with", err)
+		return err
+
+	case err := <-waitCh:
+		e.Debugln("Container", id, "finished with", err)
+		return err
 	}
 }
 
@@ -1096,25 +1120,9 @@ func (e *executor) attachContainer(ctx context.Context, id string, input io.Read
 		}
 	}()
 
-	waitCh := make(chan error, 1)
-	go func() {
-		waitCh <- e.waitForContainer(e.Context, id)
-	}()
-
-	select {
-	case <-ctx.Done():
-		e.killContainer(id, waitCh)
-		return errors.New("Aborted")
-
-	case err := <-attachCh:
-		e.killContainer(id, waitCh)
-		e.Debugln("Container", id, "finished with", err)
-		return err
-
-	case err := <-waitCh:
-		e.Debugln("Container", id, "finished with", err)
-		return err
-	}
+	return e.waitForContainer(ctx, id, attachCh, func() error {
+		return e.waitForContainerAttach(ctx, id)
+	})
 }
 
 func (e *executor) execContainer(ctx context.Context, id string, input string) error {
@@ -1159,25 +1167,9 @@ func (e *executor) execContainer(ctx context.Context, id string, input string) e
 		}
 	}()
 
-	waitCh := make(chan error, 1)
-	go func() {
-		waitCh <- e.waitForContainerExec(exec.ID)
-	}()
-
-	select {
-	case <-ctx.Done():
-		e.killContainer(id, waitCh)
-		return errors.New("Aborted")
-
-	case err := <-execCh:
-		e.killContainer(id, waitCh)
-		e.Debugln("Container exec", id, "finished with", err)
-		return err
-
-	case err := <-waitCh:
-		e.Debugln("Container exec", id, "finished with", err)
-		return err
-	}
+	return e.waitForContainer(ctx, id, execCh, func() error {
+		return e.waitForContainerExec(ctx, exec.ID)
+	})
 }
 
 func (e *executor) removeContainer(ctx context.Context, id string) error {
@@ -1445,7 +1437,7 @@ func (e *executor) runServiceHealthCheckContainer(service *types.Container, time
 
 	waitResult := make(chan error, 1)
 	go func() {
-		waitResult <- e.waitForContainer(e.Context, resp.ID)
+		waitResult <- e.waitForContainerAttach(e.Context, resp.ID)
 	}()
 
 	// these are warnings and they don't make the build fail
