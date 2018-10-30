@@ -129,13 +129,19 @@ func TestDockerCommandWithAllowedImagesRun(t *testing.T) {
 		t.Run(strategy, func(t *testing.T) {
 			successfulBuild, err := common.GetRemoteSuccessfulBuild()
 			successfulBuild.Image = common.Image{Name: "$IMAGE_NAME"}
-			successfulBuild.Variables = append(successfulBuild.Variables, common.JobVariable{
-				Key:      "IMAGE_NAME",
-				Value:    common.TestAlpineImage,
-				Public:   true,
-				Internal: false,
-				File:     false,
-			})
+			successfulBuild.Variables = append(
+				successfulBuild.Variables,
+				common.JobVariable{
+					Key:      "IMAGE_NAME",
+					Value:    common.TestAlpineImage,
+					Public:   true,
+					Internal: false,
+					File:     false,
+				},
+				common.JobVariable{
+					Key: "DOCKER_STRATEGY", Value: strategy,
+				},
+			)
 			successfulBuild.Services = append(successfulBuild.Services, common.Image{Name: common.TestDockerDindImage})
 			assert.NoError(t, err)
 			build := &common.Build{
@@ -152,9 +158,6 @@ func TestDockerCommandWithAllowedImagesRun(t *testing.T) {
 					},
 				},
 			}
-			build.Variables = append(build.Variables, common.JobVariable{
-				Key: "DOCKER_STRATEGY", Value: strategy,
-			})
 
 			err = build.Run(&common.Config{}, &common.Trace{Writer: os.Stdout})
 			assert.NoError(t, err)
@@ -783,10 +786,16 @@ func TestDockerServiceNameFromVariable(t *testing.T) {
 	for _, strategy := range dockerStrategies {
 		t.Run(strategy, func(t *testing.T) {
 			successfulBuild, err := common.GetRemoteSuccessfulBuild()
-			successfulBuild.Variables = append(successfulBuild.Variables, common.JobVariable{
-				Key:   "CI_REGISTRY_IMAGE",
-				Value: common.TestAlpineImage,
-			})
+			successfulBuild.Variables = append(
+				successfulBuild.Variables,
+				common.JobVariable{
+					Key:   "CI_REGISTRY_IMAGE",
+					Value: common.TestAlpineImage,
+				},
+				common.JobVariable{
+					Key: "DOCKER_STRATEGY", Value: strategy,
+				},
+			)
 			successfulBuild.Services = append(successfulBuild.Services, common.Image{
 				Name: "$CI_REGISTRY_IMAGE",
 			})
@@ -804,9 +813,6 @@ func TestDockerServiceNameFromVariable(t *testing.T) {
 					},
 				},
 			}
-			build.Variables = append(build.Variables, common.JobVariable{
-				Key: "DOCKER_STRATEGY", Value: strategy,
-			})
 
 			re := regexp.MustCompile("(?m)^ERROR: The [^ ]+ is not present on list of allowed services")
 
