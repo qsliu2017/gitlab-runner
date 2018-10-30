@@ -836,35 +836,35 @@ func (e *executor) getValidContainers(containers []string) []string {
 }
 
 func (e *executor) createAttachableContainer(containerType string, imageDefinition common.Image, cmd []string, allowedInternalImages []string) (*types.ContainerJSON, error) {
-	config := &container.Config{
-		Cmd:          cmd,
-		Labels:       e.getLabels(containerType),
-		Tty:          false,
-		AttachStdin:  true,
-		AttachStdout: true,
-		AttachStderr: true,
-		OpenStdin:    true,
-		StdinOnce:    true,
-		Env:          append(e.Build.GetAllVariables().StringList(), e.BuildShell.Environment...),
-	}
+	config := e.newContainerConfig(cmd, containerType)
+	config.Tty = false
+	config.AttachStdin = true
+	config.AttachStdout = true
+	config.AttachStderr = true
+	config.OpenStdin = true
+	config.StdinOnce = true
 
 	return e.createContainer(containerType, imageDefinition, allowedInternalImages, config)
 }
 
 func (e *executor) createExecutableContainer(containerType string, imageDefinition common.Image, cmd []string, allowedInternalImages []string) (*types.ContainerJSON, error) {
-	config := &container.Config{
-		Cmd:          cmd,
-		Labels:       e.getLabels(containerType),
-		Tty:          true,
-		AttachStdin:  false,
-		AttachStdout: false,
-		AttachStderr: false,
-		OpenStdin:    false,
-		StdinOnce:    false,
-		Env:          append(e.Build.GetAllVariables().StringList(), e.BuildShell.Environment...),
-	}
+	config := e.newContainerConfig(cmd, containerType)
+	config.Tty = true
+	config.AttachStdin = false
+	config.AttachStdout = false
+	config.AttachStderr = false
+	config.OpenStdin = false
+	config.StdinOnce = false
 
 	return e.createContainer(containerType, imageDefinition, allowedInternalImages, config)
+}
+
+func (e *executor) newContainerConfig(cmd []string, containerType string) *container.Config {
+	return &container.Config{
+		Cmd:    cmd,
+		Labels: e.getLabels(containerType),
+		Env:    append(e.Build.GetAllVariables().StringList(), e.BuildShell.Environment...),
+	}
 }
 
 func (e *executor) createContainer(containerType string, imageDefinition common.Image, allowedInternalImages []string, config *container.Config) (*types.ContainerJSON, error) {
