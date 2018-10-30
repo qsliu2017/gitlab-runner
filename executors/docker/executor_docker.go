@@ -991,7 +991,7 @@ func (e *executor) waitForContainer(ctx context.Context, id string) error {
 			}
 
 			retries++
-			time.Sleep(time.Second)
+			time.Sleep(backOffDurationWaitForContainer)
 			continue
 		}
 
@@ -999,7 +999,7 @@ func (e *executor) waitForContainer(ctx context.Context, id string) error {
 		retries = 0
 
 		if container.State.Running {
-			time.Sleep(time.Second)
+			time.Sleep(backOffDurationWaitForContainer)
 			continue
 		}
 
@@ -1033,7 +1033,7 @@ func (e *executor) waitForContainerExec(id string) error {
 			}
 
 			retries++
-			time.Sleep(time.Second)
+			time.Sleep(backOffDurationWaitForContainer)
 			continue
 		}
 
@@ -1041,7 +1041,7 @@ func (e *executor) waitForContainerExec(id string) error {
 		retries = 0
 
 		if exec.Running {
-			time.Sleep(time.Second)
+			time.Sleep(backOffDurationWaitForContainer)
 			continue
 		}
 
