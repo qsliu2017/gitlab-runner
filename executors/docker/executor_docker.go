@@ -66,6 +66,13 @@ type executor struct {
 	usedImagesLock sync.RWMutex
 }
 
+type containerRuntimeSpecification struct {
+	containerType         string
+	cmd                   []string
+	allowedInternalImages []string
+	imageDefinition       common.Image
+}
+
 func init() {
 	runnerFolder, err := osext.ExecutableFolder()
 	if err != nil {
@@ -835,8 +842,8 @@ func (e *executor) getValidContainers(containers []string) []string {
 	return newContainers
 }
 
-func (e *executor) createAttachableContainer(containerType string, imageDefinition common.Image, cmd []string, allowedInternalImages []string) (*types.ContainerJSON, error) {
-	config := e.newContainerConfig(cmd, containerType)
+func (e *executor) createAttachableContainer(specs containerRuntimeSpecification) (*types.ContainerJSON, error) {
+	config := e.newContainerConfig(specs.cmd, specs.containerType)
 	config.Tty = false
 	config.AttachStdin = true
 	config.AttachStdout = true
@@ -844,11 +851,11 @@ func (e *executor) createAttachableContainer(containerType string, imageDefiniti
 	config.OpenStdin = true
 	config.StdinOnce = true
 
-	return e.createContainer(containerType, imageDefinition, allowedInternalImages, config)
+	return e.createContainer(specs, config)
 }
 
-func (e *executor) createExecutableContainer(containerType string, imageDefinition common.Image, cmd []string, allowedInternalImages []string) (*types.ContainerJSON, error) {
-	config := e.newContainerConfig(cmd, containerType)
+func (e *executor) createExecutableContainer(specs containerRuntimeSpecification) (*types.ContainerJSON, error) {
+	config := e.newContainerConfig(specs.cmd, specs.containerType)
 	config.Tty = true
 	config.AttachStdin = false
 	config.AttachStdout = false
@@ -856,7 +863,7 @@ func (e *executor) createExecutableContainer(containerType string, imageDefiniti
 	config.OpenStdin = false
 	config.StdinOnce = false
 
-	return e.createContainer(containerType, imageDefinition, allowedInternalImages, config)
+	return e.createContainer(specs, config)
 }
 
 func (e *executor) newContainerConfig(cmd []string, containerType string) *container.Config {
@@ -867,8 +874,8 @@ func (e *executor) newContainerConfig(cmd []string, containerType string) *conta
 	}
 }
 
-func (e *executor) createContainer(containerType string, imageDefinition common.Image, allowedInternalImages []string, config *container.Config) (*types.ContainerJSON, error) {
-	image, err := e.expandAndGetDockerImage(imageDefinition.Name, allowedInternalImages)
+func (e *executor) createContainer(specs containerRuntimeSpecification, config *container.Config) (*types.ContainerJSON, error) {
+	image, err := e.expandAndGetDockerImage(specs.imageDefinition.Name, specs.allowedInternalImages)
 	if err != nil {
 		return nil, err
 	}
@@ -882,9 +889,9 @@ func (e *executor) createContainer(containerType string, imageDefinition common.
 	// Always create unique, but sequential name
 	containerIndex := len(e.builds)
 	containerName := e.Build.ProjectUniqueName() + "-" +
-		containerType + "-" + strconv.Itoa(containerIndex)
+		specs.containerType + "-" + strconv.Itoa(containerIndex)
 
-	config.Entrypoint = e.overwriteEntrypoint(&imageDefinition)
+	config.Entrypoint = e.overwriteEntrypoint(&specs.imageDefinition)
 
 	nanoCPUs, err := e.Config.Docker.GetNanoCPUs()
 	if err != nil {

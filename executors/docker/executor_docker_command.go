@@ -57,7 +57,12 @@ func (s *commandExecutor) requestNewPredefinedContainer() (*types.ContainerJSON,
 		Name: prebuildImage.ID,
 	}
 
-	containerJSON, err := s.createAttachableContainer("predefined", buildImage, common.ContainerCommandBuild, []string{prebuildImage.ID})
+	containerJSON, err := s.createAttachableContainer(containerRuntimeSpecification{
+		containerType: "predefined",
+		cmd:           common.ContainerCommandBuild,
+		allowedInternalImages: []string{prebuildImage.ID},
+		imageDefinition:       buildImage,
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -73,15 +78,22 @@ func (s *commandExecutor) requestBuildContainer() (*types.ContainerJSON, error) 
 		return s.buildContainer, nil
 	}
 
+	runtimeSpecs := containerRuntimeSpecification{
+		containerType: "build",
+		cmd:           s.BuildShell.DockerCommand,
+		allowedInternalImages: []string{},
+		imageDefinition:       s.Build.Image,
+	}
+
 	var err error
 	switch s.Build.GetDockerStrategy() {
 	case common.DockerAttach:
-		s.buildContainer, err = s.createAttachableContainer("build", s.Build.Image, s.BuildShell.DockerCommand, []string{})
+		s.buildContainer, err = s.createAttachableContainer(runtimeSpecs)
 		if err != nil {
 			return nil, err
 		}
 	case common.DockerExec:
-		s.buildContainer, err = s.createExecutableContainer("build", s.Build.Image, s.BuildShell.DockerCommand, []string{})
+		s.buildContainer, err = s.createExecutableContainer(runtimeSpecs)
 		if err != nil {
 			return nil, err
 		}

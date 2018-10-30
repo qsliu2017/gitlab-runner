@@ -887,7 +887,12 @@ func TestDockerWatchOn_1_12_4(t *testing.T) {
 	err := e.connectDocker()
 	assert.NoError(t, err)
 
-	container, err := e.createAttachableContainer("build", common.Image{Name: common.TestAlpineImage}, []string{"/bin/sh"}, []string{})
+	container, err := e.createAttachableContainer(containerRuntimeSpecification{
+		containerType: "build",
+		cmd:           []string{"/bin/sh"},
+		allowedInternalImages: []string{},
+		imageDefinition:       common.Image{Name: common.TestAlpineImage},
+	})
 	assert.NoError(t, err)
 	assert.NotNil(t, container)
 
@@ -965,7 +970,12 @@ func testDockerConfigurationWithJobContainer(t *testing.T, dockerConfig *common.
 	c.On("ContainerInspect", mock.Anything, "abc").
 		Return(types.ContainerJSON{}, nil).Once()
 
-	_, err := e.createAttachableContainer("build", common.Image{Name: "alpine"}, []string{"/bin/sh"}, []string{})
+	_, err := e.createAttachableContainer(containerRuntimeSpecification{
+		containerType: "build",
+		cmd:           []string{"/bin/sh"},
+		allowedInternalImages: []string{},
+		imageDefinition:       common.Image{Name: "alpine"},
+	})
 	assert.NoError(t, err, "Should create container without errors")
 }
 
