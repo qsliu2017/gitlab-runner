@@ -10,15 +10,6 @@ import (
 	"gitlab.com/gitlab-org/gitlab-runner/helpers/url"
 )
 
-func (e *BuildLogger) getCurrentFormattedTime() string {
-	dateTimeFormat := "2006-01-02 15:04 MST"
-	datetime, err := time.Parse(dateTimeFormat, time.Now().UTC().String())
-	if err != nil {
-		return time.Now().UTC().String()
-	}
-	return datetime.String()
-}
-
 type BuildLogger struct {
 	log   JobTrace
 	entry *logrus.Entry
@@ -37,7 +28,7 @@ func (e *BuildLogger) SendRawLog(args ...interface{}) {
 func (e *BuildLogger) sendLog(logger func(args ...interface{}), logPrefix string, args ...interface{}) {
 	if e.log != nil {
 		logLine := url_helpers.ScrubSecrets(logPrefix + fmt.Sprintln(args...))
-		e.SendRawLog(helpers.ANSI_BOLD_CYAN + e.getCurrentFormattedTime() + helpers.ANSI_RESET + "\n")
+		e.SendRawLog(helpers.ANSI_BOLD_CYAN + time.Now().UTC().String() + helpers.ANSI_RESET + "\n")
 		e.SendRawLog(logLine)
 		e.SendRawLog(helpers.ANSI_RESET)
 
