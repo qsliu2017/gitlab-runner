@@ -78,7 +78,7 @@ func (e *BuildLogger) Warningln(args ...interface{}) {
 	if e.entry == nil {
 		return
 	}
-	e.sendLog(e.entry.Warningln, helpers.ANSI_BOLD_CYAN+"WARNING: ", args...)
+	e.sendLog(e.entry.Warningln, helpers.ANSI_BOLD_YELLOW+"WARNING: ", args...)
 }
 
 func (e *BuildLogger) SoftErrorln(args ...interface{}) {
