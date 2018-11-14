@@ -51,6 +51,8 @@ func (b *BashWriter) GetTemporaryPath() string {
 }
 
 func (b *BashWriter) Line(text string) {
+	timeStamp := "echo " + helpers.ANSI_BOLD_CYAN + "`date -u`" + helpers.ANSI_RESET
+	b.WriteString(timeStamp + "\n")
 	b.WriteString(strings.Repeat("  ", b.indent) + text + "\n")
 }
 
