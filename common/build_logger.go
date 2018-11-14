@@ -2,7 +2,6 @@ package common
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/sirupsen/logrus"
 
@@ -28,7 +27,6 @@ func (e *BuildLogger) SendRawLog(args ...interface{}) {
 func (e *BuildLogger) sendLog(logger func(args ...interface{}), logPrefix string, args ...interface{}) {
 	if e.log != nil {
 		logLine := url_helpers.ScrubSecrets(logPrefix + fmt.Sprintln(args...))
-		e.SendRawLog(helpers.ANSI_BOLD_CYAN + time.Now().UTC().String() + helpers.ANSI_RESET + "\n")
 		e.SendRawLog(logLine)
 		e.SendRawLog(helpers.ANSI_RESET)
 
