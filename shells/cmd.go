@@ -188,21 +188,21 @@ func (b *CmdWriter) Print(format string, arguments ...interface{}) {
 
 func (b *CmdWriter) Notice(format string, arguments ...interface{}) {
 	coloredText := helpers.ANSI_BOLD_GREEN + fmt.Sprintf(format, arguments...) + helpers.ANSI_RESET
-	timeStamp := "echo " + helpers.ANSI_BOLD_CYAN + "%DATE% %TIME" + helpers.ANSI_RESET
+	timeStamp := "echo " + helpers.ANSI_BOLD_CYAN + "%DATE% %TIME%" + helpers.ANSI_RESET
 	b.Line(timeStamp)
 	b.Line("echo " + batchEscapeVariable(coloredText))
 }
 
 func (b *CmdWriter) Warning(format string, arguments ...interface{}) {
 	coloredText := helpers.ANSI_YELLOW + fmt.Sprintf(format, arguments...) + helpers.ANSI_RESET
-	timeStamp := "echo " + helpers.ANSI_BOLD_CYAN + "%DATE% %TIME" + helpers.ANSI_RESET
+	timeStamp := "echo " + helpers.ANSI_BOLD_CYAN + "%DATE% %TIME%" + helpers.ANSI_RESET
 	b.Line(timeStamp)
 	b.Line("echo " + batchEscapeVariable(coloredText))
 }
 
 func (b *CmdWriter) Error(format string, arguments ...interface{}) {
 	coloredText := helpers.ANSI_BOLD_RED + fmt.Sprintf(format, arguments...) + helpers.ANSI_RESET
-	timeStamp := "echo " + helpers.ANSI_BOLD_CYAN + "%DATE% %TIME" + helpers.ANSI_RESET
+	timeStamp := "echo " + helpers.ANSI_BOLD_CYAN + "%DATE% %TIME%" + helpers.ANSI_RESET
 	b.Line(timeStamp)
 	b.Line("echo " + batchEscapeVariable(coloredText))
 }
