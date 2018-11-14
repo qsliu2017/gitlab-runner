@@ -66,8 +66,6 @@ func (b *BashWriter) Unindent() {
 }
 
 func (b *BashWriter) Command(command string, arguments ...string) {
-	//timeStamp := "echo -e \"" + helpers.ANSI_BOLD_CYAN + "`date -u`" + helpers.ANSI_RESET + "\""
-	//b.Line(timeStamp)
 	b.Line(b.buildCommand(command, arguments...))
 }
 
@@ -167,8 +165,6 @@ func (b *BashWriter) Absolute(dir string) string {
 
 func (b *BashWriter) Print(format string, arguments ...interface{}) {
 	coloredText := helpers.ANSI_RESET + fmt.Sprintf(format, arguments...)
-	//timeStamp := "echo -e \"" + helpers.ANSI_BOLD_CYAN + "`date -u`" + helpers.ANSI_RESET + "\""
-	//b.Line(timeStamp)
 	b.Line("echo " + helpers.ShellEscape(coloredText))
 }
 
