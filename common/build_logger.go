@@ -37,6 +37,7 @@ func (e *BuildLogger) SendRawLog(args ...interface{}) {
 func (e *BuildLogger) sendLog(logger func(args ...interface{}), logPrefix string, args ...interface{}) {
 	if e.log != nil {
 		logLine := url_helpers.ScrubSecrets(logPrefix + fmt.Sprintln(args...))
+		e.SendRawLog(helpers.ANSI_BOLD_CYAN + e.getCurrentFormattedTime())
 		e.SendRawLog(logLine)
 		e.SendRawLog(helpers.ANSI_RESET)
 
@@ -63,35 +64,35 @@ func (e *BuildLogger) Println(args ...interface{}) {
 	if e.entry == nil {
 		return
 	}
-	e.sendLog(e.entry.Debugln, helpers.ANSI_CLEAR+e.getCurrentFormattedTime()+"\n", args...)
+	e.sendLog(e.entry.Debugln, helpers.ANSI_CLEAR, args...)
 }
 
 func (e *BuildLogger) Infoln(args ...interface{}) {
 	if e.entry == nil {
 		return
 	}
-	e.sendLog(e.entry.Println, helpers.ANSI_BOLD_GREEN+e.getCurrentFormattedTime()+"\n", args...)
+	e.sendLog(e.entry.Println, helpers.ANSI_BOLD_GREEN, args...)
 }
 
 func (e *BuildLogger) Warningln(args ...interface{}) {
 	if e.entry == nil {
 		return
 	}
-	e.sendLog(e.entry.Warningln, helpers.ANSI_YELLOW+e.getCurrentFormattedTime()+"\nWARNING: ", args...)
+	e.sendLog(e.entry.Warningln, helpers.ANSI_BOLD_CYAN+"WARNING: ", args...)
 }
 
 func (e *BuildLogger) SoftErrorln(args ...interface{}) {
 	if e.entry == nil {
 		return
 	}
-	e.sendLog(e.entry.Warningln, helpers.ANSI_BOLD_RED+e.getCurrentFormattedTime()+"\nERROR: ", args...)
+	e.sendLog(e.entry.Warningln, helpers.ANSI_BOLD_RED+"ERROR: ", args...)
 }
 
 func (e *BuildLogger) Errorln(args ...interface{}) {
 	if e.entry == nil {
 		return
 	}
-	e.sendLog(e.entry.Errorln, helpers.ANSI_BOLD_RED+e.getCurrentFormattedTime()+"\nERROR: ", args...)
+	e.sendLog(e.entry.Errorln, helpers.ANSI_BOLD_RED+"ERROR: ", args...)
 }
 
 func NewBuildLogger(log JobTrace, entry *logrus.Entry) BuildLogger {
