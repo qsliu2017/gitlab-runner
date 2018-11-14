@@ -194,7 +194,7 @@ func (b *PsWriter) Print(format string, arguments ...interface{}) {
 
 func (b *PsWriter) Notice(format string, arguments ...interface{}) {
 	coloredText := helpers.ANSI_BOLD_GREEN + fmt.Sprintf(format, arguments...) + helpers.ANSI_RESET
-	timeStamp := "time /t\n"
+	timeStamp := "(Get-Time)\n"
 	b.Line("echo " + psQuoteVariable(timeStamp))
 	b.Line("echo " + psQuoteVariable(coloredText))
 }
