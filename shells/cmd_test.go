@@ -17,7 +17,7 @@ type outputColor struct {
 	color string
 }
 
-func TestCMD_EchoShellEscapes(t *testing.T) {
+func TestCMD_EchoShellEscapesWithTimestamp(t *testing.T) {
 	for i, tc := range []testCase{
 		{`abcdefghijklmnopqrstuvwxyz`, `abcdefghijklmnopqrstuvwxyz`},
 		{`^ & < > |`, `^^ ^& ^< ^> ^|`},
@@ -30,6 +30,25 @@ func TestCMD_EchoShellEscapes(t *testing.T) {
 			{writer.Notice, "\x1b[32;1m"},
 			{writer.Warning, "\x1b[0;33m"},
 			{writer.Error, "\x1b[31;1m"},
+		} {
+			functionsToTest.fn(tc.in)
+			expected := fmt.Sprintf("echo \x1b[36;1m%%DATE%% %%TIME%%\x1b[0;m\r\necho %s%s\x1b[0;m\r\n", functionsToTest.color, tc.out)
+			assert.Equal(t, expected, writer.String(), "case %d : %d", i, j)
+			writer.Reset()
+		}
+	}
+}
+
+func TestCMD_EchoShellEscapesWithoutTimestamp(t *testing.T) {
+	for i, tc := range []testCase{
+		{`abcdefghijklmnopqrstuvwxyz`, `abcdefghijklmnopqrstuvwxyz`},
+		{`^ & < > |`, `^^ ^& ^< ^> ^|`},
+		// FIXME: this currently escapes to ^! when it doesn't need to
+		// {`!`, `!`},
+		{`( )`, `^( ^)`},
+	} {
+		writer := &CmdWriter{}
+		for j, functionsToTest := range []outputColor{
 			{writer.Print, "\x1b[0;m"},
 		} {
 			functionsToTest.fn(tc.in)
