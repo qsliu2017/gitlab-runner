@@ -194,21 +194,21 @@ func (b *PsWriter) Print(format string, arguments ...interface{}) {
 
 func (b *PsWriter) Notice(format string, arguments ...interface{}) {
 	coloredText := helpers.ANSI_BOLD_GREEN + fmt.Sprintf(format, arguments...) + helpers.ANSI_RESET
-	timeStamp := "(Get-Date).ToUniversalTime()"
+	timeStamp := "date /t"
 	b.Line(psQuoteVariable(timeStamp))
 	b.Line("echo " + psQuoteVariable(coloredText))
 }
 
 func (b *PsWriter) Warning(format string, arguments ...interface{}) {
 	coloredText := helpers.ANSI_YELLOW + fmt.Sprintf(format, arguments...) + helpers.ANSI_RESET
-	timeStamp := "(Get-Date).ToUniversalTime()"
+	timeStamp := "date /t"
 	b.Line(psQuoteVariable(timeStamp))
 	b.Line("echo " + psQuoteVariable(coloredText))
 }
 
 func (b *PsWriter) Error(format string, arguments ...interface{}) {
 	coloredText := helpers.ANSI_BOLD_RED + fmt.Sprintf(format, arguments...) + helpers.ANSI_RESET
-	timeStamp := "(Get-Date).ToUniversalTime()"
+	timeStamp := "date /t"
 	b.Line(psQuoteVariable(timeStamp))
 	b.Line("echo " + psQuoteVariable(coloredText))
 }
