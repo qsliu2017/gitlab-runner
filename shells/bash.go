@@ -171,21 +171,21 @@ func (b *BashWriter) Print(format string, arguments ...interface{}) {
 func (b *BashWriter) Notice(format string, arguments ...interface{}) {
 	coloredText := helpers.ANSI_BOLD_GREEN + fmt.Sprintf(format, arguments...) + helpers.ANSI_RESET
 	timeStamp := "echo -e \"" + helpers.ANSI_BOLD_CYAN + "`date`" + helpers.ANSI_RESET + "\""
-	b.Line(helpers.ShellEscape(timeStamp))
+	b.Line(timeStamp)
 	b.Line("echo " + helpers.ShellEscape(coloredText))
 }
 
 func (b *BashWriter) Warning(format string, arguments ...interface{}) {
 	coloredText := helpers.ANSI_YELLOW + fmt.Sprintf(format, arguments...) + helpers.ANSI_RESET
 	timeStamp := "echo -e \"" + helpers.ANSI_BOLD_CYAN + "`date`" + helpers.ANSI_RESET + "\""
-	b.Line(helpers.ShellEscape(timeStamp))
+	b.Line(timeStamp)
 	b.Line("echo " + helpers.ShellEscape(coloredText))
 }
 
 func (b *BashWriter) Error(format string, arguments ...interface{}) {
 	coloredText := helpers.ANSI_BOLD_RED + fmt.Sprintf(format, arguments...) + helpers.ANSI_RESET
 	timeStamp := "echo -e \"" + helpers.ANSI_BOLD_CYAN + "`date`" + helpers.ANSI_RESET + "\""
-	b.Line(helpers.ShellEscape(timeStamp))
+	b.Line(timeStamp)
 	b.Line("echo " + helpers.ShellEscape(coloredText))
 }
 
