@@ -2,12 +2,22 @@ package common
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/sirupsen/logrus"
 
 	"gitlab.com/gitlab-org/gitlab-runner/helpers"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers/url"
 )
+
+func (e *BuildLogger) getCurrentFormattedTime() string {
+	dateTimeFormat := "2006-01-02 15:04 MST"
+	datetime, err := time.Parse(dateTimeFormat, time.Now().UTC().String())
+	if err != nil {
+		return time.Now().UTC().String()
+	}
+	return datetime.String()
+}
 
 type BuildLogger struct {
 	log   JobTrace
@@ -53,35 +63,35 @@ func (e *BuildLogger) Println(args ...interface{}) {
 	if e.entry == nil {
 		return
 	}
-	e.sendLog(e.entry.Debugln, helpers.ANSI_CLEAR, args...)
+	e.sendLog(e.entry.Debugln, helpers.ANSI_CLEAR+e.getCurrentFormattedTime()+"\n", args...)
 }
 
 func (e *BuildLogger) Infoln(args ...interface{}) {
 	if e.entry == nil {
 		return
 	}
-	e.sendLog(e.entry.Println, helpers.ANSI_BOLD_GREEN, args...)
+	e.sendLog(e.entry.Println, helpers.ANSI_BOLD_GREEN+e.getCurrentFormattedTime()+"\n", args...)
 }
 
 func (e *BuildLogger) Warningln(args ...interface{}) {
 	if e.entry == nil {
 		return
 	}
-	e.sendLog(e.entry.Warningln, helpers.ANSI_YELLOW+"WARNING: ", args...)
+	e.sendLog(e.entry.Warningln, helpers.ANSI_YELLOW+e.getCurrentFormattedTime()+"\nWARNING: ", args...)
 }
 
 func (e *BuildLogger) SoftErrorln(args ...interface{}) {
 	if e.entry == nil {
 		return
 	}
-	e.sendLog(e.entry.Warningln, helpers.ANSI_BOLD_RED+"ERROR: ", args...)
+	e.sendLog(e.entry.Warningln, helpers.ANSI_BOLD_RED+e.getCurrentFormattedTime()+"\nERROR: ", args...)
 }
 
 func (e *BuildLogger) Errorln(args ...interface{}) {
 	if e.entry == nil {
 		return
 	}
-	e.sendLog(e.entry.Errorln, helpers.ANSI_BOLD_RED+"ERROR: ", args...)
+	e.sendLog(e.entry.Errorln, helpers.ANSI_BOLD_RED+e.getCurrentFormattedTime()+"\nERROR: ", args...)
 }
 
 func NewBuildLogger(log JobTrace, entry *logrus.Entry) BuildLogger {
