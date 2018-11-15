@@ -24,6 +24,7 @@ The currently supported shells are:
 | `sh`          | Sh (Bourne-shell) shell. All commands executed in Sh context (fallback for `bash` for all Unix systems) |
 | `cmd`         | Windows Batch script. All commands are executed in Batch context (default for Windows) |
 | `powershell`  | Windows PowerShell script. All commands are executed in PowerShell context |
+| `pwsh`        | WindowS PowerShell Core script. All commands are executed in PowerShell Core context |
 
 ## Sh/Bash shells
 
@@ -182,7 +183,7 @@ IF %errorlevel% NEQ 0 exit /b %errorlevel%
 goto :EOF
 ```
 
-## PowerShell
+## PowerShell/PowerShell Core
 
 PowerShell doesn't support executing the build in context of another user.
 

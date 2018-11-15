@@ -99,20 +99,20 @@ Supported features by different executors:
 
 Supported systems by different shells:
 
-| Shells  | Bash        | Windows Batch | PowerShell |
-|:-------:|:-----------:|:-------------:|:----------:|
-| Windows | ✓           | ✓ (default)   | ✓          |
-| Linux   | ✓ (default) | ✗             | ✗          |
-| OSX     | ✓ (default) | ✗             | ✗          |
-| FreeBSD | ✓ (default) | ✗             | ✗          |
+| Shells  | Bash        | Windows Batch | PowerShell | PowerShell Core |
+|:-------:|:-----------:|:-------------:|:----------:|:---------------:|
+| Windows | ✓           | ✓ (default)   | ✓         | ✓              |
+| Linux   | ✓ (default) | ✗             | ✗         | ✗              |
+| OSX     | ✓ (default) | ✗             | ✗         | ✗              |
+| FreeBSD | ✓ (default) | ✗             | ✗         | ✗              |
 
 Supported systems for interactive web terminals by different shells:
 
-| Shells  | Bash        | Windows Batch | PowerShell |
-|:-------:|:-----------:|:-------------:|:----------:|
-| Windows | ✗           | ✗             | ✗          |
-| Linux   | ✓           | ✗             | ✗          |
-| OSX     | ✓           | ✗             | ✗          |
-| FreeBSD | ✓           | ✗             | ✗          |
+| Shells  | Bash        | Windows Batch | PowerShell | PowerShell Core |
+|:-------:|:-----------:|:-------------:|:----------:|:---------------:|
+| Windows | ✗           | ✗             | ✗          | ✗             |
+| Linux   | ✓           | ✗             | ✗          | ✗             |
+| OSX     | ✓           | ✗             | ✗          | ✗             |
+| FreeBSD | ✓           | ✗             | ✗          | ✗             |
 
 [services]: https://docs.gitlab.com/ee/ci/services/README.html

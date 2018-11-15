@@ -170,6 +170,7 @@ There are a couple of available shells that can be run on different platforms.
 | `sh`          | generate Sh (Bourne-shell) script. All commands executed in Sh context (fallback for `bash` for all Unix systems) |
 | `cmd`         | generate Windows Batch script. All commands are executed in Batch context (default for Windows) |
 | `powershell`  | generate Windows PowerShell script. All commands are executed in PowerShell context |
+| `pwsh`        | generate Windows PowerShell Core script. All commands are executed in Powershell Core context |
 
 ## The `[runners.docker]` section
 

@@ -131,6 +131,7 @@ These are the binaries that you can install:
   [Minikube](https://github.com/kubernetes/minikube)
 1. [Parallels](http://www.parallels.com/products/desktop/download/)
 1. [PowerShell](https://msdn.microsoft.com/en-us/powershell)
+1. [PowerShell Core](https://docs.microsoft.com/en-us/powershell/scripting/setup/installing-powershell-core-on-windows?view=powershell-6)
 
 After installing the binaries run:
 

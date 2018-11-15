@@ -38,7 +38,7 @@ installed.
  - using Docker containers with autoscaling on different clouds and virtualization hypervisors
  - connecting to remote SSH server
 - Is written in Go and distributed as single binary without any other requirements
-- Supports Bash, Windows Batch and Windows PowerShell
+- Supports Bash, Windows Batch, Windows PowerShell, and Windows PowerShell Core
 - Works on GNU/Linux, OS X and Windows (pretty much anywhere you can run Docker)
 - Allows to customize the job running environment
 - Automatic configuration reload without restart
