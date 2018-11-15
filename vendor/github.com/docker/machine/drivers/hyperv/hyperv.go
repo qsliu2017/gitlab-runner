@@ -156,7 +156,7 @@ func (d *Driver) GetState() (state.State, error) {
 // PreCreateCheck checks that the machine creation process can be started safely.
 func (d *Driver) PreCreateCheck() error {
 	// Check that powershell was found
-	if powershell == "" {
+	if (powershell == "") && (pwsh == "") {
 		return ErrPowerShellNotFound
 	}
 

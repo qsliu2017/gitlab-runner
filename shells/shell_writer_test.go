@@ -58,4 +58,5 @@ func TestMkDir(t *testing.T) {
 	onShell(t, "bash", "bash", "sh", []string{}, &BashWriter{TemporaryPath: tmpDir})
 	onShell(t, "cmd", "cmd.exe", "cmd", []string{"/Q", "/C"}, &CmdWriter{TemporaryPath: tmpDir})
 	onShell(t, "powershell", "powershell.exe", "ps1", []string{"-noprofile", "-noninteractive", "-executionpolicy", "Bypass", "-command"}, &PsWriter{TemporaryPath: tmpDir})
+	onShell(t, "pwsh", "pwsh.exe", "ps1", []string{"-noprofile", "-noninteractive", "-executionpolicy", "Bypass", "-command"}, &PwshWriter{TemporaryPath: tmpDir})
 }

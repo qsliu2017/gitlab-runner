@@ -58,6 +58,8 @@ func Detect() (string, error) {
 		}
 		if strings.Contains(strings.ToLower(shell), "powershell") {
 			return "powershell", nil
+		else if strings.Contains(strings.ToLower(shell), "pwsh") {
+			return "pwsh", nil
 		} else if strings.Contains(strings.ToLower(shell), "cmd") {
 			return "cmd", nil
 		} else {
@@ -67,6 +69,8 @@ func Detect() (string, error) {
 			}
 			if strings.Contains(strings.ToLower(shell), "powershell") {
 				return "powershell", nil
+			} else if strings.Contains(strings.ToLower(shell), "pwsh") {
+				return "pwsh", nil				
 			} else if strings.Contains(strings.ToLower(shell), "cmd") {
 				return "cmd", nil
 			} else {

@@ -137,6 +137,10 @@ func shellCfgSet(c CommandLine, api libmachine.API) (*ShellConfig, error) {
 		shellCfg.Prefix = "$Env:"
 		shellCfg.Suffix = "\"\n"
 		shellCfg.Delimiter = " = \""
+	case "pwsh":
+		shellCfg.Prefix = "$Env:"
+		shellCfg.Suffix = "\"\n"
+		shellCfg.Delimiter = " = \""
 	case "cmd":
 		shellCfg.Prefix = "SET "
 		shellCfg.Suffix = "\n"
@@ -182,6 +186,10 @@ func shellCfgUnset(c CommandLine, api libmachine.API) (*ShellConfig, error) {
 		shellCfg.Suffix = ";\n"
 		shellCfg.Delimiter = ""
 	case "powershell":
+		shellCfg.Prefix = `Remove-Item Env:\\`
+		shellCfg.Suffix = "\n"
+		shellCfg.Delimiter = ""
+	case "pwsh":
 		shellCfg.Prefix = `Remove-Item Env:\\`
 		shellCfg.Suffix = "\n"
 		shellCfg.Delimiter = ""
@@ -257,6 +265,8 @@ func (g *EnvUsageHintGenerator) GenerateUsageHint(userShell string, args []strin
 	case "fish":
 		cmd = fmt.Sprintf("eval (%s)", commandLine)
 	case "powershell":
+		cmd = fmt.Sprintf("& %s | Invoke-Expression", commandLine)
+	case "pwsh":
 		cmd = fmt.Sprintf("& %s | Invoke-Expression", commandLine)
 	case "cmd":
 		cmd = fmt.Sprintf("\t@FOR /f \"tokens=*\" %%i IN ('%s') DO @%%i", commandLine)
