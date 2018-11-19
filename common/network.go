@@ -124,8 +124,9 @@ type JobInfo struct {
 type GitInfoRefType string
 
 const (
-	RefTypeBranch GitInfoRefType = "branch"
-	RefTypeTag    GitInfoRefType = "tag"
+	RefTypeBranch        GitInfoRefType = "branch"
+	RefTypeTag           GitInfoRefType = "tag"
+	RefTypeMergeRequests GitInfoRefType = "merge-requests"
 )
 
 type GitInfo struct {

@@ -62,37 +62,31 @@ func (b *AbstractShell) writeGitSSLConfig(w ShellWriter, build *common.Build, wh
 	return
 }
 
-func (b *AbstractShell) writeCloneCmd(w ShellWriter, build *common.Build, projectDir string) {
+func (b *AbstractShell) writeInitCmd(w ShellWriter, build *common.Build, projectDir string) {
 	templateDir := w.MkTmpDir("git-template")
-	args := []string{"clone", "--no-checkout", build.GetRemoteURL(), projectDir, "--template", templateDir}
+	args := []string{"init", projectDir, "--template", templateDir}
 
-	w.RmDir(projectDir)
 	templateFile := path.Join(templateDir, "config")
 	w.Command("git", "config", "-f", templateFile, "fetch.recurseSubmodules", "false")
 	if build.IsSharedEnv() {
 		b.writeGitSSLConfig(w, build, []string{"-f", templateFile})
 	}
 
-	if depth := build.GetGitDepth(); depth != "" {
-		w.Notice("Cloning repository for %s with git depth set to %s...", build.GitInfo.Ref, depth)
-		args = append(args, "--depth", depth, "--branch", build.GitInfo.Ref)
-	} else {
-		w.Notice("Cloning repository...")
-	}
-
 	w.Command("git", args...)
-	w.Cd(projectDir)
 }
 
-func (b *AbstractShell) writeFetchCmd(w ShellWriter, build *common.Build, projectDir string, gitDir string) {
+func (b *AbstractShell) writeFetchCmd(w ShellWriter, build *common.Build, projectDir string, gitDir string, forceClone bool) {
 	depth := build.GetGitDepth()
 
-	w.IfDirectory(gitDir)
 	if depth != "" {
 		w.Notice("Fetching changes for %s with git depth set to %s...", build.GitInfo.Ref, depth)
 	} else {
 		w.Notice("Fetching changes...")
 	}
+
+	// Init repository
+	b.writeInitCmd(w, build, projectDir)
+
 	w.Cd(projectDir)
 	w.Command("git", "config", "fetch.recurseSubmodules", "false")
 
@@ -112,21 +106,41 @@ func (b *AbstractShell) writeFetchCmd(w ShellWriter, build *common.Build, projec
 
 	w.Command("git", "clean", "-ffdx")
 	w.Command("git", "reset", "--hard")
-	w.Command("git", "remote", "set-url", "origin", build.GetRemoteURL())
-	if depth != "" {
-		var refspec string
-		if build.GitInfo.RefType == common.RefTypeTag {
-			refspec = "+refs/tags/" + build.GitInfo.Ref + ":refs/tags/" + build.GitInfo.Ref
-		} else {
-			refspec = "+refs/heads/" + build.GitInfo.Ref + ":refs/remotes/origin/" + build.GitInfo.Ref
-		}
-		w.Command("git", "fetch", "--depth", depth, "origin", "--prune", refspec)
-	} else {
-		w.Command("git", "fetch", "origin", "--prune", "+refs/heads/*:refs/remotes/origin/*", "+refs/tags/*:refs/tags/*")
-	}
+
+	// Add `git remote` or update existing
+	w.IfCmdWithOutput("git", "remote", "add", "origin", build.GetRemoteURL())
+	w.Notice("Created fresh repository.")
 	w.Else()
-	b.writeCloneCmd(w, build, projectDir)
+	w.Command("git", "remote", "set-url", "origin", build.GetRemoteURL())
 	w.EndIf()
+
+	var gitFetch []string
+
+	if depth != "" {
+		gitFetch = append(gitFetch, "--depth", depth)
+
+		switch build.GitInfo.RefType {
+		case common.RefTypeTag:
+			gitFetch = append(gitFetch, "+refs/tags/"+build.GitInfo.Ref+":refs/tags/"+build.GitInfo.Ref)
+
+		case common.RefTypeBranch:
+			gitFetch = append(gitFetch, "+refs/heads/"+build.GitInfo.Ref+":refs/remotes/origin/"+build.GitInfo.Ref)
+
+		case common.RefTypeMergeRequests:
+			gitFetch = append(gitFetch, "+refs/merge-requests/"+build.GitInfo.Ref+":refs/remotes/origin/"+build.GitInfo.Ref)
+		}
+	} else {
+		switch build.GitInfo.RefType {
+		case common.RefTypeTag, common.RefTypeBranch:
+			gitFetch = append(gitFetch, "+refs/heads/*:refs/remotes/origin/*", "+refs/tags/*:refs/tags/*")
+
+		case common.RefTypeMergeRequests:
+			gitFetch = append(gitFetch, "+refs/merge-requests/"+build.GitInfo.Ref+":refs/remotes/origin/"+build.GitInfo.Ref)
+		}
+	}
+
+	gitFetch = append(gitFetch, "origin", "--prune")
+	w.Command("git", "fetch", gitFetch)
 }
 
 func (b *AbstractShell) writeCheckoutCmd(w ShellWriter, build *common.Build) {
@@ -309,7 +323,8 @@ func (b *AbstractShell) writeCloneFetchCmds(w ShellWriter, info common.ShellScri
 	case common.GitFetch:
 		b.writeFetchCmd(w, build, projectDir, gitDir)
 	case common.GitClone:
-		b.writeCloneCmd(w, build, projectDir)
+		w.RmDir(projectDir)
+		b.writeFetchCmd(w, build, projectDir, gitDir)
 	case common.GitNone:
 		w.Notice("Skipping Git repository setup")
 		w.MkDir(projectDir)
