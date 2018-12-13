@@ -145,10 +145,10 @@ func (c *GitLabCiYamlParser) prepareSteps(job *common.JobResponse) (err error) {
 }
 
 func (c *GitLabCiYamlParser) buildDefaultVariables(job *common.JobResponse) (defaultVariables common.JobVariables, err error) {
-    shortSha := ""
-    if len(job.GitInfo.Sha) > 8 {
-        shortSha =  job.GitInfo.Sha[0:8]
-    }
+	shortSha := ""
+	if len(job.GitInfo.Sha) > 8 {
+		shortSha = job.GitInfo.Sha[0:8]
+	}
 	defaultVariables = common.JobVariables{
 		{Key: "CI", Value: "true", Public: true, Internal: true, File: false},
 		{Key: "GITLAB_CI", Value: "true", Public: true, Internal: true, File: false},
