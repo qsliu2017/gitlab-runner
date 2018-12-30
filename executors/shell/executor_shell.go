@@ -19,6 +19,10 @@ import (
 	"gitlab.com/gitlab-org/gitlab-runner/helpers"
 )
 
+const (
+	ShellExecutorStageCleanup common.ExecutorStage = "shell_cleanup"
+)
+
 type executor struct {
 	executors.AbstractExecutor
 }
@@ -54,6 +58,15 @@ func (s *executor) Prepare(options common.ExecutorPrepareOptions) error {
 
 	s.Println("Using Shell executor...")
 	return nil
+}
+
+func (s *executor) Cleanup() {
+	s.SetCurrentStage(ShellExecutorStageCleanup)
+
+	s.Println("Cleaning up build directory " + s.Build.FullProjectDir())
+	os.RemoveAll(s.Build.FullProjectDir())
+	os.RemoveAll(s.Build.FullProjectDir() + ".tmp")
+	s.AbstractExecutor.Cleanup()
 }
 
 func (s *executor) killAndWait(cmd *exec.Cmd, waitCh chan error) error {
