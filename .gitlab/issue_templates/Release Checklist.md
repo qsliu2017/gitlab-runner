@@ -138,6 +138,7 @@ this day, will be released with next release.
 ## 7 working days before 22th (**{{.ReleaseBlogPostDeadline}}**)
 
 - [ ] prepare GitLab Runner entries for the release blog post. Items can be generated with `./scripts/changelog2releasepost | less` (executed in Runner's local working copy directory)
+- [ ] prepare GitLab Runner Helm Chart entries for the release blog post. Items can be generated with `./scripts/changelog2releasepost | less` (executed in Runner Helm Chart's local working copy directory)
 - [ ] add release entry:
 
     Add description to the `SECONDARY FEATURES` list using following template:
@@ -156,6 +157,20 @@ this day, will be released with next release.
         * [__Title__](https://gitlab.com/gitlab-org/gitlab-runner/merge_requests/__ID__)
 
         List of all changes can be found in GitLab Runner's [CHANGELOG](https://gitlab.com/gitlab-org/gitlab-runner/blob/v{{.Major}}.{{.Minor}}.0/CHANGELOG.md).
+
+    - name: GitLab Runner Helm Chart {{.HelmChartMajor}}.{{.HelmChartMinor}}.{{.HelmChartPatch}}
+      available_in: [core, starter, premium, ultimate]
+      documentation_link: 'https://docs.gitlab.com/ee/install/kubernetes/gitlab_runner_chart.html'
+      documentation_text: "Read through the documentation of GitLab Runner Helm Chart"
+      description: |
+        We're also releasing GitLab Runner Helm Chart {{.HelmChartMajor}}.{{.HelmChartMinor}}.{{.HelmChartPatch}} today!
+        The Helm Chart is a suggested way to install GitLab Runner on a Kubernetes cluster.
+
+        ##### Most interesting changes:
+
+        * [__Title__](https://gitlab.com/charts/gitlab-runner/merge_requests/__ID__)
+
+        List of all changes can be found in GitLab Runner Helm Chart's [CHANGELOG](https://gitlab.com/charts/gitlab-runner/blob/v{{.HelmChartMajor}}.{{.HelmChartMinor}}.{{.HelmChartPatch}}/CHANGELOG.md).
     ```
 
 ## At 20th - next RC release
