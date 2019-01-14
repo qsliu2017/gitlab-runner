@@ -2,6 +2,7 @@ package common
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/url"
@@ -706,10 +707,31 @@ func (b *Build) Duration() time.Duration {
 	return time.Since(b.createdAt)
 }
 
+// tryDeepCopyConfig attempts to perform a deep copy of the RunnerConfig, returning the original and an error if it fails
+func tryDeepCopyConfig(runnerConfig *RunnerConfig) (runnerConfigCopy RunnerConfig, err error) {
+	bytes, err := json.Marshal(runnerConfig)
+	if err != nil {
+		return *runnerConfig, fmt.Errorf("serialization of runner config failed: %v", err)
+	}
+
+	err = json.Unmarshal(bytes, &runnerConfigCopy)
+	if err != nil {
+		return *runnerConfig, fmt.Errorf("deserialization of runner config failed: %v", err)
+	}
+
+	return runnerConfigCopy, nil
+}
+
 func NewBuild(jobData JobResponse, runnerConfig *RunnerConfig, systemInterrupt chan os.Signal, executorData ExecutorData) *Build {
+	runnerConfigCopy, err := tryDeepCopyConfig(runnerConfig)
+	if err != nil {
+		logrus.WithError(err).
+			Error("Error while deep-copying the runner config")
+	}
+
 	return &Build{
 		JobResponse:     jobData,
-		Runner:          runnerConfig,
+		Runner:          &runnerConfigCopy,
 		SystemInterrupt: systemInterrupt,
 		ExecutorData:    executorData,
 		createdAt:       time.Now(),
