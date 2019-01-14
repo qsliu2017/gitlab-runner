@@ -1,6 +1,7 @@
 package common
 
 import (
+	"compress/flate"
 	"context"
 	"errors"
 	"fmt"
@@ -813,6 +814,22 @@ func (b *Build) GetCacheRequestTimeout() int {
 		return DefaultCacheRequestTimeout
 	}
 	return timeout
+}
+
+func (b *Build) GetCacheCompressionLevel() int {
+	level, err := strconv.Atoi(b.GetAllVariables().Get("CACHE_COMPRESSION_LEVEL"))
+	if err != nil {
+		return flate.DefaultCompression
+	}
+	return level
+}
+
+func (b *Build) GetArtifactCompressionLevel() int {
+	level, err := strconv.Atoi(b.GetAllVariables().Get("ARTIFACT_COMPRESSION_LEVEL"))
+	if err != nil {
+		return flate.DefaultCompression
+	}
+	return level
 }
 
 func (b *Build) Duration() time.Duration {

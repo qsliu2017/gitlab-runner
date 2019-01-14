@@ -1,6 +1,7 @@
 package helpers
 
 import (
+	"compress/flate"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -18,9 +19,10 @@ import (
 type CacheArchiverCommand struct {
 	fileArchiver
 	retryHelper
-	File    string `long:"file" description:"The path to file"`
-	URL     string `long:"url" description:"URL of remote cache resource"`
-	Timeout int    `long:"timeout" description:"Overall timeout for cache uploading request (in minutes)"`
+	File             string `long:"file" description:"The path to file"`
+	URL              string `long:"url" description:"URL of remote cache resource"`
+	Timeout          int    `long:"timeout" description:"Overall timeout for cache uploading request (in minutes)"`
+	CompressionLevel int    `long:"compression-level" description:"Compression level (-1 = default; -2 = huffman only; 0 = no compression; 1 to 9 = best speed to best compression)"`
 
 	client *CacheClient
 }
@@ -85,7 +87,7 @@ func (c *CacheArchiverCommand) Execute(*cli.Context) {
 	}
 
 	// Create archive
-	err = archives.CreateZipFile(c.File, c.sortedFiles())
+	err = archives.CreateZipFile(c.File, c.sortedFiles(), c.CompressionLevel)
 	if err != nil {
 		logrus.Fatalln(err)
 	}
@@ -107,5 +109,6 @@ func init() {
 			Retry:     2,
 			RetryTime: time.Second,
 		},
+		CompressionLevel: flate.DefaultCompression,
 	})
 }

@@ -106,21 +106,25 @@ func TestWriteWritingArtifactsOnSuccess(t *testing.T) {
 		"--url", gitlabURL,
 		"--token", "token",
 		"--id", "1000",
+		"--compression-level", "-1",
 		"--path", "default").Once()
 	mockWriter.On("Command", "gitlab-runner-helper", "artifacts-uploader",
 		"--url", gitlabURL,
 		"--token", "token",
 		"--id", "1000",
+		"--compression-level", "-1",
 		"--path", "on-success").Once()
 	mockWriter.On("Command", "gitlab-runner-helper", "artifacts-uploader",
 		"--url", gitlabURL,
 		"--token", "token",
 		"--id", "1000",
+		"--compression-level", "-1",
 		"--path", "always").Once()
 	mockWriter.On("Command", "gitlab-runner-helper", "artifacts-uploader",
 		"--url", gitlabURL,
 		"--token", "token",
 		"--id", "1000",
+		"--compression-level", "-1",
 		"--path", "zip-archive",
 		"--artifact-format", "zip",
 		"--artifact-type", "archive").Once()
@@ -128,6 +132,7 @@ func TestWriteWritingArtifactsOnSuccess(t *testing.T) {
 		"--url", gitlabURL,
 		"--token", "token",
 		"--id", "1000",
+		"--compression-level", "-1",
 		"--path", "gzip-junit",
 		"--artifact-format", "gzip",
 		"--artifact-type", "junit").Once()
@@ -166,16 +171,19 @@ func TestWriteWritingArtifactsOnFailure(t *testing.T) {
 		"--url", gitlabURL,
 		"--token", "token",
 		"--id", "1000",
+		"--compression-level", "-1",
 		"--path", "on-failure").Once()
 	mockWriter.On("Command", "gitlab-runner-helper", "artifacts-uploader",
 		"--url", gitlabURL,
 		"--token", "token",
 		"--id", "1000",
+		"--compression-level", "-1",
 		"--path", "always").Once()
 	mockWriter.On("Command", "gitlab-runner-helper", "artifacts-uploader",
 		"--url", gitlabURL,
 		"--token", "token",
 		"--id", "1000",
+		"--compression-level", "-1",
 		"--path", "zip-archive",
 		"--artifact-format", "zip",
 		"--artifact-type", "archive").Once()
@@ -183,6 +191,7 @@ func TestWriteWritingArtifactsOnFailure(t *testing.T) {
 		"--url", gitlabURL,
 		"--token", "token",
 		"--id", "1000",
+		"--compression-level", "-1",
 		"--path", "gzip-junit",
 		"--artifact-format", "gzip",
 		"--artifact-type", "junit").Once()

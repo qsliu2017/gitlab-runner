@@ -2,6 +2,7 @@ package archives
 
 import (
 	"archive/zip"
+	"compress/flate"
 	"io"
 	"io/ioutil"
 	"os"
@@ -31,8 +32,14 @@ func createZipSymlinkEntry(archive *zip.Writer, fh *zip.FileHeader) error {
 	return err
 }
 
-func createZipFileEntry(archive *zip.Writer, fh *zip.FileHeader) error {
+func createZipFileEntry(archive *zip.Writer, fh *zip.FileHeader, level int) error {
 	fh.Method = zip.Deflate
+	// If the Deflate compression level is flate.NoCompression, we may as well
+	// set the zip compression method to zip.Store.
+	if level == flate.NoCompression {
+		fh.Method = zip.Store
+	}
+
 	fw, err := archive.CreateHeader(fh)
 	if err != nil {
 		return err
@@ -51,7 +58,7 @@ func createZipFileEntry(archive *zip.Writer, fh *zip.FileHeader) error {
 	return nil
 }
 
-func createZipEntry(archive *zip.Writer, fileName string) error {
+func createZipEntry(archive *zip.Writer, fileName string, level int) error {
 	fi, err := os.Lstat(fileName)
 	if err != nil {
 		logrus.Warningln("File ignored:", err)
@@ -78,22 +85,26 @@ func createZipEntry(archive *zip.Writer, fileName string) error {
 		return nil
 
 	default:
-		return createZipFileEntry(archive, fh)
+		return createZipFileEntry(archive, fh, level)
 	}
 }
 
-func CreateZipArchive(w io.Writer, fileNames []string) error {
+func CreateZipArchive(w io.Writer, fileNames []string, level int) error {
 	tracker := newPathErrorTracker()
 
 	archive := zip.NewWriter(w)
 	defer archive.Close()
+
+	archive.RegisterCompressor(zip.Deflate, func(out io.Writer) (io.WriteCloser, error) {
+		return flate.NewWriter(out, level)
+	})
 
 	for _, fileName := range fileNames {
 		if err := errorIfGitDirectory(fileName); tracker.actionable(err) {
 			printGitArchiveWarning("archive")
 		}
 
-		err := createZipEntry(archive, fileName)
+		err := createZipEntry(archive, fileName, level)
 		if err != nil {
 			return err
 		}
@@ -102,7 +113,7 @@ func CreateZipArchive(w io.Writer, fileNames []string) error {
 	return nil
 }
 
-func CreateZipFile(fileName string, fileNames []string) error {
+func CreateZipFile(fileName string, fileNames []string, level int) error {
 	// create directories to store archive
 	err := os.MkdirAll(filepath.Dir(fileName), 0700)
 	if err != nil {
@@ -117,7 +128,7 @@ func CreateZipFile(fileName string, fileNames []string) error {
 	defer os.Remove(tempFile.Name())
 
 	logrus.Debugln("Temporary file:", tempFile.Name())
-	err = CreateZipArchive(tempFile, fileNames)
+	err = CreateZipArchive(tempFile, fileNames, level)
 	if err != nil {
 		return err
 	}

@@ -487,6 +487,7 @@ func (b *AbstractShell) cacheArchiver(w ShellWriter, info common.ShellScriptInfo
 			"cache-archiver",
 			"--file", cacheFile,
 			"--timeout", strconv.Itoa(info.Build.GetCacheRequestTimeout()),
+			"--compression-level", strconv.Itoa(info.Build.GetCacheCompressionLevel()),
 		}
 
 		// Create list of files to archive
@@ -533,6 +534,8 @@ func (b *AbstractShell) writeUploadArtifact(w ShellWriter, info common.ShellScri
 		info.Build.Token,
 		"--id",
 		strconv.Itoa(info.Build.ID),
+		"--compression-level",
+		strconv.Itoa(info.Build.GetArtifactCompressionLevel()),
 	}
 
 	// Create list of files to archive

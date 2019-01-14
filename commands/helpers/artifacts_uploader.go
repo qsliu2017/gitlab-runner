@@ -1,6 +1,7 @@
 package helpers
 
 import (
+	"compress/flate"
 	"errors"
 	"fmt"
 	"io"
@@ -25,14 +26,15 @@ type ArtifactsUploaderCommand struct {
 	retryHelper
 	network common.Network
 
-	Name     string                `long:"name" description:"The name of the archive"`
-	ExpireIn string                `long:"expire-in" description:"When to expire artifacts"`
-	Format   common.ArtifactFormat `long:"artifact-format" description:"Format of generated artifacts"`
-	Type     string                `long:"artifact-type" description:"Type of generated artifacts"`
+	Name             string                `long:"name" description:"The name of the archive"`
+	ExpireIn         string                `long:"expire-in" description:"When to expire artifacts"`
+	Format           common.ArtifactFormat `long:"artifact-format" description:"Format of generated artifacts"`
+	Type             string                `long:"artifact-type" description:"Type of generated artifacts"`
+	CompressionLevel int                   `long:"compression-level" description:"Compression level (-1 = default; -2 = huffman only; 0 = no compression; 1 to 9 = best speed to best compression)"`
 }
 
 func (c *ArtifactsUploaderCommand) generateZipArchive(w *io.PipeWriter) {
-	err := archives.CreateZipArchive(w, c.sortedFiles())
+	err := archives.CreateZipArchive(w, c.sortedFiles(), c.CompressionLevel)
 	w.CloseWithError(err)
 }
 
@@ -148,6 +150,7 @@ func init() {
 			Retry:     2,
 			RetryTime: time.Second,
 		},
-		Name: "artifacts",
+		Name:             "artifacts",
+		CompressionLevel: flate.DefaultCompression,
 	})
 }
