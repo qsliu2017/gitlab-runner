@@ -125,7 +125,9 @@ func TestBuildRunNoModifyConfig(t *testing.T) {
 			},
 		},
 	}
-	build := NewBuild(successfulBuild, rc, nil, nil)
+	build, err := NewBuild(successfulBuild, rc, nil, nil)
+	assert.NoError(t, err)
+
 	err = build.Run(&Config{}, &Trace{Writer: os.Stdout})
 	assert.NoError(t, err)
 	assert.Equal(t, "10.0.0.1", rc.Docker.DockerCredentials.Host)

@@ -707,26 +707,17 @@ func (b *Build) Duration() time.Duration {
 	return time.Since(b.createdAt)
 }
 
-// tryDeepCopyConfig attempts to perform a deep copy of the RunnerConfig, returning the original and an error if it fails
-func tryDeepCopyConfig(runnerConfig *RunnerConfig) (runnerConfigCopy RunnerConfig, err error) {
+func NewBuild(jobData JobResponse, runnerConfig *RunnerConfig, systemInterrupt chan os.Signal, executorData ExecutorData) (*Build, error) {
+	// Attempt to perform a deep copy of the RunnerConfig
+	var runnerConfigCopy RunnerConfig
 	bytes, err := json.Marshal(runnerConfig)
 	if err != nil {
-		return *runnerConfig, fmt.Errorf("serialization of runner config failed: %v", err)
+		return nil, fmt.Errorf("serialization of runner config failed: %v", err)
 	}
 
 	err = json.Unmarshal(bytes, &runnerConfigCopy)
 	if err != nil {
-		return *runnerConfig, fmt.Errorf("deserialization of runner config failed: %v", err)
-	}
-
-	return runnerConfigCopy, nil
-}
-
-func NewBuild(jobData JobResponse, runnerConfig *RunnerConfig, systemInterrupt chan os.Signal, executorData ExecutorData) *Build {
-	runnerConfigCopy, err := tryDeepCopyConfig(runnerConfig)
-	if err != nil {
-		logrus.WithError(err).
-			Error("Error while deep-copying the runner config")
+		return nil, fmt.Errorf("deserialization of runner config failed: %v", err)
 	}
 
 	return &Build{
@@ -735,7 +726,7 @@ func NewBuild(jobData JobResponse, runnerConfig *RunnerConfig, systemInterrupt c
 		SystemInterrupt: systemInterrupt,
 		ExecutorData:    executorData,
 		createdAt:       time.Now(),
-	}
+	}, nil
 }
 
 func (b *Build) IsFeatureFlagOn(name string) bool {

@@ -182,7 +182,10 @@ func (mr *RunCommand) processRunner(id int, runner *common.RunnerConfig, runners
 	trace.SetFailuresCollector(mr.failuresCollector)
 
 	// Create a new build
-	build := common.NewBuild(*jobData, runner, mr.abortBuilds, context)
+	build, err := common.NewBuild(*jobData, runner, mr.abortBuilds, context)
+	if err != nil {
+		return
+	}
 	build.Session = buildSession
 
 	// Add build to list of builds to assign numbers
