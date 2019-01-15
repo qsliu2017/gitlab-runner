@@ -3,6 +3,7 @@ package common
 import (
 	"bufio"
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -293,6 +294,23 @@ type RunnerConfig struct {
 
 	RunnerCredentials
 	RunnerSettings
+}
+
+// DeepCopy attempts to make a deep clone of the object
+func (r *RunnerConfig) DeepCopy() (*RunnerConfig, error) {
+	var rc RunnerConfig
+
+	bytes, err := json.Marshal(r)
+	if err != nil {
+		return nil, fmt.Errorf("serialization of runner config failed: %v", err)
+	}
+
+	err = json.Unmarshal(bytes, &rc)
+	if err != nil {
+		return nil, fmt.Errorf("deserialization of runner config failed: %v", err)
+	}
+
+	return &rc, err
 }
 
 type SessionServer struct {
