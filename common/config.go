@@ -296,23 +296,6 @@ type RunnerConfig struct {
 	RunnerSettings
 }
 
-// DeepCopy attempts to make a deep clone of the object
-func (r *RunnerConfig) DeepCopy() (*RunnerConfig, error) {
-	var rc RunnerConfig
-
-	bytes, err := json.Marshal(r)
-	if err != nil {
-		return nil, fmt.Errorf("serialization of runner config failed: %v", err)
-	}
-
-	err = json.Unmarshal(bytes, &rc)
-	if err != nil {
-		return nil, fmt.Errorf("deserialization of runner config failed: %v", err)
-	}
-
-	return &rc, err
-}
-
 type SessionServer struct {
 	ListenAddress    string `toml:"listen_address,omitempty" json:"listen_address" description:"Address that the runner will communicate directly with"`
 	AdvertiseAddress string `toml:"advertise_address,omitempty" json:"advertise_address" description:"Address the runner will expose to the world to connect to the session server"`
@@ -662,6 +645,23 @@ func (c *RunnerConfig) GetVariables() JobVariables {
 	}
 
 	return variables
+}
+
+// DeepCopy attempts to make a deep clone of the object
+func (c *RunnerConfig) DeepCopy() (*RunnerConfig, error) {
+	var r RunnerConfig
+
+	bytes, err := json.Marshal(c)
+	if err != nil {
+		return nil, fmt.Errorf("serialization of runner config failed: %v", err)
+	}
+
+	err = json.Unmarshal(bytes, &r)
+	if err != nil {
+		return nil, fmt.Errorf("deserialization of runner config failed: %v", err)
+	}
+
+	return &r, err
 }
 
 func NewConfig() *Config {
