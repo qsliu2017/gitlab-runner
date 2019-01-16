@@ -184,6 +184,13 @@ func (mr *RunCommand) processRunner(id int, runner *common.RunnerConfig, runners
 	// Create a new build
 	build, err := common.NewBuild(*jobData, runner, mr.abortBuilds, context)
 	if err != nil {
+		_, wErr := trace.Write([]byte(err.Error()))
+		if wErr != nil {
+			logrus.WithError(err).Error("Failed to write to job log")
+		}
+
+		trace.Fail(err, common.RunnerSystemFailure)
+
 		return
 	}
 	build.Session = buildSession
@@ -230,7 +237,10 @@ func (mr *RunCommand) processRunners(id int, stopWorker chan bool, runners chan 
 	for mr.stopSignal == nil {
 		select {
 		case runner := <-runners:
-			mr.processRunner(id, runner, runners)
+			err := mr.processRunner(id, runner, runners)
+			if err != nil {
+				logrus.WithError(err).Error("Failed to process runner")
+			}
 
 			// force GC cycle after processing build
 			runtime.GC()

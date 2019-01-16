@@ -151,7 +151,11 @@ func (r *RunSingleCommand) Execute(c *cli.Context) {
 			log.Warningln("Executor update:", err)
 		}
 
-		r.processBuild(data, abortSignal)
+		pErr := r.processBuild(data, abortSignal)
+		if pErr != nil {
+			log.WithError(pErr).Error("Failed to process build")
+		}
+
 		r.checkFinishedConditions()
 		executorProvider.Release(&r.RunnerConfig, data)
 	}
