@@ -121,15 +121,21 @@ func (mr *RunCommand) feedRunners(runners chan *common.RunnerConfig) {
 	}
 }
 
-func (mr *RunCommand) requestJob(runner *common.RunnerConfig, sessionInfo *common.SessionInfo) (*common.JobResponse, bool) {
+// requestJob will check if the runner can send another concurrent request to
+// GitLab, if not the return value is nil.
+func (mr *RunCommand) requestJob(runner *common.RunnerConfig, sessionInfo *common.SessionInfo) *common.JobResponse {
 	if !mr.buildsHelper.acquireRequest(runner) {
-		return nil, false
+		mr.log().WithField("runner", runner.ShortDescription()).
+			Debugln("Failed to request job: runner requestConcurrency meet")
+
+		return nil
 	}
 	defer mr.buildsHelper.releaseRequest(runner)
 
 	jobData, healthy := mr.network.RequestJob(*runner, sessionInfo)
 	mr.makeHealthy(runner.UniqueID(), healthy)
-	return jobData, true
+
+	return jobData
 }
 
 func (mr *RunCommand) processRunner(id int, runner *common.RunnerConfig, runners chan *common.RunnerConfig) (err error) {
@@ -161,12 +167,7 @@ func (mr *RunCommand) processRunner(id int, runner *common.RunnerConfig, runners
 	}
 
 	// Receive a new build
-	jobData, result := mr.requestJob(runner, sessionInfo)
-	if !result {
-		mr.log().WithField("runner", runner.ShortDescription()).
-			Debugln("Failed to request job: runner requestConcurrency meet")
-		return
-	}
+	jobData := mr.requestJob(runner, sessionInfo)
 	if jobData == nil {
 		return
 	}
