@@ -144,20 +144,15 @@ func (mr *RunCommand) processRunner(id int, runner *common.RunnerConfig, runners
 		return
 	}
 
-	context, err := provider.Acquire(runner)
+	executorData, releaseFn, err := mr.acquireRunnerResources(provider, runner)
 	if err != nil {
-		logrus.Warningln("Failed to update executor", runner.Executor, "for", runner.ShortDescription(), err)
-		return
+		mr.log().WithFields(logrus.Fields{
+			"runner":   runner.ShortDescription(),
+			"executor": runner.Executor,
+		}).WithError(err).
+			Warn("Failed to acquire runner resource")
 	}
-	defer provider.Release(runner, context)
-
-	// Acquire build slot
-	if !mr.buildsHelper.acquireBuild(runner) {
-		mr.log().WithField("runner", runner.ShortDescription()).
-			Debugln("Failed to request job: runner limit meet")
-		return
-	}
-	defer mr.buildsHelper.releaseBuild(runner)
+	defer releaseFn()
 
 	var features common.FeaturesInfo
 	provider.GetFeatures(&features)
@@ -183,7 +178,7 @@ func (mr *RunCommand) processRunner(id int, runner *common.RunnerConfig, runners
 	trace.SetFailuresCollector(mr.failuresCollector)
 
 	// Create a new build
-	build, err := common.NewBuild(*jobData, runner, mr.abortBuilds, context)
+	build, err := common.NewBuild(*jobData, runner, mr.abortBuilds, executorData)
 	if err != nil {
 		_, wErr := trace.Write([]byte(err.Error()))
 		if wErr != nil {
@@ -212,6 +207,35 @@ func (mr *RunCommand) processRunner(id int, runner *common.RunnerConfig, runners
 
 	// Process a build
 	return build.Run(mr.config, trace)
+}
+
+func (mr *RunCommand) acquireRunnerResources(provider common.ExecutorProvider, runner *common.RunnerConfig) (common.ExecutorData, func(), error) {
+	executorData, err := provider.Acquire(runner)
+	if err != nil {
+		return nil, func() {}, fmt.Errorf("failed to update executor: %v", err)
+	}
+
+	releaseProviderFn := func() {
+		err := provider.Release(runner, executorData)
+		if err != nil {
+			logrus.WithError(err).Error("Failed to release executor")
+		}
+	}
+
+	if !mr.buildsHelper.acquireBuild(runner) {
+		return nil, func() { releaseProviderFn() }, errors.New("failed to request job, runner limit met")
+	}
+
+	releaseBuildFn := func() {
+		mr.buildsHelper.releaseBuild(runner)
+	}
+
+	releaseFn := func() {
+		releaseProviderFn()
+		releaseBuildFn()
+	}
+
+	return executorData, releaseFn, nil
 }
 
 func (mr *RunCommand) createSession(features common.FeaturesInfo) (*session.Session, *common.SessionInfo, error) {
