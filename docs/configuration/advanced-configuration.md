@@ -177,6 +177,7 @@ This defines the Docker Container parameters.
 
 | Parameter | Description |
 | --------- | ----------- |
+| `api_version`                   | Specify the [compatible](https://docs.docker.com/develop/sdk/#api-version-matrix) Docker [API version](https://docs.docker.com/engine/api/version-history/) to use with the installed Docker version. Highest API version allowed is `1.39`, defaults to `1.18`. |
 | `host`                         | Specify custom Docker endpoint, by default `DOCKER_HOST` environment is used or `unix:///var/run/docker.sock` |
 | `hostname`                     | Specify custom hostname for Docker container |
 | `runtime`                      | Specify a runtime for Docker container |

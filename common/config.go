@@ -53,6 +53,7 @@ func (p DockerPullPolicy) Get() (DockerPullPolicy, error) {
 
 type DockerConfig struct {
 	docker_helpers.DockerCredentials
+	APIVersion                 string            `toml:"api_version,omitempty" json:"api_version" long:"api-version" env:"DOCKER_API_VERSION" description:"The docker api version to be used."`
 	Hostname                   string            `toml:"hostname,omitempty" json:"hostname" long:"hostname" env:"DOCKER_HOSTNAME" description:"Custom container hostname"`
 	Image                      string            `toml:"image" json:"image" long:"image" env:"DOCKER_IMAGE" description:"Docker image to be used"`
 	Runtime                    string            `toml:"runtime,omitempty" json:"runtime" long:"runtime" env:"DOCKER_RUNTIME" description:"Docker runtime to be used"`
