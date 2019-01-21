@@ -42,7 +42,10 @@ func checkIfUpToDate(path string, resp *http.Response) (bool, time.Time) {
 }
 
 func (c *CacheExtractorCommand) download() (bool, error) {
-	os.MkdirAll(filepath.Dir(c.File), 0700)
+	err := os.MkdirAll(filepath.Dir(c.File), 0700)
+	if err != nil {
+		return true, err
+	}
 
 	resp, err := c.getClient().Get(c.URL)
 	if err != nil {
@@ -76,7 +79,10 @@ func (c *CacheExtractorCommand) download() (bool, error) {
 	if err != nil {
 		return true, err
 	}
-	os.Chtimes(file.Name(), time.Now(), date)
+	err = os.Chtimes(file.Name(), time.Now(), date)
+	if err != nil {
+		return true, err
+	}
 
 	err = file.Close()
 	if err != nil {
