@@ -47,19 +47,11 @@ func (c *CacheExtractorCommand) download() (bool, error) {
 		return true, err
 	}
 
-	resp, err := c.getClient().Get(c.URL)
+	resp, retry, err := c.getCache()
 	if err != nil {
-		return true, err
+		return retry, err
 	}
 	defer resp.Body.Close()
-
-	if resp.StatusCode == http.StatusNotFound {
-		return false, os.ErrNotExist
-	} else if resp.StatusCode/100 != 2 {
-		// Retry on server errors
-		retry := resp.StatusCode/100 == 5
-		return retry, fmt.Errorf("Received: %s", resp.Status)
-	}
 
 	upToDate, date := checkIfUpToDate(c.File, resp)
 	if upToDate {
@@ -94,6 +86,23 @@ func (c *CacheExtractorCommand) download() (bool, error) {
 		return false, err
 	}
 	return false, nil
+}
+
+func (c *CacheExtractorCommand) getCache() (*http.Response, bool, error) {
+	resp, err := c.getClient().Get(c.URL)
+	if err != nil {
+		return nil, true, err
+	}
+
+	if resp.StatusCode == http.StatusNotFound {
+		return nil, false, os.ErrNotExist
+	} else if resp.StatusCode != http.StatusOK {
+		// Retry on server errors
+		retry := resp.StatusCode == http.StatusInternalServerError
+		return nil, retry, fmt.Errorf("received: %s", resp.Status)
+	}
+
+	return resp, false, nil
 }
 
 func (c *CacheExtractorCommand) Execute(context *cli.Context) {
