@@ -181,6 +181,7 @@ type Image struct {
 	Alias      string   `json:"alias,omitempty"`
 	Command    []string `json:"command,omitempty"`
 	Entrypoint []string `json:"entrypoint,omitempty"`
+	Ports 		 []int 		`json:"ports,omitempty"`
 }
 
 type Services []Image

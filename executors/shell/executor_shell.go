@@ -21,6 +21,7 @@ import (
 
 type executor struct {
 	executors.AbstractExecutor
+	proxies []string
 }
 
 func (s *executor) Prepare(options common.ExecutorPrepareOptions) error {
@@ -52,6 +53,7 @@ func (s *executor) Prepare(options common.ExecutorPrepareOptions) error {
 		return err
 	}
 
+	s.createServices()
 	s.Println("Using Shell executor...")
 	return nil
 }
@@ -169,4 +171,35 @@ func init() {
 		FeaturesUpdater:  featuresUpdater,
 		DefaultShellName: options.Shell.Shell,
 	})
+}
+
+func (e *executor) createServices() (err error) {
+	servicesDefinitions, err := e.getServicesDefinitions()
+
+	if err != nil {
+		return
+	}
+
+	for _, serviceDefinition := range servicesDefinitions {
+		fmt.Println(serviceDefinition)
+		// Run services binaries
+		if err != nil {
+			return
+		}
+	}
+
+	return nil
+}
+
+func (e *executor) getServicesDefinitions() (common.Services, error) {
+	servicesDefinitions := common.Services{}
+
+	for _, service := range e.Build.Services {
+		serviceName := e.Build.GetAllVariables().ExpandValue(service.Name)
+
+		service.Name = serviceName
+		servicesDefinitions = append(servicesDefinitions, service)
+	}
+
+	return servicesDefinitions, nil
 }

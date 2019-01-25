@@ -36,6 +36,20 @@ func (m *DataBag) GetStringSlice(keys ...string) (slice []string, ok bool) {
 	return
 }
 
+func (m *DataBag) GetIntSlice(keys ...string) (slice []int, ok bool) {
+	rawSlice, ok := m.GetSlice(keys...)
+	if !ok {
+		return
+	}
+
+	for _, rawElement := range rawSlice {
+		if element, ok := rawElement.(int); ok {
+			slice = append(slice, element)
+		}
+	}
+	return
+}
+
 func (m *DataBag) GetSubOptions(keys ...string) (result DataBag, ok bool) {
 	value, ok := helpers.GetMapKey(*m, keys...)
 	if ok {

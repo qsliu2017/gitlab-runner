@@ -241,6 +241,7 @@ func (c *GitLabCiYamlParser) prepareImage(job *common.JobResponse) (err error) {
 
 func parseExtendedServiceDefinitionMap(serviceDefinition map[interface{}]interface{}) (image common.Image) {
 	service := make(DataBag)
+
 	for key, value := range serviceDefinition {
 		service[key.(string)] = value
 	}
@@ -249,6 +250,8 @@ func parseExtendedServiceDefinitionMap(serviceDefinition map[interface{}]interfa
 	image.Alias, _ = service.GetString("alias")
 	image.Command, _ = service.GetStringSlice("command")
 	image.Entrypoint, _ = service.GetStringSlice("entrypoint")
+	image.Ports, _ = service.GetIntSlice("ports")
+
 	return
 }
 

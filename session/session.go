@@ -4,12 +4,17 @@ import (
 	"net/http"
 	"reflect"
 	"sync"
+	"fmt"
+	"io"
+	// "net/url"
 
 	"github.com/gorilla/websocket"
+	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
 
 	"gitlab.com/gitlab-org/gitlab-runner/helpers"
 	"gitlab.com/gitlab-org/gitlab-runner/session/terminal"
+	"gitlab.com/gitlab-org/gitlab-runner/session/proxy"
 )
 
 type connectionInUseError struct{}
@@ -22,7 +27,7 @@ type Session struct {
 	Endpoint string
 	Token    string
 
-	mux *http.ServeMux
+	mux *mux.Router
 
 	interactiveTerminal terminal.InteractiveTerminal
 	terminalConn        terminal.Conn
@@ -89,8 +94,9 @@ func (s *Session) setMux() {
 	s.Lock()
 	defer s.Unlock()
 
-	s.mux = http.NewServeMux()
+	s.mux = mux.NewRouter()
 	s.mux.HandleFunc(s.Endpoint+"/exec", s.execHandler)
+	s.mux.HandleFunc(s.Endpoint+"/proxy/{buildOrService:\\w+}/{port:\\d+}/{requestedUri:.+}", s.proxyHandler)
 }
 
 func (s *Session) execHandler(w http.ResponseWriter, r *http.Request) {
@@ -179,7 +185,11 @@ func (s *Session) SetInteractiveTerminal(interactiveTerminal terminal.Interactiv
 	s.interactiveTerminal = interactiveTerminal
 }
 
-func (s *Session) Mux() *http.ServeMux {
+func (s *Session) AddNewProxy(addr, port string) {
+
+}
+
+func (s *Session) Mux() *mux.Router {
 	return s.mux
 }
 
@@ -203,3 +213,79 @@ func (s *Session) Kill() error {
 
 	return err
 }
+
+func (s *Session) proxyHandler(w http.ResponseWriter, r *http.Request) {
+	logger := s.log.WithField("uri", r.RequestURI)
+	logger.Debug("Exec proxy session request")
+
+	if s.Token != r.Header.Get("Authorization") {
+		logger.Error("Authorization header is not valid")
+		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+		return
+	}
+
+	params := mux.Vars(r)
+
+	_ = &proxy.ProxySettings{
+		Ports:     params["port"],
+		RequestedURI:        params["requestedUri"],
+		BuildOrService: params["buildOrService"],
+	}
+
+	// New ProxyConn con port requesteduri buildservice
+
+	fmt.Println(r.URL.Scheme)
+	s.proxyRequest(w, s.rewriteRequestURL(r, "localhost", params["port"], params["requestedUri"]))
+}
+
+func (s *Session) rewriteRequestURL(r *http.Request, host, port, requestedUri string) *http.Request {
+	r.Host = host + ":" + port
+	r.RequestURI = "/" + requestedUri
+	r.URL.Path = r.RequestURI
+	r.URL.Host = r.Host
+
+	// Fallback to http ??
+	if (r.URL.Scheme == "") {
+		r.URL.Scheme = "http"
+	}
+
+	return r
+}
+
+func (s *Session) proxyRequest(w http.ResponseWriter, req *http.Request) {
+    resp, err := http.DefaultTransport.RoundTrip(req)
+    if err != nil {
+        http.Error(w, err.Error(), http.StatusServiceUnavailable)
+        return
+    }
+    defer resp.Body.Close()
+    s.copyHeader(w.Header(), resp.Header)
+    w.WriteHeader(resp.StatusCode)
+    io.Copy(w, resp.Body)
+}
+
+func (s *Session) copyHeader(dst, src http.Header) {
+    for k, vv := range src {
+        for _, v := range vv {
+            dst.Add(k, v)
+        }
+    }
+}
+
+// func (s *Session) newProxyConn() (proxy.Conn, error) {
+// 	s.Lock()
+// 	defer s.Unlock()
+//
+// 	if s.proxyConn != nil {
+// 		return nil, connectionInUseError{}
+// 	}
+//
+// 	conn, err := s.interactiveTerminal.Connect()
+// 	if err != nil {
+// 		return nil, err
+// 	}
+//
+// 	s.proxyConn = conn
+//
+// 	return conn, nil
+// }
