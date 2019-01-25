@@ -297,3 +297,7 @@ ignored = ["test", "appengine"]
   # v1.14.0 introduced a compilation error with one of it dependencies,
   # so forcing v1.13.0 which works
   version = "=v1.13.0"
+
+[[constraint]]
+  branch = "master"
+  name = "golang.org/x/sys"
