@@ -17,11 +17,11 @@ import (
 	"gitlab.com/gitlab-org/gitlab-runner/common"
 	"gitlab.com/gitlab-org/gitlab-runner/executors"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers"
+	"gitlab.com/gitlab-org/gitlab-runner/session/proxy"
 )
 
 type executor struct {
 	executors.AbstractExecutor
-	proxies []string
 }
 
 func (s *executor) Prepare(options common.ExecutorPrepareOptions) error {
@@ -181,8 +181,8 @@ func (e *executor) createServices() (err error) {
 	}
 
 	for _, serviceDefinition := range servicesDefinitions {
-		fmt.Println(serviceDefinition)
-		// Run services binaries
+		e.createFromServiceDefinition(serviceDefinition)
+
 		if err != nil {
 			return
 		}
@@ -202,4 +202,17 @@ func (e *executor) getServicesDefinitions() (common.Services, error) {
 	}
 
 	return servicesDefinitions, nil
+}
+
+func (e *executor) createFromServiceDefinition(serviceDefinition common.Image) (err error) {
+	for _, port := range serviceDefinition.Ports {
+		//Run Services
+		e.Proxies[port] = proxy.NewProxy("localhost", port, serviceDefinition.Name)
+	}
+
+	return nil
+}
+
+func (e *executor) GetProxyPool() proxy.ProxyPool {
+	return e.ProxyPool
 }

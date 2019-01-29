@@ -3,30 +3,33 @@ package proxy
 import (
 	"net/http"
 	"io"
+	"fmt"
 )
 
-type ProxySettings struct {
-	Ports string
-	BuildOrService string
-	RequestedURI string
+type ProxyPool struct {
+	Proxies map[int]*Proxy
+}
+
+type ProxyPooler interface {
+	GetProxyPool() ProxyPool
 }
 
 type Proxy struct {
 	Host string
-	Ports string
+	Port int
 	BuildOrService string
 }
 
 // stoppers is the number of goroutines that may attempt to call Stop()
-func NewProxy(host, port, buildOrService string) *Proxy {
+func NewProxy(host string, port int, buildOrService string) *Proxy {
 	return &Proxy{
 		Host: host,
-		Ports:     port,
+		Port: port,
 		BuildOrService: buildOrService,
 	}
 }
 
-func (p *Proxy) ProxyRequest(w http.ResponseWriter, req *http.Request, requestedUri string) {
+func (p *Proxy) ProxyRequest(w http.ResponseWriter, req *http.Request, buildOrService, requestedUri string) {
 	p.rewriteRequestURL(req, requestedUri)
   resp, err := http.DefaultTransport.RoundTrip(req)
   if err != nil {
@@ -48,14 +51,12 @@ func (p *Proxy) copyHeader(dst, src http.Header) {
 }
 
 func (p *Proxy) rewriteRequestURL(r *http.Request, requestedUri string) *http.Request {
-	r.Host = p.Host + ":" + p.Ports
-	r.RequestURI = "/" + requestedUri
-	r.URL.Path = r.RequestURI
-	r.URL.Host = r.Host
+	r.URL.Path = fmt.Sprintf("/%v", requestedUri)
+	r.URL.Host = fmt.Sprintf("%v:%v", p.Host, p.Port)
 
-	// Fallback to https ??
+	// Fallback to http ??
 	if (r.URL.Scheme == "") {
-		r.URL.Scheme = "https"
+		r.URL.Scheme = "http"
 	}
 
 	return r

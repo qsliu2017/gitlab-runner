@@ -4,7 +4,8 @@ import (
 	"net/http"
 	"reflect"
 	"sync"
-	// "fmt"
+	"fmt"
+	"strconv"
 	// "io"
 	// "net/url"
 
@@ -24,6 +25,8 @@ func (connectionInUseError) Error() string {
 }
 
 type Session struct {
+	proxy.ProxyPool
+
 	Endpoint string
 	Token    string
 
@@ -31,7 +34,7 @@ type Session struct {
 
 	interactiveTerminal terminal.InteractiveTerminal
 	terminalConn        terminal.Conn
-	proxy *proxy.Proxy
+
 	// Signal when client disconnects from terminal.
 	DisconnectCh chan error
 	// Signal when terminal session timeout.
@@ -96,7 +99,7 @@ func (s *Session) setMux() {
 
 	s.mux = mux.NewRouter()
 	s.mux.HandleFunc(s.Endpoint+"/exec", s.execHandler)
-	s.mux.HandleFunc(s.Endpoint+"/proxy/{buildOrService:\\w+}/{port:\\d+}/{requestedUri:.*}", s.proxyHandler)
+	s.mux.HandleFunc(s.Endpoint+`/proxy/{buildOrService:\w+}/{port:\d+}/{requestedUri:.*}`, s.proxyHandler)
 }
 
 func (s *Session) execHandler(w http.ResponseWriter, r *http.Request) {
@@ -185,8 +188,10 @@ func (s *Session) SetInteractiveTerminal(interactiveTerminal terminal.Interactiv
 	s.interactiveTerminal = interactiveTerminal
 }
 
-func (s *Session) AddNewProxy(addr, port string) {
-
+func (s *Session) SetProxyPool(pooler proxy.ProxyPooler) {
+	s.Lock()
+	defer s.Unlock()
+	s.ProxyPool = pooler.GetProxyPool()
 }
 
 func (s *Session) Mux() *mux.Router {
@@ -216,7 +221,7 @@ func (s *Session) Kill() error {
 
 func (s *Session) proxyHandler(w http.ResponseWriter, r *http.Request) {
 	logger := s.log.WithField("uri", r.RequestURI)
-	logger.Debug("Exec proxy session request")
+	logger.Debug("Exec create proxy session request")
 
 	// if s.Token != r.Header.Get("Authorization") {
 	// 	logger.Error("Authorization header is not valid")
@@ -225,10 +230,18 @@ func (s *Session) proxyHandler(w http.ResponseWriter, r *http.Request) {
 	// }
 
 	params := mux.Vars(r)
-
-	if (s.proxy == nil) {
-		s.proxy = proxy.NewProxy("localhost", params["port"], params["buildOrService"])
+	port, err := strconv.Atoi(params["port"])
+	if err != nil {
+		logger.Error("Port is not valid")
+		http.Error(w, http.StatusText(http.StatusUnprocessableEntity), http.StatusUnprocessableEntity)
+		return
 	}
 
-	s.proxy.ProxyRequest(w, r, params["requestedUri"])
+	if (s.Proxies[port] == nil) {
+		logger.Warn("Proxy not found")
+		http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+		return
+	}
+
+	s.Proxies[port].ProxyRequest(w, r, params["buildOrService"], params["requestedUri"])
 }

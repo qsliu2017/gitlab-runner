@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"gitlab.com/gitlab-org/gitlab-runner/common"
+	"gitlab.com/gitlab-org/gitlab-runner/session/proxy"
 )
 
 type ExecutorOptions struct {
@@ -18,6 +19,7 @@ type ExecutorOptions struct {
 type AbstractExecutor struct {
 	ExecutorOptions
 	common.BuildLogger
+	proxy.ProxyPool
 	Config       common.RunnerConfig
 	Build        *common.Build
 	Trace        common.JobTrace
@@ -79,6 +81,7 @@ func (e *AbstractExecutor) Prepare(options common.ExecutorPrepareOptions) error 
 	e.Build = options.Build
 	e.Trace = options.Trace
 	e.BuildLogger = common.NewBuildLogger(options.Trace, options.Build.Log())
+	e.ProxyPool = proxy.ProxyPool{ Proxies: make(map[int]*proxy.Proxy) }
 
 	err := e.startBuild()
 	if err != nil {
