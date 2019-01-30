@@ -220,11 +220,11 @@ func (s *Session) proxyHandler(w http.ResponseWriter, r *http.Request) {
 	logger := s.log.WithField("uri", r.RequestURI)
 	logger.Debug("Exec create proxy session request")
 
-	// if s.Token != r.Header.Get("Authorization") {
-	// 	logger.Error("Authorization header is not valid")
-	// 	http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
-	// 	return
-	// }
+	if s.Token != r.Header.Get("Authorization") {
+		logger.Error("Authorization header is not valid")
+		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+		return
+	}
 
 	params := mux.Vars(r)
 	port, err := strconv.Atoi(params["port"])
