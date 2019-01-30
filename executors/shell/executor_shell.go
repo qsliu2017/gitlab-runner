@@ -208,21 +208,26 @@ func (e *executor) getServicesDefinitions() (common.Services, error) {
 	return servicesDefinitions, nil
 }
 
-func (e *executor) createFromServiceDefinition(serviceDefinition common.Image) (err error) {
+func (e *executor) createFromServiceDefinition(serviceDefinition common.Image) (error) {
+	// If no entrypoint there is no need to create the proxy
+	if len(serviceDefinition.Entrypoint) == 0 {
+		return nil
+	}
+
+	//Run Services
+	c := exec.Command(serviceDefinition.Entrypoint[0], serviceDefinition.Entrypoint[1:]...)
+	if c == nil {
+		return fmt.Errorf("Failed to generate service command")
+	}
+
+	err := c.Start()
+	if err != nil {
+		return err
+	}
+
 	for _, port := range serviceDefinition.Ports {
 		if (e.Proxies[port] != nil) {
 			return fmt.Errorf("There is already a proxy in port %v", port)
-		}
-
-		//Run Services
-		c := exec.Command(serviceDefinition.Entrypoint[0], serviceDefinition.Entrypoint[1:]...)
-		if c == nil {
-			return fmt.Errorf("Failed to generate service command")
-		}
-
-		err := c.Start()
-		if err != nil {
-			return err
 		}
 
 		e.Proxies[port] = proxy.NewProxy("localhost", port, serviceDefinition.Name)
