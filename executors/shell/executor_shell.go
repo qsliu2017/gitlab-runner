@@ -53,7 +53,11 @@ func (s *executor) Prepare(options common.ExecutorPrepareOptions) error {
 		return err
 	}
 
-	s.createServices()
+	err = s.createServices()
+	if (err != nil) {
+		return err
+	}
+
 	s.Println("Using Shell executor...")
 	return nil
 }
@@ -177,14 +181,14 @@ func (e *executor) createServices() (err error) {
 	servicesDefinitions, err := e.getServicesDefinitions()
 
 	if err != nil {
-		return
+		return err
 	}
 
 	for _, serviceDefinition := range servicesDefinitions {
-		e.createFromServiceDefinition(serviceDefinition)
+		err = e.createFromServiceDefinition(serviceDefinition)
 
 		if err != nil {
-			return
+			return err
 		}
 	}
 
@@ -206,7 +210,21 @@ func (e *executor) getServicesDefinitions() (common.Services, error) {
 
 func (e *executor) createFromServiceDefinition(serviceDefinition common.Image) (err error) {
 	for _, port := range serviceDefinition.Ports {
+		if (e.Proxies[port] != nil) {
+			return fmt.Errorf("There is already a proxy in port %v", port)
+		}
+
 		//Run Services
+		c := exec.Command(serviceDefinition.Entrypoint[0], serviceDefinition.Entrypoint[1:]...)
+		if c == nil {
+			return fmt.Errorf("Failed to generate service command")
+		}
+
+		err := c.Start()
+		if err != nil {
+			return err
+		}
+
 		e.Proxies[port] = proxy.NewProxy("localhost", port, serviceDefinition.Name)
 	}
 
