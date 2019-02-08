@@ -12,9 +12,9 @@
 
 # Tar files that we want to generate from the Docker file system, this is
 # genarlly used for linux based Dockerfiles.
-BASE_TAR_PATH := out/helper-images/prebuilt
-TAR += ${BASE_TAR_PATH}-linux_x86_64.tar.xz
-TAR += ${BASE_TAR_PATH}-linux_arm.tar.xz
+BASE_TAR_PATH := out/helper-images/prebuilt-linux_
+TAR += ${BASE_TAR_PATH}x86_64.tar.xz
+TAR += ${BASE_TAR_PATH}arm.tar.xz
 
 # Binaries that we support for the helper image. We are using the following
 # pattern match:
@@ -46,13 +46,13 @@ dockerfiles/build/binaries/gitlab-runner-helper.%: $(HELPER_GO_FILES) $(GOX)
 # PHONY command to help build the tar files for linux.
 helper-docker: $(TAR)
 
-out/helper-images/prebuilt-%.tar.xz: out/helper-images/prebuilt-%.tar
+out/helper-images/prebuilt-linux_%.tar.xz: out/helper-images/prebuilt-linux_%.tar
 	xz -f -9 $<
 
-out/helper-images/prebuilt-%.tar: dockerfiles/build/binaries/gitlab-runner-helper.%
+out/helper-images/prebuilt-linux_%.tar: dockerfiles/build/binaries/gitlab-runner-helper.linux_%
 	@mkdir -p $$(dirname $@_)
-	docker build -t gitlab/gitlab-runner-helper:$*-$(REVISION) -f dockerfiles/build/Dockerfile.$* dockerfiles/build
-	-docker rm -f gitlab-runner-prebuilt-$*-$(REVISION)
-	docker create --name=gitlab-runner-prebuilt-$*-$(REVISION) gitlab/gitlab-runner-helper:$*-$(REVISION) /bin/sh
-	docker export -o $@ gitlab-runner-prebuilt-$*-$(REVISION)
-	docker rm -f gitlab-runner-prebuilt-$*-$(REVISION)
+	docker build -t gitlab/gitlab-runner-helper:$*-$(REVISION) -f dockerfiles/build/Dockerfile.linux_$* dockerfiles/build
+	-docker rm -f gitlab-runner-prebuilt-linux_$*-$(REVISION)
+	docker create --name=gitlab-runner-prebuilt-linux_$*-$(REVISION) gitlab/gitlab-runner-helper:$*-$(REVISION) /bin/sh
+	docker export -o $@ gitlab-runner-prebuilt-linux_$*-$(REVISION)
+	docker rm -f gitlab-runner-prebuilt-linux_$*-$(REVISION)
