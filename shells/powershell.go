@@ -235,6 +235,16 @@ func (b *PsWriter) Finish(trace bool) string {
 	return buffer.String()
 }
 
+func (b *PsWriter) SectionStart(name string) {
+	// Prints a line in the format of "section_start:<timestamp>:section_name\r\033[0;m"
+	b.Line("echo -n \"section_start:0:" + name + "$(echo -n " + psQuoteVariable("\r" + helpers.ANSI_CLEAR) + ")\"")
+}
+
+func (b *PsWriter) SectionEnd(name string) {
+	// Prints a line in the format of "section_end:<timestamp>:section_name\r\033[0;m"
+	b.Line("echo -n \"section_end:0:" + name + "$(echo -n " + psQuoteVariable("\r" + helpers.ANSI_CLEAR) + ")\"")
+}
+
 func (b *PowerShell) GetName() string {
 	return "powershell"
 }

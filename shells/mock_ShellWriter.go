@@ -151,6 +151,16 @@ func (_m *MockShellWriter) Notice(fmt string, arguments ...interface{}) {
 	_m.Called(_ca...)
 }
 
+// SectionStart provides a mock function with given fields: name
+func (_m *MockShellWriter) SectionStart(name string) {
+	_m.Called(name)
+}
+
+// SectionEnd provides a mock function with given fields: name
+func (_m *MockShellWriter) SectionEnd(name string) {
+	_m.Called(name)
+}
+
 // Print provides a mock function with given fields: fmt, arguments
 func (_m *MockShellWriter) Print(fmt string, arguments ...interface{}) {
 	var _ca []interface{}

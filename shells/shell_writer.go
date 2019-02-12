@@ -30,4 +30,7 @@ type ShellWriter interface {
 	Warning(fmt string, arguments ...interface{})
 	Error(fmt string, arguments ...interface{})
 	EmptyLine()
+
+	SectionStart(name string)
+	SectionEnd(name string)
 }

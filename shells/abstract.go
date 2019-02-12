@@ -421,7 +421,12 @@ func (b *AbstractShell) writeUserScript(w ShellWriter, info common.ShellScriptIn
 		b.writeCommands(w, info.PreBuildScript)
 	}
 
-	b.writeCommands(w, scriptStep.Script...)
+	for i, command := range scriptStep.Script {
+		sectionName := fmt.Sprintf("%s-%d", common.BuildStageUserScript, i)
+		w.SectionStart(sectionName)
+		b.writeCommands(w, command)
+		w.SectionEnd(sectionName)
+	}
 
 	if info.PostBuildScript != "" {
 		b.writeCommands(w, info.PostBuildScript)

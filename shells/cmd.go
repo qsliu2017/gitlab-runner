@@ -231,6 +231,16 @@ func (b *CmdWriter) Finish(trace bool) string {
 	return buffer.String()
 }
 
+func (b *CmdWriter) SectionStart(name string) {
+	// There is no known good way to extract a UTC timestamp from a CMD-based shell, so we default to timestamp 0 here.
+	b.Line("echo -n " + batchEscapeVariable("section_start:0:" + name + "\r" + helpers.ANSI_RESET))
+}
+
+func (b *CmdWriter) SectionEnd(name string) {
+	// There is no known good way to extract a UTC timestamp from a CMD-based shell, so we default to timestamp 0 here.
+	b.Line("echo -n " + batchEscapeVariable("section_end:0:" + name + "\r" + helpers.ANSI_RESET))
+}
+
 func (b *CmdShell) GetConfiguration(info common.ShellScriptInfo) (script *common.ShellConfiguration, err error) {
 	script = &common.ShellConfiguration{
 		Command:   "cmd",
