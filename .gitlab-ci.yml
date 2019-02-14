@@ -388,6 +388,25 @@ package-rpm: *packages
   tags:
   - release
 
+.release_windows_docker_images:
+    stage: release
+    script:
+    - .\ci\build_release_windows_images.ps1
+    tags:
+    - windows
+
+.build_windows_docker_images:
+  extends: .release_windows_docker_images
+  variables:
+    PUSH_TO_DOCKER_HUB: "false"
+  only:
+  - branches
+  except:
+  - master
+  - /(^docs[\/-].*|.*-docs$)/
+  tags:
+  - docker
+
 .release: &release
   <<: *except_docs
   stage: release
@@ -444,6 +463,23 @@ development docker images:
   tags:
   - docker
 
+development nanoserver1809 helper docker image:
+  <<: *release_bleeding_edge
+  extends: .build_windows_docker_images
+  variables:
+    PUSH_TO_DOCKER_HUB: "true"
+  tags:
+  - windows1809
+
+development nanoserver1803 docker image :
+  <<: *release_bleeding_edge
+  extends: .build_windows_docker_images
+  variables:
+    PUSH_TO_DOCKER_HUB: "true"
+  tags:
+  - windows1803
+  only:
+
 bleeding edge S3:
   <<: *release_s3
   <<: *release_bleeding_edge
@@ -464,6 +500,16 @@ bleeding edge docker images:
   environment:
     name: bleeding_edge/docker_images
     url: https://hub.docker.com/r/gitlab/gitlab-runner/tags/
+
+bleeding edge windows1803 docker images:
+  extends: .build_windows_docker_images
+  tags:
+  - windows1809
+
+bleeding edge windows1803 docker images:
+  extends: .build_windows_docker_images
+  tags:
+  - windows1803
 
 stable S3:
   <<: *release_s3
