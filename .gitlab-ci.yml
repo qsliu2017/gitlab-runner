@@ -389,6 +389,36 @@ package-rpm: *packages
   tags:
   - release
 
+.build_windows_docker_images:
+  stage: release
+  before_script: 
+  -  "Remove-Item Env:GPG_KEY"
+  script:
+  - .\ci\build_release_windows_images.ps1
+  variables:
+    PUSH_TO_DOCKER_HUB: "false"
+    GIT_VERSION: "1.20.1"
+    GIT_VERSON_BUILD: "1"
+    GIT_LFS: "2.7.1"
+    GOROOT: "C:\\Go"
+    PKG_NAMESPACE: gitlab.com\gitlab-org
+    PKG_NAME: gitlab-runner
+    GOPATH: "$CI_PROJECT_DIR\\.gopath"
+    PKG_BASE_DIR: "$CI_PROJECT_DIR\\.gopath\\src\\$PKG_NAMESPACE"
+    PKG_BUILD_DIR: "$CI_PROJECT_DIR\\.gopath\\src\\$PKG_NAMESPACE\\$PKG_NAME"
+  before_script:
+  - if (Test-Path $GOPATH) { Remove-Item -Force -Recurse $GOPATH }
+  - New-Item $PKG_BASE_DIR -ItemType directory -Force
+  - New-Item -ItemType SymbolicLink -Path $PKG_BUILD_DIR -Value $CI_PROJECT_DIR
+  - cd $PKG_BUILD_DIR
+  after_script:
+  - if (Test-Path $PKG_BUILD_DIR) { $(Get-Item $PKG_BUILD_DIR).Delete() }
+  only:
+  - branches
+  except:
+  - master
+  - /(^docs[\/-].*|.*-docs$)/
+
 .release: &release
   <<: *except_docs
   stage: release
@@ -445,6 +475,22 @@ development docker images:
   tags:
   - docker
 
+development nanoserver1809 helper docker image:
+  extends: .build_windows_docker_images
+  variables:
+    WINDOWS_VERSION: nanoserver1809
+  tags:
+  - windows-1809
+  - shell
+
+development nanoserver1803 helper docker image:
+  extends: .build_windows_docker_images
+  variables:
+    WINDOWS_VERSION: nanoserver1803
+  tags:
+  - windows-1803
+  - shell
+
 bleeding edge S3:
   <<: *release_s3
   <<: *release_bleeding_edge
@@ -465,6 +511,30 @@ bleeding edge docker images:
   environment:
     name: bleeding_edge/docker_images
     url: https://hub.docker.com/r/gitlab/gitlab-runner/tags/
+
+bleeding edge nanoserver1803 docker images:
+  extends: .build_windows_docker_images
+  <<: *release_bleeding_edge
+  variables:
+    PUSH_TO_DOCKER_HUB: "true"
+    WINDOWS_VERSION: nanoserver1803
+  except:
+  - /(^docs[\/-].*|.*-docs$)/
+  tags:
+  - windows-1803
+  - shell
+
+bleeding edge nanoserver1809 docker images:
+  extends: .build_windows_docker_images
+  <<: *release_bleeding_edge
+  variables:
+    PUSH_TO_DOCKER_HUB: "true"
+    WINDOWS_VERSION: nanoserver1809
+  except:
+  - /(^docs[\/-].*|.*-docs$)/
+  tags:
+  - windows-1809
+  - shell
 
 stable S3:
   <<: *release_s3
