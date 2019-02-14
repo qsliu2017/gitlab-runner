@@ -250,7 +250,8 @@ func parseExtendedServiceDefinitionMap(serviceDefinition map[interface{}]interfa
 	image.Alias, _ = service.GetString("alias")
 	image.Command, _ = service.GetStringSlice("command")
 	image.Entrypoint, _ = service.GetStringSlice("entrypoint")
-	image.Ports, _ = service.GetIntSlice("ports")
+	fmt.Println(service)
+	// image.Ports, _ = service.GetIntSlice("ports")
 
 	return
 }

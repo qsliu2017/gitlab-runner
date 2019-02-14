@@ -12,7 +12,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/ayufan/golang-kardianos-service"
+	service "github.com/ayufan/golang-kardianos-service"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/sirupsen/logrus"
@@ -23,7 +23,7 @@ import (
 	"gitlab.com/gitlab-org/gitlab-runner/helpers/certificate"
 	prometheus_helper "gitlab.com/gitlab-org/gitlab-runner/helpers/prometheus"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers/sentry"
-	"gitlab.com/gitlab-org/gitlab-runner/helpers/service"
+	service_helpers "gitlab.com/gitlab-org/gitlab-runner/helpers/service"
 	"gitlab.com/gitlab-org/gitlab-runner/log"
 	"gitlab.com/gitlab-org/gitlab-runner/network"
 	"gitlab.com/gitlab-org/gitlab-runner/session"
@@ -213,10 +213,12 @@ func (mr *RunCommand) createSession(features common.FeaturesInfo) (*session.Sess
 		return nil, nil, err
 	}
 
+	ports := []common.SessionServicePort{common.SessionServicePort{Number: 123, Name: "portname"}}
 	sessionInfo := &common.SessionInfo{
 		URL:           mr.sessionServer.AdvertiseAddress + sess.Endpoint,
 		Certificate:   string(mr.sessionServer.CertificatePublicKey),
 		Authorization: sess.Token,
+		Services:      []common.SessionService{common.SessionService{Name: "fran", Ports: ports}},
 	}
 
 	return sess, sessionInfo, err

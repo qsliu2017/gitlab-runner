@@ -1,18 +1,19 @@
 package session
 
 import (
+	"fmt"
 	"net/http"
 	"reflect"
-	"sync"
 	"strconv"
+	"sync"
 
-	"github.com/gorilla/websocket"
 	"github.com/gorilla/mux"
+	"github.com/gorilla/websocket"
 	"github.com/sirupsen/logrus"
 
 	"gitlab.com/gitlab-org/gitlab-runner/helpers"
-	"gitlab.com/gitlab-org/gitlab-runner/session/terminal"
 	"gitlab.com/gitlab-org/gitlab-runner/session/proxy"
+	"gitlab.com/gitlab-org/gitlab-runner/session/terminal"
 )
 
 type connectionInUseError struct{}
@@ -219,13 +220,17 @@ func (s *Session) Kill() error {
 func (s *Session) proxyHandler(w http.ResponseWriter, r *http.Request) {
 	logger := s.log.WithField("uri", r.RequestURI)
 	logger.Debug("Exec create proxy session request")
+	fmt.Println("ProxyHJandler")
 
-	if s.Token != r.Header.Get("Authorization") {
-		logger.Error("Authorization header is not valid")
-		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
-		return
-	}
+	fmt.Println("Proxies")
+	fmt.Println(s.Proxies)
 
+	// if s.Token != r.Header.Get("Authorization") {
+	// 	logger.Error("Authorization header is not valid")
+	// 	http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+	// 	return
+	// }
+	//
 	params := mux.Vars(r)
 	port, err := strconv.Atoi(params["port"])
 	if err != nil {
@@ -234,11 +239,17 @@ func (s *Session) proxyHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if (s.Proxies[port] == nil) {
+	if s.Proxies[port] == nil {
 		logger.Warn("Proxy not found")
 		http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
 		return
 	}
 
-	s.Proxies[port].ProxyRequest(w, r, params["buildOrService"], params["requestedUri"])
+	s.Proxies[port].ConnectionHandler.ProxyRequest(w, r, params["buildOrService"], params["requestedUri"])
+	//
+	// if r.Method == http.MethodConnect {
+	// 	s.Proxies[port].ProxyTunnel(w, r, params["buildOrService"], params["requestedUri"])
+	// } else {
+	// 	s.Proxies[port].ProxyRequest(w, r, params["buildOrService"], params["requestedUri"])
+	// }
 }

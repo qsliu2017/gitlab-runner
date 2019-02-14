@@ -8,19 +8,24 @@ import (
 	"net/url"
 	"strings"
 
-	"gitlab.com/gitlab-org/gitlab-terminal"
+	// "io"
+
 	"golang.org/x/net/context"
 	api "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
+
 	// Register all available authentication methods
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 	restclient "k8s.io/client-go/rest"
 
 	"gitlab.com/gitlab-org/gitlab-runner/common"
 	"gitlab.com/gitlab-org/gitlab-runner/executors"
+	serviceproxy "gitlab.com/gitlab-org/gitlab-runner/session/proxy"
 	terminalsession "gitlab.com/gitlab-org/gitlab-runner/session/terminal"
+	terminal "gitlab.com/gitlab-org/gitlab-terminal"
 )
 
 var (
@@ -47,6 +52,7 @@ type executor struct {
 	pod         *api.Pod
 	credentials *api.Secret
 	options     *kubernetesOptions
+	services    []*api.Service
 
 	configurationOverwrites *overwrites
 	buildLimits             api.ResourceList
@@ -183,12 +189,139 @@ func (s *executor) Cleanup() {
 			s.Errorln(fmt.Sprintf("Error cleaning up secrets: %s", err.Error()))
 		}
 	}
+
+	for _, service := range s.services {
+		err := s.kubeClient.CoreV1().Services(s.pod.Namespace).Delete(service.ObjectMeta.Name, &metav1.DeleteOptions{})
+
+		if err != nil {
+			s.Errorln(fmt.Sprintf("Error cleaning up pod services: %s", err.Error()))
+		}
+	}
 	closeKubeClient(s.kubeClient)
+	fmt.Println("FRAN CLENUP")
 	s.AbstractExecutor.Cleanup()
 }
 
-func (s *executor) buildContainer(name, image string, imageDefinition common.Image, requests, limits api.ResourceList, containerCommand ...string) api.Container {
+// apiVersion: v1
+// kind: Service
+// metadata:
+//   name: my-nginx
+//   labels:
+//     run: my-nginx
+// spec:
+//   ports:
+//   - port: 80
+//     name: pepe
+//     protocol: TCP
+//   - port: 81
+//     name: pepe1
+//     protocol: TCP
+//   selector:
+//     run: my-nginx
+
+// func (s *executor) buildService(name string, ports []api.ServicePort, selector map[string]string) *api.Service {
+// 	return &api.Service{
+// 		ObjectMeta: metav1.ObjectMeta{
+// 			Namespace:    s.configurationOverwrites.namespace,
+// 		},
+// 		Spec: api.ServiceSpec {
+// 			Ports: ports,
+// 			Selector: selector,
+// 		},
+// 	}
+// }
+
+// func (s *executor) createPodProxyServices(pod *api.Pod) ([]*api.Service, error) {
+// 	services := []*api.Service{}
+// 	for _, container := range pod.Spec.Containers {
+// 		portsLength := len(container.Ports)
+// 		if portsLength != 0 {
+// 			servicePorts := make([]api.ServicePort, portsLength)
+
+// 			for i, port := range container.Ports {
+// 				portName := fmt.Sprintf("%s-%d", container.Name, port.ContainerPort)
+// 				servicePorts[i] = api.ServicePort{Port: port.ContainerPort, Name: portName}
+// 			}
+
+// 			serviceConfig := api.Service{
+// 				ObjectMeta: metav1.ObjectMeta{
+// 					GenerateName: container.Name,
+// 					Namespace:    s.configurationOverwrites.namespace,
+// 				},
+// 				Spec: api.ServiceSpec{
+// 					Ports:    servicePorts,
+// 					Selector: map[string]string{"pod": s.projectUniqueName()},
+// 				},
+// 			}
+
+// 			service, err := s.kubeClient.CoreV1().Services(pod.Namespace).Create(&serviceConfig)
+// 			if err != nil {
+// 				return services, err
+// 			}
+// 			services = append(services, service)
+// 		}
+// 	}
+
+// 	return services, nil
+// }
+
+func (s *executor) createPodProxyServices() {
+	services := []*api.Service{}
+	for _, service := range s.services {
+		fmt.Println("ENTRANDO A CREAR SERVICO")
+		fmt.Println(service.Namespace)
+
+		service, err := s.kubeClient.CoreV1().Services(service.Namespace).Create(service)
+		if err != nil {
+			fmt.Println("PEDAZO DE ERROR")
+			fmt.Println(service)
+			fmt.Errorf("Error cleaning up pod service: %s", service.Name)
+		} else {
+			services = append(services, service)
+		}
+	}
+	s.services = services
+}
+
+func (s *executor) buildService(name string, ports []api.ServicePort) api.Service {
+	return api.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			GenerateName: name,
+			Namespace:    s.configurationOverwrites.namespace,
+		},
+		Spec: api.ServiceSpec{
+			Ports:    ports,
+			Selector: map[string]string{"pod": s.projectUniqueName()},
+		},
+	}
+}
+
+func (s *executor) buildContainer(name, image string, imageDefinition common.Image, ports []common.Port, requests, limits api.ResourceList, containerCommand ...string) api.Container {
+	fmt.Println(name)
 	privileged := false
+
+	containerPorts := make([]api.ContainerPort, len(ports))
+	servicePorts := make([]api.ServicePort, len(ports))
+
+	for i, port := range ports {
+		// if s.Proxies[port] != nil {
+		// 	fmt.Errorf("There is already a proxy in port %v", port)
+		// }
+
+		// s.Proxies[port] = s.proxy(port, name)
+		containerPorts[i] = api.ContainerPort{ContainerPort: int32(port.InternalPort)}
+
+		// All ports within a ServiceSpec must have unique names
+		portName := fmt.Sprintf("%s-%d", name, port.ExternalPort)
+		servicePorts[i] = api.ServicePort{Port: int32(port.ExternalPort), TargetPort: intstr.FromInt(port.InternalPort), Name: portName}
+	}
+
+	if len(servicePorts) != 0 {
+		service := s.buildService(fmt.Sprintf("proxy-%s", name), servicePorts)
+		fmt.Println(service)
+		s.services = append(s.services, &service)
+	}
+
 	if s.Config.Kubernetes != nil {
 		privileged = s.Config.Kubernetes.Privileged
 	}
@@ -206,11 +339,40 @@ func (s *executor) buildContainer(name, image string, imageDefinition common.Ima
 			Limits:   limits,
 			Requests: requests,
 		},
+		Ports:        containerPorts,
 		VolumeMounts: s.getVolumeMounts(),
 		SecurityContext: &api.SecurityContext{
 			Privileged: &privileged,
 		},
 		Stdin: true,
+	}
+}
+
+func (s *executor) buildPod(labels, annotations map[string]string, services []api.Container, imagePullSecrets []api.LocalObjectReference) api.Pod {
+	buildImage := s.Build.GetAllVariables().ExpandValue(s.options.Image.Name)
+	helperImage := common.AppVersion.Variables().ExpandValue(s.Config.Kubernetes.GetHelperImage())
+
+	return api.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			GenerateName: s.projectUniqueName(),
+			Namespace:    s.configurationOverwrites.namespace,
+			Labels:       labels,
+			Annotations:  annotations,
+		},
+		Spec: api.PodSpec{
+			Volumes:            s.getVolumes(),
+			ServiceAccountName: s.configurationOverwrites.serviceAccount,
+			RestartPolicy:      api.RestartPolicyNever,
+			NodeSelector:       s.Config.Kubernetes.NodeSelector,
+			Tolerations:        s.Config.Kubernetes.GetNodeTolerations(),
+			Containers: append([]api.Container{
+				// TODO use the build and helper template here
+				s.buildContainer("build", buildImage, s.options.Image, []common.Port{}, s.buildRequests, s.buildLimits, s.BuildShell.DockerCommand...),
+				s.buildContainer("helper", helperImage, common.Image{}, []common.Port{}, s.helperRequests, s.helperLimits, s.BuildShell.DockerCommand...),
+			}, services...),
+			TerminationGracePeriodSeconds: &s.Config.Kubernetes.TerminationGracePeriodSeconds,
+			ImagePullSecrets:              imagePullSecrets,
+		},
 	}
 }
 
@@ -436,12 +598,16 @@ func (s *executor) setupCredentials() error {
 
 func (s *executor) setupBuildPod() error {
 	services := make([]api.Container, len(s.options.Services))
+	// serviceProxies := []api.Service{}
+
 	for i, service := range s.options.Services {
 		resolvedImage := s.Build.GetAllVariables().ExpandValue(service.Name)
-		services[i] = s.buildContainer(fmt.Sprintf("svc-%d", i), resolvedImage, service, s.serviceRequests, s.serviceLimits)
+		fmt.Println(service.Ports)
+		services[i] = s.buildContainer(fmt.Sprintf("svc-%d", i), resolvedImage, service, service.Ports, s.serviceRequests, s.serviceLimits)
+		// serviceProxies = append(serviceProxies, buildServiceFromContainerSpec(services[i]))
 	}
 
-	labels := make(map[string]string)
+	labels := map[string]string{"pod": s.projectUniqueName()}
 	for k, v := range s.Build.Runner.Kubernetes.PodLabels {
 		labels[k] = s.Build.Variables.ExpandValue(v)
 	}
@@ -460,37 +626,28 @@ func (s *executor) setupBuildPod() error {
 		imagePullSecrets = append(imagePullSecrets, api.LocalObjectReference{Name: s.credentials.Name})
 	}
 
-	buildImage := s.Build.GetAllVariables().ExpandValue(s.options.Image.Name)
-	helperImage := common.AppVersion.Variables().ExpandValue(s.Config.Kubernetes.GetHelperImage())
+	podConfig := s.buildPod(labels, annotations, services, imagePullSecrets)
 
-	pod, err := s.kubeClient.CoreV1().Pods(s.configurationOverwrites.namespace).Create(&api.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			GenerateName: s.projectUniqueName(),
-			Namespace:    s.configurationOverwrites.namespace,
-			Labels:       labels,
-			Annotations:  annotations,
-		},
-		Spec: api.PodSpec{
-			Volumes:            s.getVolumes(),
-			ServiceAccountName: s.configurationOverwrites.serviceAccount,
-			RestartPolicy:      api.RestartPolicyNever,
-			NodeSelector:       s.Config.Kubernetes.NodeSelector,
-			Tolerations:        s.Config.Kubernetes.GetNodeTolerations(),
-			Containers: append([]api.Container{
-				// TODO use the build and helper template here
-				s.buildContainer("build", buildImage, s.options.Image, s.buildRequests, s.buildLimits, s.BuildShell.DockerCommand...),
-				s.buildContainer("helper", helperImage, common.Image{}, s.helperRequests, s.helperLimits, s.BuildShell.DockerCommand...),
-			}, services...),
-			TerminationGracePeriodSeconds: &s.Config.Kubernetes.TerminationGracePeriodSeconds,
-			ImagePullSecrets:              imagePullSecrets,
-		},
-	})
+	pod, err := s.kubeClient.CoreV1().Pods(s.configurationOverwrites.namespace).Create(&podConfig)
 
 	if err != nil {
 		return err
 	}
 
 	s.pod = pod
+	// Creating a custom label with the name of this pod
+	// s.kubeClient.CoreV1().Pods(s.configurationOverwrites.namespace)
+
+	s.createPodProxyServices()
+	// if err != nil {
+	// 	fmt.Println("POR AKI")
+	// 	fmt.Println(err)
+	// 	return err
+	// }
+	// for _, service := range s.services {
+	// 	service, _ := s.kubeClient.CoreV1().Services(s.configurationOverwrites.namespace).Create(service)
+	// 	// s.services2 = append(s.services2, aa)
+	// }
 
 	return nil
 }
@@ -576,6 +733,7 @@ func (s *executor) getTerminalSettings() (*terminal.TerminalSettings, error) {
 	}
 
 	wsURL, err := s.getTerminalWebSocketURL(config)
+
 	if err != nil {
 		return nil, err
 	}
@@ -691,4 +849,36 @@ func init() {
 		FeaturesUpdater:  featuresFn,
 		DefaultShellName: executorOptions.Shell.Shell,
 	})
+}
+
+func (s *executor) GetProxyPool() serviceproxy.ProxyPool {
+	return s.ProxyPool
+}
+
+func (e *executor) ProxyRequest(w http.ResponseWriter, r *http.Request, buildOrService, requestedUri string) {
+	request := e.kubeClient.CoreV1().RESTClient().Get().
+		Namespace(e.pod.Namespace).
+		Resource("services").
+		SubResource("proxy").
+		Name("http:topota:80").
+		Suffix(requestedUri)
+
+	fmt.Println(request)
+	fmt.Println(request.URL())
+	body, err := request.Do().Raw()
+	fmt.Println(string(body))
+	fmt.Println(err)
+
+	body, err = request.Do().Raw()
+	fmt.Println(string(body))
+	fmt.Println(err)
+	// // w.WriteHeader(resp.StatusCode)
+	// io.Copy(w, string(body))
+}
+
+func (e *executor) proxy(port int, name string) *serviceproxy.Proxy {
+	return &serviceproxy.Proxy{
+		ProxySettings:     serviceproxy.NewProxySettings(port, name),
+		ConnectionHandler: e,
+	}
 }

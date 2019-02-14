@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"io"
 
-	"gitlab.com/gitlab-org/gitlab-runner/helpers/url"
+	url_helpers "gitlab.com/gitlab-org/gitlab-runner/helpers/url"
 )
 
 type UpdateState int
@@ -109,9 +109,20 @@ type JobRequest struct {
 }
 
 type SessionInfo struct {
-	URL           string `json:"url,omitempty"`
-	Certificate   string `json:"certificate,omitempty"`
-	Authorization string `json:"authorization,omitempty"`
+	URL           string           `json:"url,omitempty"`
+	Certificate   string           `json:"certificate,omitempty"`
+	Authorization string           `json:"authorization,omitempty"`
+	Services      []SessionService `json:"services,omitempty"`
+}
+
+type SessionService struct {
+	Name  string               `json:"name,omitempty"`
+	Ports []SessionServicePort `json:"ports,omitempty"`
+}
+
+type SessionServicePort struct {
+	Number int    `json:"number,omitempty"`
+	Name   string `json:"name,omitempty"`
 }
 
 type JobInfo struct {
@@ -181,7 +192,7 @@ type Image struct {
 	Alias      string   `json:"alias,omitempty"`
 	Command    []string `json:"command,omitempty"`
 	Entrypoint []string `json:"entrypoint,omitempty"`
-	Ports 		 []int 		`json:"ports,omitempty"`
+	Ports      []Port   `json:"ports,omitempty"`
 }
 
 type Services []Image
@@ -189,6 +200,12 @@ type Services []Image
 type ArtifactPaths []string
 
 type ArtifactWhen string
+
+type Port struct {
+	ExternalPort int  `json:"externalport,omitempty"`
+	InternalPort int  `json:"internalport,omitempty"`
+	Ssl          bool `json:"ssl,omitempty"`
+}
 
 const (
 	ArtifactWhenOnFailure ArtifactWhen = "on_failure"
