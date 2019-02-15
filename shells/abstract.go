@@ -75,7 +75,7 @@ func (b *AbstractShell) writeInitCmd(w ShellWriter, build *common.Build, project
 	w.Command("git", args...)
 }
 
-func (b *AbstractShell) writeFetchCmd(w ShellWriter, build *common.Build, projectDir string, gitDir string, forceClone bool) {
+func (b *AbstractShell) writeFetchCmd(w ShellWriter, build *common.Build, projectDir string, gitDir string) {
 	depth := build.GetGitDepth()
 
 	if depth != "" {
@@ -116,6 +116,8 @@ func (b *AbstractShell) writeFetchCmd(w ShellWriter, build *common.Build, projec
 
 	var gitFetch []string
 
+	gitFetch = append(gitFetch, "fetch")
+
 	if depth != "" {
 		gitFetch = append(gitFetch, "--depth", depth)
 
@@ -127,7 +129,7 @@ func (b *AbstractShell) writeFetchCmd(w ShellWriter, build *common.Build, projec
 			gitFetch = append(gitFetch, "+refs/heads/"+build.GitInfo.Ref+":refs/remotes/origin/"+build.GitInfo.Ref)
 
 		case common.RefTypeMergeRequests:
-			gitFetch = append(gitFetch, "+refs/merge-requests/"+build.GitInfo.Ref+":refs/remotes/origin/"+build.GitInfo.Ref)
+			gitFetch = append(gitFetch, "+"+build.GitInfo.Ref+":"+build.GitInfo.Ref)
 		}
 	} else {
 		switch build.GitInfo.RefType {
@@ -135,12 +137,12 @@ func (b *AbstractShell) writeFetchCmd(w ShellWriter, build *common.Build, projec
 			gitFetch = append(gitFetch, "+refs/heads/*:refs/remotes/origin/*", "+refs/tags/*:refs/tags/*")
 
 		case common.RefTypeMergeRequests:
-			gitFetch = append(gitFetch, "+refs/merge-requests/"+build.GitInfo.Ref+":refs/remotes/origin/"+build.GitInfo.Ref)
+			gitFetch = append(gitFetch, "+"+build.GitInfo.Ref+":"+build.GitInfo.Ref)
 		}
 	}
 
 	gitFetch = append(gitFetch, "origin", "--prune")
-	w.Command("git", "fetch", gitFetch)
+	w.Command("git", gitFetch...)
 }
 
 func (b *AbstractShell) writeCheckoutCmd(w ShellWriter, build *common.Build) {
