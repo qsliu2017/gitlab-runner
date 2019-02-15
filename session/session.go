@@ -246,7 +246,7 @@ func (s *Session) proxyHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	s.Proxies[servicename].ConnectionHandler.ProxyRequest(w, r, servicename, params["requestedUri"], port)
+	s.Proxies[servicename].ConnectionHandler.ProxyRequest(w, r, servicename, params["requestedUri"], port, false)
 	//
 	// if r.Method == http.MethodConnect {
 	// 	s.Proxies[port].ProxyTunnel(w, r, params["buildOrService"], params["requestedUri"])

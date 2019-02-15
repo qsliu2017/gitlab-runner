@@ -198,26 +198,8 @@ func (s *executor) Cleanup() {
 		}
 	}
 	closeKubeClient(s.kubeClient)
-	fmt.Println("FRAN CLENUP")
 	s.AbstractExecutor.Cleanup()
 }
-
-// apiVersion: v1
-// kind: Service
-// metadata:
-//   name: my-nginx
-//   labels:
-//     run: my-nginx
-// spec:
-//   ports:
-//   - port: 80
-//     name: pepe
-//     protocol: TCP
-//   - port: 81
-//     name: pepe1
-//     protocol: TCP
-//   selector:
-//     run: my-nginx
 
 // func (s *executor) buildService(name string, ports []api.ServicePort, selector map[string]string) *api.Service {
 // 	return &api.Service{
@@ -319,21 +301,11 @@ func (s *executor) buildContainer(name, image string, imageDefinition common.Ima
 	privileged := false
 
 	containerPorts := make([]api.ContainerPort, len(imageDefinition.Ports))
-	// servicePorts := make([]api.ServicePort, len(imageDefinition.Ports))
 	proxyPorts := make([]serviceproxy.ProxyPortSettings, len(imageDefinition.Ports))
 
 	for i, port := range imageDefinition.Ports {
-		// if s.Proxies[port] != nil {
-		// 	fmt.Errorf("There is already a proxy in port %v", port)
-		// }
-
 		proxyPorts[i] = serviceproxy.ProxyPortSettings{ExternalPort: port.ExternalPort, InternalPort: port.InternalPort, SslEnabled: port.Ssl}
-		// s.Proxies[port.ExternalPort] = s.newProxy(name, port.ExternalPort, port.InternalPort, port.Ssl)
 		containerPorts[i] = api.ContainerPort{ContainerPort: int32(port.InternalPort)}
-
-		// All ports within a ServiceSpec must have unique names
-		// portName := fmt.Sprintf("%s-%d", name, port.ExternalPort)
-		// servicePorts[i] = api.ServicePort{Port: int32(port.ExternalPort), TargetPort: intstr.FromInt(port.InternalPort), Name: portName}
 	}
 
 	if len(proxyPorts) != 0 {
@@ -341,9 +313,7 @@ func (s *executor) buildContainer(name, image string, imageDefinition common.Ima
 		if serviceName == "" {
 			serviceName = fmt.Sprintf("proxy-%s", name)
 		}
-		// service := s.buildService(fmt.Sprintf("proxy-%s", name), servicePorts)
-		// fmt.Println(service)
-		// s.services = append(s.services, &service)
+
 		s.Proxies[serviceName] = s.newProxy(serviceName, proxyPorts)
 	}
 
@@ -623,15 +593,11 @@ func (s *executor) setupCredentials() error {
 
 func (s *executor) setupBuildPod() error {
 	services := make([]api.Container, len(s.options.Services))
-	// serviceProxies := []api.Service{}
+	fmt.Println(services)
 
 	for i, service := range s.options.Services {
 		resolvedImage := s.Build.GetAllVariables().ExpandValue(service.Name)
-		fmt.Println("Services FRFAn")
-		fmt.Println(service.Alias)
-		fmt.Println(service.Ports)
 		services[i] = s.buildContainer(fmt.Sprintf("svc-%d", i), resolvedImage, service, s.serviceRequests, s.serviceLimits)
-		// serviceProxies = append(serviceProxies, buildServiceFromContainerSpec(services[i]))
 	}
 
 	labels := map[string]string{"pod": s.projectUniqueName()}
@@ -882,7 +848,7 @@ func (s *executor) GetProxyPool() serviceproxy.ProxyPool {
 	return s.ProxyPool
 }
 
-func (e *executor) ProxyRequest(w http.ResponseWriter, r *http.Request, buildOrService, requestedUri string, port int) {
+func (e *executor) ProxyRequest(w http.ResponseWriter, r *http.Request, buildOrService, requestedUri string, port int, sslEnabled bool) {
 	request := e.kubeClient.CoreV1().RESTClient().Get().
 		Namespace(e.pod.Namespace).
 		Resource("services").

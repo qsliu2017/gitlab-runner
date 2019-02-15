@@ -31,7 +31,7 @@ type ProxyPortSettings struct {
 }
 
 type ProxyConn interface {
-	ProxyRequest(w http.ResponseWriter, r *http.Request, buildOrService, requestedUri string, port int)
+	ProxyRequest(w http.ResponseWriter, r *http.Request, serviceName, requestedUri string, port int, sslEnabled bool)
 }
 
 // stoppers is the number of goroutines that may attempt to call Stop()
