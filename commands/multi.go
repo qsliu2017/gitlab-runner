@@ -213,12 +213,10 @@ func (mr *RunCommand) createSession(features common.FeaturesInfo) (*session.Sess
 		return nil, nil, err
 	}
 
-	ports := []common.SessionServicePort{common.SessionServicePort{Number: 123, Name: "portname"}}
 	sessionInfo := &common.SessionInfo{
 		URL:           mr.sessionServer.AdvertiseAddress + sess.Endpoint,
 		Certificate:   string(mr.sessionServer.CertificatePublicKey),
 		Authorization: sess.Token,
-		Services:      []common.SessionService{common.SessionService{Name: "fran", Ports: ports}},
 	}
 
 	return sess, sessionInfo, err

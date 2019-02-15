@@ -17,8 +17,8 @@ import (
 	"gitlab.com/gitlab-org/gitlab-runner/helpers"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers/tls"
 	"gitlab.com/gitlab-org/gitlab-runner/session"
+	serviceproxy "gitlab.com/gitlab-org/gitlab-runner/session/proxy"
 	"gitlab.com/gitlab-org/gitlab-runner/session/terminal"
-	"gitlab.com/gitlab-org/gitlab-runner/session/proxy"
 )
 
 type GitStrategy int
@@ -293,7 +293,7 @@ func (b *Build) run(ctx context.Context, executor Executor) (err error) {
 		b.Session.SetInteractiveTerminal(term)
 	}
 
-	if proxypool, ok := executor.(proxy.ProxyPooler); b.Session != nil && ok {
+	if proxypool, ok := executor.(serviceproxy.ProxyPooler); b.Session != nil && ok {
 		b.Session.SetProxyPool(proxypool)
 	}
 

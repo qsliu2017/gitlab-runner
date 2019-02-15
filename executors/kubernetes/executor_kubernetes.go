@@ -265,22 +265,41 @@ func (s *executor) Cleanup() {
 // 	return services, nil
 // }
 
-func (s *executor) createPodProxyServices() {
-	services := []*api.Service{}
-	for _, service := range s.services {
-		fmt.Println("ENTRANDO A CREAR SERVICO")
-		fmt.Println(service.Namespace)
+// func (s *executor) createPodProxyServices() {
+// 	services := []*api.Service{}
+// 	for _, service := range s.services {
+// 		fmt.Println("ENTRANDO A CREAR SERVICO")
+// 		fmt.Println(service.Namespace)
 
-		service, err := s.kubeClient.CoreV1().Services(service.Namespace).Create(service)
-		if err != nil {
-			fmt.Println("PEDAZO DE ERROR")
-			fmt.Println(service)
-			fmt.Errorf("Error cleaning up pod service: %s", service.Name)
-		} else {
-			services = append(services, service)
+// 		service, err := s.kubeClient.CoreV1().Services(service.Namespace).Create(service)
+// 		if err != nil {
+// 			fmt.Println("PEDAZO DE ERROR")
+// 			fmt.Println(service)
+// 			fmt.Errorf("Error cleaning up pod service: %s", service.Name)
+// 		} else {
+// 			services = append(services, service)
+// 		}
+// 	}
+// 	s.services = services
+// }
+
+func (s *executor) createPodProxyServices() ([]*api.Service, error) {
+	services := []*api.Service{}
+	for servicename, proxy := range s.Proxies {
+		servicePorts := make([]api.ServicePort, len(proxy.Ports))
+		for i, port := range proxy.Ports {
+			portName := fmt.Sprintf("%s-%d", servicename, port.ExternalPort)
+			servicePorts[i] = api.ServicePort{Port: int32(port.ExternalPort), TargetPort: intstr.FromInt(port.InternalPort), Name: portName}
 		}
+
+		serviceConfig := s.buildService(servicename, servicePorts)
+		service, err := s.kubeClient.CoreV1().Services(s.pod.Namespace).Create(&serviceConfig)
+		if err != nil {
+			return services, err
+		}
+		services = append(services, service)
 	}
-	s.services = services
+	return services, nil
 }
 
 func (s *executor) buildService(name string, ports []api.ServicePort) api.Service {
@@ -296,30 +315,36 @@ func (s *executor) buildService(name string, ports []api.ServicePort) api.Servic
 	}
 }
 
-func (s *executor) buildContainer(name, image string, imageDefinition common.Image, ports []common.Port, requests, limits api.ResourceList, containerCommand ...string) api.Container {
-	fmt.Println(name)
+func (s *executor) buildContainer(name, image string, imageDefinition common.Image, requests, limits api.ResourceList, containerCommand ...string) api.Container {
 	privileged := false
 
-	containerPorts := make([]api.ContainerPort, len(ports))
-	servicePorts := make([]api.ServicePort, len(ports))
+	containerPorts := make([]api.ContainerPort, len(imageDefinition.Ports))
+	// servicePorts := make([]api.ServicePort, len(imageDefinition.Ports))
+	proxyPorts := make([]serviceproxy.ProxyPortSettings, len(imageDefinition.Ports))
 
-	for i, port := range ports {
+	for i, port := range imageDefinition.Ports {
 		// if s.Proxies[port] != nil {
 		// 	fmt.Errorf("There is already a proxy in port %v", port)
 		// }
 
-		// s.Proxies[port] = s.proxy(port, name)
+		proxyPorts[i] = serviceproxy.ProxyPortSettings{ExternalPort: port.ExternalPort, InternalPort: port.InternalPort, SslEnabled: port.Ssl}
+		// s.Proxies[port.ExternalPort] = s.newProxy(name, port.ExternalPort, port.InternalPort, port.Ssl)
 		containerPorts[i] = api.ContainerPort{ContainerPort: int32(port.InternalPort)}
 
 		// All ports within a ServiceSpec must have unique names
-		portName := fmt.Sprintf("%s-%d", name, port.ExternalPort)
-		servicePorts[i] = api.ServicePort{Port: int32(port.ExternalPort), TargetPort: intstr.FromInt(port.InternalPort), Name: portName}
+		// portName := fmt.Sprintf("%s-%d", name, port.ExternalPort)
+		// servicePorts[i] = api.ServicePort{Port: int32(port.ExternalPort), TargetPort: intstr.FromInt(port.InternalPort), Name: portName}
 	}
 
-	if len(servicePorts) != 0 {
-		service := s.buildService(fmt.Sprintf("proxy-%s", name), servicePorts)
-		fmt.Println(service)
-		s.services = append(s.services, &service)
+	if len(proxyPorts) != 0 {
+		serviceName := imageDefinition.Alias
+		if serviceName == "" {
+			serviceName = fmt.Sprintf("proxy-%s", name)
+		}
+		// service := s.buildService(fmt.Sprintf("proxy-%s", name), servicePorts)
+		// fmt.Println(service)
+		// s.services = append(s.services, &service)
+		s.Proxies[serviceName] = s.newProxy(serviceName, proxyPorts)
 	}
 
 	if s.Config.Kubernetes != nil {
@@ -367,8 +392,8 @@ func (s *executor) buildPod(labels, annotations map[string]string, services []ap
 			Tolerations:        s.Config.Kubernetes.GetNodeTolerations(),
 			Containers: append([]api.Container{
 				// TODO use the build and helper template here
-				s.buildContainer("build", buildImage, s.options.Image, []common.Port{}, s.buildRequests, s.buildLimits, s.BuildShell.DockerCommand...),
-				s.buildContainer("helper", helperImage, common.Image{}, []common.Port{}, s.helperRequests, s.helperLimits, s.BuildShell.DockerCommand...),
+				s.buildContainer("build", buildImage, s.options.Image, s.buildRequests, s.buildLimits, s.BuildShell.DockerCommand...),
+				s.buildContainer("helper", helperImage, common.Image{}, s.helperRequests, s.helperLimits, s.BuildShell.DockerCommand...),
 			}, services...),
 			TerminationGracePeriodSeconds: &s.Config.Kubernetes.TerminationGracePeriodSeconds,
 			ImagePullSecrets:              imagePullSecrets,
@@ -602,8 +627,10 @@ func (s *executor) setupBuildPod() error {
 
 	for i, service := range s.options.Services {
 		resolvedImage := s.Build.GetAllVariables().ExpandValue(service.Name)
+		fmt.Println("Services FRFAn")
+		fmt.Println(service.Alias)
 		fmt.Println(service.Ports)
-		services[i] = s.buildContainer(fmt.Sprintf("svc-%d", i), resolvedImage, service, service.Ports, s.serviceRequests, s.serviceLimits)
+		services[i] = s.buildContainer(fmt.Sprintf("svc-%d", i), resolvedImage, service, s.serviceRequests, s.serviceLimits)
 		// serviceProxies = append(serviceProxies, buildServiceFromContainerSpec(services[i]))
 	}
 
@@ -638,7 +665,7 @@ func (s *executor) setupBuildPod() error {
 	// Creating a custom label with the name of this pod
 	// s.kubeClient.CoreV1().Pods(s.configurationOverwrites.namespace)
 
-	s.createPodProxyServices()
+	s.services, err = s.createPodProxyServices()
 	// if err != nil {
 	// 	fmt.Println("POR AKI")
 	// 	fmt.Println(err)
@@ -855,7 +882,7 @@ func (s *executor) GetProxyPool() serviceproxy.ProxyPool {
 	return s.ProxyPool
 }
 
-func (e *executor) ProxyRequest(w http.ResponseWriter, r *http.Request, buildOrService, requestedUri string) {
+func (e *executor) ProxyRequest(w http.ResponseWriter, r *http.Request, buildOrService, requestedUri string, port int) {
 	request := e.kubeClient.CoreV1().RESTClient().Get().
 		Namespace(e.pod.Namespace).
 		Resource("services").
@@ -876,9 +903,9 @@ func (e *executor) ProxyRequest(w http.ResponseWriter, r *http.Request, buildOrS
 	// io.Copy(w, string(body))
 }
 
-func (e *executor) proxy(port int, name string) *serviceproxy.Proxy {
+func (e *executor) newProxy(serviceName string, ports []serviceproxy.ProxyPortSettings) *serviceproxy.Proxy {
 	return &serviceproxy.Proxy{
-		ProxySettings:     serviceproxy.NewProxySettings(port, name),
+		ProxySettings:     serviceproxy.NewProxySettings(serviceName, ports),
 		ConnectionHandler: e,
 	}
 }

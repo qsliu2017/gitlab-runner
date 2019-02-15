@@ -109,20 +109,9 @@ type JobRequest struct {
 }
 
 type SessionInfo struct {
-	URL           string           `json:"url,omitempty"`
-	Certificate   string           `json:"certificate,omitempty"`
-	Authorization string           `json:"authorization,omitempty"`
-	Services      []SessionService `json:"services,omitempty"`
-}
-
-type SessionService struct {
-	Name  string               `json:"name,omitempty"`
-	Ports []SessionServicePort `json:"ports,omitempty"`
-}
-
-type SessionServicePort struct {
-	Number int    `json:"number,omitempty"`
-	Name   string `json:"name,omitempty"`
+	URL           string `json:"url,omitempty"`
+	Certificate   string `json:"certificate,omitempty"`
+	Authorization string `json:"authorization,omitempty"`
 }
 
 type JobInfo struct {

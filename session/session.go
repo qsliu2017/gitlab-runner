@@ -12,7 +12,7 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"gitlab.com/gitlab-org/gitlab-runner/helpers"
-	"gitlab.com/gitlab-org/gitlab-runner/session/proxy"
+	serviceproxy "gitlab.com/gitlab-org/gitlab-runner/session/proxy"
 	"gitlab.com/gitlab-org/gitlab-runner/session/terminal"
 )
 
@@ -23,7 +23,7 @@ func (connectionInUseError) Error() string {
 }
 
 type Session struct {
-	proxy.ProxyPool
+	serviceproxy.ProxyPool
 
 	Endpoint string
 	Token    string
@@ -186,7 +186,7 @@ func (s *Session) SetInteractiveTerminal(interactiveTerminal terminal.Interactiv
 	s.interactiveTerminal = interactiveTerminal
 }
 
-func (s *Session) SetProxyPool(pooler proxy.ProxyPooler) {
+func (s *Session) SetProxyPool(pooler serviceproxy.ProxyPooler) {
 	s.Lock()
 	defer s.Unlock()
 	s.ProxyPool = pooler.GetProxyPool()
@@ -233,19 +233,20 @@ func (s *Session) proxyHandler(w http.ResponseWriter, r *http.Request) {
 	//
 	params := mux.Vars(r)
 	port, err := strconv.Atoi(params["port"])
+	servicename := params["buildOrService"]
 	if err != nil {
 		logger.Error("Port is not valid")
 		http.Error(w, http.StatusText(http.StatusUnprocessableEntity), http.StatusUnprocessableEntity)
 		return
 	}
 
-	if s.Proxies[port] == nil {
+	if s.Proxies[servicename] == nil {
 		logger.Warn("Proxy not found")
 		http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
 		return
 	}
 
-	s.Proxies[port].ConnectionHandler.ProxyRequest(w, r, params["buildOrService"], params["requestedUri"])
+	s.Proxies[servicename].ConnectionHandler.ProxyRequest(w, r, servicename, params["requestedUri"], port)
 	//
 	// if r.Method == http.MethodConnect {
 	// 	s.Proxies[port].ProxyTunnel(w, r, params["buildOrService"], params["requestedUri"])

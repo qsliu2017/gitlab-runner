@@ -1,4 +1,4 @@
-package proxy
+package serviceproxy
 
 import (
 	"net/http"
@@ -7,7 +7,7 @@ import (
 )
 
 type ProxyPool struct {
-	Proxies map[int]*Proxy
+	Proxies map[string]*Proxy
 }
 
 type ProxyPooler interface {
@@ -20,25 +20,31 @@ type Proxy struct {
 }
 
 type ProxySettings struct {
-	Port int
-	BuildOrService string
+	ServiceName string
+	Ports       []ProxyPortSettings
+}
+
+type ProxyPortSettings struct {
+	ExternalPort int
+	InternalPort int
+	SslEnabled   bool
 }
 
 type ProxyConn interface {
-	ProxyRequest(w http.ResponseWriter, r *http.Request, buildOrService, requestedUri string)
+	ProxyRequest(w http.ResponseWriter, r *http.Request, buildOrService, requestedUri string, port int)
 }
 
 // stoppers is the number of goroutines that may attempt to call Stop()
-func NewProxySettings(port int, buildOrService string) *ProxySettings {
+func NewProxySettings(serviceName string, ports []ProxyPortSettings) *ProxySettings {
 	service := ""
-	if buildOrService != "build" {
-		service = buildOrService
+	if serviceName != "build" {
+		service = serviceName
 	}
 
 	return &ProxySettings{
-			Port: port,
-			BuildOrService: service,
-		}
+		ServiceName: service,
+		Ports:       ports,
+	}
 }
 
 // func (p *Proxy) ProxyRequest(w http.ResponseWriter, req *http.Request, buildOrService, requestedUri string) {
