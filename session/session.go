@@ -1,10 +1,8 @@
 package session
 
 import (
-	"fmt"
 	"net/http"
 	"reflect"
-	"strconv"
 	"sync"
 
 	"github.com/gorilla/mux"
@@ -220,10 +218,6 @@ func (s *Session) Kill() error {
 func (s *Session) proxyHandler(w http.ResponseWriter, r *http.Request) {
 	logger := s.log.WithField("uri", r.RequestURI)
 	logger.Debug("Exec create proxy session request")
-	fmt.Println("ProxyHJandler")
-
-	fmt.Println("Proxies")
-	fmt.Println(s.Proxies)
 
 	// if s.Token != r.Header.Get("Authorization") {
 	// 	logger.Error("Authorization header is not valid")
@@ -232,21 +226,16 @@ func (s *Session) proxyHandler(w http.ResponseWriter, r *http.Request) {
 	// }
 	//
 	params := mux.Vars(r)
-	port, err := strconv.Atoi(params["port"])
 	servicename := params["buildOrService"]
-	if err != nil {
-		logger.Error("Port is not valid")
-		http.Error(w, http.StatusText(http.StatusUnprocessableEntity), http.StatusUnprocessableEntity)
-		return
-	}
 
-	if s.Proxies[servicename] == nil {
+	proxy := s.Proxies[servicename]
+	if proxy == nil {
 		logger.Warn("Proxy not found")
 		http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
 		return
 	}
 
-	s.Proxies[servicename].ConnectionHandler.ProxyRequest(w, r, servicename, params["requestedUri"], port, false)
+	proxy.ConnectionHandler.ProxyRequest(w, r, params["requestedUri"], params["port"], proxy.Settings)
 	//
 	// if r.Method == http.MethodConnect {
 	// 	s.Proxies[port].ProxyTunnel(w, r, params["buildOrService"], params["requestedUri"])

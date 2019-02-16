@@ -2,6 +2,7 @@ package serviceproxy
 
 import (
 	"net/http"
+	"strconv"
 	// "io"
 	// "fmt"
 )
@@ -15,7 +16,7 @@ type ProxyPooler interface {
 }
 
 type Proxy struct {
-	*ProxySettings
+	Settings          *ProxySettings
 	ConnectionHandler ProxyConn
 }
 
@@ -31,19 +32,34 @@ type ProxyPortSettings struct {
 }
 
 type ProxyConn interface {
-	ProxyRequest(w http.ResponseWriter, r *http.Request, serviceName, requestedUri string, port int, sslEnabled bool)
+	ProxyRequest(w http.ResponseWriter, r *http.Request, requestedUri, port string, proxy *ProxySettings)
 }
 
 // stoppers is the number of goroutines that may attempt to call Stop()
 func NewProxySettings(serviceName string, ports []ProxyPortSettings) *ProxySettings {
-	service := ""
-	if serviceName != "build" {
-		service = serviceName
+	return &ProxySettings{
+		ServiceName: serviceName,
+		Ports:       ports,
+	}
+}
+
+func (p *ProxySettings) PortSettingsFor(port string) *ProxyPortSettings {
+	intPort, _ := strconv.Atoi(port)
+
+	for _, port := range p.Ports {
+		if port.ExternalPort == intPort {
+			return &port
+		}
 	}
 
-	return &ProxySettings{
-		ServiceName: service,
-		Ports:       ports,
+	return nil
+}
+
+func (p *ProxyPortSettings) Scheme() string {
+	if p.SslEnabled == true {
+		return "https"
+	} else {
+		return "http"
 	}
 }
 
