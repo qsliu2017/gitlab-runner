@@ -3,6 +3,9 @@ package kubernetes
 import (
 	"encoding/json"
 	"fmt"
+	"log"
+
+	// "io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -14,6 +17,8 @@ import (
 	api "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
+
+	// k8net "k8s.io/apimachinery/pkg/util/net"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
 
@@ -200,40 +205,6 @@ func (s *executor) Cleanup() {
 	closeKubeClient(s.kubeClient)
 	s.AbstractExecutor.Cleanup()
 }
-
-// func (s *executor) createPodProxyServices(pod *api.Pod) ([]*api.Service, error) {
-// 	services := []*api.Service{}
-// 	for _, container := range pod.Spec.Containers {
-// 		portsLength := len(container.Ports)
-// 		if portsLength != 0 {
-// 			servicePorts := make([]api.ServicePort, portsLength)
-
-// 			for i, port := range container.Ports {
-// 				portName := fmt.Sprintf("%s-%d", container.Name, port.ContainerPort)
-// 				servicePorts[i] = api.ServicePort{Port: port.ContainerPort, Name: portName}
-// 			}
-
-// 			serviceConfig := api.Service{
-// 				ObjectMeta: metav1.ObjectMeta{
-// 					GenerateName: container.Name,
-// 					Namespace:    s.configurationOverwrites.namespace,
-// 				},
-// 				Spec: api.ServiceSpec{
-// 					Ports:    servicePorts,
-// 					Selector: map[string]string{"pod": s.projectUniqueName()},
-// 				},
-// 			}
-
-// 			service, err := s.kubeClient.CoreV1().Services(pod.Namespace).Create(&serviceConfig)
-// 			if err != nil {
-// 				return services, err
-// 			}
-// 			services = append(services, service)
-// 		}
-// 	}
-
-// 	return services, nil
-// }
 
 func (s *executor) createPodProxyServices() ([]*api.Service, error) {
 	services := []*api.Service{}
@@ -830,24 +801,68 @@ func (e *executor) ProxyRequest(w http.ResponseWriter, r *http.Request, requeste
 		return
 	}
 
-	request := e.kubeClient.CoreV1().RESTClient().Get().
-		Namespace(e.pod.Namespace).
-		Resource("services").
-		SubResource("proxy").
-		Name(fmt.Sprintf("%s:%s:%d", portSettings.Scheme(), proxy.ServiceName, portSettings.ExternalPort)).
-		Suffix(requestedUri)
+	// request := e.kubeClient.CoreV1().RESTClient().Verb(r.Method).
+	// 	Namespace(e.pod.Namespace).
+	// 	Resource("services").
+	// 	SubResource("proxy").
+	// 	Name(fmt.Sprintf("%s:%s:%d", portSettings.Scheme(), proxy.ServiceName, portSettings.ExternalPort)).
+	// 	// Name(k8net.JoinSchemeNamePort(portSettings.Scheme(), proxy.ServiceName, portSettings.ExternalPort)).
+	// 	Suffix(requestedUri)
 
-	fmt.Println(request)
-	fmt.Println(request.URL())
-	body, err := request.Do().Raw()
-	fmt.Println(string(body))
-	fmt.Println(err)
+	result := e.kubeClient.CoreV1().Services(e.pod.Namespace).ProxyGet(portSettings.Scheme(), proxy.ServiceName, "8080", requestedUri, map[string]string{})
+	// result.Do()
+	// result.DoRaw()
+	// result.Stream()
+	// result := request.()
+	// fmt.Println(result)
+	log.Printf(": %#+v", result)
+	// fmt.Println(request.URL())
+	// result := new(unstructured.Unstructured)
+	// body, err := request.Stream()
 
-	body, err = request.Do().Raw()
-	fmt.Println(string(body))
-	fmt.Println(err)
-	// // w.WriteHeader(resp.StatusCode)
-	// io.Copy(w, string(body))
+	// result := request.Do()
+
+	// fmt.Println(request)
+	// fmt.Println("*****")
+	// fmt.Println(result.Error())
+	// fmt.Println(response.Error())
+	// var statusCode int
+	// result.StatusCode(&statusCode)
+	// fmt.Println(statusCode)
+	// fmt.Println(result.Error())
+	// fmt.Println("*****")
+	// fmt.Println(response)
+	// fmt.Println(response.Error())
+	// fmt.Println(response.transformResponse(test.Response, &http.Request{}))
+	// fmt.Println(err)
+
+	// fmt.Println("*********")
+	// fmt.Println(result)
+
+	// fmt.Println(body)
+
+	// err := response.Error()
+	// if err == nil {
+	// 	fmt.Errorf("unexpected non-error")
+	// }
+	// ss, ok := err.(errors.APIStatus)
+	// if !ok {
+	// 	fmt.Errorf("unexpected error type %v", err)
+	// }
+	// actual := ss.Status()
+	// fmt.Println(actual)
+
+	// body, err := request.Do().Raw()
+	// fmt.Println(string(body))
+	// fmt.Println(err)
+	// if response.Error() == nil {
+	// 	w.WriteHeader(statusCode)
+	// }
+	// if err == nil {
+	// 	io.Copy(w, body)
+	// } else {
+	// 	fmt.Println(err)
+	// }
 }
 
 func (e *executor) newProxy(serviceName string, ports []serviceproxy.ProxyPortSettings) *serviceproxy.Proxy {
