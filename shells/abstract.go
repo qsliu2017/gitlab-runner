@@ -118,6 +118,7 @@ func (b *AbstractShell) writeFetchCmd(w ShellWriter, build *common.Build, projec
 	var gitFetch []string
 
 	gitFetch = append(gitFetch, "fetch")
+	gitFetch = append(gitFetch, "origin", "--prune")
 
 	if depth != "" {
 		gitFetch = append(gitFetch, "--depth", depth)
@@ -142,7 +143,6 @@ func (b *AbstractShell) writeFetchCmd(w ShellWriter, build *common.Build, projec
 		}
 	}
 
-	gitFetch = append(gitFetch, "origin", "--prune")
 	w.Command("git", gitFetch...)
 }
 

@@ -127,7 +127,7 @@ type GitInfoRefType string
 const (
 	RefTypeBranch        GitInfoRefType = "branch"
 	RefTypeTag           GitInfoRefType = "tag"
-	RefTypeMergeRequests GitInfoRefType = "merge-requests"
+	RefTypeMergeRequests GitInfoRefType = "merge_request"
 )
 
 type GitInfo struct {
