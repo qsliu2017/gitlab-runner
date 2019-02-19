@@ -204,11 +204,11 @@ func (b *BashWriter) Finish(trace bool) string {
 }
 
 func (b *BashWriter) SectionStart(name string) {
-	b.Line("echo -n \"section_start:0:$(echo -n " + helpers.ShellEscape(name+"\r"+helpers.ANSI_CLEAR) + ")\"")
+	b.Line("echo -n " + helpers.ShellEscape("section_start:0:"+name+"\r"+helpers.ANSI_CLEAR))
 }
 
 func (b *BashWriter) SectionEnd(name string) {
-	b.Line("echo -n \"section_end:0:$(echo -n " + helpers.ShellEscape(name+"\r"+helpers.ANSI_CLEAR) + ")\"")
+	b.Line("echo -n " + helpers.ShellEscape("section_end:0:"+name+"\r"+helpers.ANSI_CLEAR))
 }
 
 func (b *BashShell) GetName() string {
