@@ -10,7 +10,7 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"gitlab.com/gitlab-org/gitlab-runner/helpers"
-	serviceproxy "gitlab.com/gitlab-org/gitlab-runner/session/proxy"
+	serviceproxy "gitlab.com/gitlab-org/gitlab-runner/session/serviceproxy"
 	"gitlab.com/gitlab-org/gitlab-runner/session/terminal"
 )
 
@@ -95,7 +95,7 @@ func (s *Session) setMux() {
 
 	s.mux = mux.NewRouter()
 	s.mux.HandleFunc(s.Endpoint+"/exec", s.execHandler)
-	s.mux.HandleFunc(s.Endpoint+`/proxy/{buildOrService:\w+}/{port:\d+}/{requestedUri:.*}`, s.proxyHandler)
+	s.mux.HandleFunc(s.Endpoint+`/proxy/{buildOrService:\w+}/{port:\w+}/{requestedUri:.*}`, s.proxyHandler)
 }
 
 func (s *Session) execHandler(w http.ResponseWriter, r *http.Request) {
@@ -219,12 +219,12 @@ func (s *Session) proxyHandler(w http.ResponseWriter, r *http.Request) {
 	logger := s.log.WithField("uri", r.RequestURI)
 	logger.Debug("Exec create proxy session request")
 
-	// if s.Token != r.Header.Get("Authorization") {
-	// 	logger.Error("Authorization header is not valid")
-	// 	http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
-	// 	return
-	// }
-	//
+	if s.Token != r.Header.Get("Authorization") {
+		logger.Error("Authorization header is not valid")
+		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+		return
+	}
+
 	params := mux.Vars(r)
 	servicename := params["buildOrService"]
 

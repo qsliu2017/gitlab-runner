@@ -3,7 +3,8 @@ package kubernetes
 import (
 	"encoding/json"
 	"fmt"
-	"log"
+	"io"
+	"strconv"
 
 	// "io"
 	"io/ioutil"
@@ -15,10 +16,11 @@ import (
 
 	"golang.org/x/net/context"
 	api "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 
-	// k8net "k8s.io/apimachinery/pkg/util/net"
+	k8net "k8s.io/apimachinery/pkg/util/net"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
 
@@ -28,7 +30,7 @@ import (
 
 	"gitlab.com/gitlab-org/gitlab-runner/common"
 	"gitlab.com/gitlab-org/gitlab-runner/executors"
-	serviceproxy "gitlab.com/gitlab-org/gitlab-runner/session/proxy"
+	serviceproxy "gitlab.com/gitlab-org/gitlab-runner/session/serviceproxy"
 	terminalsession "gitlab.com/gitlab-org/gitlab-runner/session/terminal"
 	terminal "gitlab.com/gitlab-org/gitlab-terminal"
 )
@@ -211,19 +213,20 @@ func (s *executor) createPodProxyServices() ([]*api.Service, error) {
 	for servicename, proxy := range s.Proxies {
 		servicePorts := make([]api.ServicePort, len(proxy.Settings.Ports))
 		for i, port := range proxy.Settings.Ports {
+			// When there is more than one port Kubernetes requires a port name
 			portName := fmt.Sprintf("%s-%d", servicename, port.ExternalPort)
 			servicePorts[i] = api.ServicePort{Port: int32(port.ExternalPort), TargetPort: intstr.FromInt(port.InternalPort), Name: portName}
 		}
 
-		fmt.Println("Creando Proxies")
 		serviceConfig := s.buildService(servicename, servicePorts)
 		service, err := s.kubeClient.CoreV1().Services(s.pod.Namespace).Create(&serviceConfig)
+		if err != nil {
+			// we need to return the created services
+			return services, err
+		}
 
 		//Updating the internal service name reference
 		proxy.Settings.ServiceName = service.Name
-		if err != nil {
-			return services, err
-		}
 		services = append(services, service)
 	}
 	return services, nil
@@ -244,19 +247,23 @@ func (s *executor) buildService(name string, ports []api.ServicePort) api.Servic
 
 func (s *executor) buildContainer(name, image string, imageDefinition common.Image, requests, limits api.ResourceList, containerCommand ...string) api.Container {
 	privileged := false
-
 	containerPorts := make([]api.ContainerPort, len(imageDefinition.Ports))
 	proxyPorts := make([]serviceproxy.ProxyPortSettings, len(imageDefinition.Ports))
 
 	for i, port := range imageDefinition.Ports {
-		proxyPorts[i] = serviceproxy.ProxyPortSettings{ExternalPort: port.ExternalPort, InternalPort: port.InternalPort, SslEnabled: port.Ssl}
+		proxyPorts[i] = serviceproxy.ProxyPortSettings{Name: port.Name, ExternalPort: port.ExternalPort, InternalPort: port.InternalPort, SslEnabled: port.Ssl}
 		containerPorts[i] = api.ContainerPort{ContainerPort: int32(port.InternalPort)}
 	}
 
 	if len(proxyPorts) != 0 {
 		serviceName := imageDefinition.Alias
+
 		if serviceName == "" {
-			serviceName = fmt.Sprintf("proxy-%s", name)
+			if name == "build" {
+				serviceName = name
+			} else {
+				serviceName = fmt.Sprintf("proxy-%s", name)
+			}
 		}
 
 		s.Proxies[serviceName] = s.newProxy(serviceName, proxyPorts)
@@ -538,13 +545,16 @@ func (s *executor) setupCredentials() error {
 
 func (s *executor) setupBuildPod() error {
 	services := make([]api.Container, len(s.options.Services))
-	fmt.Println(services)
 
 	for i, service := range s.options.Services {
 		resolvedImage := s.Build.GetAllVariables().ExpandValue(service.Name)
 		services[i] = s.buildContainer(fmt.Sprintf("svc-%d", i), resolvedImage, service, s.serviceRequests, s.serviceLimits)
 	}
 
+	// We set a default label to the pod. This label will be used later
+	// by the services to link the service to the pod
+	// Maybe we should create the label the the generated pod's name
+	// but at least in the tests this was enough
 	labels := map[string]string{"pod": s.projectUniqueName()}
 	for k, v := range s.Build.Runner.Kubernetes.PodLabels {
 		labels[k] = s.Build.Variables.ExpandValue(v)
@@ -573,19 +583,12 @@ func (s *executor) setupBuildPod() error {
 	}
 
 	s.pod = pod
-	// Creating a custom label with the name of this pod
-	// s.kubeClient.CoreV1().Pods(s.configurationOverwrites.namespace)
 
 	s.services, err = s.createPodProxyServices()
-	// if err != nil {
-	// 	fmt.Println("POR AKI")
-	// 	fmt.Println(err)
-	// 	return err
-	// }
-	// for _, service := range s.services {
-	// 	service, _ := s.kubeClient.CoreV1().Services(s.configurationOverwrites.namespace).Create(service)
-	// 	// s.services2 = append(s.services2, aa)
-	// }
+	if err != nil {
+		// We don't abort the pod creation if any of the services fail
+		s.Errorln(fmt.Sprintf("Creating some services: %s", err.Error()))
+	}
 
 	return nil
 }
@@ -801,68 +804,31 @@ func (e *executor) ProxyRequest(w http.ResponseWriter, r *http.Request, requeste
 		return
 	}
 
-	// request := e.kubeClient.CoreV1().RESTClient().Verb(r.Method).
-	// 	Namespace(e.pod.Namespace).
-	// 	Resource("services").
-	// 	SubResource("proxy").
-	// 	Name(fmt.Sprintf("%s:%s:%d", portSettings.Scheme(), proxy.ServiceName, portSettings.ExternalPort)).
-	// 	// Name(k8net.JoinSchemeNamePort(portSettings.Scheme(), proxy.ServiceName, portSettings.ExternalPort)).
-	// 	Suffix(requestedUri)
+	body, err := e.kubeClient.CoreV1().RESTClient().Verb(r.Method).
+		Namespace(e.pod.Namespace).
+		Resource("services").
+		SubResource("proxy").
+		Name(k8net.JoinSchemeNamePort(portSettings.Scheme(), proxy.ServiceName, strconv.Itoa(portSettings.ExternalPort))).
+		Suffix(requestedUri).
+		Stream()
 
-	result := e.kubeClient.CoreV1().Services(e.pod.Namespace).ProxyGet(portSettings.Scheme(), proxy.ServiceName, "8080", requestedUri, map[string]string{})
-	// result.Do()
-	// result.DoRaw()
-	// result.Stream()
-	// result := request.()
-	// fmt.Println(result)
-	log.Printf(": %#+v", result)
-	// fmt.Println(request.URL())
-	// result := new(unstructured.Unstructured)
-	// body, err := request.Stream()
+	if err != nil {
+		if statusError, ok := err.(*errors.StatusError); ok {
+			causes := statusError.Status().Details.Causes
 
-	// result := request.Do()
+			w.WriteHeader(int(statusError.Status().Code))
+			if len(causes) != 0 {
+				fmt.Fprintf(w, causes[0].Message)
+			}
+		} else {
+			w.WriteHeader(http.StatusInternalServerError)
+		}
 
-	// fmt.Println(request)
-	// fmt.Println("*****")
-	// fmt.Println(result.Error())
-	// fmt.Println(response.Error())
-	// var statusCode int
-	// result.StatusCode(&statusCode)
-	// fmt.Println(statusCode)
-	// fmt.Println(result.Error())
-	// fmt.Println("*****")
-	// fmt.Println(response)
-	// fmt.Println(response.Error())
-	// fmt.Println(response.transformResponse(test.Response, &http.Request{}))
-	// fmt.Println(err)
+		return
+	}
 
-	// fmt.Println("*********")
-	// fmt.Println(result)
-
-	// fmt.Println(body)
-
-	// err := response.Error()
-	// if err == nil {
-	// 	fmt.Errorf("unexpected non-error")
-	// }
-	// ss, ok := err.(errors.APIStatus)
-	// if !ok {
-	// 	fmt.Errorf("unexpected error type %v", err)
-	// }
-	// actual := ss.Status()
-	// fmt.Println(actual)
-
-	// body, err := request.Do().Raw()
-	// fmt.Println(string(body))
-	// fmt.Println(err)
-	// if response.Error() == nil {
-	// 	w.WriteHeader(statusCode)
-	// }
-	// if err == nil {
-	// 	io.Copy(w, body)
-	// } else {
-	// 	fmt.Println(err)
-	// }
+	w.WriteHeader(http.StatusOK)
+	io.Copy(w, body)
 }
 
 func (e *executor) newProxy(serviceName string, ports []serviceproxy.ProxyPortSettings) *serviceproxy.Proxy {

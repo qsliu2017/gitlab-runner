@@ -17,7 +17,6 @@ import (
 	"gitlab.com/gitlab-org/gitlab-runner/common"
 	"gitlab.com/gitlab-org/gitlab-runner/executors"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers"
-// 	"gitlab.com/gitlab-org/gitlab-runner/session/proxy"
 )
 
 type executor struct {
@@ -52,11 +51,6 @@ func (s *executor) Prepare(options common.ExecutorPrepareOptions) error {
 	if err != nil {
 		return err
 	}
-
-	// err = s.createServices()
-	// if (err != nil) {
-	// 	return err
-	// }
 
 	s.Println("Using Shell executor...")
 	return nil
@@ -177,24 +171,6 @@ func init() {
 	})
 }
 
-// func (e *executor) createServices() (err error) {
-// 	servicesDefinitions, err := e.getServicesDefinitions()
-//
-// 	if err != nil {
-// 		return err
-// 	}
-//
-// 	for _, serviceDefinition := range servicesDefinitions {
-// 		err = e.createFromServiceDefinition(serviceDefinition)
-//
-// 		if err != nil {
-// 			return err
-// 		}
-// 	}
-//
-// 	return nil
-// }
-
 func (e *executor) getServicesDefinitions() (common.Services, error) {
 	servicesDefinitions := common.Services{}
 
@@ -207,35 +183,3 @@ func (e *executor) getServicesDefinitions() (common.Services, error) {
 
 	return servicesDefinitions, nil
 }
-
-// func (e *executor) createFromServiceDefinition(serviceDefinition common.Image) (error) {
-// 	// If no entrypoint there is no need to create the proxy
-// 	if len(serviceDefinition.Entrypoint) == 0 {
-// 		return nil
-// 	}
-//
-// 	//Run Services
-// 	c := exec.Command(serviceDefinition.Entrypoint[0], serviceDefinition.Entrypoint[1:]...)
-// 	if c == nil {
-// 		return fmt.Errorf("Failed to generate service command")
-// 	}
-//
-// 	err := c.Start()
-// 	if err != nil {
-// 		return err
-// 	}
-//
-// 	// for _, port := range serviceDefinition.Ports {
-// 	// 	if (e.Proxies[port] != nil) {
-// 	// 		return fmt.Errorf("There is already a proxy in port %v", port)
-// 	// 	}
-// 	//
-// 	// 	e.Proxies[port] = proxy.NewProxy("localhost", port, serviceDefinition.Name)
-// 	// }
-//
-// 	return nil
-// }
-
-// func (e *executor) GetProxyPool() proxy.ProxyPool {
-// 	return e.ProxyPool
-// }

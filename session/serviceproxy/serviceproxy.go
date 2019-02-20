@@ -29,6 +29,7 @@ type ProxyPortSettings struct {
 	ExternalPort int
 	InternalPort int
 	SslEnabled   bool
+	Name         string
 }
 
 type ProxyConn interface {
@@ -43,11 +44,11 @@ func NewProxySettings(serviceName string, ports []ProxyPortSettings) *ProxySetti
 	}
 }
 
-func (p *ProxySettings) PortSettingsFor(port string) *ProxyPortSettings {
-	intPort, _ := strconv.Atoi(port)
+func (p *ProxySettings) PortSettingsFor(portNameOrNumber string) *ProxyPortSettings {
+	intPort, _ := strconv.Atoi(portNameOrNumber)
 
 	for _, port := range p.Ports {
-		if port.ExternalPort == intPort {
+		if port.ExternalPort == intPort || port.Name == portNameOrNumber {
 			return &port
 		}
 	}

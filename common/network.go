@@ -191,9 +191,10 @@ type ArtifactPaths []string
 type ArtifactWhen string
 
 type Port struct {
-	ExternalPort int  `json:"externalport,omitempty"`
-	InternalPort int  `json:"internalport,omitempty"`
-	Ssl          bool `json:"ssl,omitempty"`
+	ExternalPort int    `json:"externalport,omitempty"`
+	InternalPort int    `json:"internalport,omitempty"`
+	Ssl          bool   `json:"ssl,omitempty"`
+	Name         string `json:"name,omitempty"`
 }
 
 const (
