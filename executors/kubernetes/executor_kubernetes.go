@@ -799,7 +799,7 @@ func (s *executor) GetProxyPool() serviceproxy.ProxyPool {
 func (e *executor) ProxyRequest(w http.ResponseWriter, r *http.Request, requestedUri, port string, proxy *serviceproxy.ProxySettings) {
 	portSettings := proxy.PortSettingsFor(port)
 	if portSettings == nil {
-		fmt.Errorf("Port proxy %s not found: %s", port)
+		fmt.Errorf("Port proxy %s not found", port)
 		http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
 		return
 	}
@@ -813,17 +813,12 @@ func (e *executor) ProxyRequest(w http.ResponseWriter, r *http.Request, requeste
 		Stream()
 
 	if err != nil {
-		if statusError, ok := err.(*errors.StatusError); ok {
-			causes := statusError.Status().Details.Causes
+		message, code := e.parseError(err)
+		w.WriteHeader(code)
 
-			w.WriteHeader(int(statusError.Status().Code))
-			if len(causes) != 0 {
-				fmt.Fprintf(w, causes[0].Message)
-			}
-		} else {
-			w.WriteHeader(http.StatusInternalServerError)
+		if message != "" {
+			fmt.Fprintf(w, message)
 		}
-
 		return
 	}
 
@@ -836,4 +831,31 @@ func (e *executor) newProxy(serviceName string, ports []serviceproxy.ProxyPortSe
 		Settings:          serviceproxy.NewProxySettings(serviceName, ports),
 		ConnectionHandler: e,
 	}
+}
+
+func (e *executor) parseError(err error) (string, int) {
+	statusError, ok := err.(*errors.StatusError)
+
+	if !ok {
+		return "", http.StatusInternalServerError
+	}
+
+	code := int(statusError.Status().Code)
+	// When the error is a 503 we don't want to give any information
+	// coming from Kubernetes
+	if code == http.StatusServiceUnavailable {
+		return "", code
+	}
+
+	details := statusError.Status().Details
+	if details == nil {
+		return "", code
+	}
+
+	causes := details.Causes
+	if len(causes) != 0 {
+		return causes[0].Message, code
+	}
+
+	return "", code
 }
