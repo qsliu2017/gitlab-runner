@@ -12,6 +12,7 @@
 #   GIT_VERSION you specified.
 # - $Env:GIT_LFS_VERSION - The Git LFS version needed to installed on the
 #   Docker image.
+# - $Env:IS_LATEST - When we want to tag current tag as latest, this is usually
 #   used when we are tagging a release for the runner (which is not a patch
 #   release or RC)
 # - $Env:DOCKER_HUB_USER - The user we want to login with for docker hub.
@@ -43,6 +44,12 @@ function Main
 
     Push-Tag $tag
 
+    if ($Env:IS_LATEST -eq "true")
+    {
+        Add-LatestTag $tag
+        Push-Latest
+    }
+
     Disconnect-Registry
 }
 
@@ -73,6 +80,20 @@ function Push-Tag($tag)
     Write-Output "Push $tag"
 
     & 'docker' push gitlab/gitlab-runner-helper:$tag
+}
+
+function Add-LatestTag($tag)
+{
+    Write-Output "Tag $tag as latest"
+
+    & 'docker' tag "gitlab/gitlab-runner-helper:$tag" "gitlab/gitlab-runner-helper:x86_64-latest-$Env:WINDOWS_VERSION"
+}
+
+function Push-Latest()
+{
+    Write-Output "Push latest tag"
+
+    & 'docker' push "gitlab/gitlab-runner-helper:x86_64-latest-$Env:WINDOWS_VERSION"
 }
 
 function Connect-Registry
