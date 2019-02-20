@@ -4,8 +4,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
-	"fmt"
-	"io/ioutil"
 
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
@@ -208,68 +206,4 @@ func TestCloseTerminalConn(t *testing.T) {
 
 	sess.closeTerminalConn(conn)
 	assert.Nil(t, sess.terminalConn)
-}
-
-func TestProxy(t *testing.T) {
-	// cases := []struct {
-	// 	name               string
-	// 	authorization      string
-	// 	connectionErr      error
-	// 	expectedStatusCode int
-	// }{
-	// 	{
-	// 		name:               "Interactive terminal not available",
-	// 		expectedStatusCode: http.StatusServiceUnavailable,
-	// 	},
-	// 	{
-	// 		name:               "Request is not websocket upgraded",
-	// 		expectedStatusCode: http.StatusMethodNotAllowed,
-	// 	},
-	// 	{
-	// 		name:               "Request no authorized",
-	// 		authorization:      "invalidToken",
-	// 		expectedStatusCode: http.StatusUnauthorized,
-	// 	},
-	// 	{
-	// 		name:               "Terminal connected successfully",
-	// 		authorization:      "validToken",
-	// 		expectedStatusCode: http.StatusOK,
-	// 	},
-	// 	{
-	// 		name:               "Failed to start terminal",
-	// 		authorization:      "validToken",
-	// 		connectionErr:      errors.New("failed to connect to terminal"),
-	// 		expectedStatusCode: http.StatusInternalServerError,
-	// 	},
-	// }
-
-	// for _, c := range cases {
-	// 	t.Run(c.name, func(t *testing.T) {
-			session, err := NewSession(nil)
-			require.NoError(t, err)
-			session.Token = "validToken"
-			page := "page"
-			port := "8001"
-			answer := "ACK"
-
-			http.HandleFunc("/"+page, func (w http.ResponseWriter, r *http.Request) {
-				fmt.Fprintf(w, answer)
-			})
-
-			go http.ListenAndServe(":"+port, nil)
-
-			// req := httptest.NewRequest(http.MethodGet, "http://localhost:"+port+session.Endpoint+"/proxy/service/"+port+"/"+page, nil)
-			req := httptest.NewRequest(http.MethodGet, session.Endpoint+"/proxy/service/"+port+"/"+page, nil)
-			req.Header.Add("Authorization", "validToken")
-
-			w := httptest.NewRecorder()
-
-			session.Mux().ServeHTTP(w, req)
-
-			resp := w.Result()
-			respBody, err := ioutil.ReadAll(resp.Body)
-			assert.Equal(t, 200, resp.StatusCode)
-			assert.Equal(t, answer, string(respBody))
-	// 	})
-	// }
 }

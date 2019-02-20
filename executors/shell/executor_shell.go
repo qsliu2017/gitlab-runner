@@ -170,16 +170,3 @@ func init() {
 		DefaultShellName: options.Shell.Shell,
 	})
 }
-
-func (e *executor) getServicesDefinitions() (common.Services, error) {
-	servicesDefinitions := common.Services{}
-
-	for _, service := range e.Build.Services {
-		serviceName := e.Build.GetAllVariables().ExpandValue(service.Name)
-
-		service.Name = serviceName
-		servicesDefinitions = append(servicesDefinitions, service)
-	}
-
-	return servicesDefinitions, nil
-}

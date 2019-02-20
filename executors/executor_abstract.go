@@ -20,6 +20,7 @@ type AbstractExecutor struct {
 	ExecutorOptions
 	common.BuildLogger
 	serviceproxy.ProxyPool
+
 	Config       common.RunnerConfig
 	Build        *common.Build
 	Trace        common.JobTrace
