@@ -42,6 +42,12 @@ function Main
 
     Push-Tag $tag
 
+    if ($Env:IS_LATEST -eq "true")
+    {
+        Add-LatestTag $tag
+        Push-Latest
+    }
+
     Disconnect-Registry
 }
 
@@ -74,6 +80,19 @@ function Push-Tag($tag)
     & 'docker' push steveazz/gitlab-runner-helper:$tag
 }
 
+function Add-LatestTag($tag)
+{
+    Write-Output "Tagging $tag as latest"
+
+    & 'docker' tag "steveazz/gitlab-runner-helper:$tag" "steveazz/gitlab-runner-helper:x86_64-latest-$Env:WINDOWS_VERSION"
+}
+
+function Push-Latest()
+{
+    Write-Output "Pushing latest tag"
+
+    & 'docker' push "steveazz/gitlab-runner-helper:x86_64-latest-$Env:WINDOWS_VERSION"
+}
 
 function Connect-Registry
 {
