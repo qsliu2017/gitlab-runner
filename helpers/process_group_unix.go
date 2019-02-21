@@ -21,11 +21,15 @@ func KillProcessGroup(cmd *exec.Cmd) {
 
 	process := cmd.Process
 	if process != nil {
+		/* The process spawned for the job shall be responsible for
+		 * propagating signals to any children it may have, and
+		 * likewise for each of those child processes.
+		 */
 		if process.Pid > 0 {
-			syscall.Kill(-process.Pid, syscall.SIGKILL)
+			syscall.Kill(-process.Pid, syscall.SIGTERM)
 		} else {
 			// doing normal kill
-			process.Kill()
+			process.Signal(syscall.SIGTERM)
 		}
 	}
 }
