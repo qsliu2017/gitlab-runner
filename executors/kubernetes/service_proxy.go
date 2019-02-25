@@ -7,9 +7,11 @@ import (
 	"strconv"
 
 	"github.com/gorilla/websocket"
-	serviceproxy "gitlab.com/gitlab-org/gitlab-runner/session/serviceproxy"
+	serviceproxy "gitlab.com/gitlab-org/gitlab-runner/session/service_proxy"
+	utils "gitlab.com/gitlab-org/gitlab-runner/utils"
 	terminal "gitlab.com/gitlab-org/gitlab-terminal"
-	"k8s.io/apimachinery/pkg/api/errors"
+	errors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8net "k8s.io/apimachinery/pkg/util/net"
 	rest "k8s.io/client-go/rest"
 )
@@ -18,13 +20,11 @@ func (s *executor) GetProxyPool() serviceproxy.ProxyPool {
 	return s.ProxyPool
 }
 
-func (e *executor) ProxyWSRequest(w http.ResponseWriter, r *http.Request, requestedUri, port string, proxy *serviceproxy.ProxySettings) {
-	portSettings := proxy.PortSettingsFor(port)
-	if portSettings == nil {
-		http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
-		return
-	}
-
+func (e *executor) ProxyWSRequest(w http.ResponseWriter, r *http.Request, requestedUri string, portSettings *serviceproxy.ProxyPortSettings, proxy *serviceproxy.ProxySettings) {
+	// TODO: in order to avoid calling this method, and use one of its own,
+	// we should refactor the library "gitlab.com/gitlab-org/gitlab-terminal"
+	// and make it more generic, not so terminal focused, with a broader
+	// terminology
 	settings, err := e.getTerminalSettings()
 	if err != nil {
 		fmt.Errorf("Service proxy: error proxying")
@@ -35,25 +35,14 @@ func (e *executor) ProxyWSRequest(w http.ResponseWriter, r *http.Request, reques
 	req := e.serviceEndpointRequest(r.Method, proxy.ServiceName, requestedUri, portSettings)
 
 	u := req.URL()
-	u.Scheme = wsProtocolFor(u.Scheme)
+	u.Scheme = utils.WebsocketProtocolFor(u.Scheme)
 
 	settings.Url = u.String()
 	serviceProxy := terminal.NewWebSocketProxy(1)
 	terminal.ProxyWebSocket(w, r, settings, serviceProxy)
 }
 
-func (e *executor) ProxyHTTPRequest(w http.ResponseWriter, r *http.Request, requestedUri, port string, proxy *serviceproxy.ProxySettings) {
-	// if e.portForwarder == nil {
-	// 	err := e.createPodPortForwards()
-	// 	log.Printf("err: %#+v\n", err)
-	// }
-	portSettings := proxy.PortSettingsFor(port)
-	if portSettings == nil {
-		fmt.Errorf("Port proxy %s not found", port)
-		http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
-		return
-	}
-
+func (e *executor) ProxyHTTPRequest(w http.ResponseWriter, r *http.Request, requestedUri string, portSettings *serviceproxy.ProxyPortSettings, proxy *serviceproxy.ProxySettings) {
 	body, err := e.serviceEndpointRequest(r.Method, proxy.ServiceName, requestedUri, portSettings).Stream()
 
 	if err != nil {
@@ -71,10 +60,23 @@ func (e *executor) ProxyHTTPRequest(w http.ResponseWriter, r *http.Request, requ
 }
 
 func (e *executor) ProxyRequest(w http.ResponseWriter, r *http.Request, requestedUri, port string, proxy *serviceproxy.ProxySettings) {
+	portSettings := proxy.PortSettingsFor(port)
+	if portSettings == nil {
+		fmt.Errorf("Port proxy %s not found", port)
+		http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+		return
+	}
+
+	if !e.servicesRunning() {
+		fmt.Errorf("Services are not ready yet")
+		http.Error(w, http.StatusText(http.StatusServiceUnavailable), http.StatusServiceUnavailable)
+		return
+	}
+
 	if websocket.IsWebSocketUpgrade(r) {
-		e.ProxyWSRequest(w, r, requestedUri, port, proxy)
+		e.ProxyWSRequest(w, r, requestedUri, portSettings, proxy)
 	} else {
-		e.ProxyHTTPRequest(w, r, requestedUri, port, proxy)
+		e.ProxyHTTPRequest(w, r, requestedUri, portSettings, proxy)
 	}
 }
 
@@ -121,10 +123,18 @@ func (e *executor) parseError(err error) (string, int) {
 	return "", code
 }
 
-func wsProtocolFor(httpProtocol string) string {
-	if httpProtocol == "https" {
-		return "wss"
+func (e *executor) servicesRunning() bool {
+	pod, err := e.kubeClient.CoreV1().Pods(e.pod.Namespace).Get(e.pod.Name, metav1.GetOptions{})
+
+	if err != nil || pod.Status.Phase != "Running" {
+		return false
 	}
 
-	return "ws"
+	for _, container := range pod.Status.ContainerStatuses {
+		if !container.Ready {
+			return false
+		}
+	}
+
+	return true
 }

@@ -193,7 +193,7 @@ type ArtifactWhen string
 type Port struct {
 	ExternalPort int    `json:"externalport,omitempty"`
 	InternalPort int    `json:"internalport,omitempty"`
-	Ssl          bool   `json:"ssl,omitempty"`
+	Insecure     bool   `json:"insecure,omitempty"`
 	Name         string `json:"name,omitempty"`
 }
 

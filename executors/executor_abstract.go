@@ -5,7 +5,7 @@ import (
 	"os"
 
 	"gitlab.com/gitlab-org/gitlab-runner/common"
-	serviceproxy "gitlab.com/gitlab-org/gitlab-runner/session/serviceproxy"
+	serviceproxy "gitlab.com/gitlab-org/gitlab-runner/session/service_proxy"
 )
 
 type ExecutorOptions struct {

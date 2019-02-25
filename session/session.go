@@ -10,7 +10,7 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"gitlab.com/gitlab-org/gitlab-runner/helpers"
-	serviceproxy "gitlab.com/gitlab-org/gitlab-runner/session/serviceproxy"
+	serviceproxy "gitlab.com/gitlab-org/gitlab-runner/session/service_proxy"
 	"gitlab.com/gitlab-org/gitlab-runner/session/terminal"
 )
 

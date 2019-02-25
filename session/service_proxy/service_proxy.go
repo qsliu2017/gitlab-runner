@@ -26,14 +26,14 @@ type ProxySettings struct {
 type ProxyPortSettings struct {
 	ExternalPort int
 	InternalPort int
-	SslEnabled   bool
+	Insecure     bool
 	Name         string
 }
 
 type ProxyConn interface {
 	ProxyRequest(w http.ResponseWriter, r *http.Request, requestedUri, port string, proxy *ProxySettings)
-	ProxyHTTPRequest(w http.ResponseWriter, r *http.Request, requestedUri, port string, proxy *ProxySettings)
-	ProxyWSRequest(w http.ResponseWriter, r *http.Request, requestedUri, port string, proxy *ProxySettings)
+	ProxyHTTPRequest(w http.ResponseWriter, r *http.Request, requestedUri string, portSettings *ProxyPortSettings, proxy *ProxySettings)
+	ProxyWSRequest(w http.ResponseWriter, r *http.Request, requestedUri string, portSettings *ProxyPortSettings, proxy *ProxySettings)
 }
 
 func NewProxySettings(serviceName string, ports []ProxyPortSettings) *ProxySettings {
@@ -56,9 +56,9 @@ func (p *ProxySettings) PortSettingsFor(portNameOrNumber string) *ProxyPortSetti
 }
 
 func (p *ProxyPortSettings) Scheme() string {
-	if p.SslEnabled == true {
-		return "https"
-	} else {
+	if p.Insecure {
 		return "http"
 	}
+
+	return "https"
 }

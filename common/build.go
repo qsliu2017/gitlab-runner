@@ -17,7 +17,7 @@ import (
 	"gitlab.com/gitlab-org/gitlab-runner/helpers"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers/tls"
 	"gitlab.com/gitlab-org/gitlab-runner/session"
-	serviceproxy "gitlab.com/gitlab-org/gitlab-runner/session/serviceproxy"
+	serviceproxy "gitlab.com/gitlab-org/gitlab-runner/session/service_proxy"
 	"gitlab.com/gitlab-org/gitlab-runner/session/terminal"
 )
 
