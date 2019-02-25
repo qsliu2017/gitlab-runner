@@ -93,9 +93,24 @@ func (s *Session) setMux() {
 	s.Lock()
 	defer s.Unlock()
 
+	withAuthorization := func(h http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			logger := s.log.WithField("uri", r.RequestURI)
+			logger.Debug("Endpoint session request")
+
+			if s.Token != r.Header.Get("Authorization") {
+				logger.Error("Authorization header is not valid")
+				http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+				return
+			}
+
+			h.ServeHTTP(w, r)
+		})
+	}
+
 	s.mux = mux.NewRouter()
-	s.mux.HandleFunc(s.Endpoint+"/exec", s.execHandler)
-	s.mux.HandleFunc(s.Endpoint+`/proxy/{buildOrService:\w+}/{port:\w+}/{requestedUri:.*}`, s.proxyHandler)
+	s.mux.Handle(s.Endpoint+"/exec", withAuthorization(http.HandlerFunc(s.execHandler)))
+	s.mux.Handle(s.Endpoint+`/proxy/{buildOrService:\w+}/{port:\w+}/{requestedUri:.*}`, withAuthorization(http.HandlerFunc(s.proxyHandler)))
 }
 
 func (s *Session) execHandler(w http.ResponseWriter, r *http.Request) {
@@ -111,12 +126,6 @@ func (s *Session) execHandler(w http.ResponseWriter, r *http.Request) {
 	if !websocket.IsWebSocketUpgrade(r) {
 		logger.Error("Request is not a web socket connection")
 		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
-		return
-	}
-
-	if s.Token != r.Header.Get("Authorization") {
-		logger.Error("Authorization header is not valid")
-		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 		return
 	}
 
@@ -217,13 +226,7 @@ func (s *Session) Kill() error {
 
 func (s *Session) proxyHandler(w http.ResponseWriter, r *http.Request) {
 	logger := s.log.WithField("uri", r.RequestURI)
-	logger.Debug("Exec create proxy session request")
-
-	if s.Token != r.Header.Get("Authorization") {
-		logger.Error("Authorization header is not valid")
-		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
-		return
-	}
+	logger.Debug("Proxy session request")
 
 	params := mux.Vars(r)
 	servicename := params["buildOrService"]
