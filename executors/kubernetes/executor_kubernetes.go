@@ -3,7 +3,6 @@ package kubernetes
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 
 	// "io"
 	"io/ioutil"
@@ -29,8 +28,6 @@ import (
 	serviceproxy "gitlab.com/gitlab-org/gitlab-runner/session/serviceproxy"
 	terminalsession "gitlab.com/gitlab-org/gitlab-runner/session/terminal"
 	terminal "gitlab.com/gitlab-org/gitlab-terminal"
-	portforward "k8s.io/client-go/tools/portforward"
-	// spdy "k8s.io/client-go/transport/spdy"
 )
 
 var (
@@ -53,12 +50,11 @@ type kubernetesOptions struct {
 type executor struct {
 	executors.AbstractExecutor
 
-	kubeClient    *kubernetes.Clientset
-	pod           *api.Pod
-	credentials   *api.Secret
-	options       *kubernetesOptions
-	services      []*api.Service
-	portForwarder *portforward.PortForwarder
+	kubeClient  *kubernetes.Clientset
+	pod         *api.Pod
+	credentials *api.Secret
+	options     *kubernetesOptions
+	services    []*api.Service
 
 	configurationOverwrites *overwrites
 	buildLimits             api.ResourceList
@@ -188,10 +184,6 @@ func (s *executor) Cleanup() {
 		if err != nil {
 			s.Errorln(fmt.Sprintf("Error cleaning up pod: %s", err.Error()))
 		}
-		if s.portForwarder != nil {
-			s.portForwarder.Close()
-		}
-
 	}
 	if s.credentials != nil {
 		err := s.kubeClient.CoreV1().Secrets(s.configurationOverwrites.namespace).Delete(s.credentials.Name, &metav1.DeleteOptions{})
@@ -237,58 +229,6 @@ func (s *executor) createPodProxyServices() ([]*api.Service, error) {
 	return services, nil
 }
 
-func (s *executor) createPodPortForwards() error {
-	ports := []string{}
-	for _, proxy := range s.Proxies {
-		for _, port := range proxy.Settings.Ports {
-			ports = append(ports, fmt.Sprintf("%d:%d", port.ExternalPort, port.InternalPort))
-		}
-	}
-
-	req := s.kubeClient.CoreV1().RESTClient().Post().
-		Resource("pods").
-		Namespace(s.pod.Namespace).
-		Name(s.pod.Name).
-		SubResource("portforward")
-
-	config, err := getKubeClientConfig(s.Config.Kubernetes, s.configurationOverwrites)
-	if err != nil {
-		return err
-	}
-	log.Printf("config: %#+v\n", config)
-	log.Printf("req: %#+v\n", req)
-	// roundTripper, upgrader, err := spdy.RoundTripperFor(config)
-	// if err != nil {
-	// 	return err
-	// }
-	// log.Printf("req.URL(): %#+v\n", req.URL())
-	// dialer := spdy.NewDialer(upgrader, &http.Client{Transport: roundTripper}, http.MethodPost, req.URL())
-
-	// stopChan, readyChan := make(chan struct{}, 1), make(chan struct{}, 1)
-	// out, errOut := new(bytes.Buffer), new(bytes.Buffer)
-	// forwarder, err := portforward.New(dialer, ports, stopChan, readyChan, out, errOut)
-
-	// go func() {
-	// 	for range readyChan { // Kubernetes will close this channel when it has something to tell us.
-	// 	}
-	// 	if len(errOut.String()) != 0 {
-	// 		panic(errOut.String())
-	// 	} else if len(out.String()) != 0 {
-	// 		fmt.Println(out.String())
-	// 	}
-	// }()
-
-	// go func() {
-	// 	if err = forwarder.ForwardPorts(); err != nil { // Locks until stopChan is closed.
-	// 		panic("bla")
-	// 	}
-	// }()
-
-	// fmt.Println("Assignando")
-	// s.portForwarder = forwarder
-	return nil
-}
-
 func (s *executor) buildService(name string, ports []api.ServicePort) api.Service {
 	return api.Service{
 		ObjectMeta: metav1.ObjectMeta{
@@ -298,7 +238,6 @@ func (s *executor) buildService(name string, ports []api.ServicePort) api.Servic
 		Spec: api.ServiceSpec{
 			Ports:    ports,
 			Selector: map[string]string{"pod": s.projectUniqueName()},
-			// Type:     api.ServiceTypeNodePort,
 		},
 	}
 }
