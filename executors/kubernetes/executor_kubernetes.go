@@ -3,8 +3,7 @@ package kubernetes
 import (
 	"encoding/json"
 	"fmt"
-	"io"
-	"strconv"
+	"log"
 
 	// "io"
 	"io/ioutil"
@@ -16,11 +15,8 @@ import (
 
 	"golang.org/x/net/context"
 	api "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
-
-	k8net "k8s.io/apimachinery/pkg/util/net"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
 
@@ -33,6 +29,8 @@ import (
 	serviceproxy "gitlab.com/gitlab-org/gitlab-runner/session/serviceproxy"
 	terminalsession "gitlab.com/gitlab-org/gitlab-runner/session/terminal"
 	terminal "gitlab.com/gitlab-org/gitlab-terminal"
+	portforward "k8s.io/client-go/tools/portforward"
+	// spdy "k8s.io/client-go/transport/spdy"
 )
 
 var (
@@ -55,11 +53,12 @@ type kubernetesOptions struct {
 type executor struct {
 	executors.AbstractExecutor
 
-	kubeClient  *kubernetes.Clientset
-	pod         *api.Pod
-	credentials *api.Secret
-	options     *kubernetesOptions
-	services    []*api.Service
+	kubeClient    *kubernetes.Clientset
+	pod           *api.Pod
+	credentials   *api.Secret
+	options       *kubernetesOptions
+	services      []*api.Service
+	portForwarder *portforward.PortForwarder
 
 	configurationOverwrites *overwrites
 	buildLimits             api.ResourceList
@@ -189,6 +188,10 @@ func (s *executor) Cleanup() {
 		if err != nil {
 			s.Errorln(fmt.Sprintf("Error cleaning up pod: %s", err.Error()))
 		}
+		if s.portForwarder != nil {
+			s.portForwarder.Close()
+		}
+
 	}
 	if s.credentials != nil {
 		err := s.kubeClient.CoreV1().Secrets(s.configurationOverwrites.namespace).Delete(s.credentials.Name, &metav1.DeleteOptions{})
@@ -204,6 +207,7 @@ func (s *executor) Cleanup() {
 			s.Errorln(fmt.Sprintf("Error cleaning up pod services: %s", err.Error()))
 		}
 	}
+
 	closeKubeClient(s.kubeClient)
 	s.AbstractExecutor.Cleanup()
 }
@@ -227,9 +231,62 @@ func (s *executor) createPodProxyServices() ([]*api.Service, error) {
 
 		//Updating the internal service name reference
 		proxy.Settings.ServiceName = service.Name
+
 		services = append(services, service)
 	}
 	return services, nil
+}
+
+func (s *executor) createPodPortForwards() error {
+	ports := []string{}
+	for _, proxy := range s.Proxies {
+		for _, port := range proxy.Settings.Ports {
+			ports = append(ports, fmt.Sprintf("%d:%d", port.ExternalPort, port.InternalPort))
+		}
+	}
+
+	req := s.kubeClient.CoreV1().RESTClient().Post().
+		Resource("pods").
+		Namespace(s.pod.Namespace).
+		Name(s.pod.Name).
+		SubResource("portforward")
+
+	config, err := getKubeClientConfig(s.Config.Kubernetes, s.configurationOverwrites)
+	if err != nil {
+		return err
+	}
+	log.Printf("config: %#+v\n", config)
+	log.Printf("req: %#+v\n", req)
+	// roundTripper, upgrader, err := spdy.RoundTripperFor(config)
+	// if err != nil {
+	// 	return err
+	// }
+	// log.Printf("req.URL(): %#+v\n", req.URL())
+	// dialer := spdy.NewDialer(upgrader, &http.Client{Transport: roundTripper}, http.MethodPost, req.URL())
+
+	// stopChan, readyChan := make(chan struct{}, 1), make(chan struct{}, 1)
+	// out, errOut := new(bytes.Buffer), new(bytes.Buffer)
+	// forwarder, err := portforward.New(dialer, ports, stopChan, readyChan, out, errOut)
+
+	// go func() {
+	// 	for range readyChan { // Kubernetes will close this channel when it has something to tell us.
+	// 	}
+	// 	if len(errOut.String()) != 0 {
+	// 		panic(errOut.String())
+	// 	} else if len(out.String()) != 0 {
+	// 		fmt.Println(out.String())
+	// 	}
+	// }()
+
+	// go func() {
+	// 	if err = forwarder.ForwardPorts(); err != nil { // Locks until stopChan is closed.
+	// 		panic("bla")
+	// 	}
+	// }()
+
+	// fmt.Println("Assignando")
+	// s.portForwarder = forwarder
+	return nil
 }
 
 func (s *executor) buildService(name string, ports []api.ServicePort) api.Service {
@@ -241,6 +298,7 @@ func (s *executor) buildService(name string, ports []api.ServicePort) api.Servic
 		Spec: api.ServiceSpec{
 			Ports:    ports,
 			Selector: map[string]string{"pod": s.projectUniqueName()},
+			// Type:     api.ServiceTypeNodePort,
 		},
 	}
 }
@@ -719,7 +777,6 @@ func (s *executor) getTerminalWebSocketURL(config *restclient.Config) (*url.URL,
 	} else if wsURL.Scheme == "http" {
 		wsURL.Scheme = "ws"
 	}
-
 	return wsURL, nil
 }
 
@@ -790,72 +847,4 @@ func init() {
 		FeaturesUpdater:  featuresFn,
 		DefaultShellName: executorOptions.Shell.Shell,
 	})
-}
-
-func (s *executor) GetProxyPool() serviceproxy.ProxyPool {
-	return s.ProxyPool
-}
-
-func (e *executor) ProxyRequest(w http.ResponseWriter, r *http.Request, requestedUri, port string, proxy *serviceproxy.ProxySettings) {
-	portSettings := proxy.PortSettingsFor(port)
-	if portSettings == nil {
-		fmt.Errorf("Port proxy %s not found", port)
-		http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
-		return
-	}
-
-	body, err := e.kubeClient.CoreV1().RESTClient().Verb(r.Method).
-		Namespace(e.pod.Namespace).
-		Resource("services").
-		SubResource("proxy").
-		Name(k8net.JoinSchemeNamePort(portSettings.Scheme(), proxy.ServiceName, strconv.Itoa(portSettings.ExternalPort))).
-		Suffix(requestedUri).
-		Stream()
-
-	if err != nil {
-		message, code := e.parseError(err)
-		w.WriteHeader(code)
-
-		if message != "" {
-			fmt.Fprintf(w, message)
-		}
-		return
-	}
-
-	w.WriteHeader(http.StatusOK)
-	io.Copy(w, body)
-}
-
-func (e *executor) newProxy(serviceName string, ports []serviceproxy.ProxyPortSettings) *serviceproxy.Proxy {
-	return &serviceproxy.Proxy{
-		Settings:          serviceproxy.NewProxySettings(serviceName, ports),
-		ConnectionHandler: e,
-	}
-}
-
-func (e *executor) parseError(err error) (string, int) {
-	statusError, ok := err.(*errors.StatusError)
-
-	if !ok {
-		return "", http.StatusInternalServerError
-	}
-
-	code := int(statusError.Status().Code)
-	// When the error is a 503 we don't want to give any information
-	// coming from Kubernetes
-	if code == http.StatusServiceUnavailable {
-		return "", code
-	}
-
-	details := statusError.Status().Details
-	if details == nil {
-		return "", code
-	}
-
-	causes := details.Causes
-	if len(causes) != 0 {
-		return causes[0].Message, code
-	}
-
-	return "", code
 }

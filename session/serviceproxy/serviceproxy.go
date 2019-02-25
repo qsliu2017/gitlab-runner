@@ -32,6 +32,8 @@ type ProxyPortSettings struct {
 
 type ProxyConn interface {
 	ProxyRequest(w http.ResponseWriter, r *http.Request, requestedUri, port string, proxy *ProxySettings)
+	ProxyHTTPRequest(w http.ResponseWriter, r *http.Request, requestedUri, port string, proxy *ProxySettings)
+	ProxyWSRequest(w http.ResponseWriter, r *http.Request, requestedUri, port string, proxy *ProxySettings)
 }
 
 func NewProxySettings(serviceName string, ports []ProxyPortSettings) *ProxySettings {
