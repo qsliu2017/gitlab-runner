@@ -253,6 +253,20 @@ Example:
     "net.ipv4.ip_forward" = "1"
 ```
 
+### The `[runners.docker.windows]` section
+
+| Parameter | Description |
+| --------- | ----------- |
+| `helper_image_flavor` | Specify the windows server flavor that you want to use for the helper image, for example `nanoserver1809`. Currently the available flavors are `nanoserver1809` and `nanoserver1803` |
+
+Example:
+
+```toml
+  [runners.docker]
+    [runners.docker.windows]
+      helper_image_flavor = "nanoserver2019"
+```
+
 ### Volumes in the `[runners.docker]` section
 
 You can find the complete guide of Docker volume usage
