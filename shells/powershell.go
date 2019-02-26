@@ -237,12 +237,12 @@ func (b *PsWriter) Finish(trace bool) string {
 
 func (b *PsWriter) SectionStart(name string) {
 	// Prints a line in the format of "section_start:<timestamp>:section_name\r\033[0;m"
-	b.Line("echo " + psQuoteVariable("section_start:0:"+name+"\r"+helpers.ANSI_CLEAR))
+	b.Line("echo " + psQuoteVariable(fmt.Sprintf(helpers.TraceStartSection, 0, name)))
 }
 
 func (b *PsWriter) SectionEnd(name string) {
 	// Prints a line in the format of "section_end:<timestamp>:section_name\r\033[0;m"
-	b.Line("echo " + psQuoteVariable("section_end:0:"+name+"\r"+helpers.ANSI_CLEAR))
+	b.Line("echo " + psQuoteVariable(fmt.Sprintf(helpers.TraceEndSection, 0, name)))
 }
 
 func (b *PowerShell) GetName() string {

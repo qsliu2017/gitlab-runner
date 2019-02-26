@@ -16,8 +16,8 @@ type BuildSection struct {
 }
 
 const (
-	traceSectionStart = "section_start:%v:%s\r" + ANSI_CLEAR
-	traceSectionEnd   = "section_end:%v:%s\r" + ANSI_CLEAR
+	TraceStartSection = "section_start:%v:%s\r" + ANSI_CLEAR
+	TraceEndSection   = "section_end:%v:%s\r" + ANSI_CLEAR
 )
 
 func nowUnixUTC() int64 {
@@ -34,11 +34,11 @@ func (s *BuildSection) timestamp(format string, logger RawLogger) {
 }
 
 func (s *BuildSection) start(logger RawLogger) {
-	s.timestamp(traceSectionStart, logger)
+	s.timestamp(TraceStartSection, logger)
 }
 
 func (s *BuildSection) end(logger RawLogger) {
-	s.timestamp(traceSectionEnd, logger)
+	s.timestamp(TraceEndSection, logger)
 }
 
 func (s *BuildSection) Execute(logger RawLogger) error {
