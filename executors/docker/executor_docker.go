@@ -380,17 +380,20 @@ func (e *executor) getLabels(containerType string, otherLabels ...string) map[st
 
 // createCacheVolume returns the id of the created container, or an error
 func (e *executor) createCacheVolume(containerName, containerPath string) (string, error) {
-	// get busybox image
 	cacheImage, err := e.getPrebuiltImage()
 	if err != nil {
 		return "", err
 	}
 
+	cmd := []string{"gitlab-runner-cache", containerPath}
+	if e.Build.IsFeatureFlagOn(common.FFHelperImageV2) {
+		e.Debugln(common.FFHelperImageV2, "is set, using new command cache-init")
+		cmd = []string{"gitlab-runner-helper", "cache-init", containerPath}
+	}
+
 	config := &container.Config{
 		Image: cacheImage.ID,
-		Cmd: []string{
-			"gitlab-runner-cache", containerPath,
-		},
+		Cmd:   cmd,
 		Volumes: map[string]struct{}{
 			containerPath: {},
 		},
@@ -1299,8 +1302,14 @@ func (e *executor) runServiceHealthCheckContainer(service *types.Container, time
 
 	containerName := service.Names[0] + "-wait-for-service"
 
+	cmd := []string{"gitlab-runner-service"}
+	if e.Build.IsFeatureFlagOn(common.FFHelperImageV2) {
+		e.Debugln(common.FFHelperImageV2, "is set, using new command health-check")
+		cmd = []string{"gitlab-runner-helper", "health-check"}
+	}
+
 	config := &container.Config{
-		Cmd:    []string{"gitlab-runner-service"},
+		Cmd:    cmd,
 		Image:  waitImage.ID,
 		Labels: e.getLabels("wait", "wait="+service.ID),
 	}
