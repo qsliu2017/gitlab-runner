@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"path"
 	"path/filepath"
@@ -307,6 +308,12 @@ func (e *executor) getPrebuiltImage() (*types.ImageInspect, error) {
 	// Try to find already loaded prebuilt image
 	tag := fmt.Sprintf("%s-%s", architecture, revision)
 	imageName := fmt.Sprintf("%s:%s", prebuiltImageName, tag)
+	if runtime.GOOS == "windows" {
+		imageName = fmt.Sprintf("%s:%s-%s", prebuiltImageName, tag, e.Config.Docker.Windows.HelperImageFlavor)
+	}
+
+	log.Printf("imageName: %#+v", imageName)
+
 	e.Debugln("Looking for prebuilt image", imageName, "...")
 	image, _, err := e.client.ImageInspectWithRaw(e.Context, imageName)
 	if err == nil {
