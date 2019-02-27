@@ -229,9 +229,9 @@ func (s *Session) proxyHandler(w http.ResponseWriter, r *http.Request) {
 	logger.Debug("Proxy session request")
 
 	params := mux.Vars(r)
-	servicename := params["buildOrService"]
+	serviceName := params["buildOrService"]
 
-	proxy := s.Proxies[servicename]
+	proxy := s.Proxies[serviceName]
 	if proxy == nil {
 		logger.Warn("Proxy not found")
 		http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
