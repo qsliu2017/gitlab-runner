@@ -97,12 +97,14 @@ func (mr *RunCommand) feedRunner(runner *common.RunnerConfig, runners chan *comm
 		return
 	}
 
+	mr.log().WithField("runner", runner.ShortDescription()).Info("Feeding runner to channel")
+
 	runners <- runner
 }
 
 func (mr *RunCommand) feedRunners(runners chan *common.RunnerConfig) {
 	for mr.stopSignal == nil {
-		mr.log().Debugln("Feeding runners to channel")
+		mr.log().Info("Feeding runners to channel")
 		config := mr.config
 
 		// If no runners wait full interval to test again
@@ -126,7 +128,7 @@ func (mr *RunCommand) feedRunners(runners chan *common.RunnerConfig) {
 func (mr *RunCommand) requestJob(runner *common.RunnerConfig, sessionInfo *common.SessionInfo) *common.JobResponse {
 	if !mr.buildsHelper.acquireRequest(runner) {
 		mr.log().WithField("runner", runner.ShortDescription()).
-			Debugln("Failed to request job: runner requestConcurrency meet")
+			Warning("Failed to request job: runner requestConcurrency meet")
 
 		return nil
 	}
@@ -139,6 +141,11 @@ func (mr *RunCommand) requestJob(runner *common.RunnerConfig, sessionInfo *commo
 }
 
 func (mr *RunCommand) processRunner(id int, runner *common.RunnerConfig, runners chan *common.RunnerConfig) (err error) {
+	mr.log().WithFields(logrus.Fields{
+		"id":     id,
+		"runner": runner.ShortDescription(),
+	}).Info("Processing Runner")
+
 	provider := common.GetExecutor(runner.Executor)
 	if provider == nil {
 		return
@@ -187,18 +194,32 @@ func (mr *RunCommand) processRunner(id int, runner *common.RunnerConfig, runners
 	}
 	build.Session = buildSession
 
+	logPath := func(message string, build *common.Build) {
+		mr.log().WithFields(logrus.Fields{
+			"path":            build.ProjectUniqueDir(true),
+			"RunnerID":        build.RunnerID,
+			"ProjectRunnerID": build.ProjectRunnerID,
+			"runner":          build.Runner.ShortDescription(),
+			"project":         build.JobInfo.ProjectID,
+		}).Infof("%s build", message)
+	}
+
 	// Add build to list of builds to assign numbers
 	mr.buildsHelper.addBuild(build)
-	defer mr.buildsHelper.removeBuild(build)
+	logPath("Added", build)
+	defer func() {
+		mr.buildsHelper.removeBuild(build)
+		logPath("Removed", build)
+	}()
 
 	// Process the same runner by different worker again
 	// to speed up taking the builds
 	select {
 	case runners <- runner:
-		mr.log().WithField("runner", runner.ShortDescription()).Debugln("Requeued the runner")
+		mr.log().WithField("runner", runner.ShortDescription()).Info("Requeued the runner")
 
 	default:
-		mr.log().WithField("runner", runner.ShortDescription()).Debugln("Failed to requeue the runner: ")
+		mr.log().WithField("runner", runner.ShortDescription()).Info("Failed to requeue the runner")
 	}
 
 	// Process a build
@@ -244,7 +265,7 @@ func (mr *RunCommand) createSession(features common.FeaturesInfo) (*session.Sess
 }
 
 func (mr *RunCommand) processRunners(id int, stopWorker chan bool, runners chan *common.RunnerConfig) {
-	mr.log().WithField("worker", id).Debugln("Starting worker")
+	mr.log().WithField("worker", id).Info("Starting worker")
 	for mr.stopSignal == nil {
 		select {
 		case runner := <-runners:
@@ -261,7 +282,7 @@ func (mr *RunCommand) processRunners(id int, stopWorker chan bool, runners chan 
 			runtime.GC()
 
 		case <-stopWorker:
-			mr.log().WithField("worker", id).Debugln("Stopping worker")
+			mr.log().WithField("worker", id).Info("Stopping worker")
 			return
 		}
 	}
@@ -400,6 +421,7 @@ func (mr *RunCommand) updateWorkers(workerIndex *int, startWorker chan int, stop
 			return signaled
 		}
 		mr.currentWorkers--
+		mr.log().WithField("currentWorkers", mr.currentWorkers).Info("Decreasing workers count")
 	}
 
 	for mr.currentWorkers < buildLimit {
@@ -410,6 +432,10 @@ func (mr *RunCommand) updateWorkers(workerIndex *int, startWorker chan int, stop
 		}
 		mr.currentWorkers++
 		*workerIndex++
+		mr.log().
+			WithField("currentWorkers", mr.currentWorkers).
+			WithField("workerIndex", *workerIndex).
+			Info("Increasing workers count")
 	}
 
 	return nil
@@ -436,7 +462,7 @@ func (mr *RunCommand) updateConfig() os.Signal {
 }
 
 func (mr *RunCommand) runWait() {
-	mr.log().Debugln("Waiting for stop signal")
+	mr.log().Info("Waiting for stop signal")
 
 	// Save the stop signal and exit to execute Stop()
 	mr.stopSignal = <-mr.stopSignals
@@ -576,6 +602,7 @@ func (mr *RunCommand) Run() {
 	for mr.currentWorkers > 0 {
 		stopWorker <- true
 		mr.currentWorkers--
+		mr.log().WithField("currentWorkers", mr.currentWorkers).Info("Decreasing workers count on finish")
 	}
 	mr.log().Println("All workers stopped. Can exit now")
 	mr.runFinished <- true
