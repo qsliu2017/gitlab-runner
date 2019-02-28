@@ -191,8 +191,8 @@ type ArtifactPaths []string
 type ArtifactWhen string
 
 type Port struct {
-	ExternalPort int    `json:"externalport,omitempty"`
-	InternalPort int    `json:"internalport,omitempty"`
+	ExternalPort int    `json:"external_port,omitempty"`
+	InternalPort int    `json:"internal_port,omitempty"`
 	Insecure     bool   `json:"insecure,omitempty"`
 	Name         string `json:"name,omitempty"`
 }
