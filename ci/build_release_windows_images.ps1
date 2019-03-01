@@ -1,3 +1,6 @@
+Set-StrictMode -Version latest
+$ErrorActionPreference = "Stop"
+[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 # ---------------------------------------------------------------------------
 # This script depends on a few environment variables that should be populated
 # before running the script:
@@ -21,7 +24,7 @@
 #   push the tags.
 # ---------------------------------------------------------------------------
 $dirSeparator = [IO.Path]::DirectorySeparatorChar # Get directory separator depending on the OS.
-$imagesBasePath = "dockerfiles$($dirSeparator)build$($dirSeparator)Dockerfile.x86_64"
+$imagesBasePath = "dockerfiles\build\Dockerfile.x86_64"
 
 function Main
 {
@@ -65,7 +68,7 @@ function Build-Image($tag)
     Write-Output "Build image for x86_64_$Env:WINDOWS_VERSION"
 
     $dockerFile = "${imagesBasePath}_$Env:WINDOWS_VERSION"
-    $context = "dockerfiles$($dirSeperator)build"
+    $context = "dockerfiles\build"
     $buildArgs = @(
         '--build-arg', "GIT_VERSION=$Env:GIT_VERSION",
         '--build-arg', "GIT_VERSION_BUILD=$Env:GIT_VERSION_BUILD",
@@ -73,6 +76,9 @@ function Build-Image($tag)
     )
 
     & 'docker' build -t "gitlab/gitlab-runner-helper:$tag" $buildArgs -f $dockerFile $context
+    if ($lastexitcode -ne 0) {
+        throw ("Failed to build docker image" )
+    }
 }
 
 function Push-Tag($tag)
@@ -80,6 +86,9 @@ function Push-Tag($tag)
     Write-Output "Push $tag"
 
     & 'docker' push gitlab/gitlab-runner-helper:$tag
+    if ($lastexitcode -ne 0) {
+        throw ("Failed to push docker image gitlab/gitlab-runner-helper:$tag" )
+    }
 }
 
 function Add-LatestTag($tag)
@@ -87,6 +96,9 @@ function Add-LatestTag($tag)
     Write-Output "Tag $tag as latest"
 
     & 'docker' tag "gitlab/gitlab-runner-helper:$tag" "gitlab/gitlab-runner-helper:x86_64-latest-$Env:WINDOWS_VERSION"
+    if ($lastexitcode -ne 0) {
+        throw ("Failed to tag gitlab/gitlab-runner-helper:$tag as latest image" )
+    }
 }
 
 function Push-Latest()
@@ -94,6 +106,9 @@ function Push-Latest()
     Write-Output "Push latest tag"
 
     & 'docker' push "gitlab/gitlab-runner-helper:x86_64-latest-$Env:WINDOWS_VERSION"
+    if ($lastexitcode -ne 0) {
+        throw ("Failed to push image to registry" )
+    }
 }
 
 function Connect-Registry
@@ -101,6 +116,9 @@ function Connect-Registry
     Write-Output 'Login docker hub'
 
     & 'docker' login --username $Env:DOCKER_HUB_USER --password $Env:DOCKER_HUB_PASSWORD
+    if ($lastexitcode -ne 0) {
+        throw ("Failed to login Docker hub" )
+    }
 }
 
 function Disconnect-Registry
@@ -108,6 +126,9 @@ function Disconnect-Registry
     Write-Output 'Logout register'
 
     & 'docker' logout
+    if ($lastexitcode -ne 0) {
+        throw ("Failed to logout from Docker hub" )
+    }
 }
 
 Main
