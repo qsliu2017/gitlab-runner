@@ -1,12 +1,12 @@
 stages:
-- prepare
+# - prepare
 - prebuild
-- test
-- coverage
-- build
-- package
+# - test
+# - coverage
+# - build
+# - package
 - release
-- cleanup
+# - cleanup
 
 variables:
   CI_IMAGE: registry.gitlab.com/gitlab-org/gitlab-runner/ci:1.8.7-2
@@ -46,21 +46,21 @@ image: $CI_IMAGE
   script:
   - source ./ci/build_ci_image
 
-prepare ci image:
-  <<: *image_builder
-  variables:
-    BUILD_IMAGE: $CI_IMAGE
-    BUILD_DOCKERFILE: ./dockerfiles/ci/Dockerfile
-  only:
-  - /\Adocker-ci-image\/.*/
+# prepare ci image:
+#   <<: *image_builder
+#   variables:
+#     BUILD_IMAGE: $CI_IMAGE
+#     BUILD_DOCKERFILE: ./dockerfiles/ci/Dockerfile
+#   only:
+#   - /\Adocker-ci-image\/.*/
 
-prepare alpine-no-root image:
-  <<: *image_builder
-  variables:
-    BUILD_IMAGE: registry.gitlab.com/gitlab-org/gitlab-runner/alpine-no-root:latest
-    BUILD_DOCKERFILE: ./tests/dockerfiles/alpine-no-root/Dockerfile
-  only:
-  - /\Adocker-alpine-no-root-image\/.*/
+# prepare alpine-no-root image:
+#   <<: *image_builder
+#   variables:
+#     BUILD_IMAGE: registry.gitlab.com/gitlab-org/gitlab-runner/alpine-no-root:latest
+#     BUILD_DOCKERFILE: ./tests/dockerfiles/alpine-no-root/Dockerfile
+#   only:
+#   - /\Adocker-alpine-no-root-image\/.*/
 
 #
 # Prebuild stage
@@ -79,144 +79,144 @@ helper images:
     - .gopath/.ok
     expire_in: 7d
 
-clone test repo:
-  <<: *except_docs
-  stage: prebuild
-  script:
-  - mkdir tmp
-  - succeed=0
-  - for i in {1..3}; do git clone https://gitlab.com/gitlab-org/gitlab-test.git tmp/gitlab-test && succeed=1 && break; echo "retrying"; done
-  - '[[ "$succeed" -eq 1 ]]'
-  artifacts:
-    paths:
-    - tmp/gitlab-test
-    expire_in: 7d
+# clone test repo:
+#   <<: *except_docs
+#   stage: prebuild
+#   script:
+#   - mkdir tmp
+#   - succeed=0
+#   - for i in {1..3}; do git clone https://gitlab.com/gitlab-org/gitlab-test.git tmp/gitlab-test && succeed=1 && break; echo "retrying"; done
+#   - '[[ "$succeed" -eq 1 ]]'
+#   artifacts:
+#     paths:
+#     - tmp/gitlab-test
+#     expire_in: 7d
 
 # Review docs base
-.review-docs: &review-docs
-  image: ruby:2.4-alpine
-  before_script:
-    - unset GPG_KEY
-    - gem install gitlab --no-doc
-    # We need to download the script rather than clone the repo since the
-    # review-docs-cleanup job will not be able to run when the branch gets
-    # deleted (when merging the MR).
-    - apk add --update openssl
-    - wget https://gitlab.com/gitlab-org/gitlab-ce/raw/master/scripts/trigger-build-docs
-    - chmod 755 trigger-build-docs
-  cache: {}
-  dependencies: []
-  variables:
-    GIT_STRATEGY: none
-  when: manual
-  only:
-    - branches
+# .review-docs: &review-docs
+#   image: ruby:2.4-alpine
+#   before_script:
+#     - unset GPG_KEY
+#     - gem install gitlab --no-doc
+#     # We need to download the script rather than clone the repo since the
+#     # review-docs-cleanup job will not be able to run when the branch gets
+#     # deleted (when merging the MR).
+#     - apk add --update openssl
+#     - wget https://gitlab.com/gitlab-org/gitlab-ce/raw/master/scripts/trigger-build-docs
+#     - chmod 755 trigger-build-docs
+#   cache: {}
+#   dependencies: []
+#   variables:
+#     GIT_STRATEGY: none
+#   when: manual
+#   only:
+#     - branches
 
 # Trigger a docs build in gitlab-docs
 # Useful to preview the docs changes live
 # https://docs.gitlab.com/ee/development/writing_documentation.html#previewing-the-changes-live
-review-docs-deploy:
-  <<: *review-docs
-  stage: prebuild
-  environment:
-    name: review-docs/$CI_COMMIT_REF_SLUG
-    # DOCS_REVIEW_APPS_DOMAIN and DOCS_GITLAB_REPO_SUFFIX are secret variables
-    # Discussion: https://gitlab.com/gitlab-org/gitlab-ce/merge_requests/14236/diffs#note_40140693
-    url: http://$CI_ENVIRONMENT_SLUG.$DOCS_REVIEW_APPS_DOMAIN/$DOCS_GITLAB_REPO_SUFFIX
-    on_stop: review-docs-cleanup
-  script:
-    - ./trigger-build-docs deploy
+# review-docs-deploy:
+#   <<: *review-docs
+#   stage: prebuild
+#   environment:
+#     name: review-docs/$CI_COMMIT_REF_SLUG
+#     # DOCS_REVIEW_APPS_DOMAIN and DOCS_GITLAB_REPO_SUFFIX are secret variables
+#     # Discussion: https://gitlab.com/gitlab-org/gitlab-ce/merge_requests/14236/diffs#note_40140693
+#     url: http://$CI_ENVIRONMENT_SLUG.$DOCS_REVIEW_APPS_DOMAIN/$DOCS_GITLAB_REPO_SUFFIX
+#     on_stop: review-docs-cleanup
+#   script:
+    # - ./trigger-build-docs deploy
 
 # Cleanup remote environment of gitlab-docs
-review-docs-cleanup:
-  <<: *review-docs
-  stage: cleanup
-  environment:
-    name: review-docs/$CI_COMMIT_REF_SLUG
-    action: stop
-  script:
-    - ./trigger-build-docs cleanup
+# review-docs-cleanup:
+#   <<: *review-docs
+#   stage: cleanup
+#   environment:
+#     name: review-docs/$CI_COMMIT_REF_SLUG
+#     action: stop
+#   script:
+#     - ./trigger-build-docs cleanup
 
-tests definitions:
-  <<: *except_docs
-  stage: prebuild
-  # Using Go 1.10, because the `go test -list` is unavailable in <1.9
-  # and it's much faster in 1.10. And since there is no real test execution
-  # in this step, the version difference doesn't matter
-  image: golang:1.10
-  script:
-  - apt update
-  - apt install make
-  - source ci/touch_make_dependencies
-  - make parallel_test_prepare
-  artifacts:
-    paths:
-    - testsdefinitions.txt
-    expire_in: 7d
-  tags:
-  - gitlab-org
+# tests definitions:
+#   <<: *except_docs
+#   stage: prebuild
+#   # Using Go 1.10, because the `go test -list` is unavailable in <1.9
+#   # and it's much faster in 1.10. And since there is no real test execution
+#   # in this step, the version difference doesn't matter
+#   image: golang:1.10
+#   script:
+#   - apt update
+#   - apt install make
+#   - source ci/touch_make_dependencies
+#   - make parallel_test_prepare
+#   artifacts:
+#     paths:
+#     - testsdefinitions.txt
+#     expire_in: 7d
+#   tags:
+#   - gitlab-org
 
-dep check:
-  <<: *except_docs
-  stage: prebuild
-  cache: {}
-  dependencies:
-  script:
-  - make dep_check
+# dep check:
+#   <<: *except_docs
+#   stage: prebuild
+#   cache: {}
+#   dependencies:
+#   script:
+#   - make dep_check
 
-dep status:
-  <<: *except_docs
-  stage: prebuild
-  cache: {}
-  dependencies:
-  script:
-  - make dep_status
-  only:
-    variables:
-    - $CI_DEP_STATUS_ENABLED
+# dep status:
+#   <<: *except_docs
+#   stage: prebuild
+#   cache: {}
+#   dependencies:
+#   script:
+#   - make dep_status
+#   only:
+#     variables:
+#     - $CI_DEP_STATUS_ENABLED
 
 #
 # Test stage
 #
 
-code_quality:
-  <<: *except_docs
-  stage: test
-  image: docker:git
-  services:
-    - docker:dind
-  variables:
-    DOCKER_DRIVER: overlay2
-    CODECLIMATE_FORMAT: json
-  cache: {}
-  dependencies: []
-  script:
-    - ./scripts/codequality analyze -f json --dev | tee gl-code-quality-report.json
-  artifacts:
-    paths: [gl-code-quality-report.json]
-    expire_in: 7d
+# code_quality:
+#   <<: *except_docs
+#   stage: test
+#   image: docker:git
+#   services:
+#     - docker:dind
+#   variables:
+#     DOCKER_DRIVER: overlay2
+#     CODECLIMATE_FORMAT: json
+#   cache: {}
+#   dependencies: []
+#   script:
+#     - ./scripts/codequality analyze -f json --dev | tee gl-code-quality-report.json
+#   artifacts:
+#     paths: [gl-code-quality-report.json]
+#     expire_in: 7d
 
-unit test: &unit_tests
-  <<: *docker
-  stage: test
-  parallel: 5
-  script:
-    - source ci/touch_make_dependencies
-    - make parallel_test_execute
-  artifacts:
-    paths:
-      - .cover/*
-      - .testoutput/*
-    when: always
-    expire_in: 7d
+# unit test: &unit_tests
+#   <<: *docker
+#   stage: test
+#   parallel: 5
+#   script:
+#     - source ci/touch_make_dependencies
+#     - make parallel_test_execute
+#   artifacts:
+#     paths:
+#       - .cover/*
+#       - .testoutput/*
+#     when: always
+#     expire_in: 7d
 
-unit test with race:
-  <<: *unit_tests
-  allow_failure: true
-  variables:
-    <<: *docker_variables
-    CGO_ENABLED: "1"
-    TESTFLAGS: "-cover -race"
+# unit test with race:
+#   <<: *unit_tests
+#   allow_failure: true
+#   variables:
+#     <<: *docker_variables
+#     CGO_ENABLED: "1"
+#     TESTFLAGS: "-cover -race"
 
 #
 # Temporary disabling. Check https://gitlab.com/gitlab-org/gitlab-runner/merge_requests/1112
@@ -237,136 +237,136 @@ unit test with race:
 #    # Check the internal links
 #    - bundle exec nanoc check internal_links
 
-integration windows:
-  <<: *except_docs
-  stage: test
-  before_script:
-  - $GODIR = "$env:GOPATH\src\gitlab.com\gitlab-org"
-  - $target_path = "$GODIR\gitlab-runner"
-  - $current_path = pwd
-  - md $GODIR -Force
-  - if (Test-Path $target_path) { cmd /c rmdir $target_path }
-  - cmd /c mklink /D $target_path $current_path
-  - cd $GODIR\gitlab-runner
-  script:
-  - $script = Join-Path -Path "ci" -ChildPath "test_windows.ps1"
-  - Invoke-Expression $script
-  allow_failure: true
-  only:
-  - /.*/@gitlab-org/gitlab-runner
-  tags:
-  - integration
-  - windows
+# integration windows:
+#   <<: *except_docs
+#   stage: test
+#   before_script:
+#   - $GODIR = "$env:GOPATH\src\gitlab.com\gitlab-org"
+#   - $target_path = "$GODIR\gitlab-runner"
+#   - $current_path = pwd
+#   - md $GODIR -Force
+#   - if (Test-Path $target_path) { cmd /c rmdir $target_path }
+#   - cmd /c mklink /D $target_path $current_path
+#   - cd $GODIR\gitlab-runner
+#   script:
+#   - $script = Join-Path -Path "ci" -ChildPath "test_windows.ps1"
+#   - Invoke-Expression $script
+#   allow_failure: true
+#   only:
+#   - /.*/@gitlab-org/gitlab-runner
+#   tags:
+#   - integration
+#   - windows
 
-git 1.7.1:
-  <<: *except_docs
-  image: centos:6
-  stage: test
-  variables:
-    GOROOT: /usr/local/go
-    GOPATH: /go
-    CGO_ENABLED: 0
-    OUR_PACKAGES: gitlab.com/gitlab-org/gitlab-runner/executors/shell gitlab.com/gitlab-org/gitlab-runner/shells
-  before_script:
-    - unset GPG_KEY
-    - yum install -y -q git && git version
-    - curl https://storage.googleapis.com/golang/go1.8.7.linux-amd64.tar.gz | tar zx -C $(dirname "$GOROOT")
-    - export PATH=${GOROOT}/bin:$PATH
-    - source ci/touch_make_dependencies
-  script:
-    - make test
+# git 1.7.1:
+#   <<: *except_docs
+#   image: centos:6
+#   stage: test
+#   variables:
+#     GOROOT: /usr/local/go
+#     GOPATH: /go
+#     CGO_ENABLED: 0
+#     OUR_PACKAGES: gitlab.com/gitlab-org/gitlab-runner/executors/shell gitlab.com/gitlab-org/gitlab-runner/shells
+#   before_script:
+#     - unset GPG_KEY
+#     - yum install -y -q git && git version
+#     - curl https://storage.googleapis.com/golang/go1.8.7.linux-amd64.tar.gz | tar zx -C $(dirname "$GOROOT")
+#     - export PATH=${GOROOT}/bin:$PATH
+#     - source ci/touch_make_dependencies
+#   script:
+#     - make test
 
 #
 # Coverage stage
 #
 
-.coverage_job: &coverage_job
-  <<: *except_docs
-  stage: coverage
-  image: golang:1.10
-  when: always
+# .coverage_job: &coverage_job
+#   <<: *except_docs
+#   stage: coverage
+#   image: golang:1.10
+#   when: always
 
-test coverage report:
-  <<: *coverage_job
-  coverage: /regular total:\s+\(statements\)\s+\d+.\d+\%/
-  script:
-    - source ci/touch_make_dependencies
-    - make parallel_test_coverage_report
-    - make parallel_test_coverage_report TESTFLAGS="-cover -race"
-  artifacts:
-    paths:
-      - out/coverage/*
-    expire_in: 7d
+# test coverage report:
+#   <<: *coverage_job
+#   coverage: /regular total:\s+\(statements\)\s+\d+.\d+\%/
+#   script:
+#     - source ci/touch_make_dependencies
+#     - make parallel_test_coverage_report
+#     - make parallel_test_coverage_report TESTFLAGS="-cover -race"
+#   artifacts:
+#     paths:
+#       - out/coverage/*
+#     expire_in: 7d
 
-race conditions detector:
-  <<: *coverage_job
-  script:
-  - source ci/touch_make_dependencies
-  - make check_race_conditions
+# race conditions detector:
+#   <<: *coverage_job
+#   script:
+#   - source ci/touch_make_dependencies
+#   - make check_race_conditions
 
-test junit report:
-  <<: *coverage_job
-  image: $CI_IMAGE
-  script:
-  - source ci/touch_make_dependencies
-  - make parallel_test_junit_report
-  artifacts:
-    reports:
-      junit: out/junit/report.xml
+# test junit report:
+#   <<: *coverage_job
+#   image: $CI_IMAGE
+#   script:
+#   - source ci/touch_make_dependencies
+#   - make parallel_test_junit_report
+#   artifacts:
+#     reports:
+#       junit: out/junit/report.xml
 
 #
 # Build stage
 #
 
-.binaries: &binaries
-  <<: *except_docs
-  stage: build
-  script:
-  - source ci/touch_make_dependencies
-  - export platforms=$(echo $CI_JOB_NAME | sed 's|binaries ||')
-  - make build BUILD_PLATFORMS="-osarch='$platforms'"
-  artifacts:
-    paths:
-    - out/binaries/
-    expire_in: 7d
-  tags:
-  - gitlab-org
+# .binaries: &binaries
+#   <<: *except_docs
+#   stage: build
+#   script:
+#   - source ci/touch_make_dependencies
+#   - export platforms=$(echo $CI_JOB_NAME | sed 's|binaries ||')
+#   - make build BUILD_PLATFORMS="-osarch='$platforms'"
+#   artifacts:
+#     paths:
+#     - out/binaries/
+#     expire_in: 7d
+#   tags:
+#   - gitlab-org
 
-binaries darwin/386 darwin/amd64: *binaries
-binaries freebsd/386 freebsd/amd64 freebsd/arm: *binaries
-binaries linux/386 linux/amd64 linux/arm: *binaries
-binaries windows/386 windows/amd64: *binaries
+# binaries darwin/386 darwin/amd64: *binaries
+# binaries freebsd/386 freebsd/amd64 freebsd/arm: *binaries
+# binaries linux/386 linux/amd64 linux/arm: *binaries
+# binaries windows/386 windows/amd64: *binaries
 
-#
-# Package stage
-#
+# #
+# # Package stage
+# #
 
-.packages: &packages
-  <<: *except_docs
-  stage: package
-  before_script:
-  - |
-    # checking GPG signing support
-    if [ -n "$GPG_KEY" ]; then
-      echo "$GPG_KEY" | gpg --batch --no-tty --allow-secret-key-import --import -
-      unset GPG_KEY
-      export GPG_KEYID=$(gpg --with-colon --list-secret-keys | head -n1 | cut -d : -f 5)
-    else
-      echo -e "\033[0;31m****** GPG signing disabled ******\033[0m"
-    fi
-  script:
-  - source ci/touch_make_dependencies
-  - make ${CI_JOB_NAME}
-  artifacts:
-    paths:
-    - out/deb/
-    - out/rpm/
-    expire_in: 7d
-  tags:
-  - gitlab-org
+# .packages: &packages
+#   <<: *except_docs
+#   stage: package
+#   before_script:
+#   - |
+#     # checking GPG signing support
+#     if [ -n "$GPG_KEY" ]; then
+#       echo "$GPG_KEY" | gpg --batch --no-tty --allow-secret-key-import --import -
+#       unset GPG_KEY
+#       export GPG_KEYID=$(gpg --with-colon --list-secret-keys | head -n1 | cut -d : -f 5)
+#     else
+#       echo -e "\033[0;31m****** GPG signing disabled ******\033[0m"
+#     fi
+#   script:
+#   - source ci/touch_make_dependencies
+#   - make ${CI_JOB_NAME}
+#   artifacts:
+#     paths:
+#     - out/deb/
+#     - out/rpm/
+#     expire_in: 7d
+#   tags:
+#   - gitlab-org
 
-package-deb: *packages
-package-rpm: *packages
+# package-deb: *packages
+# package-rpm: *packages
 
 #
 # Release stage
@@ -557,17 +557,17 @@ stable docker images:
     name: stable/docker_images
     url: https://hub.docker.com/r/gitlab/gitlab-runner/tags/
 
-static QA:
-  <<: *except_docs
-  stage: release
-  image: alpine:3.7
-  cache: {}
-  dependencies:
-  - code_quality
-  script: |
-    if [ "$(cat gl-code-quality-report.json)" != "[]" ] ; then
-      apk add -U --no-cache jq > /dev/null
-      jq -C . gl-code-quality-report.json
-      exit 1
-    fi
+# static QA:
+#   <<: *except_docs
+#   stage: release
+#   image: alpine:3.7
+#   cache: {}
+#   dependencies:
+#   - code_quality
+#   script: |
+#     if [ "$(cat gl-code-quality-report.json)" != "[]" ] ; then
+#       apk add -U --no-cache jq > /dev/null
+#       jq -C . gl-code-quality-report.json
+#       exit 1
+#     fi
 
