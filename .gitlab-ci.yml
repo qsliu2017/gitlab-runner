@@ -397,8 +397,8 @@ helper images:
   - .\ci\build_release_windows_images.ps1
   variables:
     PUSH_TO_DOCKER_HUB: "false"
-    GIT_VERSION: "1.20.1"
-    GIT_VERSON_BUILD: "1"
+    GIT_VERSION: "2.21.0"
+    GIT_VERSION_BUILD: "1"
     GIT_LFS: "2.7.1"
     GOROOT: "C:\\Go"
     PKG_NAMESPACE: gitlab.com\gitlab-org

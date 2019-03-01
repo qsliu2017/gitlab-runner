@@ -1,6 +1,5 @@
 Set-StrictMode -Version latest
 $ErrorActionPreference = "Stop"
-[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 # ---------------------------------------------------------------------------
 # This script depends on a few environment variables that should be populated
 # before running the script:
@@ -74,6 +73,8 @@ function Build-Image($tag)
         '--build-arg', "GIT_VERSION_BUILD=$Env:GIT_VERSION_BUILD",
         '--build-arg', "GIT_LFS_VERSION=$Env:GIT_LFS_VERSION"
     )
+
+    Write-Output $buildArgs
 
     & 'docker' build -t "gitlab/gitlab-runner-helper:$tag" $buildArgs -f $dockerFile $context
     if ($lastexitcode -ne 0) {
