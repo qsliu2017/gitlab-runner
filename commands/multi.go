@@ -4,8 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"net"
-	"net/http"
-	"net/http/pprof"
 	"os"
 	"os/signal"
 	"runtime"
@@ -14,7 +12,6 @@ import (
 
 	"github.com/ayufan/golang-kardianos-service"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
 
@@ -23,6 +20,7 @@ import (
 	"gitlab.com/gitlab-org/gitlab-runner/helpers/certificate"
 	prometheus_helper "gitlab.com/gitlab-org/gitlab-runner/helpers/prometheus"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers/sentry"
+	"gitlab.com/gitlab-org/gitlab-runner/helpers/servers/debug"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers/service"
 	"gitlab.com/gitlab-org/gitlab-runner/log"
 	"gitlab.com/gitlab-org/gitlab-runner/network"
@@ -464,45 +462,35 @@ func (mr *RunCommand) runWait() {
 	mr.stopSignal = <-mr.stopSignals
 }
 
-func (mr *RunCommand) serveMetrics(mux *http.ServeMux) {
-	registry := prometheus.NewRegistry()
-	// Metrics about the runner's business logic.
-	registry.MustRegister(&mr.buildsHelper)
-	registry.MustRegister(mr)
-	// Metrics about API connections
-	registry.MustRegister(mr.networkRequestStatusesCollector)
-	// Metrics about jobs failures
-	registry.MustRegister(mr.failuresCollector)
-	// Metrics about catched errors
-	registry.MustRegister(&mr.prometheusLogHook)
-	// Metrics about the program's build version.
-	registry.MustRegister(common.AppVersion.NewMetricsCollector())
-	// Go-specific metrics about the process (GC stats, goroutines, etc.).
-	registry.MustRegister(prometheus.NewGoCollector())
-	// Go-unrelated process metrics (memory usage, file descriptors, etc.).
-	registry.MustRegister(prometheus.NewProcessCollector(prometheus.ProcessCollectorOpts{}))
+func (mr *RunCommand) setupPrometheusCollectors(server debug.Server) {
+	collectors := debug.CollectorsMap{
+		"jobs metrics":    &mr.buildsHelper,
+		"limits":          mr,
+		"api connections": mr.networkRequestStatusesCollector,
+		"job failures":    mr.failuresCollector,
+		"errors":          &mr.prometheusLogHook,
+		"version":         common.AppVersion.NewMetricsCollector(),
+	}
 
 	// Register all executor provider collectors
-	for _, provider := range common.GetExecutorProviders() {
+	for name, provider := range common.GetExecutorProviders() {
 		if collector, ok := provider.(prometheus.Collector); ok && collector != nil {
-			registry.MustRegister(collector)
+			name := fmt.Sprintf("executor %s", name)
+			collectors[name] = collector
 		}
 	}
 
-	mux.Handle("/metrics", promhttp.HandlerFor(registry, promhttp.HandlerOpts{}))
+	err := server.RegisterPrometheusCollectors(collectors)
+	if err != nil {
+		mr.log().WithError(err).Fatal("Failed to register a Prometheus Collector")
+	}
 }
 
-func (mr *RunCommand) serveDebugData(mux *http.ServeMux) {
-	mux.HandleFunc("/debug/jobs/list", mr.buildsHelper.ListJobsHandler)
+func (mr *RunCommand) setupJobsDebugHandler(server debug.Server) {
+	server.RegisterDebugEndpoint("jobs/list", mr.buildsHelper.ListJobsHandler)
 }
 
-func (mr *RunCommand) servePprof(mux *http.ServeMux) {
-	mux.HandleFunc("/debug/pprof/", pprof.Index)
-	mux.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
-	mux.HandleFunc("/debug/pprof/profile", pprof.Profile)
-	mux.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
-	mux.HandleFunc("/debug/pprof/trace", pprof.Trace)
-}
+var debugServerFactory = debug.NewServer
 
 func (mr *RunCommand) setupMetricsAndDebugServer() {
 	listenAddress, err := mr.listenAddress()
@@ -524,18 +512,20 @@ func (mr *RunCommand) setupMetricsAndDebugServer() {
 		mr.log().WithError(err).Fatal("Failed to create listener for metrics server")
 	}
 
-	mux := http.NewServeMux()
+	server, err := debugServerFactory()
+	if err != nil {
+		mr.log().WithError(err).Fatal("Failed to initialize metrics server")
+	}
+
+	mr.setupPrometheusCollectors(server)
+	mr.setupJobsDebugHandler(server)
 
 	go func() {
-		err := http.Serve(listener, mux)
+		err := server.Start(listener)
 		if err != nil {
 			mr.log().WithError(err).Fatal("Metrics server terminated")
 		}
 	}()
-
-	mr.serveMetrics(mux)
-	mr.serveDebugData(mux)
-	mr.servePprof(mux)
 
 	mr.log().
 		WithField("address", listenAddress).
@@ -735,15 +725,19 @@ func (mr *RunCommand) Execute(context *cli.Context) {
 	}
 }
 
-func init() {
+func newCommand() *RunCommand {
 	requestStatusesCollector := network.NewAPIRequestStatusesMap()
 
-	common.RegisterCommand2("run", "run multi runner service", &RunCommand{
+	return &RunCommand{
 		ServiceName: defaultServiceName,
 		network:     network.NewGitLabClientWithRequestStatusesMap(requestStatusesCollector),
 		networkRequestStatusesCollector: requestStatusesCollector,
 		prometheusLogHook:               prometheus_helper.NewLogHook(),
 		failuresCollector:               prometheus_helper.NewFailuresCollector(),
 		buildsHelper:                    newBuildsHelper(),
-	})
+	}
+}
+
+func init() {
+	common.RegisterCommand2("run", "run multi runner service", newCommand())
 }

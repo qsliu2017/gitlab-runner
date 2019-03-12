@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"gitlab.com/gitlab-org/gitlab-runner/common"
+	"gitlab.com/gitlab-org/gitlab-runner/helpers/servers/debug"
 )
 
 func TestProcessRunner_BuildLimit(t *testing.T) {
@@ -107,5 +108,46 @@ func TestProcessRunner_BuildLimit(t *testing.T) {
 	assert.EqualError(t, err, "failed to request job, runner limit met")
 
 	// Wait for all builds to finish.
+	wg.Wait()
+}
+
+func TestDebugServerInitialization(t *testing.T) {
+	server := new(debug.MockServer)
+	defer server.AssertExpectations(t)
+
+	oldDebugServerFactory := debugServerFactory
+	defer func() {
+		debugServerFactory = oldDebugServerFactory
+	}()
+	debugServerFactory = func() (debug.Server, error) {
+		return server, nil
+	}
+
+	collectorsMatcher := mock.MatchedBy(func(collectors debug.CollectorsMap) bool {
+		return len(collectors) > 0
+	})
+
+	wg := new(sync.WaitGroup)
+	wg.Add(1)
+
+	server.On("RegisterPrometheusCollectors", collectorsMatcher).
+		Return(nil).
+		Once()
+	server.On("RegisterDebugEndpoint", "jobs/list", mock.AnythingOfType("http.HandlerFunc")).
+		Return(nil).
+		Once()
+	server.On("Start", mock.Anything).
+		Return(nil).
+		Once().
+		Run(func(args mock.Arguments) {
+			wg.Done()
+		})
+
+	cmd := newCommand()
+	cmd.ListenAddress = "127.0.0.1:12345"
+
+	err := cmd.Start(nil)
+	assert.NoError(t, err)
+
 	wg.Wait()
 }

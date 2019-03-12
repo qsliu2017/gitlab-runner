@@ -72,7 +72,9 @@ func MakeBuildError(format string, args ...interface{}) error {
 	}
 }
 
-var executors map[string]ExecutorProvider
+type ExecutorProvidersMap map[string]ExecutorProvider
+
+var executors ExecutorProvidersMap
 
 func validateExecutorProvider(provider ExecutorProvider) error {
 	if provider.GetDefaultShell() == "" {
@@ -125,13 +127,12 @@ func GetExecutors() []string {
 	return names
 }
 
-func GetExecutorProviders() (providers []ExecutorProvider) {
+func GetExecutorProviders() (providers ExecutorProvidersMap) {
 	if executors != nil {
-		for _, executorProvider := range executors {
-			providers = append(providers, executorProvider)
-		}
+		return executors
 	}
-	return
+
+	return make(ExecutorProvidersMap)
 }
 
 func NewExecutor(executor string) Executor {
