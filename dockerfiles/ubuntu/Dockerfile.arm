@@ -1,23 +1,21 @@
-FROM multiarch/alpine:armhf-v3.9
+FROM multiarch/ubuntu-core:armhf-xenial 
 
-RUN adduser -D -S -h /home/gitlab-runner gitlab-runner
+RUN apt-get update -y && \
+    apt-get upgrade -y && \
+    apt-get install -y ca-certificates wget apt-transport-https vim nano tzdata git curl && \
+    rm -rf /var/lib/apt/lists/*
 
-RUN apk add --no-cache \
-    bash \
-    ca-certificates \
-    git \
-    git-lfs \
-    openssl \
-    tzdata \
-    wget
-RUN git lfs install --skip-repo
 ARG DOCKER_MACHINE_VERSION
 ARG DUMB_INIT_VERSION
+RUN git lfs install --skip-repo
 
-COPY gitlab-runner-linux-arm /usr/bin/gitlab-runner
+COPY gitlab-runner_arm.deb /tmp/
 COPY checksums /tmp/
-RUN chmod +x /usr/bin/gitlab-runner && \
-    ln -s /usr/bin/gitlab-runner /usr/bin/gitlab-ci-multi-runner && \
+RUN dpkg -i /tmp/gitlab-runner_amd64.deb; \
+    apt-get update &&  \
+    apt-get -f install -y && \
+    rm -rf /var/lib/apt/lists/* && \
+    rm /tmp/gitlab-runner_amd64.deb && \
     gitlab-runner --version && \
     mkdir -p /etc/gitlab-runner/certs && \
     chmod -R 700 /etc/gitlab-runner && \
@@ -27,6 +25,7 @@ RUN chmod +x /usr/bin/gitlab-runner && \
     wget -nv https://github.com/Yelp/dumb-init/releases/download/v${DUMB_INIT_VERSION}/dumb-init_${DUMB_INIT_VERSION}_arm -O /usr/bin/dumb-init && \
     chmod +x /usr/bin/dumb-init && \
     dumb-init --version 
+
 COPY entrypoint /
 RUN chmod +x /entrypoint
 

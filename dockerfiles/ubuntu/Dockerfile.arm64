@@ -1,23 +1,21 @@
-FROM multiarch/alpine:arm64-v3.9
+FROM multiarch/ubuntu-core:arm64-xenial 
 
-RUN adduser -D -S -h /home/gitlab-runner gitlab-runner
-
-RUN apk add --no-cache \
-    bash \
-    ca-certificates \
-    git \
-    openssl \
-    tzdata \
-    wget
+RUN apt-get update -y && \
+    apt-get upgrade -y && \
+    apt-get install -y ca-certificates wget apt-transport-https vim nano tzdata git git-lfs curl && \
+    rm -rf /var/lib/apt/lists/*
 
 ARG DOCKER_MACHINE_VERSION
 ARG DUMB_INIT_VERSION
 ARG GIT_LFS_VERSION
 
-COPY gitlab-runner-linux-arm64 /usr/bin/gitlab-runner
+COPY gitlab-runner_arm64.deb /tmp/
 COPY checksums /tmp/
-RUN chmod +x /usr/bin/gitlab-runner && \
-    ln -s /usr/bin/gitlab-runner /usr/bin/gitlab-ci-multi-runner && \
+RUN dpkg -i /tmp/gitlab-runner_amd64.deb; \
+    apt-get update &&  \
+    apt-get -f install -y && \
+    rm -rf /var/lib/apt/lists/* && \
+    rm /tmp/gitlab-runner_amd64.deb && \
     gitlab-runner --version && \
     mkdir -p /etc/gitlab-runner/certs && \
     chmod -R 700 /etc/gitlab-runner && \
@@ -34,7 +32,7 @@ RUN chmod +x /usr/bin/gitlab-runner && \
     rm -rf /tmp/git-lfs* && \
     git-lfs install --skip-repo && \
     git-lfs version && \
-    sha256sum -c -w /tmp/checksums
+    sha256sum --check --strict /tmp/checksums
 
 COPY entrypoint /
 RUN chmod +x /entrypoint
