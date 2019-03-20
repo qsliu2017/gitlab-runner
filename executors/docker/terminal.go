@@ -116,7 +116,7 @@ func (t terminalConn) Start(w http.ResponseWriter, r *http.Request, timeoutCh, d
 	// wait for container to exit
 	go func() {
 		t.logger.Debugln("Waiting for the terminal container:", t.containerID)
-		err := t.executor.waitForContainer(t.ctx, t.containerID)
+		err := t.executor.waitForContainer("terminal start", t.ctx, t.containerID)
 		t.logger.Debugln("The terminal container:", t.containerID, "finished with:", err)
 
 		stopCh := proxy.GetStopCh()

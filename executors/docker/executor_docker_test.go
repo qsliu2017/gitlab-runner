@@ -1156,6 +1156,33 @@ func TestDockerSysctlsSetting(t *testing.T) {
 	testDockerConfigurationWithJobContainer(t, dockerConfig, cce)
 }
 
+type fakeNotFoundError struct {
+	inner string
+}
+
+func (e fakeNotFoundError) Error() string {
+	return e.inner
+}
+
+func (e fakeNotFoundError) NotFound() bool {
+	return true
+}
+
+func TestWaitForContainer(t *testing.T) {
+	client := new(docker_helpers.MockClient)
+	defer client.AssertExpectations(t)
+
+	client.On("ContainerInspect", context.TODO(), "container-id").
+		Return(types.ContainerJSON{}, &fakeNotFoundError{inner: "test error (some data)"}).
+		Once()
+
+	e := &executor{
+		client: client,
+	}
+	err := e.waitForContainer("test-label", context.TODO(), "container-id")
+	t.Log(err)
+}
+
 func init() {
 	docker_helpers.HomeDirectory = ""
 }

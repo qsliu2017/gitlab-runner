@@ -419,7 +419,7 @@ func (e *executor) createCacheVolume(containerName, containerPath string) (strin
 	}
 
 	e.Debugln("Waiting for cache container", resp.ID, "...")
-	err = e.waitForContainer(e.Context, resp.ID)
+	err = e.waitForContainer("create cache volume", e.Context, resp.ID)
 	if err != nil {
 		e.temporary = append(e.temporary, resp.ID)
 		return "", err
@@ -957,7 +957,16 @@ func (e *executor) killContainer(id string, waitCh chan error) (err error) {
 	}
 }
 
-func (e *executor) waitForContainer(ctx context.Context, id string) error {
+type waitForContainerDockerError struct {
+	Inner error
+	Label string
+}
+
+func (e *waitForContainerDockerError) Error() string {
+	return fmt.Sprintf("%v [%s]", e.Inner, e.Label)
+}
+
+func (e *executor) waitForContainer(label string, ctx context.Context, id string) error {
 	e.Debugln("Waiting for container", id, "...")
 
 	retries := 0
@@ -966,12 +975,13 @@ func (e *executor) waitForContainer(ctx context.Context, id string) error {
 	for ctx.Err() == nil {
 		container, err := e.client.ContainerInspect(ctx, id)
 		if err != nil {
+			outerError := &waitForContainerDockerError{Inner: err, Label: label}
 			if docker_helpers.IsErrNotFound(err) {
-				return err
+				return outerError
 			}
 
 			if retries > 3 {
-				return err
+				return outerError
 			}
 
 			retries++
@@ -1042,7 +1052,7 @@ func (e *executor) watchContainer(ctx context.Context, id string, input io.Reade
 
 	waitCh := make(chan error, 1)
 	go func() {
-		waitCh <- e.waitForContainer(e.Context, id)
+		waitCh <- e.waitForContainer("watch container", e.Context, id)
 	}()
 
 	select {
@@ -1325,7 +1335,7 @@ func (e *executor) runServiceHealthCheckContainer(service *types.Container, time
 
 	waitResult := make(chan error, 1)
 	go func() {
-		waitResult <- e.waitForContainer(e.Context, resp.ID)
+		waitResult <- e.waitForContainer("run service health check container", e.Context, resp.ID)
 	}()
 
 	// these are warnings and they don't make the build fail
