@@ -48,8 +48,9 @@ var neverRestartPolicy = container.RestartPolicy{Name: "no"}
 
 type executor struct {
 	executors.AbstractExecutor
-	client docker_helpers.Client
-	info   types.Info
+	client   docker_helpers.Client
+	recorder *docker_helpers.Recorder
+	info     types.Info
 
 	temporary []string // IDs of containers that should be removed
 
@@ -966,6 +967,16 @@ func (e *waitForContainerDockerError) Error() string {
 	return fmt.Sprintf("%v [%s]", e.Inner, e.Label)
 }
 
+func (e *executor) handleWaitForContainerDockerError(label string, err error) error {
+	records := e.recorder.Flush()
+
+	for _, record := range records {
+		e.Warningln(record.String())
+	}
+
+	return &waitForContainerDockerError{Inner: err, Label: label}
+}
+
 func (e *executor) waitForContainer(label string, ctx context.Context, id string) error {
 	e.Debugln("Waiting for container", id, "...")
 
@@ -975,13 +986,12 @@ func (e *executor) waitForContainer(label string, ctx context.Context, id string
 	for ctx.Err() == nil {
 		container, err := e.client.ContainerInspect(ctx, id)
 		if err != nil {
-			outerError := &waitForContainerDockerError{Inner: err, Label: label}
 			if docker_helpers.IsErrNotFound(err) {
-				return outerError
+				return e.handleWaitForContainerDockerError(label, err)
 			}
 
 			if retries > 3 {
-				return outerError
+				return e.handleWaitForContainerDockerError(label, err)
 			}
 
 			retries++
@@ -1165,7 +1175,8 @@ func (e *executor) overwriteEntrypoint(image *common.Image) []string {
 }
 
 func (e *executor) connectDocker() (err error) {
-	client, err := docker_helpers.New(e.Config.Docker.DockerCredentials, "")
+	e.recorder = docker_helpers.NewRecorder()
+	client, err := docker_helpers.NewWithRecorder(e.Config.Docker.DockerCredentials, "", e.recorder)
 	if err != nil {
 		return err
 	}

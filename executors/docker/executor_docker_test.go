@@ -17,6 +17,8 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/network"
+	"github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -1172,15 +1174,29 @@ func TestWaitForContainer(t *testing.T) {
 	client := new(docker_helpers.MockClient)
 	defer client.AssertExpectations(t)
 
+	recorder := docker_helpers.NewRecorder()
+
 	client.On("ContainerInspect", context.TODO(), "container-id").
 		Return(types.ContainerJSON{}, &fakeNotFoundError{inner: "test error (some data)"}).
+		Run(func(args mock.Arguments) {
+			recorder.Record(docker_helpers.RecordLabels{"operation": "ContainerInspect", "containerID": args.Get(1)})
+		}).
 		Once()
 
 	e := &executor{
-		client: client,
+		client:   client,
+		recorder: recorder,
 	}
+
+	logger, hooks := test.NewNullLogger()
+	e.BuildLogger = common.NewBuildLogger(nil, logrus.NewEntry(logger))
+
 	err := e.waitForContainer("test-label", context.TODO(), "container-id")
-	t.Log(err)
+	assert.EqualError(t, err, "test error (some data) [test-label]")
+
+	lastEntryMessage := hooks.LastEntry().Message
+	assert.Contains(t, lastEntryMessage, "operation=ContainerInspect")
+	assert.Contains(t, lastEntryMessage, "containerID=container-id")
 }
 
 func init() {

@@ -8,6 +8,9 @@ import (
 	"net/http"
 	"path/filepath"
 	"runtime"
+	"sort"
+	"strings"
+	"sync"
 	"time"
 
 	"github.com/docker/docker/api/types"
@@ -20,6 +23,68 @@ import (
 
 // The default API version used to create a new docker client.
 const DefaultAPIVersion = "1.18"
+
+type RecordLabels map[string]interface{}
+
+type Record struct {
+	time   time.Time
+	labels RecordLabels
+}
+
+func (r *Record) String() string {
+	var out []string
+
+	var labelKeys []string
+	for key := range r.labels {
+		labelKeys = append(labelKeys, key)
+	}
+
+	sort.Strings(labelKeys)
+
+	for _, key := range labelKeys {
+		out = append(out, fmt.Sprintf("%s=%s", key, r.labels[key]))
+	}
+
+	return fmt.Sprintf("time=%s %s", r.time.Format(time.RFC3339), strings.Join(out, " "))
+}
+
+type Recorder struct {
+	lock    sync.Mutex
+	records []Record
+}
+
+func (r *Recorder) Record(labels RecordLabels) {
+	r.lock.Lock()
+	defer r.lock.Unlock()
+
+	_, file, line, ok := runtime.Caller(2)
+	if ok {
+		labels["caller"] = fmt.Sprintf("%s:%d", filepath.Base(file), line)
+	}
+
+	record := Record{
+		time:   time.Now(),
+		labels: labels,
+	}
+
+	r.records = append(r.records, record)
+}
+
+func (r *Recorder) Flush() []Record {
+	r.lock.Lock()
+	defer r.lock.Unlock()
+
+	records := r.records
+	r.records = make([]Record, 0)
+
+	return records
+}
+
+func NewRecorder() *Recorder {
+	return &Recorder{
+		records: make([]Record, 0),
+	}
+}
 
 // IsErrNotFound checks whether a returned error is due to an image or container
 // not being found. Proxies the docker implementation.
@@ -34,9 +99,11 @@ type officialDockerClient struct {
 
 	// Close() means "close idle connections held by engine-api's transport"
 	Transport *http.Transport
+
+	recorder *Recorder
 }
 
-func newOfficialDockerClient(c DockerCredentials, apiVersion string) (*officialDockerClient, error) {
+func newOfficialDockerClient(c DockerCredentials, apiVersion string, recorder *Recorder) (*officialDockerClient, error) {
 	transport, err := newHTTPTransport(c)
 	if err != nil {
 		logrus.Errorln("Error creating TLS Docker client:", err)
@@ -51,9 +118,14 @@ func newOfficialDockerClient(c DockerCredentials, apiVersion string) (*officialD
 		return nil, err
 	}
 
+	if recorder == nil {
+		recorder = NewRecorder()
+	}
+
 	return &officialDockerClient{
 		client:    dockerClient,
 		Transport: transport,
+		recorder:  recorder,
 	}, nil
 }
 
@@ -78,48 +150,64 @@ func (c *officialDockerClient) ImageInspectWithRaw(ctx context.Context, imageID 
 }
 
 func (c *officialDockerClient) ContainerCreate(ctx context.Context, config *container.Config, hostConfig *container.HostConfig, networkingConfig *network.NetworkingConfig, containerName string) (container.ContainerCreateCreatedBody, error) {
+	c.recorder.Record(RecordLabels{"operation": "ContainerCreate", "containerID": containerName})
+
 	started := time.Now()
 	container, err := c.client.ContainerCreate(ctx, config, hostConfig, networkingConfig, containerName)
 	return container, wrapError("ContainerCreate", err, started)
 }
 
 func (c *officialDockerClient) ContainerStart(ctx context.Context, containerID string, options types.ContainerStartOptions) error {
+	c.recorder.Record(RecordLabels{"operation": "ContainerStart", "containerID": containerID})
+
 	started := time.Now()
 	err := c.client.ContainerStart(ctx, containerID, options)
 	return wrapError("ContainerCreate", err, started)
 }
 
 func (c *officialDockerClient) ContainerKill(ctx context.Context, containerID string, signal string) error {
+	c.recorder.Record(RecordLabels{"operation": "ContainerStart", "containerID": containerID})
+
 	started := time.Now()
 	err := c.client.ContainerKill(ctx, containerID, signal)
 	return wrapError("ContainerWait", err, started)
 }
 
 func (c *officialDockerClient) ContainerInspect(ctx context.Context, containerID string) (types.ContainerJSON, error) {
+	c.recorder.Record(RecordLabels{"operation": "ContainerInspect", "containerID": containerID})
+
 	started := time.Now()
 	data, err := c.client.ContainerInspect(ctx, containerID)
 	return data, wrapError("ContainerInspect", err, started)
 }
 
 func (c *officialDockerClient) ContainerAttach(ctx context.Context, container string, options types.ContainerAttachOptions) (types.HijackedResponse, error) {
+	c.recorder.Record(RecordLabels{"operation": "ContainerAttach", "containerID": container})
+
 	started := time.Now()
 	response, err := c.client.ContainerAttach(ctx, container, options)
 	return response, wrapError("ContainerAttach", err, started)
 }
 
 func (c *officialDockerClient) ContainerRemove(ctx context.Context, containerID string, options types.ContainerRemoveOptions) error {
+	c.recorder.Record(RecordLabels{"operation": "ContainerRemove", "containerID": containerID})
+
 	started := time.Now()
 	err := c.client.ContainerRemove(ctx, containerID, options)
 	return wrapError("ContainerRemove", err, started)
 }
 
 func (c *officialDockerClient) ContainerLogs(ctx context.Context, container string, options types.ContainerLogsOptions) (io.ReadCloser, error) {
+	c.recorder.Record(RecordLabels{"operation": "ContainerRemove", "containerID": container})
+
 	started := time.Now()
 	rc, err := c.client.ContainerLogs(ctx, container, options)
 	return rc, wrapError("ContainerLogs", err, started)
 }
 
 func (c *officialDockerClient) ContainerExecCreate(ctx context.Context, container string, config types.ExecConfig) (types.IDResponse, error) {
+	c.recorder.Record(RecordLabels{"operation": "ContainerExecCreate", "containerID": container})
+
 	started := time.Now()
 	resp, err := c.client.ContainerExecCreate(ctx, container, config)
 	return resp, wrapError("ContainerExecCreate", err, started)
@@ -186,13 +274,7 @@ func (c *officialDockerClient) Close() error {
 	return nil
 }
 
-// New attempts to create a new Docker client of the specified version. If the
-// specified version is empty, it will use the default version.
-//
-// If no host is given in the DockerCredentials, it will attempt to look up
-// details from the environment. If that fails, it will use the default
-// connection details for your platform.
-func New(c DockerCredentials, apiVersion string) (Client, error) {
+func NewWithRecorder(c DockerCredentials, apiVersion string, recorder *Recorder) (Client, error) {
 	if c.Host == "" {
 		c = credentialsFromEnv()
 	}
@@ -206,7 +288,17 @@ func New(c DockerCredentials, apiVersion string) (Client, error) {
 		apiVersion = DefaultAPIVersion
 	}
 
-	return newOfficialDockerClient(c, apiVersion)
+	return newOfficialDockerClient(c, apiVersion, recorder)
+}
+
+// New attempts to create a new Docker client of the specified version. If the
+// specified version is empty, it will use the default version.
+//
+// If no host is given in the DockerCredentials, it will attempt to look up
+// details from the environment. If that fails, it will use the default
+// connection details for your platform.
+func New(c DockerCredentials, apiVersion string) (Client, error) {
+	return NewWithRecorder(c, apiVersion, nil)
 }
 
 func newHTTPTransport(c DockerCredentials) (*http.Transport, error) {
