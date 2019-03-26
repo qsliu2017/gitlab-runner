@@ -4,7 +4,7 @@ This document serves to map out the life of a GitLab job in GitLab CI/CD.  While
 
 The sequence of jobs in stages and the pipeline overall are covered in various other parts of this documentation.  For the purposes of these diagrams, you can think of it tracing the "first" job in a pipeline (the first job in the first stage) or a pipeline that has exactly one stage and exactly one job.
 
-Genearlly the life of a job looks something like:
+Generally the life of a job looks something like:
 
 ```mermaid
 graph LR
@@ -39,3 +39,25 @@ sequenceDiagram
 
 ## Picked to Execution (dependant on executor)
 ### Executor: docker+machine
+
+```mermaid
+sequenceDiagram
+    participant M as D+M Runner
+    participant A as Cloud API
+    participant R as Spawned Runner
+    participant G as GitLab
+    participant D as Docker Registry
+    Note over M: Job chosen!
+    M->>A: Request new machine
+    A->>R: Spawn new machine
+    loop Every 1 second
+        M->>A: Machine ready?
+    end
+    A->>M: Machine is ready!
+    M->>R: Install runner
+    M->>R: Run job
+    R->>D: Pull build image
+    R->>G: Clone repository
+    R->>G: Download cache
+    Note over R: Execute job code
+```
