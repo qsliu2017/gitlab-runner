@@ -28,6 +28,7 @@ import (
 	"gitlab.com/gitlab-org/gitlab-runner/helpers"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers/docker"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers/docker/helperimage"
+	"gitlab.com/gitlab-org/gitlab-runner/helpers/docker/volumes"
 )
 
 const (
@@ -1032,19 +1033,19 @@ func (a *volumesManagerAdapter) ResolveHelperImage() (*types.ImageInspect, error
 	return a.e.getPrebuiltImage()
 }
 
-func (e *executor) getVolumesManager() VolumesManager {
+func (e *executor) getVolumesManager() volumes.Manager {
 	adapter := &volumesManagerAdapter{e: e}
-	config := DefaultVolumesManagerConfig{
-		cacheDir:                e.Config.Docker.CacheDir,
-		jobsRootDir:             e.Build.RootDir,
-		fullProjectDir:          e.Build.FullProjectDir(),
-		projectUniqName:         e.Build.ProjectUniqueName(),
-		gitStrategy:             e.Build.GetGitStrategy(),
-		disableCache:            e.Config.Docker.DisableCache,
-		outdatedHelperImageUsed: e.checkOutdatedHelperImage(),
+	config := volumes.DefaultManagerConfig{
+		CacheDir:                e.Config.Docker.CacheDir,
+		JobsRootDir:             e.Build.RootDir,
+		FullProjectDir:          e.Build.FullProjectDir(),
+		ProjectUniqName:         e.Build.ProjectUniqueName(),
+		GitStrategy:             e.Build.GetGitStrategy(),
+		DisableCache:            e.Config.Docker.DisableCache,
+		OutdatedHelperImageUsed: e.checkOutdatedHelperImage(),
 	}
 
-	return NewDefaultVolumesManager(e.BuildLogger, adapter, adapter, config)
+	return volumes.NewDefaultManager(e.BuildLogger, adapter, adapter, config)
 }
 
 func (e *executor) checkOutdatedHelperImage() bool {
@@ -1093,7 +1094,7 @@ func (e *executor) prepareBuildsDir(config *common.RunnerConfig) {
 		rootDir = e.DefaultBuildsDir
 	}
 
-	if IsHostMountedVolume(rootDir, config.Docker.Volumes...) {
+	if volumes.IsHostMountedVolume(rootDir, config.Docker.Volumes...) {
 		e.SharedBuildsDir = true
 	}
 }
