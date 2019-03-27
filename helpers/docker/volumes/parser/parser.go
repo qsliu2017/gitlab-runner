@@ -2,6 +2,8 @@ package parser
 
 import (
 	"github.com/docker/docker/api/types"
+
+	"gitlab.com/gitlab-org/gitlab-runner/helpers/docker/errors"
 )
 
 const (
@@ -23,7 +25,7 @@ var supportedOSTypes = map[string]parserFactory{
 func New(info types.Info) (Parser, error) {
 	factory, ok := supportedOSTypes[info.OSType]
 	if !ok {
-		return nil, newUnsupportedOSTypeError(info.OSType)
+		return nil, errors.NewUnsupportedOSTypeError(info.OSType)
 	}
 	return factory(), nil
 }

@@ -5,6 +5,8 @@ import (
 
 	"github.com/docker/docker/api/types"
 	"github.com/stretchr/testify/assert"
+
+	"gitlab.com/gitlab-org/gitlab-runner/helpers/docker/errors"
 )
 
 func TestNew(t *testing.T) {
@@ -14,7 +16,7 @@ func TestNew(t *testing.T) {
 	}{
 		OSTypeLinux:   {expectedParserType: &linuxParser{}, expectedError: nil},
 		OSTypeWindows: {expectedParserType: &windowsParser{}, expectedError: nil},
-		"unsupported": {expectedParserType: nil, expectedError: newUnsupportedOSTypeError("unsupported")},
+		"unsupported": {expectedParserType: nil, expectedError: errors.NewUnsupportedOSTypeError("unsupported")},
 	}
 
 	for osType, testCase := range testCases {

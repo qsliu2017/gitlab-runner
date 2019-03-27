@@ -17,19 +17,3 @@ func newInvalidVolumeSpecErr(spec string) error {
 		spec: spec,
 	}
 }
-
-// TODO: join with the one from helperimage package and
-//       move to a common place
-type unsupportedOSTypeError struct {
-	detectedOSType string
-}
-
-func (e *unsupportedOSTypeError) Error() string {
-	return fmt.Sprintf("unsupported OSType %q", e.detectedOSType)
-}
-
-func newUnsupportedOSTypeError(osType string) *unsupportedOSTypeError {
-	return &unsupportedOSTypeError{
-		detectedOSType: osType,
-	}
-}
