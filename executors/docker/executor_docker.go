@@ -29,6 +29,7 @@ import (
 	"gitlab.com/gitlab-org/gitlab-runner/helpers/docker"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers/docker/helperimage"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers/docker/volumes"
+	"gitlab.com/gitlab-org/gitlab-runner/helpers/docker/volumes/parser"
 )
 
 const (
@@ -1022,6 +1023,10 @@ type volumesManagerAdapter struct {
 	e *executor
 }
 
+func (a *volumesManagerAdapter) CreateParser() (parser.Parser, error) {
+	return parser.New(a.e.info)
+}
+
 func (a *volumesManagerAdapter) LabelContainer(container *container.Config, containerType string, otherLabels ...string) {
 	container.Labels = a.e.getLabels(containerType, otherLabels...)
 }
@@ -1076,15 +1081,20 @@ func (e *executor) getVolumesManager() (volumes.Manager, error) {
 		e.checkOutdatedHelperImage(),
 	)
 
-	e.volumesManager = volumes.NewDefaultManager(e.BuildLogger, cManager, config)
+	e.volumesManager = volumes.NewDefaultManager(e.BuildLogger, adapter, cManager, config)
 
 	return e.volumesManager, nil
 }
 
 func (e *executor) Prepare(options common.ExecutorPrepareOptions) error {
+	err := e.connectDocker()
+	if err != nil {
+		return err
+	}
+
 	e.prepareBuildsDir(options.Config)
 
-	err := e.AbstractExecutor.Prepare(options)
+	err = e.AbstractExecutor.Prepare(options)
 	if err != nil {
 		return err
 	}
@@ -1104,11 +1114,6 @@ func (e *executor) Prepare(options common.ExecutorPrepareOptions) error {
 	}
 
 	e.Println("Using Docker executor with image", imageName, "...")
-
-	err = e.connectDocker()
-	if err != nil {
-		return err
-	}
 
 	err = e.createDependencies()
 	if err != nil {

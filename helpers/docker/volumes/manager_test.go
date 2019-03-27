@@ -12,7 +12,7 @@ import (
 func TestNewDefaultManager(t *testing.T) {
 	logger := common.NewBuildLogger(nil, nil)
 
-	m := NewDefaultManager(logger, nil, DefaultManagerConfig{})
+	m := NewDefaultManager(logger, nil, nil, DefaultManagerConfig{})
 	assert.IsType(t, &defaultManager{}, m)
 }
 

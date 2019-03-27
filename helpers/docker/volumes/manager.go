@@ -9,7 +9,12 @@ import (
 	"strings"
 
 	"gitlab.com/gitlab-org/gitlab-runner/common"
+	"gitlab.com/gitlab-org/gitlab-runner/helpers/docker/volumes/parser"
 )
+
+type parserProvider interface {
+	CreateParser() (parser.Parser, error)
+}
 
 type Manager interface {
 	CreateUserVolumes(volumes []string) error
@@ -31,6 +36,7 @@ type defaultManager struct {
 	config DefaultManagerConfig
 
 	logger           common.BuildLogger
+	parserProvider   parserProvider
 	containerManager ContainerManager
 
 	volumeBindings    []string
@@ -38,10 +44,11 @@ type defaultManager struct {
 	tmpContainerIDs   []string
 }
 
-func NewDefaultManager(logger common.BuildLogger, cManager ContainerManager, config DefaultManagerConfig) Manager {
+func NewDefaultManager(logger common.BuildLogger, pProvider parserProvider, cManager ContainerManager, config DefaultManagerConfig) Manager {
 	return &defaultManager{
 		config:            config,
 		logger:            logger,
+		parserProvider:    pProvider,
 		containerManager:  cManager,
 		volumeBindings:    make([]string, 0),
 		cacheContainerIDs: make([]string, 0),
