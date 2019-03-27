@@ -981,7 +981,7 @@ func (e *executor) createDependencies() (err error) {
 
 	e.SetCurrentStage(DockerExecutorStageCreatingBuildVolumes)
 	e.Debugln("Creating build volume...")
-	err = e.getVolumesManager().CreateBuildVolume(e.Config.Docker.Volumes)
+	err = e.getVolumesManager().CreateBuildVolume(e.Build.RootDir, e.Config.Docker.Volumes)
 	if err != nil {
 		return err
 	}
@@ -1035,6 +1035,20 @@ func (a *volumesManagerAdapter) ResolveHelperImage() (*types.ImageInspect, error
 	return a.e.getPrebuiltImage()
 }
 
+func (a *volumesManagerAdapter) GetCacheCommand(containerPath string) []string {
+	// TODO: Remove in 12.0 to start using the command from `gitlab-runner-helper`
+	if a.e.checkOutdatedHelperImage() {
+		a.e.Debugln("Falling back to old gitlab-runner-cache command")
+		return []string{"gitlab-runner-cache", containerPath}
+	}
+
+	return []string{"gitlab-runner-helper", "cache-init", containerPath}
+}
+
+func (e *executor) checkOutdatedHelperImage() bool {
+	return !e.Build.IsFeatureFlagOn(common.FFDockerHelperImageV2) && e.Config.Docker.HelperImage != ""
+}
+
 func (e *executor) getVolumesManager() volumes.Manager {
 	if e.volumesManager != nil {
 		return e.volumesManager
@@ -1042,22 +1056,16 @@ func (e *executor) getVolumesManager() volumes.Manager {
 
 	adapter := &volumesManagerAdapter{e: e}
 	config := volumes.DefaultManagerConfig{
-		CacheDir:                e.Config.Docker.CacheDir,
-		JobsRootDir:             e.Build.RootDir,
-		FullProjectDir:          e.Build.FullProjectDir(),
-		ProjectUniqName:         e.Build.ProjectUniqueName(),
-		GitStrategy:             e.Build.GetGitStrategy(),
-		DisableCache:            e.Config.Docker.DisableCache,
-		OutdatedHelperImageUsed: e.checkOutdatedHelperImage(),
+		CacheDir:        e.Config.Docker.CacheDir,
+		FullProjectDir:  e.Build.FullProjectDir(),
+		ProjectUniqName: e.Build.ProjectUniqueName(),
+		GitStrategy:     e.Build.GetGitStrategy(),
+		DisableCache:    e.Config.Docker.DisableCache,
 	}
 
 	e.volumesManager = volumes.NewDefaultManager(e.BuildLogger, adapter, adapter, config)
 
 	return e.volumesManager
-}
-
-func (e *executor) checkOutdatedHelperImage() bool {
-	return !e.Build.IsFeatureFlagOn(common.FFDockerHelperImageV2) && e.Config.Docker.HelperImage != ""
 }
 
 func (e *executor) Prepare(options common.ExecutorPrepareOptions) error {

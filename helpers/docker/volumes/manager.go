@@ -13,20 +13,18 @@ import (
 
 type Manager interface {
 	CreateUserVolumes(volumes []string) error
-	CreateBuildVolume(volumes []string) error
+	CreateBuildVolume(jobsRootDir string, volumes []string) error
 	VolumeBindings() []string
 	CacheContainerIDs() []string
 	TmpContainerIDs() []string
 }
 
 type DefaultManagerConfig struct {
-	CacheDir                string
-	JobsRootDir             string
-	FullProjectDir          string
-	ProjectUniqName         string
-	GitStrategy             common.GitStrategy
-	DisableCache            bool
-	OutdatedHelperImageUsed bool
+	CacheDir        string
+	FullProjectDir  string
+	ProjectUniqName string
+	GitStrategy     common.GitStrategy
+	DisableCache    bool
 }
 
 type defaultManager struct {
@@ -44,7 +42,6 @@ func NewDefaultManager(logger common.BuildLogger, cClient containerClient, hiRes
 	tmpContainerIDs := new(defaultRegistry)
 
 	cManager := newDefaultContainerManager(
-		config.OutdatedHelperImageUsed,
 		logger,
 		cClient,
 		hiResolver,
@@ -165,14 +162,14 @@ func (m *defaultManager) createContainerBasedCacheVolume(containerPath string, h
 	return nil
 }
 
-func (m *defaultManager) CreateBuildVolume(volumes []string) error {
+func (m *defaultManager) CreateBuildVolume(jobsRootDir string, volumes []string) error {
 	// Cache Git sources:
 	// use a `jobsRootDir`
-	if !path.IsAbs(m.config.JobsRootDir) && m.config.JobsRootDir != "/" {
+	if !path.IsAbs(jobsRootDir) || jobsRootDir == "/" {
 		return errors.New("build directory needs to be absolute and non-root path")
 	}
 
-	if IsHostMountedVolume(m.config.JobsRootDir, volumes...) {
+	if IsHostMountedVolume(jobsRootDir, volumes...) {
 		// If builds directory is within a volume mounted manually by user
 		// it will be added by CreateUserVolumes(), so nothing more to do
 		// here
@@ -181,11 +178,11 @@ func (m *defaultManager) CreateBuildVolume(volumes []string) error {
 
 	if m.config.GitStrategy == common.GitFetch && !m.config.DisableCache {
 		// create persistent cache container
-		return m.addVolume(m.config.JobsRootDir)
+		return m.addVolume(jobsRootDir)
 	}
 
 	// create temporary cache container
-	id, err := m.containerManager.CreateCacheContainer("", m.config.JobsRootDir)
+	id, err := m.containerManager.CreateCacheContainer("", jobsRootDir)
 	if err != nil {
 		return err
 	}
