@@ -146,7 +146,10 @@ func (b *Build) FullProjectDir() string {
 
 func (b *Build) StartBuild(rootDir, cacheDir string, sharedDir bool) {
 	b.RootDir = rootDir
-	b.BuildDir = path.Join(rootDir, b.ProjectUniqueDir(sharedDir))
+	b.BuildDir = helpers.ToSlash(b.Variables.Get("CI_PROJECT_DIR"))
+	if b.BuildDir == "" {
+		b.BuildDir = path.Join(rootDir, b.ProjectUniqueDir(sharedDir))
+	}
 	b.CacheDir = path.Join(cacheDir, b.ProjectUniqueDir(false))
 }
 

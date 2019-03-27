@@ -22,7 +22,7 @@ import (
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/kardianos/osext"
-	"github.com/mattn/go-zglob"
+	zglob "github.com/mattn/go-zglob"
 	"github.com/sirupsen/logrus"
 
 	"gitlab.com/gitlab-org/gitlab-runner/common"
