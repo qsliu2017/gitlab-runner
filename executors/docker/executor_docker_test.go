@@ -568,19 +568,24 @@ func TestHostMountedBuildsDirectory(t *testing.T) {
 	for _, i := range tests {
 		c := common.RunnerConfig{
 			RunnerSettings: common.RunnerSettings{
-				BuildsDir: i.path,
 				Docker: &common.DockerConfig{
 					Volumes: i.volumes,
 				},
 			},
 		}
 		e := &executor{
+			AbstractExecutor: executors.AbstractExecutor{
+				Config: c,
+				Build: &common.Build{
+					RootDir: i.path,
+				},
+			},
 			info: types.Info{
 				OSType: parser.OSTypeLinux,
 			},
 		}
 
-		err := e.prepareBuildsDir(&c)
+		err := e.checkBuildsRootDir()
 		assert.NoError(t, err)
 		assert.Equal(t, i.result, e.SharedBuildsDir)
 	}

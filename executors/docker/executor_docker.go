@@ -1087,27 +1087,27 @@ func (e *executor) getVolumesManager() (volumes.Manager, error) {
 }
 
 func (e *executor) Prepare(options common.ExecutorPrepareOptions) error {
-	err := e.connectDocker()
-	if err != nil {
-		return err
-	}
-
-	err = e.prepareBuildsDir(options.Config)
-	if err != nil {
-		return err
-	}
-
-	err = e.AbstractExecutor.Prepare(options)
+	err := e.AbstractExecutor.Prepare(options)
 	if err != nil {
 		return err
 	}
 
 	if e.BuildShell.PassFile {
-		return errors.New("Docker doesn't support shells that require script file")
+		return errors.New("docker doesn't support shells that require script file")
 	}
 
 	if options.Config.Docker == nil {
-		return errors.New("Missing docker configuration")
+		return errors.New("missing docker configuration")
+	}
+
+	err = e.connectDocker()
+	if err != nil {
+		return err
+	}
+
+	err = e.checkBuildsRootDir()
+	if err != nil {
+		return err
 	}
 
 	e.SetCurrentStage(DockerExecutorStagePrepare)
@@ -1125,18 +1125,13 @@ func (e *executor) Prepare(options common.ExecutorPrepareOptions) error {
 	return nil
 }
 
-func (e *executor) prepareBuildsDir(config *common.RunnerConfig) error {
-	rootDir := config.BuildsDir
-	if rootDir == "" {
-		rootDir = e.DefaultBuildsDir
-	}
-
+func (e *executor) checkBuildsRootDir() error {
 	volumeParser, err := parser.New(e.info)
 	if err != nil {
 		return fmt.Errorf("couldn't create volumes parser: %v", err)
 	}
 
-	isHostMounted, err := volumes.IsHostMountedVolume(volumeParser, rootDir, config.Docker.Volumes...)
+	isHostMounted, err := volumes.IsHostMountedVolume(volumeParser, e.Build.RootDir, e.Config.Docker.Volumes...)
 	if err != nil {
 		return err
 	}
