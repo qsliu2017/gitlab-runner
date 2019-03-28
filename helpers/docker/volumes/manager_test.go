@@ -50,6 +50,7 @@ func addContainerManager(manager *defaultManager) *MockContainerManager {
 func TestDefaultManager_CreateUserVolumes_HostVolume(t *testing.T) {
 	testCases := map[string]struct {
 		volumes         []string
+		parsedVolume    *parser.Volume
 		fullProjectDir  string
 		expectedBinding string
 	}{
@@ -58,19 +59,23 @@ func TestDefaultManager_CreateUserVolumes_HostVolume(t *testing.T) {
 		},
 		"volume with absolute path": {
 			volumes:         []string{"/host:/volume"},
+			parsedVolume:    &parser.Volume{Source: "/host", Destination: "/volume"},
 			expectedBinding: "/host:/volume",
 		},
 		"volume with absolute path and with fullProjectDir specified": {
 			volumes:         []string{"/host:/volume"},
+			parsedVolume:    &parser.Volume{Source: "/host", Destination: "/volume"},
 			fullProjectDir:  "/builds",
 			expectedBinding: "/host:/volume",
 		},
 		"volume without absolute path and without fullProjectDir specified": {
 			volumes:         []string{"/host:volume"},
+			parsedVolume:    &parser.Volume{Source: "/host", Destination: "volume"},
 			expectedBinding: "/host:volume",
 		},
 		"volume without absolute path and with fullProjectDir specified": {
 			volumes:         []string{"/host:volume"},
+			parsedVolume:    &parser.Volume{Source: "/host", Destination: "volume"},
 			fullProjectDir:  "/builds/project",
 			expectedBinding: "/host:/builds/project/volume",
 		},
@@ -83,6 +88,18 @@ func TestDefaultManager_CreateUserVolumes_HostVolume(t *testing.T) {
 			}
 
 			m := newDefaultManager(config)
+			pProvider, volumeParser := addParserProviderAndParser(m)
+
+			defer func() {
+				pProvider.AssertExpectations(t)
+				volumeParser.AssertExpectations(t)
+			}()
+
+			if len(testCase.volumes) > 0 {
+				volumeParser.On("ParseVolume", testCase.volumes[0]).
+					Return(testCase.parsedVolume, nil).
+					Once()
+			}
 
 			err := m.CreateUserVolumes(testCase.volumes)
 			assert.NoError(t, err)
@@ -104,6 +121,7 @@ func assertVolumeBindings(t *testing.T, expectedBinding string, bindings []strin
 func TestDefaultManager_CreateUserVolumes_CacheVolume_Disabled(t *testing.T) {
 	testCases := map[string]struct {
 		volumes        []string
+		parsedVolume   *parser.Volume
 		fullProjectDir string
 		disableCache   bool
 
@@ -117,23 +135,27 @@ func TestDefaultManager_CreateUserVolumes_CacheVolume_Disabled(t *testing.T) {
 		},
 		"volume with absolute path, without fullProjectDir and with disableCache": {
 			volumes:         []string{"/volume"},
+			parsedVolume:    &parser.Volume{Destination: "/volume"},
 			fullProjectDir:  "",
 			disableCache:    true,
 			expectedBinding: "",
 		},
 		"volume with absolute path, with fullProjectDir and with disableCache": {
 			volumes:         []string{"/volume"},
+			parsedVolume:    &parser.Volume{Destination: "/volume"},
 			fullProjectDir:  "/builds/project",
 			disableCache:    true,
 			expectedBinding: "",
 		},
 		"volume without absolute path, without fullProjectDir and with disableCache": {
 			volumes:         []string{"volume"},
+			parsedVolume:    &parser.Volume{Destination: "volume"},
 			disableCache:    true,
 			expectedBinding: "",
 		},
 		"volume without absolute path, with fullProjectDir and with disableCache": {
 			volumes:         []string{"volume"},
+			parsedVolume:    &parser.Volume{Destination: "volume"},
 			fullProjectDir:  "/builds/project",
 			disableCache:    true,
 			expectedBinding: "",
@@ -148,6 +170,18 @@ func TestDefaultManager_CreateUserVolumes_CacheVolume_Disabled(t *testing.T) {
 			}
 
 			m := newDefaultManager(config)
+			pProvider, volumeParser := addParserProviderAndParser(m)
+
+			defer func() {
+				pProvider.AssertExpectations(t)
+				volumeParser.AssertExpectations(t)
+			}()
+
+			if len(testCase.volumes) > 0 {
+				volumeParser.On("ParseVolume", testCase.volumes[0]).
+					Return(testCase.parsedVolume, nil).
+					Once()
+			}
 
 			err := m.CreateUserVolumes(testCase.volumes)
 			assert.NoError(t, err)
@@ -211,6 +245,17 @@ func TestDefaultManager_CreateUserVolumes_CacheVolume_HostBased(t *testing.T) {
 
 			m := newDefaultManager(config)
 
+			pProvider, volumeParser := addParserProviderAndParser(m)
+
+			defer func() {
+				pProvider.AssertExpectations(t)
+				volumeParser.AssertExpectations(t)
+			}()
+
+			volumeParser.On("ParseVolume", testCase.volumes[0]).
+				Return(&parser.Volume{Destination: testCase.volumes[0]}, nil).
+				Once()
+
 			err := m.CreateUserVolumes(testCase.volumes)
 			assert.NoError(t, err)
 			assertVolumeBindings(t, testCase.expectedBinding, m.volumeBindings)
@@ -221,6 +266,7 @@ func TestDefaultManager_CreateUserVolumes_CacheVolume_HostBased(t *testing.T) {
 func TestDefaultManager_CreateUserVolumes_CacheVolume_ContainerBased(t *testing.T) {
 	testCases := map[string]struct {
 		volumes                  []string
+		parsedVolume             *parser.Volume
 		fullProjectDir           string
 		projectUniqName          string
 		expectedContainerName    string
@@ -231,6 +277,7 @@ func TestDefaultManager_CreateUserVolumes_CacheVolume_ContainerBased(t *testing.
 	}{
 		"volume with absolute path, without fullProjectDir and with existing container": {
 			volumes:                  []string{"/volume"},
+			parsedVolume:             &parser.Volume{Destination: "/volume"},
 			fullProjectDir:           "",
 			projectUniqName:          "project-uniq",
 			expectedContainerName:    "project-uniq-cache-14331bf18c8e434c4b3f48a8c5cc79aa",
@@ -240,6 +287,7 @@ func TestDefaultManager_CreateUserVolumes_CacheVolume_ContainerBased(t *testing.
 		},
 		"volume with absolute path, without fullProjectDir and with new container": {
 			volumes:                  []string{"/volume"},
+			parsedVolume:             &parser.Volume{Destination: "/volume"},
 			fullProjectDir:           "",
 			projectUniqName:          "project-uniq",
 			expectedContainerName:    "project-uniq-cache-14331bf18c8e434c4b3f48a8c5cc79aa",
@@ -250,6 +298,7 @@ func TestDefaultManager_CreateUserVolumes_CacheVolume_ContainerBased(t *testing.
 		},
 		"volume without absolute path, without fullProjectDir and with existing container": {
 			volumes:                  []string{"volume"},
+			parsedVolume:             &parser.Volume{Destination: "volume"},
 			fullProjectDir:           "",
 			projectUniqName:          "project-uniq",
 			expectedContainerName:    "project-uniq-cache-210ab9e731c9c36c2c38db15c28a8d1c",
@@ -259,6 +308,7 @@ func TestDefaultManager_CreateUserVolumes_CacheVolume_ContainerBased(t *testing.
 		},
 		"volume without absolute path, without fullProjectDir and with new container": {
 			volumes:                  []string{"volume"},
+			parsedVolume:             &parser.Volume{Destination: "volume"},
 			fullProjectDir:           "",
 			projectUniqName:          "project-uniq",
 			expectedContainerName:    "project-uniq-cache-210ab9e731c9c36c2c38db15c28a8d1c",
@@ -269,6 +319,7 @@ func TestDefaultManager_CreateUserVolumes_CacheVolume_ContainerBased(t *testing.
 		},
 		"volume without absolute path, with fullProjectDir and with existing container": {
 			volumes:                  []string{"volume"},
+			parsedVolume:             &parser.Volume{Destination: "volume"},
 			fullProjectDir:           "/builds/project",
 			projectUniqName:          "project-uniq",
 			expectedContainerName:    "project-uniq-cache-f69aef9fb01e88e6213362a04877452d",
@@ -278,6 +329,7 @@ func TestDefaultManager_CreateUserVolumes_CacheVolume_ContainerBased(t *testing.
 		},
 		"volume without absolute path, with fullProjectDir and with new container": {
 			volumes:                  []string{"volume"},
+			parsedVolume:             &parser.Volume{Destination: "volume"},
 			fullProjectDir:           "/builds/project",
 			projectUniqName:          "project-uniq",
 			expectedContainerName:    "project-uniq-cache-f69aef9fb01e88e6213362a04877452d",
@@ -297,8 +349,13 @@ func TestDefaultManager_CreateUserVolumes_CacheVolume_ContainerBased(t *testing.
 
 			m := newDefaultManager(config)
 			containerManager := addContainerManager(m)
+			pProvider, volumeParser := addParserProviderAndParser(m)
 
-			defer containerManager.AssertExpectations(t)
+			defer func() {
+				containerManager.AssertExpectations(t)
+				pProvider.AssertExpectations(t)
+				volumeParser.AssertExpectations(t)
+			}()
 
 			containerManager.On("FindExistingCacheContainer", testCase.expectedContainerName, testCase.expectedContainerPath).
 				Return(testCase.existingContainerID).
@@ -307,6 +364,12 @@ func TestDefaultManager_CreateUserVolumes_CacheVolume_ContainerBased(t *testing.
 			if testCase.newContainerID != "" {
 				containerManager.On("CreateCacheContainer", testCase.expectedContainerName, testCase.expectedContainerPath).
 					Return(testCase.newContainerID, nil).
+					Once()
+			}
+
+			if len(testCase.volumes) > 0 {
+				volumeParser.On("ParseVolume", testCase.volumes[0]).
+					Return(testCase.parsedVolume, nil).
 					Once()
 			}
 
@@ -326,8 +389,17 @@ func TestDefaultManager_CreateUserVolumes_CacheVolume_ContainerBased_WithError(t
 
 	m := newDefaultManager(config)
 	containerManager := addContainerManager(m)
+	pProvider, volumeParser := addParserProviderAndParser(m)
 
-	defer containerManager.AssertExpectations(t)
+	defer func() {
+		containerManager.AssertExpectations(t)
+		pProvider.AssertExpectations(t)
+		volumeParser.AssertExpectations(t)
+	}()
+
+	volumeParser.On("ParseVolume", "volume").
+		Return(&parser.Volume{Destination: "volume"}, nil).
+		Once()
 
 	containerManager.On("FindExistingCacheContainer", "project-uniq-cache-f69aef9fb01e88e6213362a04877452d", "/builds/project/volume").
 		Return("").
@@ -339,6 +411,51 @@ func TestDefaultManager_CreateUserVolumes_CacheVolume_ContainerBased_WithError(t
 
 	err := m.CreateUserVolumes([]string{"volume"})
 	assert.Error(t, err)
+}
+
+func TestDefaultManager_CreateUserVolumes_ParserError(t *testing.T) {
+	testCases := map[string]struct {
+		providerError error
+		parserError   error
+	}{
+		"error when creating the parser": {
+			providerError: errors.New("provider-test-error"),
+		},
+		"error when using the parser": {
+			parserError: errors.New("parser-test-error"),
+		},
+	}
+
+	for testName, testCase := range testCases {
+		t.Run(testName, func(t *testing.T) {
+			config := DefaultManagerConfig{}
+
+			m := newDefaultManager(config)
+			volumeParser := new(parser.MockParser)
+
+			pProvider := new(mockParserProvider)
+
+			m.parserProvider = pProvider
+
+			defer func() {
+				pProvider.AssertExpectations(t)
+				volumeParser.AssertExpectations(t)
+			}()
+
+			pProvider.On("CreateParser").
+				Return(volumeParser, testCase.providerError).
+				Once()
+
+			if testCase.providerError == nil {
+				volumeParser.On("ParseVolume", "volume").
+					Return(nil, testCase.parserError).
+					Once()
+			}
+
+			err := m.CreateUserVolumes([]string{"volume"})
+			assert.Error(t, err)
+		})
+	}
 }
 
 func TestDefaultManager_CreateBuildVolume_WithoutError(t *testing.T) {
@@ -367,12 +484,13 @@ func TestDefaultManager_CreateBuildVolume_WithoutError(t *testing.T) {
 			returnedParsedVolume: &parser.Volume{Source: "/host/builds", Destination: "/builds"},
 		},
 		"persistent cache container": {
-			jobsRootDir:     "/builds/root",
-			gitStrategy:     common.GitFetch,
-			disableCache:    false,
-			cacheDir:        "/cache",
-			projectUniqName: "project-uniq",
-			expectedBinding: "/cache/project-uniq/28934d7b9a9154212a5dd671e4fa5704:/builds/root",
+			jobsRootDir:          "/builds/root",
+			gitStrategy:          common.GitFetch,
+			disableCache:         false,
+			cacheDir:             "/cache",
+			projectUniqName:      "project-uniq",
+			expectedBinding:      "/cache/project-uniq/28934d7b9a9154212a5dd671e4fa5704:/builds/root",
+			returnedParsedVolume: &parser.Volume{Destination: "/builds/root"},
 		},
 		"temporary cache container": {
 			jobsRootDir:           "/builds/root",

@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
-	"strings"
 
 	"gitlab.com/gitlab-org/gitlab-runner/common"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers/docker/volumes/parser"
@@ -67,14 +66,21 @@ func (m *defaultManager) CreateUserVolumes(volumes []string) error {
 }
 
 func (m *defaultManager) addVolume(volume string) error {
-	hostVolume := strings.SplitN(volume, ":", 2)
+	volumeParser, err := m.parserProvider.CreateParser()
+	if err != nil {
+		return err
+	}
 
-	var err error
-	switch len(hostVolume) {
+	parsedVolume, err := volumeParser.ParseVolume(volume)
+	if err != nil {
+		return err
+	}
+
+	switch parsedVolume.Len() {
 	case 2:
-		err = m.addHostVolume(hostVolume[0], hostVolume[1])
+		err = m.addHostVolume(parsedVolume)
 	case 1:
-		err = m.addCacheVolume(hostVolume[0])
+		err = m.addCacheVolume(parsedVolume)
 	}
 
 	if err != nil {
@@ -84,9 +90,9 @@ func (m *defaultManager) addVolume(volume string) error {
 	return err
 }
 
-func (m *defaultManager) addHostVolume(hostPath string, containerPath string) error {
-	containerPath = m.getAbsoluteContainerPath(containerPath)
-	m.appendVolumeBind(hostPath, containerPath)
+func (m *defaultManager) addHostVolume(volume *parser.Volume) error {
+	volume.Destination = m.getAbsoluteContainerPath(volume.Destination)
+	m.appendVolumeBind(volume)
 
 	return nil
 }
@@ -99,40 +105,41 @@ func (m *defaultManager) getAbsoluteContainerPath(dir string) string {
 	return filepath.Join(m.config.FullProjectDir, dir)
 }
 
-func (m *defaultManager) appendVolumeBind(hostPath string, containerPath string) {
-	m.logger.Debugln(fmt.Sprintf("Using host-based %q for %q...", hostPath, containerPath))
-
-	bindDefinition := fmt.Sprintf("%v:%v", filepath.ToSlash(hostPath), containerPath)
-	m.volumeBindings = append(m.volumeBindings, bindDefinition)
+func (m *defaultManager) appendVolumeBind(volume *parser.Volume) {
+	m.logger.Debugln(fmt.Sprintf("Using host-based %q for %q...", volume.Source, volume.Destination))
+	m.volumeBindings = append(m.volumeBindings, volume.Definition())
 }
 
-func (m *defaultManager) addCacheVolume(containerPath string) error {
-	containerPath = m.getAbsoluteContainerPath(containerPath)
+func (m *defaultManager) addCacheVolume(volume *parser.Volume) error {
+	volume.Destination = m.getAbsoluteContainerPath(volume.Destination)
 
 	// disable cache for automatic container cache,
 	// but leave it for host volumes (they are shared on purpose)
 	if m.config.DisableCache {
-		m.logger.Debugln(fmt.Sprintf("Container cache for %q is disabled", containerPath))
+		m.logger.Debugln(fmt.Sprintf("Container cache for %q is disabled", volume.Destination))
 
 		return nil
 	}
 
-	hash := md5.Sum([]byte(containerPath))
+	hash := md5.Sum([]byte(volume.Destination))
 	if m.config.CacheDir != "" {
-		return m.createHostBasedCacheVolume(containerPath, hash)
+		return m.createHostBasedCacheVolume(volume.Destination, hash)
 	}
 
-	return m.createContainerBasedCacheVolume(containerPath, hash)
+	return m.createContainerBasedCacheVolume(volume.Destination, hash)
 }
 
 func (m *defaultManager) createHostBasedCacheVolume(containerPath string, hash [md5.Size]byte) error {
-	hostPath := fmt.Sprintf("%s/%s/%x", m.config.CacheDir, m.config.ProjectUniqName, hash)
+	hostPath := filepath.Join(m.config.CacheDir, m.config.ProjectUniqName, fmt.Sprintf("%x", hash))
 	hostPath, err := filepath.Abs(hostPath)
 	if err != nil {
 		return err
 	}
 
-	m.appendVolumeBind(hostPath, containerPath)
+	m.appendVolumeBind(&parser.Volume{
+		Source:      hostPath,
+		Destination: containerPath,
+	})
 
 	return nil
 }
