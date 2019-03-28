@@ -4,7 +4,6 @@ import (
 	"crypto/md5"
 	"errors"
 	"fmt"
-	"path"
 	"path/filepath"
 	"strings"
 
@@ -93,11 +92,11 @@ func (m *defaultManager) addHostVolume(hostPath string, containerPath string) er
 }
 
 func (m *defaultManager) getAbsoluteContainerPath(dir string) string {
-	if path.IsAbs(dir) {
+	if filepath.IsAbs(dir) {
 		return dir
 	}
 
-	return path.Join(m.config.FullProjectDir, dir)
+	return filepath.Join(m.config.FullProjectDir, dir)
 }
 
 func (m *defaultManager) appendVolumeBind(hostPath string, containerPath string) {
@@ -162,7 +161,7 @@ func (m *defaultManager) createContainerBasedCacheVolume(containerPath string, h
 func (m *defaultManager) CreateBuildVolume(jobsRootDir string, volumes []string) error {
 	// Cache Git sources:
 	// use a `jobsRootDir`
-	if !path.IsAbs(jobsRootDir) || jobsRootDir == "/" {
+	if !filepath.IsAbs(jobsRootDir) || jobsRootDir == "/" {
 		return errors.New("build directory needs to be absolute and non-root path")
 	}
 
