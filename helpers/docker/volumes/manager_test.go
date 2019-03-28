@@ -5,8 +5,10 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 
 	"gitlab.com/gitlab-org/gitlab-runner/common"
+	"gitlab.com/gitlab-org/gitlab-runner/helpers/docker/volumes/parser"
 )
 
 func TestNewDefaultManager(t *testing.T) {
@@ -25,6 +27,18 @@ func newDefaultManager(config DefaultManagerConfig) *defaultManager {
 	return m
 }
 
+func addParserProviderAndParser(manager *defaultManager) (*mockParserProvider, *parser.MockParser) {
+	parserMock := new(parser.MockParser)
+
+	pProviderMock := new(mockParserProvider)
+	pProviderMock.On("CreateParser").
+		Return(parserMock, nil).
+		Maybe()
+
+	manager.parserProvider = pProviderMock
+
+	return pProviderMock, parserMock
+}
 func addContainerManager(manager *defaultManager) *MockContainerManager {
 	containerManager := new(MockContainerManager)
 
@@ -331,6 +345,7 @@ func TestDefaultManager_CreateBuildVolume_WithoutError(t *testing.T) {
 	testCases := map[string]struct {
 		jobsRootDir           string
 		volumes               []string
+		returnedParsedVolume  *parser.Volume
 		gitStrategy           common.GitStrategy
 		disableCache          bool
 		cacheDir              string
@@ -347,8 +362,9 @@ func TestDefaultManager_CreateBuildVolume_WithoutError(t *testing.T) {
 			expectedError: errors.New("build directory needs to be absolute and non-root path"),
 		},
 		"build directory within host mounted volumes": {
-			jobsRootDir: "/builds/root",
-			volumes:     []string{"/host/builds:/builds"},
+			jobsRootDir:          "/builds/root",
+			volumes:              []string{"/host/builds:/builds"},
+			returnedParsedVolume: &parser.Volume{Source: "/host/builds", Destination: "/builds"},
 		},
 		"persistent cache container": {
 			jobsRootDir:     "/builds/root",
@@ -379,12 +395,23 @@ func TestDefaultManager_CreateBuildVolume_WithoutError(t *testing.T) {
 
 			m := newDefaultManager(config)
 			containerManager := addContainerManager(m)
+			pProvider, volumeParser := addParserProviderAndParser(m)
 
-			defer containerManager.AssertExpectations(t)
+			defer func() {
+				containerManager.AssertExpectations(t)
+				pProvider.AssertExpectations(t)
+				volumeParser.AssertExpectations(t)
+			}()
 
 			if testCase.expectedContainerPath != "" {
 				containerManager.On("CreateCacheContainer", testCase.expectedContainerName, testCase.expectedContainerPath).
 					Return(testCase.newContainerID, nil).
+					Once()
+			}
+
+			if testCase.returnedParsedVolume != nil {
+				volumeParser.On("ParseVolume", mock.Anything).
+					Return(testCase.returnedParsedVolume, nil).
 					Once()
 			}
 
@@ -408,21 +435,61 @@ func TestDefaultManager_CreateBuildVolume_WithoutError(t *testing.T) {
 }
 
 func TestDefaultManager_CreateBuildVolume_WithError(t *testing.T) {
-	config := DefaultManagerConfig{
-		GitStrategy: common.GitClone,
+	testCases := map[string]struct {
+		parserProviderError       error
+		parserError               error
+		createCacheContainerError error
+	}{
+		"error on parser creation": {
+			parserProviderError: errors.New("test-error"),
+		},
+		"error on parser usage": {
+			parserError: errors.New("test-error"),
+		},
+		"error on cache container creation": {
+			createCacheContainerError: errors.New("test-error"),
+		},
 	}
 
-	m := newDefaultManager(config)
-	containerManager := addContainerManager(m)
+	for testName, testCase := range testCases {
+		t.Run(testName, func(t *testing.T) {
+			config := DefaultManagerConfig{
+				GitStrategy: common.GitClone,
+			}
 
-	defer containerManager.AssertExpectations(t)
+			m := newDefaultManager(config)
+			containerManager := addContainerManager(m)
 
-	containerManager.On("CreateCacheContainer", "", "/builds/root").
-		Return("", errors.New("test error")).
-		Once()
+			volumeParser := new(parser.MockParser)
+			pProvider := new(mockParserProvider)
+			m.parserProvider = pProvider
 
-	err := m.CreateBuildVolume("/builds/root", []string{"/host/source:/destination"})
-	assert.Error(t, err)
+			defer func() {
+				containerManager.AssertExpectations(t)
+				pProvider.AssertExpectations(t)
+				volumeParser.AssertExpectations(t)
+			}()
+
+			pProvider.On("CreateParser").
+				Return(volumeParser, testCase.parserProviderError).
+				Once()
+
+			if testCase.parserProviderError == nil {
+				volumeParser.On("ParseVolume", mock.Anything).
+					Return(&parser.Volume{Source: "/host/source", Destination: "/destination"}, testCase.parserError).
+					Once()
+
+				if testCase.parserError == nil {
+					containerManager.On("CreateCacheContainer", "", "/builds/root").
+						Return("", testCase.createCacheContainerError).
+						Once()
+				}
+			}
+
+			err := m.CreateBuildVolume("/builds/root", []string{"/host/source:/destination"})
+			assert.Error(t, err)
+		})
+	}
 }
 
 func TestDefaultManager_VolumeBindings(t *testing.T) {

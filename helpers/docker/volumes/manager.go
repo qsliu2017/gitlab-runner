@@ -166,7 +166,12 @@ func (m *defaultManager) CreateBuildVolume(jobsRootDir string, volumes []string)
 		return errors.New("build directory needs to be absolute and non-root path")
 	}
 
-	if IsHostMountedVolume(jobsRootDir, volumes...) {
+	isHostMounted, err := m.isHostMountedVolume(jobsRootDir, volumes)
+	if err != nil {
+		return err
+	}
+
+	if isHostMounted {
 		// If builds directory is within a volume mounted manually by user
 		// it will be added by CreateUserVolumes(), so nothing more to do
 		// here
@@ -188,6 +193,20 @@ func (m *defaultManager) CreateBuildVolume(jobsRootDir string, volumes []string)
 	m.tmpContainerIDs = append(m.tmpContainerIDs, id)
 
 	return nil
+}
+
+func (m *defaultManager) isHostMountedVolume(path string, volumes []string) (bool, error) {
+	volumeParser, err := m.parserProvider.CreateParser()
+	if err != nil {
+		return false, err
+	}
+
+	isHostMounted, err := IsHostMountedVolume(volumeParser, path, volumes...)
+	if err != nil {
+		return false, err
+	}
+
+	return isHostMounted, nil
 }
 
 func (m *defaultManager) VolumeBindings() []string {

@@ -1092,7 +1092,10 @@ func (e *executor) Prepare(options common.ExecutorPrepareOptions) error {
 		return err
 	}
 
-	e.prepareBuildsDir(options.Config)
+	err = e.prepareBuildsDir(options.Config)
+	if err != nil {
+		return err
+	}
 
 	err = e.AbstractExecutor.Prepare(options)
 	if err != nil {
@@ -1122,15 +1125,27 @@ func (e *executor) Prepare(options common.ExecutorPrepareOptions) error {
 	return nil
 }
 
-func (e *executor) prepareBuildsDir(config *common.RunnerConfig) {
+func (e *executor) prepareBuildsDir(config *common.RunnerConfig) error {
 	rootDir := config.BuildsDir
 	if rootDir == "" {
 		rootDir = e.DefaultBuildsDir
 	}
 
-	if volumes.IsHostMountedVolume(rootDir, config.Docker.Volumes...) {
+	volumeParser, err := parser.New(e.info)
+	if err != nil {
+		return fmt.Errorf("couldn't create volumes parser: %v", err)
+	}
+
+	isHostMounted, err := volumes.IsHostMountedVolume(volumeParser, rootDir, config.Docker.Volumes...)
+	if err != nil {
+		return err
+	}
+
+	if isHostMounted {
 		e.SharedBuildsDir = true
 	}
+
+	return nil
 }
 
 func (e *executor) Cleanup() {
