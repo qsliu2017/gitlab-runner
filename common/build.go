@@ -322,7 +322,14 @@ func (b *Build) run(ctx context.Context, executor Executor) (err error) {
 		return err
 	}
 
-	b.Log().WithError(err).Debugln("Waiting for build to finish...")
+	b.Log().
+		WithError(err).
+		WithFields(logrus.Fields{
+			"state": b.CurrentState,
+			"stage": b.CurrentStage,
+			"executor_stage": b.CurrentExecutorStage(),
+		}).
+		Info("Job canceled, timed out or interrupted. Waiting for it to finish...")
 
 	// Wait till we receive that build did finish
 	runCancel()
