@@ -21,20 +21,23 @@ Within each step above, there can be many steps - some which will take more time
 ```mermaid
 sequenceDiagram
     participant T as Trigger
-    participant R as Rails (Unicorn)
-    participant Q as Sidekiq Queue
+    participant D as Database
+    participant R as Rails
     participant N as n Runners
     participant U as Chosen Runner
-    T->>R:  Trigger 
+    T->>R: Trigger 
     Note over T,R: Push, tag, schedule, etc.
-    R->>R: Calculate jobs to run
-    R->>Q: Enqueue jobs
-    loop Every 5 seconds
-        N->>+Q: Any jobs
+    R-->R: Parse yml, create model
+    R->>D: Insert pipeline and jobs
+    loop Every 5 seconds 
+        N->>+R: Any jobs?
     end
-    Q->>N: Some jobs
-    N->>N: Match tags, etc?
-    N->>U: Job Matched!
+    R->>D: Gather list of jobs
+    Note over R,D: Which jobs can this runner handle?
+    D->>R: Final list of jobs
+    Note over D,N: Shared runner: project based priority
+    Note over D,N: Group/project: oldest takes precedence
+    R->>U: Send chosen job to runner asking for a job
 ```
 
 ## Picked to Execution (dependant on executor)
