@@ -25,8 +25,7 @@ import (
 	"gitlab.com/gitlab-org/gitlab-runner/executors"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers/docker"
-	"gitlab.com/gitlab-org/gitlab-runner/helpers/docker/helperimage"
-	"gitlab.com/gitlab-org/gitlab-runner/helpers/docker/volumes/parser"
+	docker_common "gitlab.com/gitlab-org/gitlab-runner/helpers/docker/common"
 )
 
 func TestMain(m *testing.M) {
@@ -199,7 +198,7 @@ func testServiceFromNamedImage(t *testing.T, description, imageName, serviceName
 
 	e := executor{
 		client: &c,
-		info:   types.Info{OSType: helperimage.OSTypeLinux},
+		info:   types.Info{OSType: docker_common.OSTypeLinux},
 	}
 
 	options := buildImagePullOptions(e, imageName)
@@ -581,7 +580,7 @@ func TestHostMountedBuildsDirectory(t *testing.T) {
 				},
 			},
 			info: types.Info{
-				OSType: parser.OSTypeLinux,
+				OSType: docker_common.OSTypeLinux,
 			},
 		}
 
@@ -959,7 +958,7 @@ func prepareTestDockerConfiguration(t *testing.T, dockerConfig *common.DockerCon
 
 	e := &executor{}
 	e.client = c
-	e.info = types.Info{OSType: helperimage.OSTypeLinux}
+	e.info = types.Info{OSType: docker_common.OSTypeLinux}
 	e.Config.Docker = dockerConfig
 	e.Build = &common.Build{
 		Runner: &common.RunnerConfig{},
@@ -1334,7 +1333,7 @@ func setUpExecutorForFeatureFlag(variables common.JobVariables, helperImage stri
 		},
 		client: client,
 		info: types.Info{
-			OSType: helperimage.OSTypeLinux,
+			OSType: docker_common.OSTypeLinux,
 		},
 	}
 }

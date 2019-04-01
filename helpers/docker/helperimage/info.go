@@ -3,12 +3,8 @@ package helperimage
 import (
 	"github.com/docker/docker/api/types"
 
+	"gitlab.com/gitlab-org/gitlab-runner/helpers/docker/common"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers/docker/errors"
-)
-
-const (
-	OSTypeLinux   = "linux"
-	OSTypeWindows = "windows"
 )
 
 // Info provides information about the helper image that can be used to
@@ -22,8 +18,8 @@ type Info interface {
 type infoFactory func(info types.Info) Info
 
 var supportedOsTypesFactories = map[string]infoFactory{
-	OSTypeWindows: newWindowsInfo,
-	OSTypeLinux:   newLinuxInfo,
+	common.OSTypeWindows: newWindowsInfo,
+	common.OSTypeLinux:   newLinuxInfo,
 }
 
 func GetInfo(info types.Info) (Info, error) {

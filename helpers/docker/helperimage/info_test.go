@@ -6,6 +6,7 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/stretchr/testify/assert"
 
+	"gitlab.com/gitlab-org/gitlab-runner/helpers/docker/common"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers/docker/errors"
 )
 
@@ -15,8 +16,8 @@ func TestGetInfo(t *testing.T) {
 		expectedHelperImageType interface{}
 		expectedError           interface{}
 	}{
-		{osType: OSTypeLinux, expectedHelperImageType: &linuxInfo{}, expectedError: nil},
-		{osType: OSTypeWindows, expectedHelperImageType: &windowsInfo{}, expectedError: nil},
+		{osType: common.OSTypeLinux, expectedHelperImageType: &linuxInfo{}, expectedError: nil},
+		{osType: common.OSTypeWindows, expectedHelperImageType: &windowsInfo{}, expectedError: nil},
 		{osType: "unsupported", expectedHelperImageType: nil, expectedError: errors.NewUnsupportedOSTypeError("unsupported")},
 	}
 

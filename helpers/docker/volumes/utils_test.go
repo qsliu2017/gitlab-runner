@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"gitlab.com/gitlab-org/gitlab-runner/helpers/docker/common"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers/docker/volumes/parser"
 )
 
@@ -48,7 +49,7 @@ func testIsHostMountedVolume(t *testing.T, osType string, testCases isHostMounte
 }
 
 func TestIsHostMountedVolume_Linux(t *testing.T) {
-	skipOnOsType(t, parser.OSTypeWindows)
+	skipOnOsType(t, common.OSTypeWindows)
 
 	testCases := isHostMountedVolumeTestCases{
 		"empty volumes": {
@@ -78,11 +79,11 @@ func TestIsHostMountedVolume_Linux(t *testing.T) {
 		},
 	}
 
-	testIsHostMountedVolume(t, parser.OSTypeLinux, testCases)
+	testIsHostMountedVolume(t, common.OSTypeLinux, testCases)
 }
 
 func TestIsHostMountedVolume_Windows(t *testing.T) {
-	skipOnOsType(t, parser.OSTypeLinux)
+	skipOnOsType(t, common.OSTypeLinux)
 
 	testCases := isHostMountedVolumeTestCases{
 		"empty volumes": {
@@ -112,5 +113,5 @@ func TestIsHostMountedVolume_Windows(t *testing.T) {
 		},
 	}
 
-	testIsHostMountedVolume(t, parser.OSTypeWindows, testCases)
+	testIsHostMountedVolume(t, common.OSTypeWindows, testCases)
 }
