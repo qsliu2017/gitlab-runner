@@ -2,14 +2,19 @@ package commands
 
 import (
 	"bufio"
+	"context"
 	"os"
 	"os/signal"
 	"strings"
 
+	"github.com/docker/docker/api/types"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
 
 	"gitlab.com/gitlab-org/gitlab-runner/common"
+	"gitlab.com/gitlab-org/gitlab-runner/helpers/docker"
+	"gitlab.com/gitlab-org/gitlab-runner/helpers/docker/volumes"
+	"gitlab.com/gitlab-org/gitlab-runner/helpers/docker/volumes/parser"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers/ssh"
 	"gitlab.com/gitlab-org/gitlab-runner/network"
 )
@@ -107,13 +112,56 @@ func (s *RegisterCommand) askDocker() {
 	}
 	s.Docker.Image = s.ask("docker-image", "Please enter the default Docker image (e.g. ruby:2.1):")
 
+	s.setupDockerDefaultVolumes()
+}
+
+func (s *RegisterCommand) setupDockerDefaultVolumes() {
+	info := s.getDockerInfo()
+
+	volumeParser, err := parser.New(info)
+	if err != nil {
+		logrus.WithError(err).Panic("Couldn't initialize volume parser")
+	}
+
+	cacheVolume, err := volumes.GetDefaultCacheVolume(info)
+	if err != nil {
+		logrus.WithError(err).Warning("Couldn't find default cache volume for used OSType; skipping default cache volume configuration")
+
+		return
+	}
+
 	for _, volume := range s.Docker.Volumes {
-		parts := strings.Split(volume, ":")
-		if parts[len(parts)-1] == "/cache" {
+		parsedVolume, err := volumeParser.ParseVolume(volume)
+		if err != nil {
+			logrus.WithError(err).
+				WithField("volume", volume).
+				Panic("Couldn't parse volume specification")
+		}
+
+		if parsedVolume.Destination == cacheVolume.Destination {
 			return
 		}
 	}
-	s.Docker.Volumes = append(s.Docker.Volumes, "/cache")
+
+	s.Docker.Volumes = append(s.Docker.Volumes, cacheVolume.Definition())
+}
+
+var newDockerClient = func(credentials docker_helpers.DockerCredentials) (docker_helpers.Client, error) {
+	return docker_helpers.New(credentials, "")
+}
+
+func (s *RegisterCommand) getDockerInfo() types.Info {
+	client, err := newDockerClient(s.Docker.DockerCredentials)
+	if err != nil {
+		logrus.WithError(err).Panic("Couldn't connect to configured Docker Engine")
+	}
+
+	info, err := client.Info(context.Background())
+	if err != nil {
+		logrus.WithError(err).Panic("Couldn't request Docker Info")
+	}
+
+	return info
 }
 
 func (s *RegisterCommand) askParallels() {

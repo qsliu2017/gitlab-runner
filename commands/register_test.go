@@ -3,10 +3,12 @@ package commands
 import (
 	"bytes"
 	"flag"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"testing"
 
+	"github.com/docker/docker/api/types"
 	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -15,6 +17,8 @@ import (
 	"gitlab.com/ayufan/golang-cli-helpers"
 
 	"gitlab.com/gitlab-org/gitlab-runner/common"
+	"gitlab.com/gitlab-org/gitlab-runner/helpers/docker"
+	docker_common "gitlab.com/gitlab-org/gitlab-runner/helpers/docker/common"
 )
 
 func setupDockerRegisterCommand(dockerConfig *common.DockerConfig) *RegisterCommand {
@@ -31,37 +35,83 @@ func setupDockerRegisterCommand(dockerConfig *common.DockerConfig) *RegisterComm
 	return s
 }
 
-func TestRegisterDefaultDockerCacheVolume(t *testing.T) {
-	s := setupDockerRegisterCommand(&common.DockerConfig{
-		Volumes: []string{},
-	})
+func mockDockerClientFactory(t *testing.T) (*docker_helpers.MockClient, func()) {
+	client := new(docker_helpers.MockClient)
 
-	s.askDocker()
+	oldNewDockerClient := newDockerClient
+	newDockerClient = func(credentials docker_helpers.DockerCredentials) (docker_helpers.Client, error) {
+		return client, nil
+	}
 
-	assert.Equal(t, 1, len(s.Docker.Volumes))
-	assert.Equal(t, "/cache", s.Docker.Volumes[0])
+	cleanup := func() {
+		client.AssertExpectations(t)
+		newDockerClient = oldNewDockerClient
+	}
+
+	return client, cleanup
 }
 
-func TestRegisterCustomDockerCacheVolume(t *testing.T) {
-	s := setupDockerRegisterCommand(&common.DockerConfig{
-		Volumes: []string{"/cache"},
-	})
+func TestRegisterDockerCacheVolume(t *testing.T) {
+	testCases := map[string]map[string]struct {
+		osType          string
+		volumes         []string
+		expectedVolumes []string
+	}{
+		docker_common.OSTypeLinux: {
+			"default volume": {
+				expectedVolumes: []string{"/cache"},
+			},
+			"custom volume": {
+				volumes:         []string{"/cache"},
+				expectedVolumes: []string{"/cache"},
+			},
+			"custom mapped volume": {
+				volumes:         []string{"/my/cache:/cache"},
+				expectedVolumes: []string{"/my/cache:/cache"},
+			},
+			"custom mapped volume and default volume": {
+				volumes:         []string{"/my/host:/container"},
+				expectedVolumes: []string{"/my/host:/container", "/cache"},
+			},
+		},
+		docker_common.OSTypeWindows: {
+			"default volume": {
+				expectedVolumes: []string{`c:\cache`},
+			},
+			"custom volume": {
+				volumes:         []string{`c:\cache`},
+				expectedVolumes: []string{`c:\cache`},
+			},
+			"custom mapped volume": {
+				volumes:         []string{`c:\my\cache:c:\cache`},
+				expectedVolumes: []string{`c:\my\cache:c:\cache`},
+			},
+			"custom mapped volume and default volume": {
+				volumes:         []string{`c:\my\host:c:\container`},
+				expectedVolumes: []string{`c:\my\host:c:\container`, `c:\cache`},
+			},
+		},
+	}
 
-	s.askDocker()
+	for osType, osTestCases := range testCases {
+		for testName, testCase := range osTestCases {
+			t.Run(fmt.Sprintf("%s-%s", osType, testName), func(t *testing.T) {
+				client, cleanup := mockDockerClientFactory(t)
+				defer cleanup()
 
-	assert.Equal(t, 1, len(s.Docker.Volumes))
-	assert.Equal(t, "/cache", s.Docker.Volumes[0])
-}
+				client.On("Info", mock.Anything).
+					Return(types.Info{OSType: osType}, nil).
+					Once()
 
-func TestRegisterCustomMappedDockerCacheVolume(t *testing.T) {
-	s := setupDockerRegisterCommand(&common.DockerConfig{
-		Volumes: []string{"/my/cache:/cache"},
-	})
+				s := setupDockerRegisterCommand(&common.DockerConfig{
+					Volumes: testCase.volumes,
+				})
 
-	s.askDocker()
-
-	assert.Equal(t, 1, len(s.Docker.Volumes))
-	assert.Equal(t, "/my/cache:/cache", s.Docker.Volumes[0])
+				s.askDocker()
+				assert.Equal(t, testCase.expectedVolumes, s.Docker.Volumes)
+			})
+		}
+	}
 }
 
 func getLogrusOutput(t *testing.T, hook *test.Hook) string {
