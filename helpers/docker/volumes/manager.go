@@ -41,8 +41,6 @@ type defaultManager struct {
 func NewDefaultManager(logger common.BuildLogger, cManager ContainerManager, config DefaultManagerConfig) Manager {
 	tmpContainerIDs := new(defaultRegistry)
 
-	cManager.SetFailedContainerIDsRegistry(tmpContainerIDs)
-
 	return &defaultManager{
 		config:            config,
 		logger:            logger,
@@ -197,5 +195,5 @@ func (m *defaultManager) CacheContainerIDs() []string {
 }
 
 func (m *defaultManager) TmpContainerIDs() []string {
-	return m.tmpContainerIDs.Elements()
+	return append(m.tmpContainerIDs.Elements(), m.containerManager.FailedContainerIDs()...)
 }
