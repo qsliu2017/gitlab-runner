@@ -1063,7 +1063,13 @@ func (e *executor) getVolumesManager() volumes.Manager {
 		DisableCache:    e.Config.Docker.DisableCache,
 	}
 
-	e.volumesManager = volumes.NewDefaultManager(e.BuildLogger, adapter, adapter, config)
+	cManager := volumes.NewDefaultContainerManager(
+		e.BuildLogger,
+		adapter,
+		adapter,
+	)
+
+	e.volumesManager = volumes.NewDefaultManager(e.BuildLogger, cManager, config)
 
 	return e.volumesManager
 }
