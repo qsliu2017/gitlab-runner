@@ -968,6 +968,30 @@ func TestStartBuild(t *testing.T) {
 			expectedCacheDir: "/cache/test-namespace/test-repo",
 			expectedError:    false,
 		},
+		"missing root dir": {
+			args: startBuildArgs{
+				rootDir:               "",
+				cacheDir:              "/cache",
+				customBuildDirEnabled: true,
+				sharedDir:             false,
+			},
+			jobVariables:     JobVariables{},
+			expectedBuildDir: "/build/test-namespace/test-repo",
+			expectedCacheDir: "/cache/test-namespace/test-repo",
+			expectedError:    true,
+		},
+		"missing cache dir": {
+			args: startBuildArgs{
+				rootDir:               "/build",
+				cacheDir:              "",
+				customBuildDirEnabled: true,
+				sharedDir:             false,
+			},
+			jobVariables:     JobVariables{},
+			expectedBuildDir: "/build/test-namespace/test-repo",
+			expectedCacheDir: "/cache/test-namespace/test-repo",
+			expectedError:    true,
+		},
 		"no job specified build dir with shared dir": {
 			args: startBuildArgs{
 				rootDir:               "/builds",
@@ -1008,7 +1032,7 @@ func TestStartBuild(t *testing.T) {
 			expectedCacheDir: "/cache/test-namespace/test-repo",
 			expectedError:    false,
 		},
-		"custom build disabled": {
+		"custom build disabled and GIT_CLONE_PATH is was used": {
 			args: startBuildArgs{
 				rootDir:               "/builds",
 				cacheDir:              "/cache",
@@ -1031,6 +1055,60 @@ func TestStartBuild(t *testing.T) {
 			},
 			jobVariables: JobVariables{
 				{Key: "GIT_CLONE_PATH", Value: "/go/src/gitlab.com/test-namespace/test-repo", Public: true},
+			},
+			expectedError: true,
+		},
+		"valid LOCAL_CACHE_DIR was specified": {
+			args: startBuildArgs{
+				rootDir:               "/builds",
+				cacheDir:              "/cache",
+				customBuildDirEnabled: true,
+				sharedDir:             false,
+			},
+			jobVariables: JobVariables{
+				{Key: "LOCAL_CACHE_DIR", Value: "/cache/my-cache/test-repo", Public: true},
+			},
+			expectedBuildDir: "/builds/test-namespace/test-repo",
+			expectedCacheDir: "/cache/my-cache/test-repo",
+			expectedError:    false,
+		},
+		"valid LOCAL_CACHE_DIR using CI_BUILDS_CACHE_DIR was specified": {
+			args: startBuildArgs{
+				rootDir:               "/builds",
+				cacheDir:              "/cache",
+				customBuildDirEnabled: true,
+				sharedDir:             false,
+			},
+			jobVariables: JobVariables{
+				{Key: "LOCAL_CACHE_DIR", Value: "$CI_BUILDS_CACHE_DIR/my-cache/test-repo", Public: true},
+			},
+			expectedBuildDir: "/builds/test-namespace/test-repo",
+			expectedCacheDir: "/cache/my-cache/test-repo",
+			expectedError:    false,
+		},
+		"custom build disabled and LOCAL_CACHE_DIR is was used": {
+			args: startBuildArgs{
+				rootDir:               "/builds",
+				cacheDir:              "/cache",
+				customBuildDirEnabled: false,
+				sharedDir:             false,
+			},
+			jobVariables: JobVariables{
+				{Key: "LOCAL_CACHE_DIR", Value: "/cache/my-cache/test-repo", Public: true},
+			},
+			expectedBuildDir: "/builds/test-namespace/test-repo",
+			expectedCacheDir: "/cache/test-namespace/test-repo",
+			expectedError:    true,
+		},
+		"invalid LOCAL_CACHE_DIR was specified": {
+			args: startBuildArgs{
+				rootDir:               "/builds",
+				cacheDir:              "/cache",
+				customBuildDirEnabled: true,
+				sharedDir:             false,
+			},
+			jobVariables: JobVariables{
+				{Key: "LOCAL_CACHE_DIR", Value: "/tmp/my-cache/test-repo", Public: true},
 			},
 			expectedError: true,
 		},

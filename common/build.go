@@ -78,6 +78,7 @@ type Build struct {
 
 	SystemInterrupt  chan os.Signal `json:"-" yaml:"-"`
 	RootDir          string         `json:"-" yaml:"-"`
+	RootCacheDir     string         `json:"-" yaml:"-"`
 	BuildDir         string         `json:"-" yaml:"-"`
 	CacheDir         string         `json:"-" yaml:"-"`
 	Hostname         string         `json:"-" yaml:"-"`
@@ -161,6 +162,10 @@ func (b *Build) TmpProjectDir() string {
 }
 
 func (b *Build) getCustomBuildDir(rootDir, overrideKey string, customBuildDirEnabled, sharedDir bool) (string, error) {
+	if rootDir == "" {
+		return "", fmt.Errorf("missing base path for %s", overrideKey)
+	}
+
 	dir := b.GetAllVariables().Get(overrideKey)
 	if dir == "" {
 		return path.Join(rootDir, b.ProjectUniqueDir(sharedDir)), nil
@@ -178,16 +183,21 @@ func (b *Build) getCustomBuildDir(rootDir, overrideKey string, customBuildDirEna
 	return dir, nil
 }
 
-func (b *Build) StartBuild(rootDir, cacheDir string, customBuildDirEnabled, sharedDir bool) error {
+func (b *Build) StartBuild(rootDir, rootCacheDir string, customBuildDirEnabled, sharedDir bool) error {
 	var err error
 
 	// We set RootDir and invalidate variables
 	// to be able to use CI_BUILDS_DIR
 	b.RootDir = rootDir
-	b.CacheDir = path.Join(cacheDir, b.ProjectUniqueDir(false))
+	b.RootCacheDir = rootCacheDir
 	b.refreshAllVariables()
 
-	b.BuildDir, err = b.getCustomBuildDir(b.RootDir, "GIT_CLONE_PATH", customBuildDirEnabled, sharedDir)
+	b.BuildDir, err = b.getCustomBuildDir(rootDir, "GIT_CLONE_PATH", customBuildDirEnabled, sharedDir)
+	if err != nil {
+		return err
+	}
+
+	b.CacheDir, err = b.getCustomBuildDir(rootCacheDir, "LOCAL_CACHE_DIR", customBuildDirEnabled, false)
 	if err != nil {
 		return err
 	}
@@ -564,7 +574,9 @@ func (b *Build) String() string {
 func (b *Build) GetDefaultVariables() JobVariables {
 	return JobVariables{
 		{Key: "CI_BUILDS_DIR", Value: filepath.FromSlash(b.RootDir), Public: true, Internal: true, File: false},
+		{Key: "CI_BUILDS_CACHE_DIR", Value: filepath.FromSlash(b.RootCacheDir), Public: true, Internal: true, File: false},
 		{Key: "CI_PROJECT_DIR", Value: filepath.FromSlash(b.FullProjectDir()), Public: true, Internal: true, File: false},
+		{Key: "CI_CACHE_DIR", Value: filepath.FromSlash(b.CacheDir), Public: true, Internal: true, File: false},
 		{Key: "CI_CONCURRENT_ID", Value: strconv.Itoa(b.RunnerID), Public: true, Internal: true, File: false},
 		{Key: "CI_CONCURRENT_PROJECT_ID", Value: strconv.Itoa(b.ProjectRunnerID), Public: true, Internal: true, File: false},
 		{Key: "CI_SERVER", Value: "yes", Public: true, Internal: true, File: false},
