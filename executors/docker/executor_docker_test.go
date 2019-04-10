@@ -24,7 +24,7 @@ import (
 	"gitlab.com/gitlab-org/gitlab-runner/common"
 	"gitlab.com/gitlab-org/gitlab-runner/executors"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers"
-	"gitlab.com/gitlab-org/gitlab-runner/helpers/docker"
+	docker_helpers "gitlab.com/gitlab-org/gitlab-runner/helpers/docker"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers/docker/helperimage"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers/featureflags"
 )
@@ -1162,6 +1162,52 @@ func TestDockerSysctlsSetting(t *testing.T) {
 	}
 
 	testDockerConfigurationWithJobContainer(t, dockerConfig, cce)
+}
+
+func TestCheckOSType(t *testing.T) {
+	cases := map[string]struct {
+		executorMetadata map[string]string
+		dockerInfoOSType string
+		expectedErr      bool
+	}{
+		"executor and docker info mismatch": {
+			executorMetadata: map[string]string{
+				"OSType": "windows",
+			},
+			dockerInfoOSType: "linux",
+			expectedErr:      true,
+		},
+		"executor and docker info match": {
+			executorMetadata: map[string]string{
+				"OSType": "linux",
+			},
+			dockerInfoOSType: "linux",
+			expectedErr:      false,
+		},
+		"executor OSType not defined": {
+			executorMetadata: nil,
+			dockerInfoOSType: "linux",
+			expectedErr:      true,
+		},
+	}
+
+	for name, c := range cases {
+		t.Run(name, func(t *testing.T) {
+			executor := executor{
+				info: types.Info{
+					OSType: c.dockerInfoOSType,
+				},
+				AbstractExecutor: executors.AbstractExecutor{
+					ExecutorOptions: executors.ExecutorOptions{
+						Metadata: c.executorMetadata,
+					},
+				},
+			}
+
+			err := executor.checkOSType()
+			assert.Equal(t, c.expectedErr, err != nil)
+		})
+	}
 }
 
 // TODO: Remove in 12.0

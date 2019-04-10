@@ -1241,10 +1241,30 @@ func (e *executor) Prepare(options common.ExecutorPrepareOptions) error {
 		return err
 	}
 
+	err = e.checkOSType()
+	if err != nil {
+		return err
+	}
+
 	err = e.createDependencies()
 	if err != nil {
 		return err
 	}
+	return nil
+}
+
+// checkOSType checks if the ExecutorOptions metadata matches with the docker
+// info response.
+func (e *executor) checkOSType() error {
+	executorOSType, ok := e.ExecutorOptions.Metadata["OSType"]
+	if !ok {
+		return common.MakeBuildError("%s does not have any OSType specified", e.Config.Executor)
+	}
+
+	if executorOSType != e.info.OSType {
+		return common.MakeBuildError("%s docker executor does not match OS type from docker engine", e.Config.Name)
+	}
+
 	return nil
 }
 
