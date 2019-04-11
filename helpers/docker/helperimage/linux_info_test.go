@@ -24,6 +24,7 @@ func Test_linuxInfo_create(t *testing.T) {
 				Name:         name,
 				Tag:          fmt.Sprintf("%s-2923a43", getExpectedArch()),
 				IsSupportingLocalImport: true,
+				Cmd: bashCmd,
 			},
 		},
 		{
@@ -35,6 +36,7 @@ func Test_linuxInfo_create(t *testing.T) {
 				Name:         name,
 				Tag:          "arm-2923a43",
 				IsSupportingLocalImport: true,
+				Cmd: bashCmd,
 			},
 		},
 		{
@@ -46,6 +48,7 @@ func Test_linuxInfo_create(t *testing.T) {
 				Name:         name,
 				Tag:          "x86_64-2923a43",
 				IsSupportingLocalImport: true,
+				Cmd: bashCmd,
 			},
 		},
 	}
