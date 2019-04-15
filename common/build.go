@@ -149,7 +149,7 @@ func (b *Build) ProjectUniqueDir(sharedDir bool) string {
 }
 
 func (b *Build) FullProjectDir() string {
-	return helpers.ToSlash(b.BuildDir)
+	return helpers.ToBackslash(b.BuildDir)
 }
 
 func (b *Build) TmpProjectDir() string {

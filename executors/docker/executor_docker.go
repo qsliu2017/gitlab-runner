@@ -492,18 +492,11 @@ func fakeContainer(id string, names ...string) *types.Container {
 }
 
 func (e *executor) createBuildVolume() error {
-	parentDir := e.Build.RootDir
+	parentDir := path.Dir(e.Build.FullProjectDir())
 
-	if e.Build.IsFeatureFlagOn(featureflags.UseLegacyBuildsDirForDocker) {
-		// Cache Git sources:
-		// take path of the projects directory,
-		// because we use `rm -rf` which could remove the mounted volume
-		parentDir = path.Dir(e.Build.FullProjectDir())
-	}
-
-	if !path.IsAbs(parentDir) && parentDir != "/" {
-		return common.MakeBuildError("build directory needs to be absolute and non-root path")
-	}
+	// if !path.IsAbs(parentDir) && parentDir != "/" {
+	// 	return common.MakeBuildError("build directory needs to be absolute and non-root path")
+	// }
 
 	if e.isHostMountedVolume(e.Build.RootDir, e.Config.Docker.Volumes...) {
 		return nil
