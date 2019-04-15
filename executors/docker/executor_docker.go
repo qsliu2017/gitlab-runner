@@ -82,44 +82,6 @@ func (e *executor) getServiceVariables() []string {
 	return e.Build.GetAllVariables().PublicOrInternal().StringList()
 }
 
-func (e *executor) getUserAuthConfiguration(indexName string) *types.AuthConfig {
-	if e.Build == nil {
-		return nil
-	}
-
-	buf := bytes.NewBufferString(e.Build.GetDockerAuthConfig())
-	authConfigs, _ := docker_helpers.ReadAuthConfigsFromReader(buf)
-	if authConfigs != nil {
-		return docker_helpers.ResolveDockerAuthConfig(indexName, authConfigs)
-	}
-	return nil
-}
-
-func (e *executor) getBuildAuthConfiguration(indexName string) *types.AuthConfig {
-	if e.Build == nil {
-		return nil
-	}
-
-	authConfigs := make(map[string]types.AuthConfig)
-
-	for _, credentials := range e.Build.Credentials {
-		if credentials.Type != "registry" {
-			continue
-		}
-
-		authConfigs[credentials.URL] = types.AuthConfig{
-			Username:      credentials.Username,
-			Password:      credentials.Password,
-			ServerAddress: credentials.URL,
-		}
-	}
-
-	if authConfigs != nil {
-		return docker_helpers.ResolveDockerAuthConfig(indexName, authConfigs)
-	}
-	return nil
-}
-
 func (e *executor) getHomeDirAuthConfiguration(indexName string) *types.AuthConfig {
 	authConfigs, _ := docker_helpers.ReadDockerAuthConfigsFromHomeDir(e.Shell().User)
 	if authConfigs != nil {
@@ -130,13 +92,15 @@ func (e *executor) getHomeDirAuthConfiguration(indexName string) *types.AuthConf
 
 func (e *executor) getAuthConfig(imageName string) *types.AuthConfig {
 	indexName, _ := docker_helpers.SplitDockerImageName(imageName)
-
-	authConfig := e.getUserAuthConfiguration(indexName)
+	var authConfig *types.AuthConfig
+	if e.Build != nil {
+		authConfig = e.Build.GetUserAuthConfiguration(indexName)
+	}
 	if authConfig == nil {
 		authConfig = e.getHomeDirAuthConfiguration(indexName)
 	}
-	if authConfig == nil {
-		authConfig = e.getBuildAuthConfiguration(indexName)
+	if authConfig == nil && e.Build != nil {
+		authConfig = e.Build.GetBuildAuthConfiguration(indexName)
 	}
 
 	if authConfig != nil {

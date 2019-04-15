@@ -1,6 +1,7 @@
 package common
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -12,9 +13,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/docker/docker/api/types"
 	"github.com/sirupsen/logrus"
 
 	"gitlab.com/gitlab-org/gitlab-runner/helpers"
+	docker_helpers "gitlab.com/gitlab-org/gitlab-runner/helpers/docker"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers/tls"
 	"gitlab.com/gitlab-org/gitlab-runner/session"
 	"gitlab.com/gitlab-org/gitlab-runner/session/terminal"
@@ -773,6 +776,38 @@ func (b *Build) IsDebugTraceEnabled() bool {
 
 func (b *Build) GetDockerAuthConfig() string {
 	return b.GetAllVariables().Get("DOCKER_AUTH_CONFIG")
+}
+
+func (b *Build) GetBuildAuthConfigurations() map[string]types.AuthConfig {
+	authConfigs := make(map[string]types.AuthConfig)
+
+	for _, credentials := range b.Credentials {
+		if credentials.Type != "registry" {
+			continue
+		}
+
+		authConfigs[credentials.URL] = types.AuthConfig{
+			Username:      credentials.Username,
+			Password:      credentials.Password,
+			ServerAddress: credentials.URL,
+		}
+	}
+
+	return authConfigs
+}
+
+func (b *Build) GetBuildAuthConfiguration(indexName string) *types.AuthConfig {
+	return docker_helpers.ResolveDockerAuthConfig(indexName, b.GetBuildAuthConfigurations())
+}
+
+func (b *Build) GetUserAuthConfigurations() map[string]types.AuthConfig {
+	buf := bytes.NewBufferString(b.GetDockerAuthConfig())
+	authConfigs, _ := docker_helpers.ReadAuthConfigsFromReader(buf)
+	return authConfigs
+}
+
+func (b *Build) GetUserAuthConfiguration(indexName string) *types.AuthConfig {
+	return docker_helpers.ResolveDockerAuthConfig(indexName, b.GetUserAuthConfigurations())
 }
 
 func (b *Build) GetGetSourcesAttempts() int {
