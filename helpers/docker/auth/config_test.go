@@ -1,4 +1,4 @@
-package docker_helpers
+package auth
 
 import (
 	"testing"
