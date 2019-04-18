@@ -680,12 +680,7 @@ func (s *executor) checkDefaults() error {
 }
 
 func createFn() common.Executor {
-	revision := "latest"
-	if common.REVISION != "HEAD" {
-		revision = common.REVISION
-	}
-
-	helperImage, err := helperimage.Get(revision, helperimage.Config{
+	helperImage, err := helperimage.Get(common.REVISION, helperimage.Config{
 		OSType:       helperimage.OSTypeLinux,
 		Architecture: "amd64",
 	})
