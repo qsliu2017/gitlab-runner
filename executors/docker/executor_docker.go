@@ -63,6 +63,8 @@ type executor struct {
 
 	devices []container.DeviceMapping
 
+	helperImageInfo helperimage.Info
+
 	usedImages     map[string]string
 	usedImagesLock sync.RWMutex
 }
@@ -278,30 +280,21 @@ func (e *executor) getPrebuiltImage() (*types.ImageInspect, error) {
 		return e.getDockerImage(imageNameFromConfig)
 	}
 
-	helperImageInfo, err := helperimage.Get(common.REVISION, helperimage.Config{
-		OSType:          e.info.OSType,
-		Architecture:    e.info.Architecture,
-		OperatingSystem: e.info.OperatingSystem,
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	e.Debugln(fmt.Sprintf("Looking for prebuilt image %s...", helperImageInfo))
-	image, _, err := e.client.ImageInspectWithRaw(e.Context, helperImageInfo.String())
+	e.Debugln(fmt.Sprintf("Looking for prebuilt image %s...", e.helperImageInfo))
+	image, _, err := e.client.ImageInspectWithRaw(e.Context, e.helperImageInfo.String())
 	if err == nil {
 		return &image, nil
 	}
 
 	// Try to load prebuilt image from local filesystem
-	loadedImage := e.getLocalDockerImage(helperImageInfo)
+	loadedImage := e.getLocalDockerImage(e.helperImageInfo)
 	if loadedImage != nil {
 		return loadedImage, nil
 	}
 
 	// Fallback to getting image from DockerHub
-	e.Debugln(fmt.Sprintf("Loading image form registry: %s", helperImageInfo))
-	return e.getDockerImage(helperImageInfo.String())
+	e.Debugln(fmt.Sprintf("Loading image form registry: %s", e.helperImageInfo))
+	return e.getDockerImage(e.helperImageInfo.String())
 }
 
 func (e *executor) getLocalDockerImage(helperImageInfo helperimage.Info) *types.ImageInspect {
@@ -1234,6 +1227,15 @@ func (e *executor) Prepare(options common.ExecutorPrepareOptions) error {
 	}
 
 	err = e.checkOSType()
+	if err != nil {
+		return err
+	}
+
+	e.helperImageInfo, err = helperimage.Get(common.REVISION, helperimage.Config{
+		OSType:          e.info.OSType,
+		Architecture:    e.info.Architecture,
+		OperatingSystem: e.info.OperatingSystem,
+	})
 	if err != nil {
 		return err
 	}
