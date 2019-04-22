@@ -1221,7 +1221,20 @@ func (e *executor) Prepare(options common.ExecutorPrepareOptions) error {
 
 	e.Println("Using Docker executor with image", imageName, "...")
 
-	err = e.connectDocker()
+	err = e.setDockerInfo()
+	if err != nil {
+		return err
+	}
+
+	err = e.createDependencies()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (e *executor) setDockerInfo() error {
+	err := e.connectDocker()
 	if err != nil {
 		return err
 	}
@@ -1240,10 +1253,6 @@ func (e *executor) Prepare(options common.ExecutorPrepareOptions) error {
 		return err
 	}
 
-	err = e.createDependencies()
-	if err != nil {
-		return err
-	}
 	return nil
 }
 
