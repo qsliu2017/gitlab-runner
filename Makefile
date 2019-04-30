@@ -165,6 +165,7 @@ mocks: $(MOCKERY)
 	GOPATH=$(ORIGINAL_GOPATH) mockery $(MOCKERY_FLAGS) -dir=./log -all -inpkg
 	GOPATH=$(ORIGINAL_GOPATH) mockery $(MOCKERY_FLAGS) -dir=./session -all -inpkg
 	GOPATH=$(ORIGINAL_GOPATH) mockery $(MOCKERY_FLAGS) -dir=./shells -all -inpkg
+	GOPATH=$(ORIGINAL_GOPATH) mockery $(MOCKERY_FLAGS) -dir=./vault -all -inpkg
 
 test-docker:
 	make test-docker-image IMAGE=centos:6 TYPE=rpm

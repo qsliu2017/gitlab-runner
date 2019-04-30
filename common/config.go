@@ -23,6 +23,7 @@ import (
 	docker_helpers "gitlab.com/gitlab-org/gitlab-runner/helpers/docker"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers/ssh"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers/timeperiod"
+	vault_config "gitlab.com/gitlab-org/gitlab-runner/vault/config"
 )
 
 type DockerPullPolicy string
@@ -277,14 +278,16 @@ type RunnerSettings struct {
 
 	Shell string `toml:"shell,omitempty" json:"shell" long:"shell" env:"RUNNER_SHELL" description:"Select bash, cmd or powershell"`
 
-	CustomBuildDir *CustomBuildDir   `toml:"custom_build_dir,omitempty" json:"custom_build_dir" group:"custom build dir configuration" namespace:"custom_build_dir"`
-	SSH            *ssh.Config       `toml:"ssh,omitempty" json:"ssh" group:"ssh executor" namespace:"ssh"`
-	Docker         *DockerConfig     `toml:"docker,omitempty" json:"docker" group:"docker executor" namespace:"docker"`
-	Parallels      *ParallelsConfig  `toml:"parallels,omitempty" json:"parallels" group:"parallels executor" namespace:"parallels"`
-	VirtualBox     *VirtualBoxConfig `toml:"virtualbox,omitempty" json:"virtualbox" group:"virtualbox executor" namespace:"virtualbox"`
-	Cache          *CacheConfig      `toml:"cache,omitempty" json:"cache" group:"cache configuration" namespace:"cache"`
-	Machine        *DockerMachine    `toml:"machine,omitempty" json:"machine" group:"docker machine provider" namespace:"machine"`
-	Kubernetes     *KubernetesConfig `toml:"kubernetes,omitempty" json:"kubernetes" group:"kubernetes executor" namespace:"kubernetes"`
+	CustomBuildDir *CustomBuildDir     `toml:"custom_build_dir,omitempty" json:"custom_build_dir" group:"custom build dir configuration" namespace:"custom_build_dir"`
+	Cache          *CacheConfig        `toml:"cache,omitempty" json:"cache" group:"cache configuration" namespace:"cache"`
+	Vault          *vault_config.Vault `toml:"vault,omitempty" json:"vault" group:"vault configuration" namespace:"vault"`
+
+	SSH        *ssh.Config       `toml:"ssh,omitempty" json:"ssh" group:"ssh executor" namespace:"ssh"`
+	Docker     *DockerConfig     `toml:"docker,omitempty" json:"docker" group:"docker executor" namespace:"docker"`
+	Parallels  *ParallelsConfig  `toml:"parallels,omitempty" json:"parallels" group:"parallels executor" namespace:"parallels"`
+	VirtualBox *VirtualBoxConfig `toml:"virtualbox,omitempty" json:"virtualbox" group:"virtualbox executor" namespace:"virtualbox"`
+	Machine    *DockerMachine    `toml:"machine,omitempty" json:"machine" group:"docker machine provider" namespace:"machine"`
+	Kubernetes *KubernetesConfig `toml:"kubernetes,omitempty" json:"kubernetes" group:"kubernetes executor" namespace:"kubernetes"`
 }
 
 type RunnerConfig struct {
