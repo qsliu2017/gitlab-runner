@@ -13,6 +13,8 @@ import (
 	"gitlab.com/gitlab-org/gitlab-runner/helpers"
 )
 
+const stopErrorActionPreference = "stop"
+
 type PowerShell struct {
 	AbstractShell
 }
@@ -21,6 +23,7 @@ type PsWriter struct {
 	bytes.Buffer
 	TemporaryPath string
 	indent        int
+	useTryCatch   bool
 }
 
 func psQuote(text string) string {
@@ -121,20 +124,35 @@ func (b *PsWriter) IfFile(path string) {
 }
 
 func (b *PsWriter) IfCmd(cmd string, arguments ...string) {
-	b.Line("Try {")
-	b.Indent()
+	if b.useTryCatch {
+		b.Line("Try {")
+		b.Indent()
+	}
 	b.Line(b.buildCommand(cmd, arguments...) + " 2>$null")
+	if !b.useTryCatch {
+		b.Line("if($?) {")
+		b.Indent()
+	}
 }
 
 func (b *PsWriter) IfCmdWithOutput(cmd string, arguments ...string) {
-	b.Line("Try {")
+	if b.useTryCatch {
+		b.Line("Try {")
+	}
 	b.Indent()
 	b.Line(b.buildCommand(cmd, arguments...))
+	if !b.useTryCatch {
+		b.Line("if($?) {")
+	}
 }
 
 func (b *PsWriter) Else() {
 	b.Unindent()
-	b.Line("} Catch {")
+	if b.useTryCatch {
+		b.Line("} Catch {")
+	} else {
+		b.Line("} else {")
+	}
 	b.Indent()
 }
 
@@ -252,6 +270,7 @@ func (b *PowerShell) GetConfiguration(info common.ShellScriptInfo) (script *comm
 func (b *PowerShell) GenerateScript(buildStage common.BuildStage, info common.ShellScriptInfo) (script string, err error) {
 	w := &PsWriter{
 		TemporaryPath: info.Build.TmpProjectDir(),
+		useTryCatch:   strings.ToLower(info.Build.GetAllVariables().Get("ErrorActionPreference")) == stopErrorActionPreference,
 	}
 
 	if buildStage == common.BuildStagePrepare {
