@@ -227,6 +227,7 @@ func (b *AbstractShell) writeSubmoduleUpdateCmd(w ShellWriter, build *common.Bui
 	if !build.IsLFSSmudgeDisabled() {
 		w.IfCmd("git-lfs", "version")
 		w.Command("git", append(foreachArgs, "git", "lfs", "pull")...)
+		w.Else()
 		w.EndIf()
 	}
 }
@@ -411,6 +412,7 @@ func (b *AbstractShell) writeCloneFetchCmds(w ShellWriter, info common.ShellScri
 			w.IfCmd("git-lfs", "version")
 			w.Command("git", "lfs", "pull")
 			w.EmptyLine()
+			w.Else()
 			w.EndIf()
 		}
 	} else {

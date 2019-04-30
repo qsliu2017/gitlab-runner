@@ -17,5 +17,5 @@ func TestPowershell_IfCmdShellEscapes(t *testing.T) {
 	writer := &PsWriter{}
 	writer.IfCmd("foo", "x&(y)")
 
-	assert.Equal(t, "& \"foo\" \"x&(y)\" 2>$null\r\nif($?) {\r\n", writer.String())
+	assert.Equal(t, "Try {\r\n  & \"foo\" \"x&(y)\" 2>$null\r\n", writer.String())
 }

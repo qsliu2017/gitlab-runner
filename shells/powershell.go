@@ -121,20 +121,20 @@ func (b *PsWriter) IfFile(path string) {
 }
 
 func (b *PsWriter) IfCmd(cmd string, arguments ...string) {
-	b.Line(b.buildCommand(cmd, arguments...) + " 2>$null")
-	b.Line("if($?) {")
+	b.Line("Try {")
 	b.Indent()
+	b.Line(b.buildCommand(cmd, arguments...) + " 2>$null")
 }
 
 func (b *PsWriter) IfCmdWithOutput(cmd string, arguments ...string) {
-	b.Line(b.buildCommand(cmd, arguments...))
-	b.Line("if($?) {")
+	b.Line("Try {")
 	b.Indent()
+	b.Line(b.buildCommand(cmd, arguments...))
 }
 
 func (b *PsWriter) Else() {
 	b.Unindent()
-	b.Line("} else {")
+	b.Line("} Catch {")
 	b.Indent()
 }
 
