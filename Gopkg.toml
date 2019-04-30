@@ -162,6 +162,10 @@ ignored = ["test", "appengine"]
   name = "golang.org/x/sys"
   branch = "master"
 
+[[constraint]]
+  name = "github.com/hashicorp/vault"
+  version = "v1.1.2"
+
 ##
 ## Refrain innovations ;)
 ##
@@ -310,3 +314,51 @@ ignored = ["test", "appengine"]
   # v1.14.0 introduced a compilation error with one of it dependencies,
   # so forcing v1.13.0 which works
   version = "=v1.13.0"
+
+[[override]]
+  name = "github.com/golang/snappy"
+  version = "v0.0.1"
+
+[[override]]
+  name = "github.com/hashicorp/errwrap"
+  version = "v1.0.0"
+
+[[override]]
+  name = "github.com/hashicorp/go-cleanhttp"
+  version = "v0.5.1"
+
+[[override]]
+  name = "github.com/hashicorp/go-multierror"
+  version = "v1.0.0"
+
+[[override]]
+  name = "github.com/hashicorp/go-retryablehttp"
+  version = "v0.5.3"
+
+[[override]]
+  name = "github.com/hashicorp/go-rootcerts"
+  version = "v1.0.0"
+
+[[override]]
+  name = "github.com/hashicorp/go-sockaddr"
+  version = "v1.0.2"
+
+[[override]]
+  name = "github.com/hashicorp/hcl"
+  version = "v1.0.0"
+
+[[override]]
+  name = "github.com/pierrec/lz4"
+  version = "v2.1.2"
+
+[[override]]
+  name = "github.com/ryanuber/go-glob"
+  version = "v1.0.0"
+
+[[override]]
+  name = "github.com/mitchellh/go-homedir"
+  version = "v1.1.0"
+
+[[override]]
+  name = "github.com/mitchellh/mapstructure"
+  version = "v1.1.2"

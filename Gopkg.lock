@@ -316,6 +316,14 @@
   version = "v1.2.0"
 
 [[projects]]
+  digest = "1:5ce98d1cfc868481be18ff61cecfd4f06b11176c601f386faf9ef11fa1e9b0fe"
+  name = "github.com/golang/snappy"
+  packages = ["."]
+  pruneopts = "N"
+  revision = "2a8bb927dd31d8daada140a5d09578521ce5c36a"
+  version = "v0.0.1"
+
+[[projects]]
   digest = "1:532d7f0c6d8c7074cd923bf7f84c91fb464bc364f4d0d01055803a3ea61d2a82"
   name = "github.com/google/gofuzz"
   packages = ["."]
@@ -388,11 +396,93 @@
   version = "v1.2.0"
 
 [[projects]]
+  digest = "1:2e4b9575d5403e6c85d0834c5106c2da74dde175d77769788a5ba0701ce1ce1e"
+  name = "github.com/hashicorp/errwrap"
+  packages = ["."]
+  pruneopts = "N"
+  revision = "8a6fb523712970c966eefc6b39ed2c5e74880354"
+  version = "v1.0.0"
+
+[[projects]]
+  digest = "1:de8c9cd010c4eef5e7f4b3dd7bd5fbad0d3f69f718719a2a4b33a7b20f53e195"
+  name = "github.com/hashicorp/go-cleanhttp"
+  packages = ["."]
+  pruneopts = "N"
+  revision = "eda1e5db218aad1db63ca4642c8906b26bcf2744"
+  version = "v0.5.1"
+
+[[projects]]
+  digest = "1:454176ad9a5e873496f992c672fd5a2ff6851343bc4ea02d40edc6873e3d2dc2"
+  name = "github.com/hashicorp/go-multierror"
+  packages = ["."]
+  pruneopts = "N"
+  revision = "886a7fbe3eb1c874d46f623bfa70af45f425b3d1"
+  version = "v1.0.0"
+
+[[projects]]
+  digest = "1:4aa1c08a5828e84be1ae81f647098e48ed4ef75d74cd32f37d607359d465ec9f"
+  name = "github.com/hashicorp/go-retryablehttp"
+  packages = ["."]
+  pruneopts = "N"
+  revision = "357460732517ec3b57c05c51443296bdd6df1874"
+  version = "v0.5.3"
+
+[[projects]]
+  digest = "1:67a10482b550d65dea0f9e08076df23453aea1df81380a32a4326e9e650e7dce"
+  name = "github.com/hashicorp/go-rootcerts"
+  packages = ["."]
+  pruneopts = "N"
+  revision = "63503fb4e1eca22f9ae0f90b49c5d5538a0e87eb"
+  version = "v1.0.0"
+
+[[projects]]
+  digest = "1:c480de23782365205982f289d877c1a6574aa8d459ddc6ac0cae482f5e024331"
+  name = "github.com/hashicorp/go-sockaddr"
+  packages = ["."]
+  pruneopts = "N"
+  revision = "c7188e74f6acae5a989bdc959aa779f8b9f42faf"
+  version = "v1.0.2"
+
+[[projects]]
   digest = "1:51e61a7b25e55fe5355ddc69f6a2f6ff105c6cf5a78dc66e183631825b667c16"
   name = "github.com/hashicorp/go-version"
   packages = ["."]
   pruneopts = "N"
   revision = "03c5bf6be031b6dd45afec16b1cf94fc8938bc77"
+
+[[projects]]
+  digest = "1:5d26280a5de27d0ffb5d74f29b7672beb63fcb2c4eec582c3beff3a2721a455d"
+  name = "github.com/hashicorp/hcl"
+  packages = [
+    ".",
+    "hcl/ast",
+    "hcl/parser",
+    "hcl/scanner",
+    "hcl/strconv",
+    "hcl/token",
+    "json/parser",
+    "json/scanner",
+    "json/token",
+  ]
+  pruneopts = "N"
+  revision = "8cb6e5b959231cc1119e43259c4a608f9c51a241"
+  version = "v1.0.0"
+
+[[projects]]
+  digest = "1:8f36d0ce65fe8f88d4e37b7f1783626710b6715758cb5070255069e2d6a5c163"
+  name = "github.com/hashicorp/vault"
+  packages = [
+    "api",
+    "helper/compressutil",
+    "helper/consts",
+    "helper/hclutil",
+    "helper/jsonutil",
+    "helper/parseutil",
+    "helper/strutil",
+  ]
+  pruneopts = "N"
+  revision = "0082501623c0b704b87b1fbc84c2d725994bac54"
+  version = "v1.1.2"
 
 [[projects]]
   branch = "master"
@@ -502,6 +592,22 @@
   version = "3.0.3"
 
 [[projects]]
+  digest = "1:4c9aced6325d63de4bffc60829ba595d7d0497f1ae73f744cc6c6d399df82083"
+  name = "github.com/mitchellh/go-homedir"
+  packages = ["."]
+  pruneopts = "N"
+  revision = "af06845cf3004701891bf4fdb884bfe4920b3727"
+  version = "v1.1.0"
+
+[[projects]]
+  digest = "1:5e1f0fdbcf7cc5d0d48dd6fa7fc2c711eeb4e69803969a41be0d98cf1d33f539"
+  name = "github.com/mitchellh/mapstructure"
+  packages = ["."]
+  pruneopts = "N"
+  revision = "3536a929edddb9a5b34bd6861dc4a9647cb459fe"
+  version = "v1.1.2"
+
+[[projects]]
   digest = "1:f66d87ce300a9e7b87bbfa1d4c89f65e1548b9872c5be28e3274f5f722cb4114"
   name = "github.com/modern-go/concurrent"
   packages = ["."]
@@ -543,6 +649,17 @@
   packages = ["libcontainer/user"]
   pruneopts = "N"
   revision = "c1e454b2a1bfb0f0ebd9e621a1433f98f9a8d4b0"
+
+[[projects]]
+  digest = "1:1c72042dc377711256c23fdb6ed9165e198afc8ea8abfcf4d9d8e79fd59d9fad"
+  name = "github.com/pierrec/lz4"
+  packages = [
+    ".",
+    "internal/xxh32",
+  ]
+  pruneopts = "N"
+  revision = "9419d2361c8ae111073ffe3337ecc364fb590921"
+  version = "v2.1.2"
 
 [[projects]]
   digest = "1:5da5dc86bcd23e94befc0048ccd757fc1706ebd3aa6c0ca9575d8b9def1b8f26"
@@ -598,6 +715,14 @@
   packages = ["."]
   pruneopts = "N"
   revision = "abf152e5f3e97f2fafac028d2cc06c1feb87ffa5"
+
+[[projects]]
+  digest = "1:7a8bde73956e98ca40e6448532ea6f3aa6ad41c39dc1c5d3f119a268817d7610"
+  name = "github.com/ryanuber/go-glob"
+  packages = ["."]
+  pruneopts = "N"
+  revision = "51a8f68e6c24dc43f1e371749c89a267de4ebc53"
+  version = "v1.0.0"
 
 [[projects]]
   digest = "1:5f3253413123167546a72c2702f2c38980a5170b5d3d92ca074f8115dbc700da"
@@ -1057,6 +1182,7 @@
     "github.com/gorilla/mux",
     "github.com/gorilla/websocket",
     "github.com/hashicorp/go-version",
+    "github.com/hashicorp/vault/api",
     "github.com/jpillora/backoff",
     "github.com/kardianos/osext",
     "github.com/kr/pty",
