@@ -128,15 +128,15 @@ ignored = ["test", "appengine"]
 
 [[constraint]]
   name = "k8s.io/client-go"
-  branch = "release-7.0"
+  branch = "release-8.0"
 
 [[constraint]]
   name = "k8s.io/apimachinery"
-  branch = "release-1.10"
+  branch = "release-1.11"
 
 [[constraint]]
   name = "k8s.io/api"
-  branch = "release-1.10"
+  branch = "release-1.11"
 
 [[constraint]]
   name = "github.com/mattn/go-zglob"
@@ -192,7 +192,7 @@ ignored = ["test", "appengine"]
 
 [[override]]
   name = "github.com/emicklei/go-restful"
-  revision = "89ef8af493ab468a45a42bb0d89a06fccdd2fb22"
+  revision = "ad3e7d5a0a11fbbead57cc9353720a60a0a2793f"
 
 [[override]]
   name = "github.com/ghodss/yaml"
