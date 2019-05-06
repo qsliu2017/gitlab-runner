@@ -12,7 +12,7 @@ stages:
 - cleanup
 
 variables:
-  CI_IMAGE: registry.gitlab.com/gitlab-org/gitlab-runner/ci:1.8.7-2
+  CI_IMAGE: registry.gitlab.com/gitlab-org/gitlab-runner/ci:1.9.7-1
   GOROOT: /usr/local/go
   # Following variables are used in some jobs to install specified software
   DOCKER_MACHINE_VERSION: "0.14.0"
@@ -47,7 +47,7 @@ image: $CI_IMAGE
   services:
   - docker:dind
   variables: &docker_variables
-    CI_IMAGE: registry.gitlab.com/gitlab-org/gitlab-runner/ci:1.8.7-2
+    CI_IMAGE: registry.gitlab.com/gitlab-org/gitlab-runner/ci:1.9.7-1
     DOCKER_DRIVER: overlay2
     DOCKER_HOST: tcp://docker:2375
   tags:
@@ -86,7 +86,8 @@ prepare ci image:
     BUILD_IMAGE: $CI_IMAGE
     BUILD_DOCKERFILE: ./dockerfiles/ci/Dockerfile
   only:
-  - /\Adocker-ci-image\/.*/
+    changes:
+    - dockerfiles/ci/*
 
 prepare alpine-no-root image:
   <<: *image_builder
@@ -94,7 +95,8 @@ prepare alpine-no-root image:
     BUILD_IMAGE: registry.gitlab.com/gitlab-org/gitlab-runner/alpine-no-root:latest
     BUILD_DOCKERFILE: ./tests/dockerfiles/alpine-no-root/Dockerfile
   only:
-  - /\Adocker-alpine-no-root-image\/.*/
+    changes:
+    - tests/dockerfiles/alpine-no-root/
 
 #
 # Prebuild stage
@@ -335,7 +337,7 @@ git 1.7.1:
   before_script:
     - unset GPG_KEY
     - yum install -y -q git && git version
-    - curl https://storage.googleapis.com/golang/go1.8.7.linux-amd64.tar.gz | tar zx -C $(dirname "$GOROOT")
+    - curl https://storage.googleapis.com/golang/go1.9.7.linux-amd64.tar.gz | tar zx -C $(dirname "$GOROOT")
     - export PATH=${GOROOT}/bin:$PATH
     - source ci/touch_make_dependencies
   script:
