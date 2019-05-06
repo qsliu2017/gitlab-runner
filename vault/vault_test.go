@@ -2,9 +2,11 @@ package vault
 
 import (
 	"errors"
+	"reflect"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
 	"gitlab.com/gitlab-org/gitlab-runner/vault/client"
@@ -109,4 +111,113 @@ func TestVault_DobuleConnect(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Equal(t, 1, newClientCalls)
+}
+
+func TestVault_Authenticate(t *testing.T) {
+	userpassAuth := &config.VaultUserpassAuth{}
+	tlsAuth := &config.VaultTLSAuth{}
+
+	tests := map[string]struct {
+		auth                   config.VaultAuth
+		setupAuthenticatorMock func() *MockAuthenticator
+		expectedError          string
+	}{
+		"missing authenticator factory": {
+			auth: config.VaultAuth{
+				Token: &config.VaultTokenAuth{},
+			},
+			setupAuthenticatorMock: func() *MockAuthenticator {
+				return nil
+			},
+			expectedError: `couldn't create authenticator: authenticator factory for "*config.VaultTokenAuth" authentication method is unknown`,
+		},
+		"error on authentication": {
+			auth: config.VaultAuth{
+				Userpass: userpassAuth,
+			},
+			setupAuthenticatorMock: func() *MockAuthenticator {
+				auth := config.VaultAuth{
+					Userpass: userpassAuth,
+				}
+
+				authenticatorMock := new(MockAuthenticator)
+				authenticatorMock.On("Authenticate", mock.Anything, auth).
+					Return(client.TokenInfo{}, errors.New("test-error")).
+					Once()
+
+				return authenticatorMock
+			},
+			expectedError: `couldn't authenticate against Vault server: test-error`,
+		},
+		"authenticated properly": {
+			auth: config.VaultAuth{
+				Userpass: userpassAuth,
+			},
+			setupAuthenticatorMock: func() *MockAuthenticator {
+				auth := config.VaultAuth{
+					Userpass: userpassAuth,
+				}
+
+				authenticatorMock := new(MockAuthenticator)
+				authenticatorMock.On("Authenticate", mock.Anything, auth).
+					Return(client.TokenInfo{Token: "some-token"}, nil).
+					Once()
+
+				return authenticatorMock
+			},
+		},
+		"with multiple defined authentications chooses the first one from struct definition": {
+			auth: config.VaultAuth{
+				TLS:      tlsAuth,
+				Userpass: userpassAuth,
+			},
+			setupAuthenticatorMock: func() *MockAuthenticator {
+				auth := config.VaultAuth{
+					TLS:      tlsAuth,
+					Userpass: userpassAuth,
+				}
+
+				authenticatorMock := new(MockAuthenticator)
+				authenticatorMock.On("Authenticate", mock.Anything, auth).
+					Return(client.TokenInfo{Token: "some-token"}, nil).
+					Once()
+
+				return authenticatorMock
+			},
+		},
+	}
+
+	for testName, test := range tests {
+		t.Run(testName, func(t *testing.T) {
+			authenticatorMock := test.setupAuthenticatorMock()
+			if authenticatorMock != nil {
+				defer authenticatorMock.AssertExpectations(t)
+			}
+
+			oldAuthenticatorFactories := authenticatorFactories
+			defer func() {
+				authenticatorFactories = oldAuthenticatorFactories
+			}()
+			authenticatorFactories = map[reflect.Type]AuthenticatorFactory{
+				reflect.TypeOf(&config.VaultUserpassAuth{}): func() Authenticator { return authenticatorMock },
+			}
+
+			cli := new(client.MockClient)
+			defer cli.AssertExpectations(t)
+
+			if test.expectedError == "" {
+				cli.On("SetToken", "some-token").Once()
+			}
+
+			v := new(vault)
+			v.client = cli
+
+			err := v.Authenticate(test.auth)
+			if test.expectedError != "" {
+				assert.EqualError(t, err, test.expectedError)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
 }

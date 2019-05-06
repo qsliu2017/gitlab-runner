@@ -166,6 +166,10 @@ ignored = ["test", "appengine"]
   name = "github.com/hashicorp/vault"
   version = "v1.1.2"
 
+[[constraint]]
+  name = "gitlab.com/gitlab-org/ci-cd/tests/vault-ci-service"
+  branch = "master"
+
 ##
 ## Refrain innovations ;)
 ##

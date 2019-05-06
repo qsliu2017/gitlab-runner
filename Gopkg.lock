@@ -784,6 +784,17 @@
   revision = "a7cf72d604cdf0af6031dd5d54a4e513abeff0d4"
 
 [[projects]]
+  branch = "master"
+  digest = "1:b76df1e980990534f5dc7cf0706aa7390324e01bb8dc213cde9edb992d69e07b"
+  name = "gitlab.com/gitlab-org/ci-cd/tests/vault-ci-service"
+  packages = [
+    "uitls/certificate",
+    "vault",
+  ]
+  pruneopts = "N"
+  revision = "bda2eb64468cce2f6810cdcab4d3c86d5cc21b33"
+
+[[projects]]
   digest = "1:3b5bf7524bfc4a050d46210fa51e7e92f2371dcf64d86f15a9d70e2ceea26db1"
   name = "gitlab.com/gitlab-org/gitlab-terminal"
   packages = ["."]
@@ -1202,6 +1213,7 @@
     "github.com/tevino/abool",
     "github.com/urfave/cli",
     "gitlab.com/ayufan/golang-cli-helpers",
+    "gitlab.com/gitlab-org/ci-cd/tests/vault-ci-service/vault",
     "gitlab.com/gitlab-org/gitlab-terminal",
     "golang.org/x/crypto/ssh",
     "golang.org/x/net/context",

@@ -10,6 +10,20 @@ type MockVault struct {
 	mock.Mock
 }
 
+// Authenticate provides a mock function with given fields: auth
+func (_m *MockVault) Authenticate(auth config.VaultAuth) error {
+	ret := _m.Called(auth)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(config.VaultAuth) error); ok {
+		r0 = rf(auth)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // Connect provides a mock function with given fields: server
 func (_m *MockVault) Connect(server config.VaultServer) error {
 	ret := _m.Called(server)

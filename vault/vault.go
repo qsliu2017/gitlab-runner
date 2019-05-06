@@ -9,6 +9,7 @@ import (
 
 type Vault interface {
 	Connect(server config.VaultServer) error
+	Authenticate(auth config.VaultAuth) error
 }
 
 func New() Vault {
@@ -57,4 +58,20 @@ func (v *vault) getClient() (client.Client, error) {
 	v.client = cli
 
 	return v.client, nil
+}
+
+func (v *vault) Authenticate(auth config.VaultAuth) error {
+	authenticator, err := getAuthenticator(auth)
+	if err != nil {
+		return errors.Wrap(err, "couldn't create authenticator")
+	}
+
+	tokenInfo, err := authenticator.Authenticate(v.client, auth)
+	if err != nil {
+		return errors.Wrap(err, "couldn't authenticate against Vault server")
+	}
+
+	v.client.SetToken(tokenInfo.Token)
+
+	return nil
 }

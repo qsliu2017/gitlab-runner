@@ -27,3 +27,66 @@ func (_m *MockClient) IsServerReady() VaultServerReadyResp {
 func (_m *MockClient) SetToken(token string) {
 	_m.Called(token)
 }
+
+// TLSLogin provides a mock function with given fields: path, name, tlsCertFile, tlsKeyFile
+func (_m *MockClient) TLSLogin(path string, name string, tlsCertFile string, tlsKeyFile string) (TokenInfo, error) {
+	ret := _m.Called(path, name, tlsCertFile, tlsKeyFile)
+
+	var r0 TokenInfo
+	if rf, ok := ret.Get(0).(func(string, string, string, string) TokenInfo); ok {
+		r0 = rf(path, name, tlsCertFile, tlsKeyFile)
+	} else {
+		r0 = ret.Get(0).(TokenInfo)
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(string, string, string, string) error); ok {
+		r1 = rf(path, name, tlsCertFile, tlsKeyFile)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// TokenLookupSelf provides a mock function with given fields:
+func (_m *MockClient) TokenLookupSelf() (TokenInfo, error) {
+	ret := _m.Called()
+
+	var r0 TokenInfo
+	if rf, ok := ret.Get(0).(func() TokenInfo); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(TokenInfo)
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func() error); ok {
+		r1 = rf()
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// UserpassLogin provides a mock function with given fields: path, username, password
+func (_m *MockClient) UserpassLogin(path string, username string, password string) (TokenInfo, error) {
+	ret := _m.Called(path, username, password)
+
+	var r0 TokenInfo
+	if rf, ok := ret.Get(0).(func(string, string, string) TokenInfo); ok {
+		r0 = rf(path, username, password)
+	} else {
+		r0 = ret.Get(0).(TokenInfo)
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(string, string, string) error); ok {
+		r1 = rf(path, username, password)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
