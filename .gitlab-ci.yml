@@ -252,9 +252,14 @@ unit test: &unit_tests
   <<: *docker
   stage: test
   parallel: 5
-  variables:
+  services:
+  - name: docker:dind
+  - name: registry.gitlab.com/gitlab-org/ci-cd/tests/vault-ci-service:1.1.2-latest
+    alias: vault
+  variables: &unit_tests_variables
     <<: *docker_variables
     GIT_LFS_256_CHECKSUM: 7be85238cbbb957ab25de52b60279d40ba40d3faa72eeb2cb9fa77d6d92381e5
+    VAULT_HOSTNAME: vault
   before_script:
     # This' script content as well as the definition of GIT_LFS_256_CHECKSUM should be moved to
     # "prepare ci image". Git LFS should be installed inside of the CI image. Unfortunately, building
@@ -276,7 +281,7 @@ unit test with race:
   <<: *unit_tests
   allow_failure: true
   variables:
-    <<: *docker_variables
+    <<: *unit_tests_variables
     GIT_LFS_256_CHECKSUM: 7be85238cbbb957ab25de52b60279d40ba40d3faa72eeb2cb9fa77d6d92381e5
     CGO_ENABLED: "1"
     TESTFLAGS: "-cover -race"
