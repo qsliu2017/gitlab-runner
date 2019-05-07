@@ -22,6 +22,8 @@ import (
 	"gitlab.com/gitlab-org/gitlab-runner/helpers/docker"
 	"gitlab.com/gitlab-org/gitlab-runner/session"
 	"gitlab.com/gitlab-org/gitlab-runner/session/terminal"
+	vault_config "gitlab.com/gitlab-org/gitlab-runner/vault/config"
+	vault_integration_tests "gitlab.com/gitlab-org/gitlab-runner/vault/integration_tests"
 )
 
 func init() {
@@ -1360,5 +1362,37 @@ func TestDefaultVariables(t *testing.T) {
 			variable := build.GetAllVariables().Get(test.key)
 			assert.Equal(t, test.expectedValue, variable)
 		})
+	}
+}
+
+func TestVaultVariables(t *testing.T) {
+	vaultService := vault_integration_tests.NewService(t)
+	vaultSecrets := vaultService.GetVaultSecretsConfig()
+
+	build := Build{
+		Runner: &RunnerConfig{
+			RunnerCredentials: RunnerCredentials{
+				Token: "1234",
+			},
+			RunnerSettings: RunnerSettings{
+				Vault: &vault_config.Vault{
+					Server: vaultService.GetVaultServerConfig(vault_integration_tests.ServiceProxyPort),
+					Auth: vault_config.VaultAuth{
+						Token: vaultService.GetVaultTokenAuthConfig(),
+					},
+					Secrets: vaultSecrets,
+				},
+			},
+		},
+	}
+
+	err := build.StartBuild("/builds", "/cache", true, false)
+	assert.NoError(t, err)
+
+	for _, vs := range vaultSecrets {
+		for _, vsk := range vs.Keys {
+			t.Log(build.GetAllVariables().Get(vsk.EnvName))
+			assert.NotEmpty(t, build.GetAllVariables().Get(vsk.EnvName))
+		}
 	}
 }

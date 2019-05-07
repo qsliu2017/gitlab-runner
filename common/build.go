@@ -20,6 +20,8 @@ import (
 	"gitlab.com/gitlab-org/gitlab-runner/session"
 	"gitlab.com/gitlab-org/gitlab-runner/session/proxy"
 	"gitlab.com/gitlab-org/gitlab-runner/session/terminal"
+	"gitlab.com/gitlab-org/gitlab-runner/vault"
+	vault_config "gitlab.com/gitlab-org/gitlab-runner/vault/config"
 )
 
 type GitStrategy int
@@ -96,6 +98,8 @@ type Build struct {
 	executorStageResolver func() ExecutorStage
 	logger                BuildLogger
 	allVariables          JobVariables
+
+	vaultVariables JobVariables
 
 	createdAt time.Time
 }
@@ -184,6 +188,11 @@ func (b *Build) StartBuild(rootDir, cacheDir string, customBuildDirEnabled, shar
 	b.CacheDir = path.Join(cacheDir, b.ProjectUniqueDir(false))
 	b.refreshAllVariables()
 
+	err = b.prepareVaultVariables()
+	if err != nil {
+		return err
+	}
+
 	b.BuildDir, err = b.getCustomBuildDir(b.RootDir, "GIT_CLONE_PATH", customBuildDirEnabled, sharedDir)
 	if err != nil {
 		return err
@@ -192,6 +201,45 @@ func (b *Build) StartBuild(rootDir, cacheDir string, customBuildDirEnabled, shar
 	// We invalidate variables to be able to use
 	// CI_CACHE_DIR and CI_PROJECT_DIR
 	b.refreshAllVariables()
+	return nil
+}
+
+type vaultSecretBuilder struct {
+	variables JobVariables
+}
+
+func newVaultSecretBuilder() *vaultSecretBuilder {
+	return &vaultSecretBuilder{
+		variables: make(JobVariables, 0),
+	}
+}
+
+func (vsb *vaultSecretBuilder) BuildSecret(secretSpec *vault_config.VaultSecretKey, data interface{}) error {
+	v := JobVariable{
+		Key:    secretSpec.EnvName,
+		Value:  fmt.Sprintf("%v", data),
+		Masked: true,
+	}
+
+	vsb.variables = append(vsb.variables, v)
+
+	return nil
+}
+
+func (b *Build) prepareVaultVariables() error {
+	if b.Runner.Vault == nil {
+		return nil
+	}
+
+	builder := newVaultSecretBuilder()
+
+	err := vault.PrepareVaultSecrets(builder, b.Runner.Vault)
+	if err != nil {
+		return err
+	}
+
+	b.vaultVariables = builder.variables
+
 	return nil
 }
 
@@ -662,6 +710,7 @@ func (b *Build) GetAllVariables() JobVariables {
 	variables = append(variables, b.Variables...)
 	variables = append(variables, b.GetSharedEnvVariable())
 	variables = append(variables, AppVersion.Variables()...)
+	variables = append(variables, b.vaultVariables...)
 
 	b.allVariables = variables.Expand()
 	return b.allVariables

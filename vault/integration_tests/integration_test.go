@@ -12,12 +12,12 @@ import (
 )
 
 func TestTokenLogin(t *testing.T) {
-	s := newService(t)
+	s := NewService(t)
 
 	conf := config.Vault{
-		Server: s.getVaultServerConfig(serviceProxyPort),
+		Server: s.GetVaultServerConfig(ServiceProxyPort),
 		Auth: config.VaultAuth{
-			Token: s.getVaultTokenAuthConfig(),
+			Token: s.GetVaultTokenAuthConfig(),
 		},
 	}
 
@@ -31,12 +31,12 @@ func TestTokenLogin(t *testing.T) {
 }
 
 func TestUserpassLogin(t *testing.T) {
-	s := newService(t)
+	s := NewService(t)
 
 	conf := config.Vault{
-		Server: s.getVaultServerConfig(serviceProxyPort),
+		Server: s.GetVaultServerConfig(ServiceProxyPort),
 		Auth: config.VaultAuth{
-			Userpass: s.getVaultUserpassAuthConfig(),
+			Userpass: s.GetVaultUserpassAuthConfig(),
 		},
 	}
 
@@ -50,12 +50,12 @@ func TestUserpassLogin(t *testing.T) {
 }
 
 func TestTLSLogin(t *testing.T) {
-	s := newService(t)
+	s := NewService(t)
 
 	conf := config.Vault{
-		Server: s.getVaultServerConfig(serviceDirectPort),
+		Server: s.GetVaultServerConfig(ServiceDirectPort),
 		Auth: config.VaultAuth{
-			TLS: s.getVaultTLSAuthConfig(),
+			TLS: s.GetVaultTLSAuthConfig(),
 		},
 	}
 
@@ -69,14 +69,14 @@ func TestTLSLogin(t *testing.T) {
 }
 
 func TestSecretRead(t *testing.T) {
-	s := newService(t)
+	s := NewService(t)
 
 	conf := config.Vault{
-		Server: s.getVaultServerConfig(serviceProxyPort),
+		Server: s.GetVaultServerConfig(ServiceProxyPort),
 		Auth: config.VaultAuth{
-			Token: s.getVaultTokenAuthConfig(),
+			Token: s.GetVaultTokenAuthConfig(),
 		},
-		Secrets: s.getVaultSecretsConfig(),
+		Secrets: s.GetVaultSecretsConfig(),
 	}
 
 	builderMock := new(secret.MockBuilder)

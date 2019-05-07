@@ -308,3 +308,92 @@ func TestVault_ReadSecrets(t *testing.T) {
 		})
 	}
 }
+
+func TestPrepareVaultSecretsWithService(t *testing.T) {
+	conf := &config.Vault{}
+
+	tests := map[string]struct {
+		builder          secret.Builder
+		prepareVaultMock func(vaultMock *MockVault)
+		expectedError    string
+	}{
+		"nil builder": {
+			expectedError: "builder can't be nil",
+		},
+		"error on vault connection": {
+			builder: new(secret.MockBuilder),
+			prepareVaultMock: func(vaultMock *MockVault) {
+				vaultMock.On("Connect", conf.Server).
+					Return(errors.New("test-error")).
+					Once()
+			},
+			expectedError: "couldn't connect to vault: test-error",
+		},
+		"error on vault authentication": {
+			builder: new(secret.MockBuilder),
+			prepareVaultMock: func(vaultMock *MockVault) {
+				vaultMock.On("Connect", conf.Server).
+					Return(nil).
+					Once()
+
+				vaultMock.On("Authenticate", conf.Auth).
+					Return(errors.New("test-error")).
+					Once()
+			},
+			expectedError: "couldn't authenticate in vault: test-error",
+		},
+		"error on vault secrets reading": {
+			builder: new(secret.MockBuilder),
+			prepareVaultMock: func(vaultMock *MockVault) {
+				vaultMock.On("Connect", conf.Server).
+					Return(nil).
+					Once()
+
+				vaultMock.On("Authenticate", conf.Auth).
+					Return(nil).
+					Once()
+
+				vaultMock.On("ReadSecrets", conf.Secrets).
+					Return(errors.New("test-error")).
+					Once()
+			},
+			expectedError: "couldn't read secrets from vault: test-error",
+		},
+		"proper vault usage": {
+			builder: new(secret.MockBuilder),
+			prepareVaultMock: func(vaultMock *MockVault) {
+				vaultMock.On("Connect", conf.Server).
+					Return(nil).
+					Once()
+
+				vaultMock.On("Authenticate", conf.Auth).
+					Return(nil).
+					Once()
+
+				vaultMock.On("ReadSecrets", conf.Secrets).
+					Return(nil).
+					Once()
+			},
+		},
+	}
+
+	for testName, test := range tests {
+		t.Run(testName, func(t *testing.T) {
+			vaultMock := new(MockVault)
+			defer vaultMock.AssertExpectations(t)
+
+			if test.prepareVaultMock != nil {
+				test.prepareVaultMock(vaultMock)
+			}
+
+			err := PrepareVaultSecretsWithService(vaultMock, test.builder, conf)
+
+			if test.expectedError != "" {
+				assert.EqualError(t, err, test.expectedError)
+				return
+			}
+
+			assert.NoError(t, err)
+		})
+	}
+}

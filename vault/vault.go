@@ -94,3 +94,30 @@ func (v *vault) ReadSecrets(secrets config.VaultSecrets) error {
 
 	return nil
 }
+
+func PrepareVaultSecrets(builder secret.Builder, conf *config.Vault) error {
+	return PrepareVaultSecretsWithService(New(builder), builder, conf)
+}
+
+func PrepareVaultSecretsWithService(vaultService Vault, builder secret.Builder, conf *config.Vault) error {
+	if builder == nil {
+		return errors.New("builder can't be nil")
+	}
+
+	err := vaultService.Connect(conf.Server)
+	if err != nil {
+		return errors.Wrap(err, "couldn't connect to vault")
+	}
+
+	err = vaultService.Authenticate(conf.Auth)
+	if err != nil {
+		return errors.Wrap(err, "couldn't authenticate in vault")
+	}
+
+	err = vaultService.ReadSecrets(conf.Secrets)
+	if err != nil {
+		return errors.Wrap(err, "couldn't read secrets from vault")
+	}
+
+	return nil
+}

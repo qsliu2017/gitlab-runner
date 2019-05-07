@@ -19,21 +19,21 @@ import (
 )
 
 const (
-	serviceProxyPort  = 8443
-	serviceDirectPort = 8200
+	ServiceProxyPort  = 8443
+	ServiceDirectPort = 8200
 )
 
-type service struct {
+type Service struct {
 	t *testing.T
 }
 
-func newService(t *testing.T) *service {
-	return &service{
+func NewService(t *testing.T) *Service {
+	return &Service{
 		t: t,
 	}
 }
 
-func (s *service) getVaultHostname() string {
+func (s *Service) getVaultHostname() string {
 	hostname := os.Getenv("VAULT_HOSTNAME")
 	if hostname != "" {
 		return hostname
@@ -42,18 +42,18 @@ func (s *service) getVaultHostname() string {
 	return "127.0.0.1"
 }
 
-func (s *service) getBaseURL(port int) string {
+func (s *Service) getBaseURL(port int) string {
 	return fmt.Sprintf("https://%s:%d", s.getVaultHostname(), port)
 }
 
-func (s *service) readMetadata() vault.Details {
+func (s *Service) ReadMetadata() vault.Details {
 	cli := http.DefaultClient
 	cli.Transport = http.DefaultTransport
 	cli.Transport.(*http.Transport).TLSClientConfig = &tls.Config{
 		InsecureSkipVerify: true,
 	}
 
-	resp, err := cli.Get(fmt.Sprintf("%s/metadata", s.getBaseURL(serviceProxyPort)))
+	resp, err := cli.Get(fmt.Sprintf("%s/metadata", s.getBaseURL(ServiceProxyPort)))
 	require.NoError(s.t, err)
 
 	body, err := ioutil.ReadAll(resp.Body)
@@ -66,8 +66,8 @@ func (s *service) readMetadata() vault.Details {
 	return details
 }
 
-func (s *service) getVaultServerConfig(port int) config.VaultServer {
-	details := s.readMetadata()
+func (s *Service) GetVaultServerConfig(port int) config.VaultServer {
+	details := s.ReadMetadata()
 
 	tlsCaFile, err := ioutil.TempFile("", "ca.cert")
 	require.NoError(s.t, err)
@@ -85,16 +85,16 @@ func (s *service) getVaultServerConfig(port int) config.VaultServer {
 	}
 }
 
-func (s *service) getVaultTokenAuthConfig() *config.VaultTokenAuth {
-	details := s.readMetadata()
+func (s *Service) GetVaultTokenAuthConfig() *config.VaultTokenAuth {
+	details := s.ReadMetadata()
 
 	return &config.VaultTokenAuth{
 		Token: details.RootToken,
 	}
 }
 
-func (s *service) getVaultUserpassAuthConfig() *config.VaultUserpassAuth {
-	details := s.readMetadata()
+func (s *Service) GetVaultUserpassAuthConfig() *config.VaultUserpassAuth {
+	details := s.ReadMetadata()
 
 	return &config.VaultUserpassAuth{
 		Username: details.AuthMethods.Userpass.Username,
@@ -102,8 +102,8 @@ func (s *service) getVaultUserpassAuthConfig() *config.VaultUserpassAuth {
 	}
 }
 
-func (s *service) getVaultTLSAuthConfig() *config.VaultTLSAuth {
-	details := s.readMetadata()
+func (s *Service) GetVaultTLSAuthConfig() *config.VaultTLSAuth {
+	details := s.ReadMetadata()
 
 	certFile, err := createTLSFile("client.crt", details.AuthMethods.TLSCert.AuthCert.CertificatePEM)
 	require.NoError(s.t, err)
@@ -138,8 +138,8 @@ func createTLSFile(name string, data string) (string, error) {
 	return file.Name(), nil
 }
 
-func (s *service) getVaultSecretsConfig() config.VaultSecrets {
-	details := s.readMetadata()
+func (s *Service) GetVaultSecretsConfig() config.VaultSecrets {
+	details := s.ReadMetadata()
 	cfg := make(config.VaultSecrets, len(details.TestSecrets))
 
 	for testSecretID, testSecret := range details.TestSecrets {
@@ -153,7 +153,7 @@ func (s *service) getVaultSecretsConfig() config.VaultSecrets {
 		for key := range testSecret.Data {
 			cfg[testSecretID].Keys[i] = &config.VaultSecretKey{
 				Key:     key,
-				EnvName: fmt.Sprintf("KV1_VARIABLE_%02d", i),
+				EnvName: fmt.Sprintf("%s_VARIABLE_%02d", testSecret.Type, i),
 			}
 			i++
 		}
