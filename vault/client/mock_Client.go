@@ -23,6 +23,29 @@ func (_m *MockClient) IsServerReady() VaultServerReadyResp {
 	return r0
 }
 
+// Read provides a mock function with given fields: path
+func (_m *MockClient) Read(path string) (map[string]interface{}, error) {
+	ret := _m.Called(path)
+
+	var r0 map[string]interface{}
+	if rf, ok := ret.Get(0).(func(string) map[string]interface{}); ok {
+		r0 = rf(path)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(map[string]interface{})
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(string) error); ok {
+		r1 = rf(path)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // SetToken provides a mock function with given fields: token
 func (_m *MockClient) SetToken(token string) {
 	_m.Called(token)

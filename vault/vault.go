@@ -5,19 +5,22 @@ import (
 
 	"gitlab.com/gitlab-org/gitlab-runner/vault/client"
 	"gitlab.com/gitlab-org/gitlab-runner/vault/config"
+	"gitlab.com/gitlab-org/gitlab-runner/vault/secret"
 )
 
 type Vault interface {
 	Connect(server config.VaultServer) error
 	Authenticate(auth config.VaultAuth) error
+	ReadSecrets(secrets config.VaultSecrets) error
 }
 
-func New() Vault {
-	return new(vault)
+func New(builder secret.Builder) Vault {
+	return &vault{builder: builder}
 }
 
 type vault struct {
-	client client.Client
+	client  client.Client
+	builder secret.Builder
 
 	serverConfig config.VaultServer
 }
@@ -72,6 +75,22 @@ func (v *vault) Authenticate(auth config.VaultAuth) error {
 	}
 
 	v.client.SetToken(tokenInfo.Token)
+
+	return nil
+}
+
+func (v *vault) ReadSecrets(secrets config.VaultSecrets) error {
+	for _, sec := range secrets {
+		reader, err := getSecretReader(sec)
+		if err != nil {
+			return errors.Wrapf(err, "couldn't create reader for secret %v", sec)
+		}
+
+		err = reader.Read(v.client, v.builder, sec.Path, sec)
+		if err != nil {
+			return errors.Wrapf(err, "couldn't read secret %v", sec)
+		}
+	}
 
 	return nil
 }

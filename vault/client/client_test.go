@@ -93,7 +93,7 @@ func TestClient_IsServerReady(t *testing.T) {
 		t.Run(testName, func(t *testing.T) {
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				if r.URL.Path != "/v1/sys/health" {
-					w.WriteHeader(http.StatusNotFound)
+					http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
 					return
 				}
 
@@ -151,7 +151,7 @@ func TestClient_TokenLookupSelf(t *testing.T) {
 		t.Run(testName, func(t *testing.T) {
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				if r.URL.Path != "/v1/auth/token/lookup-self" {
-					w.WriteHeader(http.StatusNotFound)
+					http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
 					return
 				}
 
@@ -204,7 +204,7 @@ func TestClient_UserpassLogin(t *testing.T) {
 		t.Run(testName, func(t *testing.T) {
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				if r.URL.Path != fmt.Sprintf("/v1/auth/%s/login/%s", testPath, testUser) {
-					w.WriteHeader(http.StatusNotFound)
+					http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
 					return
 				}
 
@@ -398,7 +398,7 @@ func TestClient_TLSLogin(t *testing.T) {
 
 			server := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				if r.URL.Path != fmt.Sprintf("/v1/auth/%s/login", testPath) {
-					w.WriteHeader(http.StatusNotFound)
+					http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
 					return
 				}
 
@@ -479,4 +479,58 @@ func createTLSFile(name string, data string) (string, error) {
 	}
 
 	return file.Name(), nil
+}
+
+func TestClient_Read(t *testing.T) {
+	tests := map[string]struct {
+		path          string
+		response      string
+		expectedError string
+	}{
+		"failure on secret read": {
+			path:          "error",
+			expectedError: `couldn't read data for "error": Error making API request.`,
+		},
+		"proper secret read": {
+			path:     "test/path",
+			response: `{"data":{"testKey":"testValue"}}`,
+		},
+	}
+
+	for testName, test := range tests {
+		t.Run(testName, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.URL.Path == "/v1/error" {
+					http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+					return
+				}
+
+				if r.URL.Path != "/v1/test/path" {
+					http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+					return
+				}
+
+				w.WriteHeader(http.StatusOK)
+				_, _ = w.Write([]byte(test.response))
+			}))
+			defer server.Close()
+
+			cli, err := New(config.VaultServer{
+				URL: server.URL,
+			})
+			require.NoError(t, err)
+
+			data, err := cli.Read(test.path)
+
+			if test.expectedError != "" {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), test.expectedError)
+				return
+			}
+
+			assert.NoError(t, err)
+			require.Contains(t, data, "testKey")
+			assert.Equal(t, "testValue", data["testKey"])
+		})
+	}
 }

@@ -53,3 +53,12 @@ func TestVaultTLSAuth_GetPath(t *testing.T) {
 		})
 	}
 }
+
+func TestVaultSecretKeys_String(t *testing.T) {
+	k := VaultSecretKeys{
+		{Key: "key1", EnvName: "env1"},
+		{Key: "key2", EnvName: "env2"},
+	}
+
+	assert.Equal(t, "[key1=env1 key2=env2]", k.String())
+}

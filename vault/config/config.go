@@ -1,5 +1,10 @@
 package config
 
+import (
+	"fmt"
+	"strings"
+)
+
 const (
 	VaultSecretTypeKV1 VaultSecretType = "kv1"
 	VaultSecretTypeKV2 VaultSecretType = "kv2"
@@ -71,6 +76,16 @@ type VaultSecret struct {
 type VaultSecretType string
 
 type VaultSecretKeys []*VaultSecretKey
+
+func (k VaultSecretKeys) String() string {
+	var out []string
+
+	for _, s := range k {
+		out = append(out, fmt.Sprintf("%s=%s", s.Key, s.EnvName))
+	}
+
+	return fmt.Sprintf("[%s]", strings.Join(out, " "))
+}
 
 type VaultSecretKey struct {
 	Key     string `toml:"key" json:"key" long:"key" required:"true" description:"Secret's key"`

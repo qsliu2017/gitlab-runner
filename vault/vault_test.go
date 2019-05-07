@@ -11,6 +11,7 @@ import (
 
 	"gitlab.com/gitlab-org/gitlab-runner/vault/client"
 	"gitlab.com/gitlab-org/gitlab-runner/vault/config"
+	"gitlab.com/gitlab-org/gitlab-runner/vault/secret"
 )
 
 func TestVault_Connect(t *testing.T) {
@@ -75,7 +76,7 @@ func TestVault_Connect(t *testing.T) {
 				return mockClient, test.clientInitError
 			}
 
-			v := New()
+			v := New(nil)
 			err := v.Connect(config.VaultServer{})
 
 			if test.expectedError != "" {
@@ -103,7 +104,7 @@ func TestVault_DobuleConnect(t *testing.T) {
 		return mockClient, nil
 	}
 
-	v := New()
+	v := New(nil)
 
 	err := v.Connect(config.VaultServer{})
 	require.NoError(t, err)
@@ -218,6 +219,92 @@ func TestVault_Authenticate(t *testing.T) {
 			} else {
 				assert.NoError(t, err)
 			}
+		})
+	}
+}
+
+func TestVault_ReadSecrets(t *testing.T) {
+	secretPath := "/path/to/secret"
+	secretSpec := &config.VaultSecret{
+		Type: config.VaultSecretType("mocked"),
+		Path: secretPath,
+		Keys: config.VaultSecretKeys{
+			{Key: "secret-key", EnvName: "env-name"},
+		},
+	}
+
+	tests := map[string]struct {
+		secrets       config.VaultSecrets
+		mockReader    func() *MockSecretReader
+		expectedError string
+	}{
+		"failure on reader creation": {
+			secrets: config.VaultSecrets{
+				{
+					Type: config.VaultSecretType("unknown"),
+					Path: secretPath,
+				},
+			},
+			expectedError: `couldn't create reader for secret &{unknown /path/to/secret []}: SecretReader factory for type "unknown" is not defined`,
+		},
+		"failure on secret read": {
+			secrets: config.VaultSecrets{secretSpec},
+			mockReader: func() *MockSecretReader {
+				m := new(MockSecretReader)
+				m.On("Read", mock.Anything, mock.Anything, secretPath, secretSpec).
+					Return(errors.New("test-error")).
+					Once()
+
+				return m
+			},
+			expectedError: `couldn't read secret &{mocked /path/to/secret [secret-key=env-name]}: test-error`,
+		},
+		"valid secret read": {
+			secrets: config.VaultSecrets{secretSpec},
+			mockReader: func() *MockSecretReader {
+				m := new(MockSecretReader)
+				m.On("Read", mock.Anything, mock.Anything, secretPath, secretSpec).
+					Return(nil).
+					Once()
+
+				return m
+			},
+		},
+	}
+
+	for testName, test := range tests {
+		t.Run(testName, func(t *testing.T) {
+			cli := new(client.MockClient)
+			defer cli.AssertExpectations(t)
+
+			builder := new(secret.MockBuilder)
+			defer builder.AssertExpectations(t)
+
+			v := new(vault)
+			v.client = cli
+			v.builder = builder
+
+			if test.mockReader != nil {
+				mockReader := test.mockReader()
+				defer mockReader.AssertExpectations(t)
+
+				oldSecretReaderFactories := secretReaderFactories
+				defer func() {
+					secretReaderFactories = oldSecretReaderFactories
+				}()
+				secretReaderFactories = map[config.VaultSecretType]SecretReaderFactory{
+					"mocked": func() SecretReader { return mockReader },
+				}
+			}
+
+			err := v.ReadSecrets(test.secrets)
+
+			if test.expectedError != "" {
+				assert.EqualError(t, err, test.expectedError)
+				return
+			}
+
+			assert.NoError(t, err)
 		})
 	}
 }

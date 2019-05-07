@@ -37,3 +37,17 @@ func (_m *MockVault) Connect(server config.VaultServer) error {
 
 	return r0
 }
+
+// ReadSecrets provides a mock function with given fields: secrets
+func (_m *MockVault) ReadSecrets(secrets config.VaultSecrets) error {
+	ret := _m.Called(secrets)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(config.VaultSecrets) error); ok {
+		r0 = rf(secrets)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}

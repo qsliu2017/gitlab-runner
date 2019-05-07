@@ -26,6 +26,7 @@ type Client interface {
 	TokenLookupSelf() (TokenInfo, error)
 	UserpassLogin(path string, username string, password string) (TokenInfo, error)
 	TLSLogin(path string, name string, tlsCertFile string, tlsKeyFile string) (TokenInfo, error)
+	Read(path string) (map[string]interface{}, error)
 }
 
 func New(server config.VaultServer) (Client, error) {
@@ -173,4 +174,13 @@ func (c *client) TLSLogin(path string, name string, tlsCertFile string, tlsKeyFi
 	}
 
 	return info, nil
+}
+
+func (c *client) Read(path string) (map[string]interface{}, error) {
+	secret, err := c.c.Logical().Read(path)
+	if err != nil {
+		return nil, errors.Wrapf(err, "couldn't read data for %q", path)
+	}
+
+	return secret.Data, nil
 }

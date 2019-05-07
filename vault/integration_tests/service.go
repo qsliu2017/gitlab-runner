@@ -137,3 +137,27 @@ func createTLSFile(name string, data string) (string, error) {
 
 	return file.Name(), nil
 }
+
+func (s *service) getVaultSecretsConfig() config.VaultSecrets {
+	details := s.readMetadata()
+	cfg := make(config.VaultSecrets, len(details.TestSecrets))
+
+	for testSecretID, testSecret := range details.TestSecrets {
+		cfg[testSecretID] = &config.VaultSecret{
+			Type: config.VaultSecretType(testSecret.Type),
+			Path: testSecret.Path,
+			Keys: make(config.VaultSecretKeys, len(testSecret.Data)),
+		}
+
+		i := 0
+		for key := range testSecret.Data {
+			cfg[testSecretID].Keys[i] = &config.VaultSecretKey{
+				Key:     key,
+				EnvName: fmt.Sprintf("KV1_VARIABLE_%02d", i),
+			}
+			i++
+		}
+	}
+
+	return cfg
+}
