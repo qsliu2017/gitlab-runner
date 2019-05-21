@@ -58,6 +58,7 @@ func TestExport(t *testing.T) {
 					"intkey":    int64(42),
 					"boolkey1":  true,
 					"boolkey2":  false,
+					"doublekey": float64(123.456),
 				},
 				MessageEvents: []trace.MessageEvent{
 					{
@@ -77,6 +78,7 @@ func TestExport(t *testing.T) {
 							"intkey":    int64(42),
 							"boolkey1":  true,
 							"boolkey2":  false,
+							"doublekey": float64(123.456),
 						},
 					},
 				},
@@ -110,11 +112,12 @@ func TestExport(t *testing.T) {
 					},
 				},
 				Tags: map[string]string{
-					"stringkey": "value",
-					"intkey":    "42",
-					"boolkey1":  "true",
-					"boolkey2":  "false",
-					"error":     "INVALID_ARGUMENT",
+					"stringkey":                     "value",
+					"intkey":                        "42",
+					"boolkey1":                      "true",
+					"boolkey2":                      "false",
+					"doublekey":                     "123.456",
+					"error":                         "INVALID_ARGUMENT",
 					"opencensus.status_description": "error",
 				},
 			},

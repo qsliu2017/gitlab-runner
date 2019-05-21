@@ -29,19 +29,17 @@
   revision = "d6e3b3328b783f23731bc4d058875b0371ff8109"
 
 [[projects]]
-  digest = "1:f0398d3e67182d06157d1d716049be5a03e34883e42e0c1057f8c8532bc600ad"
+  digest = "1:bd814bcd88664855fa5ce08445e35da674d19d79cc04919b8ce3d98041b75c43"
   name = "github.com/Azure/go-autorest"
   packages = [
     "autorest",
     "autorest/adal",
     "autorest/azure",
     "autorest/date",
-    "logger",
     "version",
   ]
   pruneopts = "N"
-  revision = "1ffcc8896ef6dfe022d90a4317d866f925cf0f9e"
-  version = "v11.1.2"
+  revision = "bca49d5b51a50dc5bb17bbf6204c711c6dbded06"
 
 [[projects]]
   digest = "1:c1d62360a070198ee8f055613fd8ac2d45ab5d4cfd4f77b7880e7e651ad432ce"
@@ -416,6 +414,14 @@
   revision = "03c5bf6be031b6dd45afec16b1cf94fc8938bc77"
 
 [[projects]]
+  digest = "1:81066070485a4394733e0dbd2d79d39a4393852e7802b2a2b3963115d396b21c"
+  name = "github.com/hashicorp/golang-lru"
+  packages = ["simplelru"]
+  pruneopts = "N"
+  revision = "7087cb70de9f7a8bc0a10c375cb0d2280a8edf9c"
+  version = "v0.5.1"
+
+[[projects]]
   digest = "1:ff6e83dd3b5a66d41c58a3d5e144bd06fcd4c376fd1a84379ad8c9a7dd308643"
   name = "github.com/imdario/mergo"
   packages = ["."]
@@ -695,10 +701,11 @@
   revision = "5af59b871b1bcc3f4b733f6db0ff3b6e8b247b92"
 
 [[projects]]
-  digest = "1:90a0e11d13444dbf388ada729d5a9b8c57355de59924cb402c2a7711c3c306e6"
+  digest = "1:a7a72845a33022c54e635a06a05ffac2c945e88faae527154bf2b416ea192b3d"
   name = "go.opencensus.io"
   packages = [
     ".",
+    "exemplar",
     "exporter/stackdriver/propagation",
     "internal",
     "internal/tagencoding",
@@ -711,10 +718,11 @@
     "trace",
     "trace/internal",
     "trace/propagation",
+    "trace/tracestate",
   ]
   pruneopts = "N"
-  revision = "e262766cd0d230a1bb7c37281e345e465f19b41b"
-  version = "v0.14.0"
+  revision = "3b8e2721f2c3c01fa1bf4a2e455874e7b8319cd7"
+  version = "v0.19.2"
 
 [[projects]]
   digest = "1:71493c600742696fffe16a76246b0e834931a2999a3df6801f124e4c3be8dec5"
@@ -728,7 +736,8 @@
   revision = "1f22c0103821b9390939b6776727195525381532"
 
 [[projects]]
-  digest = "1:12bf351167b765a0f2da3b384cb7dc2fdaedc3304e7ec5743914728a6c99242f"
+  branch = "master"
+  digest = "1:ef62e207e6bade2569145a226e6f3928068642600a0b94f47365f82ba4e392f4"
   name = "golang.org/x/net"
   packages = [
     "context",
@@ -743,7 +752,7 @@
     "trace",
   ]
   pruneopts = "N"
-  revision = "d0887baf81f4598189d4e12a37c6da86f0bba4d0"
+  revision = "018c4d40a106a7ae83689758294fcd8d23850745"
 
 [[projects]]
   digest = "1:ae9e92c97d169cfcdb89005f27c71c500d50c2fe2299b411f028993bcf70fc03"
