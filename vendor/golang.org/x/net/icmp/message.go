@@ -18,7 +18,6 @@ import (
 	"encoding/binary"
 	"errors"
 	"net"
-	"runtime"
 
 	"golang.org/x/net/internal/iana"
 	"golang.org/x/net/ipv4"
@@ -29,14 +28,12 @@ import (
 
 var (
 	errInvalidConn      = errors.New("invalid connection")
-	errInvalidProtocol  = errors.New("invalid protocol")
 	errMessageTooShort  = errors.New("message too short")
 	errHeaderTooShort   = errors.New("header too short")
 	errBufferTooShort   = errors.New("buffer too short")
-	errInvalidBody      = errors.New("invalid body")
+	errOpNoSupport      = errors.New("operation not supported")
 	errNoExtension      = errors.New("no extension")
 	errInvalidExtension = errors.New("invalid extension")
-	errNotImplemented   = errors.New("not implemented on " + runtime.GOOS + "/" + runtime.GOARCH)
 )
 
 func checksum(b []byte) uint16 {
@@ -76,28 +73,27 @@ type Message struct {
 // compute the checksum field during the message transmission.
 // When psh is not nil, it must be the pseudo header for IPv6.
 func (m *Message) Marshal(psh []byte) ([]byte, error) {
-	var mtype byte
+	var mtype int
 	switch typ := m.Type.(type) {
 	case ipv4.ICMPType:
-		mtype = byte(typ)
+		mtype = int(typ)
 	case ipv6.ICMPType:
-		mtype = byte(typ)
+		mtype = int(typ)
 	default:
-		return nil, errInvalidProtocol
+		return nil, errInvalidConn
 	}
-	b := []byte{mtype, byte(m.Code), 0, 0}
-	proto := m.Type.Protocol()
-	if proto == iana.ProtocolIPv6ICMP && psh != nil {
+	b := []byte{byte(mtype), byte(m.Code), 0, 0}
+	if m.Type.Protocol() == iana.ProtocolIPv6ICMP && psh != nil {
 		b = append(psh, b...)
 	}
-	if m.Body != nil && m.Body.Len(proto) != 0 {
-		mb, err := m.Body.Marshal(proto)
+	if m.Body != nil && m.Body.Len(m.Type.Protocol()) != 0 {
+		mb, err := m.Body.Marshal(m.Type.Protocol())
 		if err != nil {
 			return nil, err
 		}
 		b = append(b, mb...)
 	}
-	if proto == iana.ProtocolIPv6ICMP {
+	if m.Type.Protocol() == iana.ProtocolIPv6ICMP {
 		if psh == nil { // cannot calculate checksum here
 			return b, nil
 		}
@@ -134,8 +130,7 @@ var parseFns = map[Type]func(int, Type, []byte) (MessageBody, error){
 }
 
 // ParseMessage parses b as an ICMP message.
-// The provided proto must be either the ICMPv4 or ICMPv6 protocol
-// number.
+// Proto must be either the ICMPv4 or ICMPv6 protocol number.
 func ParseMessage(proto int, b []byte) (*Message, error) {
 	if len(b) < 4 {
 		return nil, errMessageTooShort
@@ -148,10 +143,10 @@ func ParseMessage(proto int, b []byte) (*Message, error) {
 	case iana.ProtocolIPv6ICMP:
 		m.Type = ipv6.ICMPType(b[0])
 	default:
-		return nil, errInvalidProtocol
+		return nil, errInvalidConn
 	}
 	if fn, ok := parseFns[m.Type]; !ok {
-		m.Body, err = parseRawBody(proto, b[4:])
+		m.Body, err = parseDefaultMessageBody(proto, b[4:])
 	} else {
 		m.Body, err = fn(proto, m.Type, b[4:])
 	}
