@@ -192,7 +192,7 @@ ignored = ["test", "appengine"]
 
 [[override]]
   name = "github.com/emicklei/go-restful"
-  revision = "ad3e7d5a0a11fbbead57cc9353720a60a0a2793f"
+  revision = "89ef8af493ab468a45a42bb0d89a06fccdd2fb22"
 
 [[override]]
   name = "github.com/ghodss/yaml"
