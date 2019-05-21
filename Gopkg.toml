@@ -117,10 +117,6 @@ ignored = ["test", "appengine"]
   name = "golang.org/x/crypto"
   revision = "1f22c0103821b9390939b6776727195525381532"
 
-#[[constraint]]
-#  name = "golang.org/x/net"
-#  revision = "d0887baf81f4598189d4e12a37c6da86f0bba4d0"
-
 [[constraint]]
   # branch = "v2"
   name = "gopkg.in/yaml.v2"
@@ -300,10 +296,6 @@ ignored = ["test", "appengine"]
 [[override]]
   name = "github.com/googleapis/gax-go"
   version = "v2.0.0"
-
-#[[override]]
-#  name = "go.opencensus.io"
-#  version = "v0.14.0"
 
 [[override]]
   name = "google.golang.org/grpc"
