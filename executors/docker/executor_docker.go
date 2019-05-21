@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"path"
 	"path/filepath"
@@ -27,6 +28,7 @@ import (
 	"gitlab.com/gitlab-org/gitlab-runner/executors"
 	"gitlab.com/gitlab-org/gitlab-runner/executors/docker/internal/volumes"
 	"gitlab.com/gitlab-org/gitlab-runner/executors/docker/internal/volumes/parser"
+	"gitlab.com/gitlab-org/gitlab-runner/executors/docker/internal/volumes/validator"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers"
 	docker_helpers "gitlab.com/gitlab-org/gitlab-runner/helpers/docker"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers/docker/helperimage"
@@ -1143,7 +1145,12 @@ func (e *executor) prepareBuildsDir(options common.ExecutorPrepareOptions) error
 		e.SharedBuildsDir = true
 	}
 
-	if !filepath.IsAbs(e.RootDir()) {
+	log.Printf("e.RootDir(): %#+v", e.RootDir())
+	v, err := validator.New(e.info)
+	if err != nil {
+		return err
+	}
+	if !v.IsAbs(e.RootDir()) {
 		return buildDirectoryNotAbsoluteErr
 	}
 
