@@ -8,7 +8,6 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"os"
-	"path/filepath"
 	"testing"
 	"time"
 
@@ -801,7 +800,7 @@ func TestDefaultEnvVariables(t *testing.T) {
 
 	vars := build.GetAllVariables().StringList()
 
-	assert.Contains(t, vars, "CI_PROJECT_DIR="+filepath.FromSlash(buildDir))
+	assert.Contains(t, vars, "CI_PROJECT_DIR="+buildDir)
 	assert.Contains(t, vars, "CI_SERVER=yes")
 }
 
