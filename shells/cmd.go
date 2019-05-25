@@ -265,7 +265,7 @@ func (b *CmdShell) NewWriter(tmpPath string) ShellWriter {
 }
 
 func (b *CmdShell) GenerateScript(buildStage common.BuildStage, info common.ShellScriptInfo) (script string, err error) {
-	w := b.NewWriter(info.Build.TmpProjectDir).(CmdWriter)
+	w := b.NewWriter(info.Build.TmpProjectDir()).(*CmdWriter)
 	w.disableDelayedErrorLevelExpansion = info.Build.IsFeatureFlagOn(featureflags.CmdDisableDelayedErrorLevelExpansion)
 
 	if buildStage == common.BuildStagePrepare {

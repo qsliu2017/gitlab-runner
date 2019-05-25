@@ -275,7 +275,7 @@ func (b *PowerShell) NewWriter(tmpPath string) ShellWriter {
 }
 
 func (b *PowerShell) GenerateScript(buildStage common.BuildStage, info common.ShellScriptInfo) (script string, err error) {
-	w := b.NewWriter(info.Build.TmpProjectDir())
+	w := b.NewWriter(info.Build.TmpProjectDir()).(*PsWriter)
 
 	if buildStage == common.BuildStagePrepare {
 		if len(info.Build.Hostname) != 0 {

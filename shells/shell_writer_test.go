@@ -11,24 +11,18 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"gitlab.com/gitlab-org/gitlab-runner/common"
 	"gitlab.com/gitlab-org/gitlab-runner/shells"
 	"gitlab.com/gitlab-org/gitlab-runner/shells/shellstest"
 )
 
-type shellWriterFactory func() shells.ShellWriter
-
-var shellWriters map[string]shellWriterFactory
-
-func registerShellWriter(shell shellWriterFactory) {
-
-}
-
-func runShell(t *testing.T, shell, cwd string, writer shells.ShellWriter) {
+func runShell(t *testing.T, shell common.Shell, cwd string, writer shells.ShellWriter) {
 	var extension string
 	var cmdArgs []string
 
-	switch shell {
-	case "bash":
+	// TODO: Change that
+	switch shell.GetName() {
+	case "bash", "sh":
 		extension = "sh"
 
 	case "cmd":
@@ -44,13 +38,13 @@ func runShell(t *testing.T, shell, cwd string, writer shells.ShellWriter) {
 	}
 
 	script := writer.Finish(false)
-	scriptFile := filepath.Join(cwd, shell+"-test-script."+extension)
+	scriptFile := filepath.Join(cwd, shell.GetName()+"-test-script."+extension)
 	err := ioutil.WriteFile(scriptFile, []byte(script), 0700)
 	require.NoError(t, err)
 	defer os.Remove(scriptFile)
 
 	cmdArgs = append(cmdArgs, scriptFile)
-	cmd := exec.Command(shell, cmdArgs...)
+	cmd := exec.Command(shell.GetName(), cmdArgs...)
 	cmd.Dir = cwd
 
 	output, err := cmd.CombinedOutput()
@@ -64,8 +58,11 @@ func TestMkDir(t *testing.T) {
 	require.NoError(t, err)
 	defer os.RemoveAll(tmpDir)
 
-	shellstest.OnEachShellWithWriter(t, func(t *testing.T, shell string, writer shells.ShellWriter) {
-		testTmpDir := writer.MkTmpDir(shell + "-mkdir-test")
+	shellstest.OnEachShell(t, func(t *testing.T, shell common.Shell) {
+		shellWithWriter := shell.(shells.ShellWithWriter)
+		writer := shellWithWriter.NewWriter(tmpDir)
+
+		testTmpDir := writer.MkTmpDir(shell.GetName() + "-mkdir-test")
 		writer.Cd(testTmpDir)
 		writer.MkDir(TestPath)
 		writer.MkDir(TestPath)
@@ -85,7 +82,10 @@ func TestRmFile(t *testing.T) {
 	require.NoError(t, err)
 	defer os.RemoveAll(tmpDir)
 
-	shellstest.OnEachShellWithWriter(t, func(t *testing.T, shell string, writer shells.ShellWriter) {
+	shellstest.OnEachShell(t, func(t *testing.T, shell common.Shell) {
+		shellWithWriter := shell.(shells.ShellWithWriter)
+		writer := shellWithWriter.NewWriter(tmpDir)
+
 		tmpFile := path.Join(tmpDir, TestPath)
 		err = ioutil.WriteFile(tmpFile, []byte{}, 0600)
 		require.NoError(t, err)
