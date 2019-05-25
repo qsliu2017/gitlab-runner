@@ -23,7 +23,7 @@ type linuxParser struct {
 func NewLinuxParser() Parser {
 	return &linuxParser{
 		baseParser: baseParser{
-			path: path.NewUnixPath(),
+			path: path_helpers.NewUnixPath(),
 		},
 	}
 }

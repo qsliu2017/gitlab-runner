@@ -4,5 +4,5 @@ import "gitlab.com/gitlab-org/gitlab-runner/helpers/path"
 
 type Parser interface {
 	ParseVolume(spec string) (*Volume, error)
-	Path() path.Path
+	Path() path_helpers.Path
 }

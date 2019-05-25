@@ -7,7 +7,7 @@ import (
 )
 
 type baseParser struct {
-	path path.Path
+	path path_helpers.Path
 }
 
 // The way how matchesToVolumeSpecParts parses the volume mount specification and assigns
@@ -46,6 +46,6 @@ func (p *baseParser) matchesToVolumeSpecParts(spec string, specExp *regexp.Regex
 	return parts, nil
 }
 
-func (p *baseParser) Path() path.Path {
+func (p *baseParser) Path() path_helpers.Path {
 	return p.path
 }

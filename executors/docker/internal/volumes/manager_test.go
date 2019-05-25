@@ -52,7 +52,7 @@ func addCacheContainerManager(manager *manager) *MockCacheContainersManager {
 
 func addParser(manager *manager) *parser.MockParser {
 	parserMock := new(parser.MockParser)
-	parserMock.On("Path").Return(path.NewUnixPath())
+	parserMock.On("Path").Return(path_helpers.NewUnixPath())
 
 	manager.parser = parserMock
 	return parserMock

@@ -3,7 +3,7 @@
 // This implementation only works when compiled for Windows
 // as this uses the `path/filepath` which is platform dependent
 
-package path
+package path_helpers
 
 import (
 	"path/filepath"

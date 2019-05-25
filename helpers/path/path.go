@@ -1,4 +1,4 @@
-package path
+package path_helpers
 
 type Path interface {
 	Join(elem ...string) string

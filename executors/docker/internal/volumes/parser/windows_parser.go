@@ -74,7 +74,7 @@ type windowsParser struct {
 func NewWindowsParser() Parser {
 	return &windowsParser{
 		baseParser: baseParser{
-			path: path.NewWindowsPath(),
+			path: path_helpers.NewWindowsPath(),
 		},
 	}
 }

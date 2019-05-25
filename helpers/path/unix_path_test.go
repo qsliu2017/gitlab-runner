@@ -1,4 +1,4 @@
-package path
+package path_helpers
 
 import (
 	"testing"
