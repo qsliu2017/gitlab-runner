@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"io/ioutil"
 	"os"
-	"syscall"
 	"testing"
 
 	"github.com/sirupsen/logrus"
@@ -31,12 +30,6 @@ func createTestDirectory(t *testing.T) string {
 	err := os.Mkdir("test_directory", 0711)
 	assert.NoError(t, err)
 	return "test_directory"
-}
-
-func createTestPipe(t *testing.T) string {
-	err := syscall.Mkfifo("test_pipe", 0600)
-	assert.NoError(t, err)
-	return "test_pipe"
 }
 
 func createTestGitPathFile(t *testing.T) string {
@@ -72,10 +65,10 @@ func TestZipCreate(t *testing.T) {
 	testInWorkDir(t, func(t *testing.T, fileName string) {
 		paths := []string{
 			createTestFile(t),
-			createSymlinkFile(t),
 			createTestDirectory(t),
-			createTestPipe(t),
+			createSymlinkFile(t),
 			"non_existing_file.txt",
+			createTestPipe(t),
 		}
 		err := CreateZipFile(fileName, paths)
 		require.NoError(t, err)
@@ -90,11 +83,11 @@ func TestZipCreate(t *testing.T) {
 		assert.Equal(t, os.FileMode(0640), archive.File[0].Mode().Perm())
 		assert.NotEmpty(t, archive.File[0].Extra)
 
-		assert.Equal(t, "new_symlink", archive.File[1].Name)
+		assert.Equal(t, "test_directory/", archive.File[1].Name)
+		assert.NotEmpty(t, archive.File[1].Extra)
+		assert.True(t, archive.File[1].Mode().IsDir())
 
-		assert.Equal(t, "test_directory/", archive.File[2].Name)
-		assert.NotEmpty(t, archive.File[2].Extra)
-		assert.True(t, archive.File[2].Mode().IsDir())
+		assert.Equal(t, "new_symlink", archive.File[1].Name)
 	})
 }
 

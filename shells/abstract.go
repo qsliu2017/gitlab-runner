@@ -14,6 +14,12 @@ import (
 	"gitlab.com/gitlab-org/gitlab-runner/helpers/tls"
 )
 
+type ShellWithWriter interface {
+	common.Shell
+
+	NewWriter(tmpPath string) ShellWriter
+}
+
 type AbstractShell struct {
 }
 

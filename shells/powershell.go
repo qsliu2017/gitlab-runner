@@ -268,10 +268,14 @@ func (b *PowerShell) GetConfiguration(info common.ShellScriptInfo) (script *comm
 	return
 }
 
-func (b *PowerShell) GenerateScript(buildStage common.BuildStage, info common.ShellScriptInfo) (script string, err error) {
-	w := &PsWriter{
-		TemporaryPath: info.Build.TmpProjectDir(),
+func (b *PowerShell) NewWriter(tmpPath string) ShellWriter {
+	return &PsWriter{
+		TemporaryPath: tmpPath,
 	}
+}
+
+func (b *PowerShell) GenerateScript(buildStage common.BuildStage, info common.ShellScriptInfo) (script string, err error) {
+	w := b.NewWriter(info.Build.TmpProjectDir())
 
 	if buildStage == common.BuildStagePrepare {
 		if len(info.Build.Hostname) != 0 {

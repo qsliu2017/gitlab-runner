@@ -245,11 +245,15 @@ func (b *BashShell) GetConfiguration(info common.ShellScriptInfo) (script *commo
 	return
 }
 
-func (b *BashShell) GenerateScript(buildStage common.BuildStage, info common.ShellScriptInfo) (script string, err error) {
-	w := &BashWriter{
-		TemporaryPath: info.Build.TmpProjectDir(),
-		Shell:         info.Shell,
+func (b *BashShell) NewWriter(tmpPath string) ShellWriter {
+	return &BashWriter{
+		TemporaryPath: tmpPath,
+		Shell:         b.Shell,
 	}
+}
+
+func (b *BashShell) GenerateScript(buildStage common.BuildStage, info common.ShellScriptInfo) (script string, err error) {
+	w := b.NewWriter(info.Build.TmpProjectDir())
 
 	if buildStage == common.BuildStagePrepare {
 		if len(info.Build.Hostname) != 0 {

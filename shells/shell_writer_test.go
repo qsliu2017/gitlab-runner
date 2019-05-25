@@ -15,6 +15,14 @@ import (
 	"gitlab.com/gitlab-org/gitlab-runner/shells/shellstest"
 )
 
+type shellWriterFactory func() shells.ShellWriter
+
+var shellWriters map[string]shellWriterFactory
+
+func registerShellWriter(shell shellWriterFactory) {
+
+}
+
 func runShell(t *testing.T, shell, cwd string, writer shells.ShellWriter) {
 	var extension string
 	var cmdArgs []string

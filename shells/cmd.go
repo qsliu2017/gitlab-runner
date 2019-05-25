@@ -258,11 +258,15 @@ func (b *CmdShell) GetConfiguration(info common.ShellScriptInfo) (script *common
 	return
 }
 
-func (b *CmdShell) GenerateScript(buildStage common.BuildStage, info common.ShellScriptInfo) (script string, err error) {
-	w := &CmdWriter{
-		TemporaryPath:                     info.Build.TmpProjectDir(),
-		disableDelayedErrorLevelExpansion: info.Build.IsFeatureFlagOn(featureflags.CmdDisableDelayedErrorLevelExpansion),
+func (b *CmdShell) NewWriter(tmpPath string) ShellWriter {
+	return &CmdWriter{
+		TemporaryPath: tmpPath,
 	}
+}
+
+func (b *CmdShell) GenerateScript(buildStage common.BuildStage, info common.ShellScriptInfo) (script string, err error) {
+	w := b.NewWriter(info.Build.TmpProjectDir).(CmdWriter)
+	w.disableDelayedErrorLevelExpansion = info.Build.IsFeatureFlagOn(featureflags.CmdDisableDelayedErrorLevelExpansion)
 
 	if buildStage == common.BuildStagePrepare {
 		if len(info.Build.Hostname) != 0 {
