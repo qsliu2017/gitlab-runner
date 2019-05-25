@@ -28,7 +28,7 @@ func OnEachShell(t *testing.T, f func(t *testing.T, shell string)) {
 func OnEachShellWithWriter(t *testing.T, f func(t *testing.T, shell string, writer shells.ShellWriter)) {
 	writers := map[string]shellWriterFactory{
 		"bash": func() shells.ShellWriter {
-			return &shells.BashWriter{}
+			return &shells.BashWriter{Shell: "bash"}
 		},
 		// TODO: How to fix that?
 		// "cmd": func() shells.ShellWriter {
@@ -40,8 +40,8 @@ func OnEachShellWithWriter(t *testing.T, f func(t *testing.T, shell string, writ
 	}
 
 	OnEachShell(t, func(t *testing.T, shell string) {
-		writer, ok := writers[shell]
-		require.True(t, ok, "Missing factory for %s", shell)
+		writer := writers[shell]
+		require.NotEmpty(t, writer, "Missing factory for %s", shell)
 
 		f(t, shell, writer())
 	})

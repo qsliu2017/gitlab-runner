@@ -44,6 +44,7 @@ type BashShell struct {
 type BashWriter struct {
 	bytes.Buffer
 	TemporaryPath string
+	Shell         string
 	indent        int
 }
 
@@ -196,7 +197,10 @@ func (b *BashWriter) Finish(trace bool) string {
 		io.WriteString(w, "set -o xtrace\n")
 	}
 
-	io.WriteString(w, "set -eo pipefail\n")
+	io.WriteString(w, "set -e\n")
+	if b.Shell == "bash" {
+		io.WriteString(w, "set -o pipefail\n")
+	}
 	io.WriteString(w, "set +o noclobber\n")
 	io.WriteString(w, ": | eval "+helpers.ShellEscape(b.String())+"\n")
 	io.WriteString(w, "exit 0\n")
@@ -244,6 +248,7 @@ func (b *BashShell) GetConfiguration(info common.ShellScriptInfo) (script *commo
 func (b *BashShell) GenerateScript(buildStage common.BuildStage, info common.ShellScriptInfo) (script string, err error) {
 	w := &BashWriter{
 		TemporaryPath: info.Build.TmpProjectDir(),
+		Shell:         info.Shell,
 	}
 
 	if buildStage == common.BuildStagePrepare {
@@ -264,6 +269,7 @@ func (b *BashShell) IsDefault() bool {
 }
 
 func init() {
-	common.RegisterShell(&BashShell{Shell: "sh"})
+	// TODO: it seems that `sh` is not fully supported
+	// common.RegisterShell(&BashShell{Shell: "sh"})
 	common.RegisterShell(&BashShell{Shell: "bash"})
 }
