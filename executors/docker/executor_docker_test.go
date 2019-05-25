@@ -14,6 +14,8 @@ import (
 	"testing"
 	"time"
 
+	"gitlab.com/gitlab-org/gitlab-runner/helpers/path"
+
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/network"
@@ -738,6 +740,7 @@ func getExecutorForVolumesTests(t *testing.T, test volumesTestCase) (*executor, 
 	}
 
 	err := e.Build.StartBuild(
+		path_helpers.NewUnixPath(),
 		e.RootDir(),
 		e.CacheDir(),
 		e.CustomBuildEnabled(),
