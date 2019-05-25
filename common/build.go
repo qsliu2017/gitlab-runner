@@ -7,7 +7,6 @@ import (
 	"net/url"
 	"os"
 	"path"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -16,6 +15,7 @@ import (
 
 	"gitlab.com/gitlab-org/gitlab-runner/helpers"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers/featureflags"
+	path_helpers "gitlab.com/gitlab-org/gitlab-runner/helpers/path"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers/tls"
 	"gitlab.com/gitlab-org/gitlab-runner/session"
 	"gitlab.com/gitlab-org/gitlab-runner/session/proxy"
@@ -130,23 +130,27 @@ func (b *Build) ProjectSlug() (string, error) {
 	return slug, nil
 }
 
-func (b *Build) ProjectUniqueDir(sharedDir bool) string {
-	dir, err := b.ProjectSlug()
-	if err != nil {
-		dir = fmt.Sprintf("project-%d", b.JobInfo.ProjectID)
-	}
+func (b *Build) ProjectUniqueDir(sharedDir bool) []string {
+	var path []string
 
 	// for shared dirs path is constructed like this:
 	// <some-path>/runner-short-id/concurrent-id/group-name/project-name/
 	// ex.<some-path>/01234567/0/group/repo/
 	if sharedDir {
-		dir = path.Join(
+		path = []string{
 			fmt.Sprintf("%s", b.Runner.ShortDescription()),
 			fmt.Sprintf("%d", b.ProjectRunnerID),
-			dir,
-		)
+		}
 	}
-	return dir
+
+	// append slug at end
+	dir, err := b.ProjectSlug()
+	if err != nil {
+		dir = fmt.Sprintf("project-%d", b.JobInfo.ProjectID)
+	}
+	path = append(path, dir)
+
+	return path
 }
 
 func (b *Build) FullProjectDir() string {
@@ -157,10 +161,10 @@ func (b *Build) TmpProjectDir() string {
 	return helpers.ToSlash(b.BuildDir) + ".tmp"
 }
 
-func (b *Build) getCustomBuildDir(rootDir, overrideKey string, customBuildDirEnabled, sharedDir bool) (string, error) {
+func (b *Build) getCustomBuildDir(path path_helpers.Path, rootDir, overrideKey string, customBuildDirEnabled, sharedDir bool) (string, error) {
 	dir := b.GetAllVariables().Get(overrideKey)
 	if dir == "" {
-		return path.Join(rootDir, b.ProjectUniqueDir(sharedDir)), nil
+		return path.Join(rootDir, path.Join(b.ProjectUniqueDir(sharedDir)...)), nil
 	}
 
 	if !customBuildDirEnabled {
@@ -175,16 +179,16 @@ func (b *Build) getCustomBuildDir(rootDir, overrideKey string, customBuildDirEna
 	return dir, nil
 }
 
-func (b *Build) StartBuild(rootDir, cacheDir string, customBuildDirEnabled, sharedDir bool) error {
+func (b *Build) StartBuild(path path_helpers.Path, rootDir, cacheDir string, customBuildDirEnabled, sharedDir bool) error {
 	var err error
 
 	// We set RootDir and invalidate variables
 	// to be able to use CI_BUILDS_DIR
 	b.RootDir = rootDir
-	b.CacheDir = path.Join(cacheDir, b.ProjectUniqueDir(false))
+	b.CacheDir = path.Join(cacheDir, path.Join(b.ProjectUniqueDir(false)...))
 	b.refreshAllVariables()
 
-	b.BuildDir, err = b.getCustomBuildDir(b.RootDir, "GIT_CLONE_PATH", customBuildDirEnabled, sharedDir)
+	b.BuildDir, err = b.getCustomBuildDir(path, b.RootDir, "GIT_CLONE_PATH", customBuildDirEnabled, sharedDir)
 	if err != nil {
 		return err
 	}
@@ -564,8 +568,8 @@ func (b *Build) String() string {
 
 func (b *Build) GetDefaultVariables() JobVariables {
 	return JobVariables{
-		{Key: "CI_BUILDS_DIR", Value: filepath.FromSlash(b.RootDir), Public: true, Internal: true, File: false},
-		{Key: "CI_PROJECT_DIR", Value: filepath.FromSlash(b.FullProjectDir()), Public: true, Internal: true, File: false},
+		{Key: "CI_BUILDS_DIR", Value: b.RootDir, Public: true, Internal: true, File: false},
+		{Key: "CI_PROJECT_DIR", Value: b.FullProjectDir(), Public: true, Internal: true, File: false},
 		{Key: "CI_CONCURRENT_ID", Value: strconv.Itoa(b.RunnerID), Public: true, Internal: true, File: false},
 		{Key: "CI_CONCURRENT_PROJECT_ID", Value: strconv.Itoa(b.ProjectRunnerID), Public: true, Internal: true, File: false},
 		{Key: "CI_SERVER", Value: "yes", Public: true, Internal: true, File: false},

@@ -12,6 +12,8 @@ import (
 	"testing"
 	"time"
 
+	"gitlab.com/gitlab-org/gitlab-runner/helpers/path"
+
 	"github.com/gorilla/websocket"
 	"github.com/sirupsen/logrus"
 	"github.com/sirupsen/logrus/hooks/test"
@@ -94,7 +96,7 @@ func TestBuildPredefinedVariables(t *testing.T) {
 	// We run everything once
 	e.On("Prepare", mock.Anything).
 		Return(func(options ExecutorPrepareOptions) error {
-			options.Build.StartBuild("/root/dir", "/cache/dir", false, false)
+			options.Build.StartBuild(path_helpers.NewUnixPath(), "/root/dir", "/cache/dir", false, false)
 			return nil
 		}).Once()
 	e.On("Finish", nil).Return().Once()
@@ -1086,7 +1088,8 @@ func TestStartBuild(t *testing.T) {
 				},
 			}
 
-			err := build.StartBuild(test.args.rootDir, test.args.cacheDir, test.args.customBuildDirEnabled, test.args.sharedDir)
+			err := build.StartBuild(path_helpers.NewUnixPath(), test.args.rootDir,
+				test.args.cacheDir, test.args.customBuildDirEnabled, test.args.sharedDir)
 			if test.expectedError {
 				assert.Error(t, err)
 				return
@@ -1354,7 +1357,7 @@ func TestDefaultVariables(t *testing.T) {
 				},
 			}
 
-			err := build.StartBuild(test.rootDir, "/cache", true, false)
+			err := build.StartBuild(path_helpers.NewUnixPath(), test.rootDir, "/cache", true, false)
 			assert.NoError(t, err)
 
 			variable := build.GetAllVariables().Get(test.key)
