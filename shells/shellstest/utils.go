@@ -5,6 +5,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"gitlab.com/gitlab-org/gitlab-runner/common"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers"
 	"gitlab.com/gitlab-org/gitlab-runner/shells"
 )
@@ -12,9 +13,7 @@ import (
 type shellWriterFactory func() shells.ShellWriter
 
 func OnEachShell(t *testing.T, f func(t *testing.T, shell string)) {
-	shells := []string{"bash", "cmd", "powershell"}
-
-	for _, shell := range shells {
+	for _, shell := range common.GetShells() {
 		t.Run(shell, func(t *testing.T) {
 			if helpers.SkipIntegrationTests(t, shell) {
 				t.Skip()
@@ -31,12 +30,13 @@ func OnEachShellWithWriter(t *testing.T, f func(t *testing.T, shell string, writ
 		"bash": func() shells.ShellWriter {
 			return &shells.BashWriter{}
 		},
-		"cmd": func() shells.ShellWriter {
-			return &shells.CmdWriter{}
-		},
-		"powershell": func() shells.ShellWriter {
-			return &shells.PsWriter{}
-		},
+		// TODO: How to fix that?
+		// "cmd": func() shells.ShellWriter {
+		// 	return &shells.CmdWriter{}
+		// },
+		// "powershell": func() shells.ShellWriter {
+		// 	return &shells.PsWriter{}
+		// },
 	}
 
 	OnEachShell(t, func(t *testing.T, shell string) {

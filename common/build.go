@@ -171,7 +171,7 @@ func (b *Build) getCustomBuildDir(path path_helpers.Path, rootDir, overrideKey s
 		return "", MakeBuildError("setting %s is not allowed, enable `custom_build_dir` feature", overrideKey)
 	}
 
-	if !strings.HasPrefix(dir, rootDir) {
+	if !path.Contains(rootDir, dir) {
 		return "", MakeBuildError("the %s=%q has to be within %q",
 			overrideKey, dir, rootDir)
 	}
