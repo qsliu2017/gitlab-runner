@@ -1,3 +1,5 @@
+// +build windows
+
 package shells
 
 import (
@@ -260,6 +262,7 @@ func (b *PowerShell) GetConfiguration(info common.ShellScriptInfo) (script *comm
 		PassFile:      info.Build.Runner.Executor != dockerWindowsExecutor,
 		Extension:     "ps1",
 		DockerCommand: []string{"PowerShell", "-NoProfile", "-NoLogo", "-InputFormat", "text", "-OutputFormat", "text", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", "-"},
+		Path:          path_helpers.NewWindowsPath(),
 	}
 	return
 }

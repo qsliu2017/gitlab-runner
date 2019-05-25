@@ -1,3 +1,5 @@
+// +build windows
+
 package shells
 
 import (
@@ -13,6 +15,7 @@ import (
 	"gitlab.com/gitlab-org/gitlab-runner/common"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers/featureflags"
+	"gitlab.com/gitlab-org/gitlab-runner/helpers/path"
 )
 
 type CmdShell struct {
@@ -250,6 +253,7 @@ func (b *CmdShell) GetConfiguration(info common.ShellScriptInfo) (script *common
 		Arguments: []string{"/C"},
 		PassFile:  true,
 		Extension: "cmd",
+		Path:      path_helpers.NewWindowsPath(),
 	}
 	return
 }

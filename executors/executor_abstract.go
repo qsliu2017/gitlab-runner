@@ -2,6 +2,7 @@ package executors
 
 import (
 	"context"
+	"errors"
 	"os"
 
 	"gitlab.com/gitlab-org/gitlab-runner/common"
@@ -30,6 +31,8 @@ type AbstractExecutor struct {
 	ProxyPool    proxy.Pool
 }
 
+var errMissingPath = errors.New("executor does not define Path handler")
+
 func (e *AbstractExecutor) updateShell() error {
 	script := e.Shell()
 	script.Build = e.Build
@@ -48,6 +51,7 @@ func (e *AbstractExecutor) generateShellConfiguration() error {
 	if err != nil {
 		return err
 	}
+
 	e.BuildShell = shellConfiguration
 	e.Debugln("Shell configuration:", shellConfiguration)
 	return nil
@@ -59,7 +63,12 @@ func (e *AbstractExecutor) startBuild() error {
 		e.Build.Hostname, _ = os.Hostname()
 	}
 
+	if e.BuildShell == nil || e.BuildShell.Path == nil {
+		return errMissingPath
+	}
+
 	return e.Build.StartBuild(
+		e.BuildShell.Path,
 		e.RootDir(),
 		e.CacheDir(),
 		e.CustomBuildEnabled(),
@@ -112,12 +121,7 @@ func (e *AbstractExecutor) PrepareConfiguration(options common.ExecutorPrepareOp
 }
 
 func (e *AbstractExecutor) PrepareBuildAndShell() error {
-	err := e.startBuild()
-	if err != nil {
-		return err
-	}
-
-	err = e.updateShell()
+	err := e.updateShell()
 	if err != nil {
 		return err
 	}
@@ -126,6 +130,12 @@ func (e *AbstractExecutor) PrepareBuildAndShell() error {
 	if err != nil {
 		return err
 	}
+
+	err = e.startBuild()
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 

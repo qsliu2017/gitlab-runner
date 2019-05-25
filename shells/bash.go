@@ -12,6 +12,7 @@ import (
 
 	"gitlab.com/gitlab-org/gitlab-runner/common"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers"
+	"gitlab.com/gitlab-org/gitlab-runner/helpers/path"
 )
 
 const bashDetectShell = `if [ -x /usr/local/bin/bash ]; then
@@ -220,6 +221,7 @@ func (b *BashShell) GetConfiguration(info common.ShellScriptInfo) (script *commo
 
 	script = &common.ShellConfiguration{}
 	script.DockerCommand = []string{"sh", "-c", detectScript}
+	script.Path = path_helpers.NewUnixPath()
 
 	// su
 	if info.User != "" {

@@ -6,6 +6,7 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"gitlab.com/gitlab-org/gitlab-runner/helpers"
+	path_helpers "gitlab.com/gitlab-org/gitlab-runner/helpers/path"
 )
 
 type ShellConfiguration struct {
@@ -15,6 +16,7 @@ type ShellConfiguration struct {
 	Arguments     []string
 	PassFile      bool
 	Extension     string
+	Path          path_helpers.Path
 }
 
 type ShellType int
