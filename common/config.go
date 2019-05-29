@@ -119,6 +119,14 @@ type VirtualBoxConfig struct {
 	DisableSnapshots bool   `toml:"disable_snapshots,omitzero" json:"disable_snapshots" long:"disable-snapshots" env:"VIRTUALBOX_DISABLE_SNAPSHOTS" description:"Disable snapshoting to speedup VM creation"`
 }
 
+type GenericScriptConfig struct {
+	Handler string `toml:"handler" json:"handler" long:"handler" env:"GENERIC_HANDLER" description:"The path to binary that handles Generic Executor"`
+
+	PrepareScript string `toml:"prepare_script" json:"prepare_script" long:"prepare-script" env:"GENERIC_SCRIPT_PREPARE_SCRIPT" description:"The path to binary that prepares executor"`
+	RunScript     string `toml:"run_script" json:"run_script" long:"run-script" env:"GENERIC_SCRIPT_RUN_SCRIPT" description:"The path to binary that run a command in executor"`
+	CleanupScript string `toml:"cleanup_script" json:"cleanup_script" long:"cleanup-script" env:"GENERIC_SCRIPT_CLEANUP_SCRIPT" description:"The path to binary that cleanups after executor run"`
+}
+
 type KubernetesPullPolicy string
 
 // Get returns one of the predefined values in kubernetes notation or returns an error if the value can't match the predefined
@@ -277,14 +285,15 @@ type RunnerSettings struct {
 
 	Shell string `toml:"shell,omitempty" json:"shell" long:"shell" env:"RUNNER_SHELL" description:"Select bash, cmd or powershell"`
 
-	CustomBuildDir *CustomBuildDir   `toml:"custom_build_dir,omitempty" json:"custom_build_dir" group:"custom build dir configuration" namespace:"custom_build_dir"`
-	SSH            *ssh.Config       `toml:"ssh,omitempty" json:"ssh" group:"ssh executor" namespace:"ssh"`
-	Docker         *DockerConfig     `toml:"docker,omitempty" json:"docker" group:"docker executor" namespace:"docker"`
-	Parallels      *ParallelsConfig  `toml:"parallels,omitempty" json:"parallels" group:"parallels executor" namespace:"parallels"`
-	VirtualBox     *VirtualBoxConfig `toml:"virtualbox,omitempty" json:"virtualbox" group:"virtualbox executor" namespace:"virtualbox"`
-	Cache          *CacheConfig      `toml:"cache,omitempty" json:"cache" group:"cache configuration" namespace:"cache"`
-	Machine        *DockerMachine    `toml:"machine,omitempty" json:"machine" group:"docker machine provider" namespace:"machine"`
-	Kubernetes     *KubernetesConfig `toml:"kubernetes,omitempty" json:"kubernetes" group:"kubernetes executor" namespace:"kubernetes"`
+	CustomBuildDir *CustomBuildDir      `toml:"custom_build_dir,omitempty" json:"custom_build_dir" group:"custom build dir configuration" namespace:"custom_build_dir"`
+	SSH            *ssh.Config          `toml:"ssh,omitempty" json:"ssh" group:"ssh executor" namespace:"ssh"`
+	Docker         *DockerConfig        `toml:"docker,omitempty" json:"docker" group:"docker executor" namespace:"docker"`
+	Parallels      *ParallelsConfig     `toml:"parallels,omitempty" json:"parallels" group:"parallels executor" namespace:"parallels"`
+	VirtualBox     *VirtualBoxConfig    `toml:"virtualbox,omitempty" json:"virtualbox" group:"virtualbox executor" namespace:"virtualbox"`
+	Cache          *CacheConfig         `toml:"cache,omitempty" json:"cache" group:"cache configuration" namespace:"cache"`
+	Machine        *DockerMachine       `toml:"machine,omitempty" json:"machine" group:"docker machine provider" namespace:"machine"`
+	Kubernetes     *KubernetesConfig    `toml:"kubernetes,omitempty" json:"kubernetes" group:"kubernetes executor" namespace:"kubernetes"`
+	GenericScript  *GenericScriptConfig `toml:"generic_script,omitempty" json:"generic_script" group:"generic script executor" namespace:"generic-script"`
 }
 
 type RunnerConfig struct {

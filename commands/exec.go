@@ -13,6 +13,7 @@ import (
 
 	// Force to load all executors, executes init() on them
 	_ "gitlab.com/gitlab-org/gitlab-runner/executors/docker"
+	_ "gitlab.com/gitlab-org/gitlab-runner/executors/generic_script"
 	_ "gitlab.com/gitlab-org/gitlab-runner/executors/parallels"
 	_ "gitlab.com/gitlab-org/gitlab-runner/executors/shell"
 	_ "gitlab.com/gitlab-org/gitlab-runner/executors/ssh"
