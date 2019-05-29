@@ -1,0 +1,8 @@
+#!/bin/bash
+
+set -xe
+
+LXC_NAME="generic-lxc-$GENERIC_ENV_CI_CONCURRENT_ID"
+
+lxc-attach --clear-env -n "$LXC_NAME" -- /bin/sh -c "/bin/cat > /script-to-run && chmod +x /script-to-run" < "$1"
+lxc-attach --clear-env -n "$LXC_NAME" -- "/script-to-run"

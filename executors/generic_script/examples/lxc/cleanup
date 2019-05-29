@@ -1,0 +1,8 @@
+#!/bin/bash
+
+set -x
+
+LXC_NAME="generic-lxc-$GENERIC_ENV_CI_CONCURRENT_ID"
+
+lxc-stop -n "$LXC_NAME" -t 10
+lxc-destroy -f -n "$LXC_NAME"

@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"gitlab.com/gitlab-org/gitlab-runner/common"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers"
@@ -17,7 +18,7 @@ import (
 )
 
 const (
-	TestTimeout = 20 * time.Second
+	TestTimeout = 60 * time.Second
 )
 
 func runBuildWithOptions(t *testing.T, build *common.Build, config *common.Config, trace *common.Trace) error {
@@ -90,6 +91,26 @@ func TestBuildSuccess(t *testing.T) {
 
 		build, cleanup := newBuild(t, successfulBuild, shell)
 		defer cleanup()
+
+		err = runBuild(t, build)
+		assert.NoError(t, err)
+	})
+}
+
+func TestBuildSuccessLXC(t *testing.T) {
+	shellstest.OnEachShell(t, func(t *testing.T, shell string) {
+		successfulBuild, err := common.GetRemoteSuccessfulBuild()
+		require.NoError(t, err)
+
+		build, cleanup := newBuild(t, successfulBuild, shell)
+		defer cleanup()
+
+		dir, err := os.Getwd()
+		require.NoError(t, err)
+
+		build.Runner.Generic.PrepareScript = filepath.Join(dir, "examples", "lxc", "prepare")
+		build.Runner.Generic.RunScript = filepath.Join(dir, "examples", "lxc", "run")
+		build.Runner.Generic.CleanupScript = filepath.Join(dir, "examples", "lxc", "cleanup")
 
 		err = runBuild(t, build)
 		assert.NoError(t, err)

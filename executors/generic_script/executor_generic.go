@@ -159,7 +159,7 @@ func (e *executor) Cleanup() {
 		return
 	}
 
-	ctx, cancelFunc := context.WithTimeout(s.Context, cleanupScriptTimeout)
+	ctx, cancelFunc := context.WithTimeout(context.Background(), cleanupScriptTimeout)
 	defer cancelFunc()
 
 	err := e.runCommand(ctx, e.Config.GenericScript.CleanupScript)

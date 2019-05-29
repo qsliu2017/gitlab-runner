@@ -1,0 +1,25 @@
+#!/bin/bash
+
+set -xe
+
+# Follow the https://wiki.debian.org/LXC#Unprivileged_container
+# to configure running unprivileged containers
+# if Runner runs as non-root user
+
+LXC_NAME="generic-lxc-$GENERIC_ENV_CI_CONCURRENT_ID"
+
+lxc-destroy -f -n "$LXC_NAME" || true
+lxc-create -n "$LXC_NAME" -t download -- -d ubuntu -r bionic -a amd64
+lxc-start -n "$LXC_NAME"
+
+# ensure that networking is up
+for i in $(seq 1 10); do
+  if [[ -n $(lxc-attach --clear-env -n "$LXC_NAME" -- hostname -I) ]]; then
+    break
+  fi
+  sleep 1s
+done
+
+# install Git
+lxc-attach --clear-env -n "$LXC_NAME" -- apt-get update -qqq -y
+lxc-attach --clear-env -n "$LXC_NAME" -- apt-get install -qqq -y git-core
