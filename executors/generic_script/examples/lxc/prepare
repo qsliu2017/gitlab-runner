@@ -8,6 +8,8 @@ set -xe
 
 LXC_NAME="generic-lxc-$GENERIC_ENV_CI_CONCURRENT_ID"
 
+trap 'lxc-stop -k -n "$LXC_NAME"' INT
+
 lxc-destroy -f -n "$LXC_NAME" || true
 lxc-create -n "$LXC_NAME" -t download -- -d ubuntu -r bionic -a amd64
 lxc-start -n "$LXC_NAME"

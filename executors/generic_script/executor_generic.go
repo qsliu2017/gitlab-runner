@@ -66,6 +66,9 @@ func (e *executor) killAndWait(process *exec.Cmd, waitCh chan error) error {
 				log.Errorln("Failed to kill:", err)
 			}
 
+			// TODO: should we block-wait for process and all its childs to exit?
+			return nil
+
 		case err := <-waitCh:
 			return err
 		}
