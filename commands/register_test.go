@@ -1,15 +1,11 @@
 package commands
 
 import (
-	"bytes"
 	"flag"
 	"testing"
 
-	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"github.com/urfave/cli"
-	"gitlab.com/ayufan/golang-cli-helpers"
 
 	"gitlab.com/gitlab-org/gitlab-runner/common"
 )
@@ -59,32 +55,4 @@ func TestRegisterCustomMappedDockerCacheVolume(t *testing.T) {
 
 	assert.Equal(t, 1, len(s.Docker.Volumes))
 	assert.Equal(t, "/my/cache:/cache", s.Docker.Volumes[0])
-}
-
-func getLogrusOutput(t *testing.T, hook *test.Hook) string {
-	buf := &bytes.Buffer{}
-	for _, entry := range hook.AllEntries() {
-		message, err := entry.String()
-		require.NoError(t, err)
-		buf.WriteString(message)
-	}
-
-	return buf.String()
-}
-
-func testRegisterCommandRun(t *testing.T, network common.Network, args ...string) {
-	cmd := newRegisterCommand()
-	cmd.network = network
-
-	app := cli.NewApp()
-	app.Commands = []cli.Command{
-		{
-			Name:   "register",
-			Action: cmd.Execute,
-			Flags:  clihelpers.GetFlagsFromStruct(cmd),
-		},
-	}
-
-	args = append([]string{"binary", "register"}, args...)
-	app.Run(args)
 }
