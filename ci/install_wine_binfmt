@@ -2,5 +2,7 @@
 
 set -xeo pipefail
 
-apt-get update -y
+# We run on Jessie, it fails
+# as Jessie is EOL
+apt-get update -y || true
 apt-get install -y wine-binfmt

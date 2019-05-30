@@ -134,6 +134,10 @@ parallel_test_execute: $(GOPATH_SETUP) pull_images_for_tests
 	# executing tests
 	@./scripts/go_test_with_coverage_report execute
 
+parallel_test_execute_wine: $(GOPATH_SETUP) pull_images_for_tests
+	# executing tests
+	GOOS=windows GOARCH=amd64 ./scripts/go_test_with_coverage_report execute
+
 parallel_test_coverage_report: $(GOPATH_SETUP)
 	# Preparing coverage report
 	@./scripts/go_test_with_coverage_report coverage
