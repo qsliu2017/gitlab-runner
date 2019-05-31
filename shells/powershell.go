@@ -69,7 +69,14 @@ func (b *PsWriter) Unindent() {
 }
 
 func (b *PsWriter) checkErrorLevel() {
-	b.Line("if(!$?) { Exit $LASTEXITCODE }")
+	b.Line("if(!$?) {")
+	b.Indent()
+	b.Line("$lecg=$?")
+	b.Line("$lec=$LASTEXITCODE")
+	b.Warning("exiting with lecg=$lecg lec=$lec")
+	b.Line("Exit $lec")
+	b.Unindent()
+	b.Line("}")
 	b.Line("")
 }
 
