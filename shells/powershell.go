@@ -23,6 +23,8 @@ type PsWriter struct {
 	bytes.Buffer
 	TemporaryPath string
 	indent        int
+
+	cmdErrUsed int
 }
 
 func psQuote(text string) string {
@@ -131,7 +133,11 @@ func (b *PsWriter) IfCmdWithOutput(cmd string, arguments ...string) {
 }
 
 func (b *PsWriter) ifInTryCatch(cmd string) {
-	b.Line("Set-Variable -Name cmdErr -Value $false")
+	b.cmdErrUsed++
+
+	cmdErrVariable := fmt.Sprintf("cmdErr_%d", b.cmdErrUsed)
+
+	b.Line(fmt.Sprintf("Set-Variable -Name %s -Value $false", cmdErrVariable))
 	b.Line("Try {")
 	b.Indent()
 	b.Line(cmd)
@@ -139,10 +145,10 @@ func (b *PsWriter) ifInTryCatch(cmd string) {
 	b.Unindent()
 	b.Line("} Catch {")
 	b.Indent()
-	b.Line("Set-Variable -Name cmdErr -Value $true")
+	b.Line(fmt.Sprintf("Set-Variable -Name %s -Value $true", cmdErrVariable))
 	b.Unindent()
 	b.Line("}")
-	b.Line("if(!$cmdErr) {")
+	b.Line(fmt.Sprintf("if(!$%s) {", cmdErrVariable))
 	b.Indent()
 }
 
