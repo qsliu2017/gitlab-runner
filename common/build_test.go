@@ -19,7 +19,7 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	"gitlab.com/gitlab-org/gitlab-runner/helpers/docker"
+	docker_helpers "gitlab.com/gitlab-org/gitlab-runner/helpers/docker"
 	"gitlab.com/gitlab-org/gitlab-runner/session"
 	"gitlab.com/gitlab-org/gitlab-runner/session/terminal"
 )
@@ -1037,6 +1037,37 @@ func TestStartBuild(t *testing.T) {
 			},
 			jobVariables: JobVariables{
 				{Key: "GIT_CLONE_PATH", Value: "$CI_BUILDS_DIR/go/src/gitlab.com/test-namespace/test-repo", Public: true},
+			},
+			expectedBuildDir: "/builds/go/src/gitlab.com/test-namespace/test-repo",
+			expectedCacheDir: "/cache/test-namespace/test-repo",
+			expectedError:    false,
+		},
+		"valid GIT_CLONE_PATH is expanded with 1 level of nested env vars": {
+			args: startBuildArgs{
+				rootDir:               "/builds",
+				cacheDir:              "/cache",
+				customBuildDirEnabled: true,
+				sharedDir:             false,
+			},
+			jobVariables: JobVariables{
+				{Key: "GOPATH", Value: "$CI_BUILDS_DIR/go", Public: true},
+				{Key: "GIT_CLONE_PATH", Value: "$GOPATH/src/gitlab.com/test-namespace/test-repo", Public: true},
+			},
+			expectedBuildDir: "/builds/go/src/gitlab.com/test-namespace/test-repo",
+			expectedCacheDir: "/cache/test-namespace/test-repo",
+			expectedError:    false,
+		},
+		"valid GIT_CLONE_PATH is expanded with more then 1 level of nesting env vars": {
+			args: startBuildArgs{
+				rootDir:               "/builds",
+				cacheDir:              "/cache",
+				customBuildDirEnabled: true,
+				sharedDir:             false,
+			},
+			jobVariables: JobVariables{
+				{Key: "GOPATH", Value: "$CI_BUILDS_DIR/go", Public: true},
+				{Key: "GITLAB_COM", Value: "$GOPATH/src/gitlab.com", Public: true},
+				{Key: "GIT_CLONE_PATH", Value: "$GITLAB_COM/test-namespace/test-repo", Public: true},
 			},
 			expectedBuildDir: "/builds/go/src/gitlab.com/test-namespace/test-repo",
 			expectedCacheDir: "/cache/test-namespace/test-repo",

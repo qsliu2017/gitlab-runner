@@ -158,7 +158,9 @@ func (b *Build) TmpProjectDir() string {
 }
 
 func (b *Build) getCustomBuildDir(rootDir, overrideKey string, customBuildDirEnabled, sharedDir bool) (string, error) {
-	dir := b.GetAllVariables().Get(overrideKey)
+	dir := b.GetAllVariables().ExpandValue(
+		b.GetAllVariables().Get(overrideKey),
+	)
 	if dir == "" {
 		return path.Join(rootDir, b.ProjectUniqueDir(sharedDir)), nil
 	}
