@@ -20,6 +20,7 @@ import (
 type executor struct {
 	executors.AbstractExecutor
 
+	config  *config
 	tempDir string
 }
 
@@ -48,11 +49,11 @@ func (e *executor) killAndWait(cmd *exec.Cmd, waitCh chan error) error {
 	log := e.BuildLogger.WithFields(logrus.Fields{"PID": cmd.Process.Pid})
 
 	processKiller := process.NewKiller(log, cmd.Process)
-	for time.Since(started) < killDeadline {
+	for time.Since(started) < e.config.GetProcessKillTimeout() {
 		processKiller.Kill()
 
 		select {
-		case <-time.After(gracePeriodDeadline):
+		case <-time.After(e.config.GetProcessKillGracePeriod()):
 			processKiller.ForceKill()
 
 			return nil
@@ -102,12 +103,9 @@ func (e *executor) Prepare(options common.ExecutorPrepareOptions) error {
 
 	e.Println("Using GenericScript executor...")
 
-	if e.Config.GenericScript == nil {
-		return common.MakeBuildError("GenericScript executor not configured")
-	}
-
-	if e.Config.GenericScript.RunScript == "" {
-		return common.MakeBuildError("GenericScript executor is missing RunScript")
+	err = e.prepareConfig()
+	if err != nil {
+		return err
 	}
 
 	e.tempDir, err = ioutil.TempDir("", "generic-executor")
@@ -115,15 +113,15 @@ func (e *executor) Prepare(options common.ExecutorPrepareOptions) error {
 		return err
 	}
 
-	// nothing to do, as there's no cleanup_script
-	if e.Config.GenericScript.PrepareScript == "" {
+	// nothing to do, as there's no prepare_script
+	if e.config.PrepareScript == "" {
 		return nil
 	}
 
-	ctx, cancelFunc := context.WithTimeout(e.Context, prepareScriptTimeout)
+	ctx, cancelFunc := context.WithTimeout(e.Context, e.config.GetPrepareScriptTimeout())
 	defer cancelFunc()
 
-	return e.runCommand(ctx, e.Config.GenericScript.PrepareScript)
+	return e.runCommand(ctx, e.config.PrepareScript)
 }
 
 func (e *executor) Run(cmd common.ExecutorCommand) error {
@@ -138,25 +136,40 @@ func (e *executor) Run(cmd common.ExecutorCommand) error {
 		return err
 	}
 
-	return e.runCommand(cmd.Context, e.Config.GenericScript.RunScript,
-		scriptFile, string(cmd.Stage))
+	return e.runCommand(cmd.Context, e.config.RunScript, scriptFile, string(cmd.Stage))
 }
 
 func (e *executor) Cleanup() {
 	e.AbstractExecutor.Cleanup()
 
 	// nothing to do, as there's no cleanup_script
-	if e.Config.GenericScript == nil || e.Config.GenericScript.CleanupScript == "" {
+	if e.config.CleanupScript == "" {
 		return
 	}
 
-	ctx, cancelFunc := context.WithTimeout(context.Background(), cleanupScriptTimeout)
+	ctx, cancelFunc := context.WithTimeout(context.Background(), e.config.GetCleanupScriptTimeout())
 	defer cancelFunc()
 
-	err := e.runCommand(ctx, e.Config.GenericScript.CleanupScript)
+	err := e.runCommand(ctx, e.config.CleanupScript)
 	if err != nil {
 		e.BuildLogger.Warningln("Cleanup script failed:", err)
 	}
+}
+
+func (e *executor) prepareConfig() error {
+	if e.Config.GenericScript == nil {
+		return common.MakeBuildError("Generic executor not configured")
+	}
+
+	e.config = &config{
+		GenericScriptConfig: e.Config.GenericScript,
+	}
+
+	if e.config.RunScript == "" {
+		return common.MakeBuildError("Generic executor is missing RunScript")
+	}
+
+	return nil
 }
 
 func init() {

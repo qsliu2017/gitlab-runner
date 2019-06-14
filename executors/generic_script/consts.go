@@ -2,7 +2,8 @@ package generic_script
 
 import "time"
 
-const gracePeriodDeadline = 10 * time.Second
-const killDeadline = 10 * time.Minute
-const prepareScriptTimeout = time.Hour
-const cleanupScriptTimeout = time.Hour
+const defaultPrepareScriptTimeout = time.Hour
+const defaultCleanupScriptTimeout = time.Hour
+
+const defaultProcessKillTimeout = 10 * time.Minute
+const defaultProcessKillGracePeriod = 10 * time.Second

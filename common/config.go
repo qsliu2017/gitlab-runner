@@ -123,6 +123,11 @@ type GenericScriptConfig struct {
 	PrepareScript string `toml:"prepare_script" json:"prepare_script" long:"prepare-script" env:"GENERIC_SCRIPT_PREPARE_SCRIPT" description:"The path to binary that prepares executor"`
 	RunScript     string `toml:"run_script" json:"run_script" long:"run-script" env:"GENERIC_SCRIPT_RUN_SCRIPT" description:"The path to binary that run a command in executor"`
 	CleanupScript string `toml:"cleanup_script" json:"cleanup_script" long:"cleanup-script" env:"GENERIC_SCRIPT_CLEANUP_SCRIPT" description:"The path to binary that cleanups after executor run"`
+
+	CleanupScriptTimeout   *int `toml:"cleanup_script_timeout,omitempty" json:"cleanup_script_timeout" long:"cleanup-script-timeout" env:"GENERIC_SCRIPT_CLEANUP_SCRIPT_TIMEOUT" description:"Timeout for the cleanup script (in seconds)"`
+	PrepareScriptTimeout   *int `toml:"prepare_script_timeout,omitempty" json:"prepare_script_timeout" long:"prepare-script-timeout" env:"GENERIC_SCRIPT_PREPARE_SCRIPT_TIMEOUT" description:"Timeout for the prepare script (in seconds)"`
+	ProcessKillTimeout     *int `toml:"process_kill_timeout,omitempty" json:"process_kill_timeout" long:"process-kill-timeout" env:"GENERIC_SCRIPT_PROCESS_KILL_TIMEOUT" description:"Timeout for the generic executor script killing (in seconds)"`
+	ProcessKillGracePeriod *int `toml:"process_kill_grace_period,omitempty" json:"process_kill_grace_period" long:"process-kill-grace-period" env:"GENERIC_SCRIPT_PROCESS_KILL_GRACE_PERIOD" description:"Grace period before first termination attempt and a force-kill (in seconds)"`
 }
 
 type KubernetesPullPolicy string
