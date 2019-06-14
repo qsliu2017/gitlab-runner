@@ -155,6 +155,8 @@ func (b *PsWriter) Else() {
 func (b *PsWriter) EndIf() {
 	b.Unindent()
 	b.Line("}")
+	// add empty line to close code-block when it is piped to STDIN
+	b.Line("")
 }
 
 func (b *PsWriter) Cd(path string) {
