@@ -14,6 +14,7 @@ import (
 
 	"gitlab.com/gitlab-org/gitlab-runner/common"
 	"gitlab.com/gitlab-org/gitlab-runner/executors"
+	"gitlab.com/gitlab-org/gitlab-runner/executors/generic_script/process"
 )
 
 type executor struct {
@@ -38,35 +39,22 @@ func (e *executor) createCommand(cmd string, args ...string) *exec.Cmd {
 	return process
 }
 
-func (e *executor) killAndWait(process *exec.Cmd, waitCh chan error) error {
-	if process.Process == nil {
+func (e *executor) killAndWait(cmd *exec.Cmd, waitCh chan error) error {
+	if cmd.Process == nil {
 		return errors.New("process not started yet")
 	}
 
 	started := time.Now()
-	log := e.BuildLogger.WithFields(logrus.Fields{"PID": process.Process.Pid})
+	log := e.BuildLogger.WithFields(logrus.Fields{"PID": cmd.Process.Pid})
 
+	processKiller := process.NewKiller(log, cmd.Process)
 	for time.Since(started) < killDeadline {
-		// try to interrupt first
-		err := process.Process.Signal(os.Interrupt)
-		if err != nil {
-			log.Errorln("Failed to send signal:", err)
-
-			// try to kill right-after
-			err = process.Process.Kill()
-			if err != nil {
-				log.Errorln("Failed to kill:", err)
-			}
-		}
+		processKiller.Kill()
 
 		select {
 		case <-time.After(gracePeriodDeadline):
-			err = process.Process.Kill()
-			if err != nil {
-				log.Errorln("Failed to kill:", err)
-			}
+			processKiller.ForceKill()
 
-			// TODO: should we block-wait for process and all its childs to exit?
 			return nil
 
 		case err := <-waitCh:
