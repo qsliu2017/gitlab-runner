@@ -84,38 +84,12 @@ func newBuild(t *testing.T, getBuildResponse common.JobResponse, shell string) (
 	return build, cleanup
 }
 
-func newBuildLXC(t *testing.T, getBuildResponse common.JobResponse, shell string) (*common.Build, func()) {
-	build, cleanup := newBuild(t, getBuildResponse, shell)
-
-	dir, err := os.Getwd()
-	require.NoError(t, err)
-
-	build.Runner.GenericScript.PrepareScript = filepath.Join(dir, "examples", "lxc", "prepare")
-	build.Runner.GenericScript.RunScript = filepath.Join(dir, "examples", "lxc", "run")
-	build.Runner.GenericScript.CleanupScript = filepath.Join(dir, "examples", "lxc", "cleanup")
-
-	return build, cleanup
-}
-
 func TestBuildSuccess(t *testing.T) {
 	shellstest.OnEachShell(t, func(t *testing.T, shell string) {
 		successfulBuild, err := common.GetSuccessfulBuild()
 		require.NoError(t, err)
 
 		build, cleanup := newBuild(t, successfulBuild, shell)
-		defer cleanup()
-
-		err = runBuild(t, build)
-		assert.NoError(t, err)
-	})
-}
-
-func TestBuildSuccessLXC(t *testing.T) {
-	shellstest.OnEachShell(t, func(t *testing.T, shell string) {
-		successfulBuild, err := common.GetRemoteSuccessfulBuild()
-		require.NoError(t, err)
-
-		build, cleanup := newBuildLXC(t, successfulBuild, shell)
 		defer cleanup()
 
 		err = runBuild(t, build)
@@ -142,25 +116,6 @@ func TestBuildAbort(t *testing.T) {
 	})
 }
 
-func TestBuildAbortLXC(t *testing.T) {
-	shellstest.OnEachShell(t, func(t *testing.T, shell string) {
-		successfulBuild, err := common.GetRemoteLongRunningBuild()
-		require.NoError(t, err)
-
-		build, cleanup := newBuildLXC(t, successfulBuild, shell)
-		defer cleanup()
-
-		abortTimer := time.AfterFunc(time.Second, func() {
-			t.Log("Interrupt")
-			build.SystemInterrupt <- os.Interrupt
-		})
-		defer abortTimer.Stop()
-
-		err = runBuild(t, build)
-		assert.EqualError(t, err, "aborted: interrupt")
-	})
-}
-
 func TestBuildCancel(t *testing.T) {
 	shellstest.OnEachShell(t, func(t *testing.T, shell string) {
 		longRunningBuild, err := common.GetLongRunningBuild()
@@ -171,29 +126,7 @@ func TestBuildCancel(t *testing.T) {
 
 		trace := &common.Trace{Writer: os.Stdout}
 
-		cancelTimer := time.AfterFunc(30*time.Second, func() {
-			t.Log("Cancel")
-			trace.CancelFunc()
-		})
-		defer cancelTimer.Stop()
-
-		err = runBuildWithTrace(t, build, trace)
-		assert.EqualError(t, err, "canceled")
-		assert.IsType(t, err, &common.BuildError{})
-	})
-}
-
-func TestBuildCancelLXC(t *testing.T) {
-	shellstest.OnEachShell(t, func(t *testing.T, shell string) {
-		longRunningBuild, err := common.GetRemoteLongRunningBuild()
-		require.NoError(t, err)
-
-		build, cleanup := newBuildLXC(t, longRunningBuild, shell)
-		defer cleanup()
-
-		trace := &common.Trace{Writer: os.Stdout}
-
-		cancelTimer := time.AfterFunc(30*time.Second, func() {
+		cancelTimer := time.AfterFunc(2*time.Second, func() {
 			t.Log("Cancel")
 			trace.CancelFunc()
 		})
