@@ -120,8 +120,6 @@ type VirtualBoxConfig struct {
 }
 
 type GenericScriptConfig struct {
-	Handler string `toml:"handler" json:"handler" long:"handler" env:"GENERIC_HANDLER" description:"The path to binary that handles Generic Executor"`
-
 	PrepareScript string `toml:"prepare_script" json:"prepare_script" long:"prepare-script" env:"GENERIC_SCRIPT_PREPARE_SCRIPT" description:"The path to binary that prepares executor"`
 	RunScript     string `toml:"run_script" json:"run_script" long:"run-script" env:"GENERIC_SCRIPT_RUN_SCRIPT" description:"The path to binary that run a command in executor"`
 	CleanupScript string `toml:"cleanup_script" json:"cleanup_script" long:"cleanup-script" env:"GENERIC_SCRIPT_CLEANUP_SCRIPT" description:"The path to binary that cleanups after executor run"`
