@@ -24,6 +24,80 @@ type executor struct {
 	tempDir string
 }
 
+func (e *executor) Prepare(options common.ExecutorPrepareOptions) error {
+	err := e.AbstractExecutor.Prepare(options)
+	if err != nil {
+		return err
+	}
+
+	e.Println("Using GenericScript executor...")
+
+	err = e.prepareConfig()
+	if err != nil {
+		return err
+	}
+
+	e.tempDir, err = ioutil.TempDir("", "generic-executor")
+	if err != nil {
+		return err
+	}
+
+	// nothing to do, as there's no prepare_script
+	if e.config.PrepareScript == "" {
+		return nil
+	}
+
+	ctx, cancelFunc := context.WithTimeout(e.Context, e.config.GetPrepareScriptTimeout())
+	defer cancelFunc()
+
+	return e.runCommand(ctx, e.config.PrepareScript)
+}
+
+func (e *executor) prepareConfig() error {
+	if e.Config.GenericScript == nil {
+		return common.MakeBuildError("Generic executor not configured")
+	}
+
+	e.config = &config{
+		GenericScriptConfig: e.Config.GenericScript,
+	}
+
+	if e.config.RunScript == "" {
+		return common.MakeBuildError("Generic executor is missing RunScript")
+	}
+
+	return nil
+}
+
+func (e *executor) runCommand(ctx context.Context, cmd string, args ...string) error {
+	process := e.createCommand(cmd, args...)
+
+	// Start a process
+	err := process.Start()
+	if err != nil {
+		return fmt.Errorf("failed to start process: %s", err)
+	}
+
+	// Wait for process to finish
+	waitCh := make(chan error)
+	go func() {
+		err := process.Wait()
+		if _, ok := err.(*exec.ExitError); ok {
+			err = &common.BuildError{Inner: err}
+		}
+		waitCh <- err
+	}()
+
+	// Wait for process to finish
+	select {
+	case err = <-waitCh:
+		return err
+
+	case <-ctx.Done():
+		return e.killAndWait(process, waitCh)
+	}
+}
+
 func (e *executor) createCommand(cmd string, args ...string) *exec.Cmd {
 	process := exec.Command(cmd, args...)
 	process.Dir = e.tempDir
@@ -66,64 +140,6 @@ func (e *executor) killAndWait(cmd *exec.Cmd, waitCh chan error) error {
 	return errors.New("failed to kill process, likely process is dormant")
 }
 
-func (e *executor) runCommand(ctx context.Context, cmd string, args ...string) error {
-	process := e.createCommand(cmd, args...)
-
-	// Start a process
-	err := process.Start()
-	if err != nil {
-		return fmt.Errorf("failed to start process: %s", err)
-	}
-
-	// Wait for process to finish
-	waitCh := make(chan error)
-	go func() {
-		err := process.Wait()
-		if _, ok := err.(*exec.ExitError); ok {
-			err = &common.BuildError{Inner: err}
-		}
-		waitCh <- err
-	}()
-
-	// Wait for process to finish
-	select {
-	case err = <-waitCh:
-		return err
-
-	case <-ctx.Done():
-		return e.killAndWait(process, waitCh)
-	}
-}
-
-func (e *executor) Prepare(options common.ExecutorPrepareOptions) error {
-	err := e.AbstractExecutor.Prepare(options)
-	if err != nil {
-		return err
-	}
-
-	e.Println("Using GenericScript executor...")
-
-	err = e.prepareConfig()
-	if err != nil {
-		return err
-	}
-
-	e.tempDir, err = ioutil.TempDir("", "generic-executor")
-	if err != nil {
-		return err
-	}
-
-	// nothing to do, as there's no prepare_script
-	if e.config.PrepareScript == "" {
-		return nil
-	}
-
-	ctx, cancelFunc := context.WithTimeout(e.Context, e.config.GetPrepareScriptTimeout())
-	defer cancelFunc()
-
-	return e.runCommand(ctx, e.config.PrepareScript)
-}
-
 func (e *executor) Run(cmd common.ExecutorCommand) error {
 	scriptDir, err := ioutil.TempDir(e.tempDir, "script")
 	if err != nil {
@@ -154,22 +170,6 @@ func (e *executor) Cleanup() {
 	if err != nil {
 		e.BuildLogger.Warningln("Cleanup script failed:", err)
 	}
-}
-
-func (e *executor) prepareConfig() error {
-	if e.Config.GenericScript == nil {
-		return common.MakeBuildError("Generic executor not configured")
-	}
-
-	e.config = &config{
-		GenericScriptConfig: e.Config.GenericScript,
-	}
-
-	if e.config.RunScript == "" {
-		return common.MakeBuildError("Generic executor is missing RunScript")
-	}
-
-	return nil
 }
 
 func init() {
