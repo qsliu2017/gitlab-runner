@@ -103,19 +103,7 @@ func (e *executor) runCommand(ctx context.Context, script string, args ...string
 
 	// Wait for cmd to finish
 	waitCh := make(chan error)
-	go func() {
-		err := cmd.Wait()
-		if eerr, ok := err.(*exec.ExitError); ok {
-			exitCode := eerr.Sys().(syscall.WaitStatus).ExitStatus()
-
-			if exitCode == BuildFailureExitCode {
-				err = &common.BuildError{Inner: eerr}
-			} else if exitCode != SystemFailureExitCode {
-				err = &ErrUnknownFailure{Inner: eerr, ExitCode: exitCode}
-			}
-		}
-		waitCh <- err
-	}()
+	go e.executeCommand(cmd, waitCh)
 
 	// Wait for cmd to finish
 	select {
@@ -150,6 +138,22 @@ func (e *executor) createCommand(cmd string, args ...string) *exec.Cmd {
 	}
 
 	return process
+}
+
+func (e *executor) executeCommand(cmd *exec.Cmd, waitCh chan error) {
+	err := cmd.Wait()
+
+	if eerr, ok := err.(*exec.ExitError); ok {
+		exitCode := eerr.Sys().(syscall.WaitStatus).ExitStatus()
+
+		if exitCode == BuildFailureExitCode {
+			err = &common.BuildError{Inner: eerr}
+		} else if exitCode != SystemFailureExitCode {
+			err = &ErrUnknownFailure{Inner: eerr, ExitCode: exitCode}
+		}
+	}
+
+	waitCh <- err
 }
 
 func (e *executor) killAndWait(cmd *exec.Cmd, waitCh chan error) error {
