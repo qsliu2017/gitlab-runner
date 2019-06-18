@@ -93,18 +93,18 @@ func (e *executor) runCommand(ctx context.Context, script string, args ...string
 	scriptDef := strings.Split(script, " ")
 	args = append(scriptDef[1:], args...)
 
-	process := e.createCommand(scriptDef[0], args...)
+	cmd := e.createCommand(scriptDef[0], args...)
 
-	// Start a process
-	err := process.Start()
+	// Start a cmd
+	err := cmd.Start()
 	if err != nil {
-		return fmt.Errorf("failed to start process: %s", err)
+		return fmt.Errorf("failed to start command: %s", err)
 	}
 
-	// Wait for process to finish
+	// Wait for cmd to finish
 	waitCh := make(chan error)
 	go func() {
-		err := process.Wait()
+		err := cmd.Wait()
 		if eerr, ok := err.(*exec.ExitError); ok {
 			exitCode := eerr.Sys().(syscall.WaitStatus).ExitStatus()
 
@@ -117,13 +117,13 @@ func (e *executor) runCommand(ctx context.Context, script string, args ...string
 		waitCh <- err
 	}()
 
-	// Wait for process to finish
+	// Wait for cmd to finish
 	select {
 	case err = <-waitCh:
 		return err
 
 	case <-ctx.Done():
-		return e.killAndWait(process, waitCh)
+		return e.killAndWait(cmd, waitCh)
 	}
 }
 
