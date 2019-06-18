@@ -2,8 +2,10 @@ package generic_script
 
 import (
 	"bytes"
+	"fmt"
 	"io/ioutil"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"testing"
 	"time"
@@ -57,6 +59,10 @@ func newBuild(t *testing.T, getBuildResponse common.JobResponse, shell string) (
 
 	t.Log("Build directory:", dir)
 
+	curDir, err := os.Getwd()
+	require.NoError(t, err)
+	bashScript := filepath.Join(curDir, "examples", "tests", "executor")
+
 	build := &common.Build{
 		JobResponse: getBuildResponse,
 		Runner: &common.RunnerConfig{
@@ -66,7 +72,9 @@ func newBuild(t *testing.T, getBuildResponse common.JobResponse, shell string) (
 				Executor:  "generic_script",
 				Shell:     shell,
 				GenericScript: &common.GenericScriptConfig{
-					RunScript: "bash",
+					PrepareScript: fmt.Sprintf("%s prepare", bashScript),
+					RunScript:     fmt.Sprintf("%s run", bashScript),
+					CleanupScript: fmt.Sprintf("%s cleanup", bashScript),
 				},
 			},
 		},
@@ -94,6 +102,66 @@ func TestBuildSuccess(t *testing.T) {
 
 		err = runBuild(t, build)
 		assert.NoError(t, err)
+	})
+}
+
+func TestBuildBuildFailure(t *testing.T) {
+	shellstest.OnEachShell(t, func(t *testing.T, shell string) {
+		successfulBuild, err := common.GetSuccessfulBuild()
+		require.NoError(t, err)
+
+		build, cleanup := newBuild(t, successfulBuild, shell)
+		defer cleanup()
+
+		build.Variables = append(build.Variables, common.JobVariable{
+			Key:    "IS_BUILD_ERROR",
+			Value:  "true",
+			Public: true,
+		})
+
+		err = runBuild(t, build)
+		assert.Error(t, err)
+		assert.IsType(t, &common.BuildError{}, err)
+	})
+}
+
+func TestBuildSystemFailure(t *testing.T) {
+	shellstest.OnEachShell(t, func(t *testing.T, shell string) {
+		successfulBuild, err := common.GetSuccessfulBuild()
+		require.NoError(t, err)
+
+		build, cleanup := newBuild(t, successfulBuild, shell)
+		defer cleanup()
+
+		build.Variables = append(build.Variables, common.JobVariable{
+			Key:    "IS_SYSTEM_ERROR",
+			Value:  "true",
+			Public: true,
+		})
+
+		err = runBuild(t, build)
+		assert.Error(t, err)
+		assert.IsType(t, &exec.ExitError{}, err)
+	})
+}
+
+func TestBuildUnknownFailure(t *testing.T) {
+	shellstest.OnEachShell(t, func(t *testing.T, shell string) {
+		successfulBuild, err := common.GetSuccessfulBuild()
+		require.NoError(t, err)
+
+		build, cleanup := newBuild(t, successfulBuild, shell)
+		defer cleanup()
+
+		build.Variables = append(build.Variables, common.JobVariable{
+			Key:    "IS_UNKNOWN_ERROR",
+			Value:  "true",
+			Public: true,
+		})
+
+		err = runBuild(t, build)
+		assert.Error(t, err)
+		assert.IsType(t, &ErrUnknownFailure{}, err)
 	})
 }
 

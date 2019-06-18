@@ -1,0 +1,67 @@
+#!/usr/bin/env bash
+
+handleErrorMock () {
+    if [[ -n "${GENERIC_ENV_IS_BUILD_ERROR}" ]]; then
+        # It's a build error. For example: user used an invalid
+        # command in his script which ends with an error thrown
+        # from the underlaying shell.
+
+        exit ${GENERIC_BUILD_FAILURE_EXIT_CODE}
+    fi
+
+    if [[ -n "${GENERIC_ENV_IS_SYSTEM_ERROR}" ]]; then
+        # It's a system error. For example: the Generic Executor
+        # script implements a libvirt executor and before executing
+        # the job it needs to prepare the VM. But the preparation
+        # failed.
+
+        exit ${GENERIC_SYSTEM_FAILURE_EXIT_CODE}
+    fi
+
+    if [[ -n "${GENERIC_ENV_IS_UNKNOWN_ERROR}" ]]; then
+        # This situation should not happen. Generic Executor script
+        # should define the type of failure and return either 1 (build
+        # failure) or 2 (system failure).
+
+        exit 255
+    fi
+}
+
+stage="$1"
+shift
+
+case ${stage} in
+    "prepare")
+        echo
+        echo "Generic Executor Script - PREPARE stage"
+        echo "mocking execution of: $@"
+
+        echo "PREPARE doesn't accept any arguments. It just does its job"
+        ;;
+
+    "run")
+        echo
+        echo "Generic Executor Script - RUN stage"
+        echo "mocking execution of: $@"
+
+        echo "RUN accepts two arguments: the path to the script to execute and the stage of the job"
+
+        handleErrorMock
+
+        exec "$@"
+        ;;
+
+    "cleanup")
+        echo
+        echo "Generic Executor Script - CLEANUP stage"
+        echo "mocking execution of: $@"
+
+        echo "CLEANUP doesn't accept any arguments. It just does its job"
+        ;;
+
+    *)
+        echo
+        echo "Unknown stage ${stage}"
+        exit ${GENERIC_SYSTEM_FAILURE_EXIT_CODE}
+        ;;
+esac

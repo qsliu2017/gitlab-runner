@@ -8,6 +8,9 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
+	"strings"
+	"syscall"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -16,6 +19,23 @@ import (
 	"gitlab.com/gitlab-org/gitlab-runner/executors"
 	"gitlab.com/gitlab-org/gitlab-runner/executors/generic_script/process"
 )
+
+const (
+	BuildFailureExitCode  = 1
+	SystemFailureExitCode = 2
+
+	BuildFailureExitCodeVariable  = "GENERIC_BUILD_FAILURE_EXIT_CODE"
+	SystemFailureExitCodeVariable = "GENERIC_SYSTEM_FAILURE_EXIT_CODE"
+)
+
+type ErrUnknownFailure struct {
+	Inner    error
+	ExitCode int
+}
+
+func (e *ErrUnknownFailure) Error() string {
+	return fmt.Sprintf("unknown Generic Executor script exit code %d; script execution terminated with: %v", e.ExitCode, e.Inner)
+}
 
 type executor struct {
 	executors.AbstractExecutor
@@ -69,8 +89,11 @@ func (e *executor) prepareConfig() error {
 	return nil
 }
 
-func (e *executor) runCommand(ctx context.Context, cmd string, args ...string) error {
-	process := e.createCommand(cmd, args...)
+func (e *executor) runCommand(ctx context.Context, script string, args ...string) error {
+	scriptDef := strings.Split(script, " ")
+	args = append(scriptDef[1:], args...)
+
+	process := e.createCommand(scriptDef[0], args...)
 
 	// Start a process
 	err := process.Start()
@@ -82,8 +105,14 @@ func (e *executor) runCommand(ctx context.Context, cmd string, args ...string) e
 	waitCh := make(chan error)
 	go func() {
 		err := process.Wait()
-		if _, ok := err.(*exec.ExitError); ok {
-			err = &common.BuildError{Inner: err}
+		if eerr, ok := err.(*exec.ExitError); ok {
+			exitCode := eerr.Sys().(syscall.WaitStatus).ExitStatus()
+
+			if exitCode == BuildFailureExitCode {
+				err = &common.BuildError{Inner: eerr}
+			} else if exitCode != SystemFailureExitCode {
+				err = &ErrUnknownFailure{Inner: eerr, ExitCode: exitCode}
+			}
 		}
 		waitCh <- err
 	}()
@@ -106,9 +135,18 @@ func (e *executor) createCommand(cmd string, args ...string) *exec.Cmd {
 	process.Stderr = e.Trace
 
 	process.Env = os.Environ()
-	process.Env = append(process.Env, "TMPDIR="+e.tempDir)
+
+	defaultVariables := map[string]interface{}{
+		"TMPDIR":                      e.tempDir,
+		BuildFailureExitCodeVariable:  strconv.Itoa(BuildFailureExitCode),
+		SystemFailureExitCodeVariable: strconv.Itoa(SystemFailureExitCode),
+	}
+	for key, value := range defaultVariables {
+		process.Env = append(process.Env, fmt.Sprintf("%s=%s", key, value))
+	}
+
 	for _, variable := range e.Build.GetAllVariables().PublicOrInternal() {
-		process.Env = append(process.Env, "GENERIC_ENV_"+variable.Key+"="+variable.Value)
+		process.Env = append(process.Env, fmt.Sprintf("GENERIC_ENV_%s=%s", variable.Key, variable.Value))
 	}
 
 	return process
