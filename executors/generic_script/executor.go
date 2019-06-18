@@ -161,25 +161,24 @@ func (e *executor) killAndWait(cmd *exec.Cmd, waitCh chan error) error {
 		return errors.New("process not started yet")
 	}
 
-	started := time.Now()
 	log := e.BuildLogger.WithFields(logrus.Fields{"PID": cmd.Process.Pid})
 
 	processKiller := process.NewKiller(log, cmd.Process)
-	for time.Since(started) < e.config.GetProcessKillTimeout() {
-		processKiller.Kill()
+	processKiller.Kill()
+
+	select {
+	case err := <-waitCh:
+		return err
+	case <-time.After(e.config.GetProcessKillTimeout()):
+		processKiller.ForceKill()
 
 		select {
-		case <-time.After(e.config.GetProcessKillGracePeriod()):
-			processKiller.ForceKill()
-
-			return nil
-
 		case err := <-waitCh:
 			return err
 		}
+	case <-time.After(e.config.GetProcessKillGracePeriod()):
+		return errors.New("failed to kill process, likely process is dormant")
 	}
-
-	return errors.New("failed to kill process, likely process is dormant")
 }
 
 func (e *executor) Run(cmd common.ExecutorCommand) error {
