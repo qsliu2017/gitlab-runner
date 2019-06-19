@@ -71,10 +71,10 @@ func newBuild(t *testing.T, getBuildResponse common.JobResponse, shell string) (
 				CacheDir:  filepath.Join(dir, "cache"),
 				Executor:  "generic_exec",
 				Shell:     shell,
-				GenericScript: &common.GenericScriptConfig{
-					PrepareScript: fmt.Sprintf("%s prepare", bashScript),
-					RunScript:     fmt.Sprintf("%s run", bashScript),
-					CleanupScript: fmt.Sprintf("%s cleanup", bashScript),
+				GenericExec: &common.GenericExecConfig{
+					PrepareExec: fmt.Sprintf("%s prepare", bashScript),
+					RunExec:     fmt.Sprintf("%s run", bashScript),
+					CleanupExec: fmt.Sprintf("%s cleanup", bashScript),
 				},
 			},
 		},

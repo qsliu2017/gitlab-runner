@@ -43,8 +43,8 @@ func testGetDuration(t *testing.T, defaultValue time.Duration, assert func(*test
 func TestConfig_GetPrepareScriptTimeout(t *testing.T) {
 	testGetDuration(t, defaultPrepareScriptTimeout, func(t *testing.T, tt getDurationTestCase) {
 		c := &config{
-			GenericScriptConfig: &common.GenericScriptConfig{
-				PrepareScriptTimeout: tt.source,
+			GenericExecConfig: &common.GenericExecConfig{
+				PrepareExecTimeout: tt.source,
 			},
 		}
 
@@ -55,8 +55,8 @@ func TestConfig_GetPrepareScriptTimeout(t *testing.T) {
 func TestConfig_GetCleanupScriptTimeout(t *testing.T) {
 	testGetDuration(t, defaultCleanupScriptTimeout, func(t *testing.T, tt getDurationTestCase) {
 		c := &config{
-			GenericScriptConfig: &common.GenericScriptConfig{
-				CleanupScriptTimeout: tt.source,
+			GenericExecConfig: &common.GenericExecConfig{
+				CleanupExecTimeout: tt.source,
 			},
 		}
 
@@ -67,8 +67,8 @@ func TestConfig_GetCleanupScriptTimeout(t *testing.T) {
 func TestConfig_GetProcessKillTimeout(t *testing.T) {
 	testGetDuration(t, defaultProcessKillTimeout, func(t *testing.T, tt getDurationTestCase) {
 		c := &config{
-			GenericScriptConfig: &common.GenericScriptConfig{
-				ProcessKillTimeout: tt.source,
+			GenericExecConfig: &common.GenericExecConfig{
+				ExecKillTimeout: tt.source,
 			},
 		}
 
@@ -79,8 +79,8 @@ func TestConfig_GetProcessKillTimeout(t *testing.T) {
 func TestConfig_GetProcessKillGracePeriod(t *testing.T) {
 	testGetDuration(t, defaultProcessKillGracePeriod, func(t *testing.T, tt getDurationTestCase) {
 		c := &config{
-			GenericScriptConfig: &common.GenericScriptConfig{
-				ProcessKillGracePeriod: tt.source,
+			GenericExecConfig: &common.GenericExecConfig{
+				ExecKillGracePeriod: tt.source,
 			},
 		}
 

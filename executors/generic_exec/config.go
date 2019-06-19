@@ -7,23 +7,23 @@ import (
 )
 
 type config struct {
-	*common.GenericScriptConfig
+	*common.GenericExecConfig
 }
 
 func (c *config) GetPrepareScriptTimeout() time.Duration {
-	return getDuration(c.PrepareScriptTimeout, defaultPrepareScriptTimeout)
+	return getDuration(c.PrepareExecTimeout, defaultPrepareScriptTimeout)
 }
 
 func (c *config) GetCleanupScriptTimeout() time.Duration {
-	return getDuration(c.CleanupScriptTimeout, defaultCleanupScriptTimeout)
+	return getDuration(c.CleanupExecTimeout, defaultCleanupScriptTimeout)
 }
 
 func (c *config) GetProcessKillTimeout() time.Duration {
-	return getDuration(c.ProcessKillTimeout, defaultProcessKillTimeout)
+	return getDuration(c.ExecKillTimeout, defaultProcessKillTimeout)
 }
 
 func (c *config) GetProcessKillGracePeriod() time.Duration {
-	return getDuration(c.ProcessKillGracePeriod, defaultProcessKillGracePeriod)
+	return getDuration(c.ExecKillGracePeriod, defaultProcessKillGracePeriod)
 }
 
 func getDuration(source *int, defaultValue time.Duration) time.Duration {

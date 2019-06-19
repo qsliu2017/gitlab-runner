@@ -50,7 +50,7 @@ func (e *executor) Prepare(options common.ExecutorPrepareOptions) error {
 		return err
 	}
 
-	e.Println("Using GenericScript executor...")
+	e.Println("Using GenericExec executor...")
 
 	err = e.prepareConfig()
 	if err != nil {
@@ -63,27 +63,27 @@ func (e *executor) Prepare(options common.ExecutorPrepareOptions) error {
 	}
 
 	// nothing to do, as there's no prepare_script
-	if e.config.PrepareScript == "" {
+	if e.config.PrepareExec == "" {
 		return nil
 	}
 
 	ctx, cancelFunc := context.WithTimeout(e.Context, e.config.GetPrepareScriptTimeout())
 	defer cancelFunc()
 
-	return e.runCommand(ctx, e.config.PrepareScript)
+	return e.runCommand(ctx, e.config.PrepareExec)
 }
 
 func (e *executor) prepareConfig() error {
-	if e.Config.GenericScript == nil {
+	if e.Config.GenericExec == nil {
 		return common.MakeBuildError("Generic executor not configured")
 	}
 
 	e.config = &config{
-		GenericScriptConfig: e.Config.GenericScript,
+		GenericExecConfig: e.Config.GenericExec,
 	}
 
-	if e.config.RunScript == "" {
-		return common.MakeBuildError("Generic executor is missing RunScript")
+	if e.config.RunExec == "" {
+		return common.MakeBuildError("Generic executor is missing RunExec")
 	}
 
 	return nil
@@ -193,21 +193,21 @@ func (e *executor) Run(cmd common.ExecutorCommand) error {
 		return err
 	}
 
-	return e.runCommand(cmd.Context, e.config.RunScript, scriptFile, string(cmd.Stage))
+	return e.runCommand(cmd.Context, e.config.RunExec, scriptFile, string(cmd.Stage))
 }
 
 func (e *executor) Cleanup() {
 	e.AbstractExecutor.Cleanup()
 
 	// nothing to do, as there's no cleanup_script
-	if e.config.CleanupScript == "" {
+	if e.config.CleanupExec == "" {
 		return
 	}
 
 	ctx, cancelFunc := context.WithTimeout(context.Background(), e.config.GetCleanupScriptTimeout())
 	defer cancelFunc()
 
-	err := e.runCommand(ctx, e.config.CleanupScript)
+	err := e.runCommand(ctx, e.config.CleanupExec)
 	if err != nil {
 		e.BuildLogger.Warningln("Cleanup script failed:", err)
 	}
