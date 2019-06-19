@@ -1,4 +1,4 @@
-package generic_script
+package generic_exec
 
 import (
 	"context"
@@ -17,7 +17,7 @@ import (
 
 	"gitlab.com/gitlab-org/gitlab-runner/common"
 	"gitlab.com/gitlab-org/gitlab-runner/executors"
-	"gitlab.com/gitlab-org/gitlab-runner/executors/generic_script/process"
+	"gitlab.com/gitlab-org/gitlab-runner/executors/generic_exec/process"
 )
 
 const (
@@ -237,7 +237,7 @@ func init() {
 		features.Shared = true
 	}
 
-	common.RegisterExecutor("generic_script", executors.DefaultExecutorProvider{
+	common.RegisterExecutor("generic_exec", executors.DefaultExecutorProvider{
 		Creator:          creator,
 		FeaturesUpdater:  featuresUpdater,
 		DefaultShellName: options.Shell.Shell,

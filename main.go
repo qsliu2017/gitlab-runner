@@ -17,7 +17,7 @@ import (
 	_ "gitlab.com/gitlab-org/gitlab-runner/commands/helpers"
 	_ "gitlab.com/gitlab-org/gitlab-runner/executors/docker"
 	_ "gitlab.com/gitlab-org/gitlab-runner/executors/docker/machine"
-	_ "gitlab.com/gitlab-org/gitlab-runner/executors/generic_script"
+	_ "gitlab.com/gitlab-org/gitlab-runner/executors/generic_exec"
 	_ "gitlab.com/gitlab-org/gitlab-runner/executors/kubernetes"
 	_ "gitlab.com/gitlab-org/gitlab-runner/executors/parallels"
 	_ "gitlab.com/gitlab-org/gitlab-runner/executors/shell"

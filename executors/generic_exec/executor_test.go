@@ -1,4 +1,4 @@
-package generic_script
+package generic_exec
 
 import (
 	"bytes"
@@ -69,7 +69,7 @@ func newBuild(t *testing.T, getBuildResponse common.JobResponse, shell string) (
 			RunnerSettings: common.RunnerSettings{
 				BuildsDir: filepath.Join(dir, "builds"),
 				CacheDir:  filepath.Join(dir, "cache"),
-				Executor:  "generic_script",
+				Executor:  "generic_exec",
 				Shell:     shell,
 				GenericScript: &common.GenericScriptConfig{
 					PrepareScript: fmt.Sprintf("%s prepare", bashScript),

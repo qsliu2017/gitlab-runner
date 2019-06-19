@@ -1,4 +1,4 @@
-package generic_script
+package generic_exec
 
 import (
 	"testing"
