@@ -144,6 +144,8 @@ func (e *executor) executeCommand(cmd *exec.Cmd, waitCh chan error) {
 	err := cmd.Wait()
 
 	if eerr, ok := err.(*exec.ExitError); ok {
+		// TODO: simplify when we will update to Go 1.12. ExitStatus()
+		//       is available there directly from err.Sys().
 		exitCode := eerr.Sys().(syscall.WaitStatus).ExitStatus()
 
 		if exitCode == BuildFailureExitCode {
