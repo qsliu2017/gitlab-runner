@@ -50,12 +50,12 @@ func (e *executor) Prepare(options common.ExecutorPrepareOptions) error {
 		return err
 	}
 
-	e.Println("Using GenericExec executor...")
-
 	err = e.prepareConfig()
 	if err != nil {
 		return err
 	}
+
+	e.Println("Using GenericExec executor...")
 
 	e.tempDir, err = ioutil.TempDir("", "generic-executor")
 	if err != nil {
@@ -199,6 +199,12 @@ func (e *executor) Run(cmd common.ExecutorCommand) error {
 func (e *executor) Cleanup() {
 	e.AbstractExecutor.Cleanup()
 
+	err := e.prepareConfig()
+	if err != nil {
+		// at this moment we don't care about the errors
+		return
+	}
+
 	// nothing to do, as there's no cleanup_script
 	if e.config.CleanupExec == "" {
 		return
@@ -207,7 +213,7 @@ func (e *executor) Cleanup() {
 	ctx, cancelFunc := context.WithTimeout(context.Background(), e.config.GetCleanupScriptTimeout())
 	defer cancelFunc()
 
-	err := e.runCommand(ctx, e.config.CleanupExec)
+	err = e.runCommand(ctx, e.config.CleanupExec)
 	if err != nil {
 		e.BuildLogger.Warningln("Cleanup script failed:", err)
 	}
@@ -216,6 +222,8 @@ func (e *executor) Cleanup() {
 func init() {
 	options := executors.ExecutorOptions{
 		DefaultCustomBuildsDirEnabled: false,
+		DefaultBuildsDir:              "builds",
+		DefaultCacheDir:               "cache",
 		Shell: common.ShellScriptInfo{
 			Shell:         "bash",
 			Type:          common.NormalShell,
