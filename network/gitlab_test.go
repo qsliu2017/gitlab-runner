@@ -13,6 +13,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -1215,4 +1216,87 @@ func TestRunnerVersionToGetExecutorAndShellFeaturesWithTheDefaultShell(t *testin
 	assert.False(t, info.Features.Artifacts, "dry-run that this is not enabled")
 	assert.True(t, info.Features.Shared, "feature is enabled by executor")
 	assert.True(t, info.Features.Variables, "feature is enabled by shell")
+}
+
+func Test_newCorrelationLogger(t *testing.T) {
+	tests := map[string]struct {
+		entry         *logrus.Entry
+		resp          *http.Response
+		expectedEntry *logrus.Entry
+	}{
+		"Both entry and resp are nil": {
+			entry:         nil,
+			resp:          nil,
+			expectedEntry: &logrus.Entry{},
+		},
+		"resp is nil": {
+			entry: &logrus.Entry{
+				Data: logrus.Fields{
+					"runner": t.Name(),
+				},
+			},
+			resp: nil,
+			expectedEntry: &logrus.Entry{
+				Data: logrus.Fields{
+					"runner": t.Name(),
+				},
+			},
+		},
+		"correlationID sent": {
+			entry: &logrus.Entry{
+				Data: logrus.Fields{
+					"runner": t.Name(),
+				},
+			},
+			resp: &http.Response{
+				Header: map[string][]string{
+					"X-Request-Id": {"TOKEN"},
+				},
+			},
+			expectedEntry: &logrus.Entry{
+				Data: logrus.Fields{
+					"runner":         t.Name(),
+					"correlation_id": "TOKEN",
+				},
+			},
+		},
+		"correlationID not sent": {
+			entry: &logrus.Entry{
+				Data: logrus.Fields{
+					"runner": t.Name(),
+				},
+			},
+			resp: &http.Response{
+				Header: map[string][]string{},
+			},
+			expectedEntry: &logrus.Entry{
+				Data: logrus.Fields{
+					"runner": t.Name(),
+				},
+			},
+		},
+		"correlationID empty": {
+			entry: &logrus.Entry{
+				Data: logrus.Fields{
+					"runner": t.Name(),
+				},
+			},
+			resp: &http.Response{
+				Header: map[string][]string{
+					"X-Request-Id": {""},
+				},
+			},
+			expectedEntry: &logrus.Entry{
+				Data: logrus.Fields{
+					"runner": t.Name(),
+				},
+			},
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			assert.Equal(t, tt.expectedEntry, newCorrelationLogger(tt.entry, tt.resp))
+		})
+	}
 }
