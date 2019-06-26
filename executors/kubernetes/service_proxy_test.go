@@ -137,14 +137,17 @@ func TestProxyRequestHTTP(t *testing.T) {
 		requestedURI       string
 		proxySettings      proxy.Settings
 		endpointURI        string
+		body               string
 		expectedBody       string
 		expectedStatusCode int
+		expectedHeaders    http.Header
 	}{
 		"Returns error if the pod is not ready": {
 			podStatus:          api.PodPending,
 			proxySettings:      defaultProxySettings,
 			expectedBody:       "Service Unavailable\n",
 			expectedStatusCode: http.StatusServiceUnavailable,
+			expectedHeaders:    nil,
 		},
 		"Returns error if invalid port protocol": {
 			podStatus: api.PodRunning,
@@ -159,21 +162,45 @@ func TestProxyRequestHTTP(t *testing.T) {
 			},
 			expectedBody:       "Service Unavailable\n",
 			expectedStatusCode: http.StatusServiceUnavailable,
+			expectedHeaders:    nil,
 		},
 		"Handles HTTP requests": {
 			podStatus:          api.PodRunning,
 			proxySettings:      defaultProxySettings,
 			endpointURI:        proxyEndpointURI,
+			body:               defaultBody,
 			expectedBody:       defaultBody,
 			expectedStatusCode: http.StatusOK,
+			expectedHeaders:    nil,
 		},
 		"Adds the requested URI to the proxy path": {
 			podStatus:          api.PodRunning,
 			requestedURI:       "foobar",
 			proxySettings:      defaultProxySettings,
 			endpointURI:        proxyEndpointURI + "/foobar",
+			body:               defaultBody,
 			expectedBody:       defaultBody,
 			expectedStatusCode: http.StatusOK,
+			expectedHeaders:    nil,
+		},
+		"Rewrites urls pointing to the api": {
+			podStatus:          api.PodRunning,
+			proxySettings:      defaultProxySettings,
+			endpointURI:        proxyEndpointURI,
+			body:               "<html><a href='" + proxyEndpointURI + "/test'>Test<a> <img src='" + proxyEndpointURI + "/test.png'/>",
+			expectedBody:       "<html><a href='/test'>Test<a> <img src='/test.png'/>",
+			expectedStatusCode: http.StatusOK,
+			expectedHeaders:    nil,
+		},
+		"Sets content type": {
+			podStatus:          api.PodRunning,
+			requestedURI:       "image.png",
+			proxySettings:      defaultProxySettings,
+			endpointURI:        proxyEndpointURI + "/image.png",
+			body:               defaultBody,
+			expectedBody:       defaultBody,
+			expectedStatusCode: http.StatusOK,
+			expectedHeaders:    http.Header{"Content-Type": []string{"image/png"}},
 		},
 		"Uses the right protocol based on the proxy configuration": {
 			podStatus: api.PodRunning,
@@ -187,8 +214,10 @@ func TestProxyRequestHTTP(t *testing.T) {
 				},
 			},
 			endpointURI:        "/api/" + version + "/namespaces/" + objectInfo.Namespace + "/services/https:" + serviceName + ":" + defaultPort + "/proxy",
+			body:               defaultBody,
 			expectedBody:       defaultBody,
 			expectedStatusCode: http.StatusOK,
+			expectedHeaders:    nil,
 		},
 	}
 
@@ -201,7 +230,7 @@ func TestProxyRequestHTTP(t *testing.T) {
 			ex.kubeClient = testKubernetesClient(version, fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
 				switch p, m := req.URL.Path, req.Method; {
 				case p == test.endpointURI && m == http.MethodGet:
-					return &http.Response{StatusCode: http.StatusOK, Body: ioutil.NopCloser(bytes.NewReader([]byte(defaultBody)))}, nil
+					return &http.Response{StatusCode: http.StatusOK, Body: ioutil.NopCloser(bytes.NewReader([]byte(test.body)))}, nil
 				default:
 					return mockPodRunningStatus(req, version, codec, objectInfo, test.podStatus, true)
 				}
@@ -220,6 +249,10 @@ func TestProxyRequestHTTP(t *testing.T) {
 			require.NoError(t, err)
 			assert.Equal(t, test.expectedStatusCode, resp.StatusCode)
 			assert.Equal(t, test.expectedBody, string(b))
+
+			if test.expectedHeaders != nil {
+				assert.Equal(t, test.expectedHeaders, resp.Header)
+			}
 		})
 	}
 }

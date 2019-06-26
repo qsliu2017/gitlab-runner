@@ -1,9 +1,13 @@
 package kubernetes
 
 import (
+	"bytes"
 	"fmt"
 	"io"
+	"io/ioutil"
+	"mime"
 	"net/http"
+	"path/filepath"
 	"strconv"
 
 	"github.com/gorilla/websocket"
@@ -74,20 +78,22 @@ func (s *executor) servicesRunning() bool {
 	return true
 }
 
-func (s *executor) serviceEndpointRequest(verb, serviceName, requestedURI string, port proxy.Port) (*rest.Request, error) {
+func (s *executor) serviceEndpointRequest(verb, serviceName, requestedURI string, port proxy.Port) (*rest.Request, string, error) {
 	scheme, err := port.Scheme()
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
 	result := s.kubeClient.CoreV1().RESTClient().Verb(verb).
 		Namespace(s.pod.Namespace).
 		Resource("services").
 		SubResource("proxy").
-		Name(k8net.JoinSchemeNamePort(scheme, serviceName, strconv.Itoa(port.Number))).
-		Suffix(requestedURI)
+		Name(k8net.JoinSchemeNamePort(scheme, serviceName, strconv.Itoa(port.Number)))
 
-	return result, nil
+	baseURL := result.URL().Path
+	result.Suffix(requestedURI)
+
+	return result, baseURL, nil
 }
 
 func proxyWSRequest(s *executor, w http.ResponseWriter, r *http.Request, requestedURI string, port proxy.Port, proxySettings *proxy.Settings, logger *logrus.Entry) {
@@ -102,7 +108,7 @@ func proxyWSRequest(s *executor, w http.ResponseWriter, r *http.Request, request
 		return
 	}
 
-	req, err := s.serviceEndpointRequest(r.Method, proxySettings.ServiceName, requestedURI, port)
+	req, _, err := s.serviceEndpointRequest(r.Method, proxySettings.ServiceName, requestedURI, port)
 	if err != nil {
 		logger.WithError(err).Errorf("service proxy: error proxying WS request")
 		http.Error(w, http.StatusText(http.StatusServiceUnavailable), http.StatusServiceUnavailable)
@@ -119,14 +125,14 @@ func proxyWSRequest(s *executor, w http.ResponseWriter, r *http.Request, request
 }
 
 func proxyHTTPRequest(s *executor, w http.ResponseWriter, r *http.Request, requestedURI string, port proxy.Port, proxy *proxy.Settings, logger *logrus.Entry) {
-	req, err := s.serviceEndpointRequest(r.Method, proxy.ServiceName, requestedURI, port)
+	req, baseURL, err := s.serviceEndpointRequest(r.Method, proxy.ServiceName, requestedURI, port)
 	if err != nil {
 		logger.WithError(err).Errorf("service proxy: error proxying HTTP request")
 		http.Error(w, http.StatusText(http.StatusServiceUnavailable), http.StatusServiceUnavailable)
 		return
 	}
 
-	body, err := req.Stream()
+	body, err := req.DoRaw()
 	if err != nil {
 		message, code := handleProxyHTTPErr(err, logger)
 		w.WriteHeader(code)
@@ -137,8 +143,17 @@ func proxyHTTPRequest(s *executor, w http.ResponseWriter, r *http.Request, reque
 		return
 	}
 
+	// Rewrite all urls rewritten by the Kubernetes API
+	body = bytes.ReplaceAll(body, []byte(baseURL), []byte(""))
+
+	// Set the content type based on the extension
+	ext := filepath.Ext(requestedURI)
+	w.Header().Set("Content-Type", mime.TypeByExtension(ext))
+
 	w.WriteHeader(http.StatusOK)
-	_, _ = io.Copy(w, body)
+	if _, err := io.Copy(w, ioutil.NopCloser(bytes.NewReader(body))); err != nil {
+		logger.WithError(err).Errorf("service proxy: error copying the response")
+	}
 }
 
 func handleProxyHTTPErr(err error, logger *logrus.Entry) (string, int) {
