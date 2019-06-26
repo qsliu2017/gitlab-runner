@@ -21,7 +21,7 @@ func NewKiller(logger common.BuildLogger, process *os.Process) Killer {
 	}
 }
 
-func (pk *unixKiller) Kill() {
+func (pk *unixKiller) Terminate() {
 	err := pk.process.Signal(syscall.SIGTERM)
 	if err != nil {
 		pk.logger.Errorln("Failed to send SIGTERM signal:", err)

@@ -18,10 +18,10 @@ func NewKiller(logger common.BuildLogger, process *os.Process) Killer {
 	}
 }
 
-func (pk *windowsKiller) Kill() {
+func (pk *windowsKiller) Terminate() {
 	err := pk.process.Kill()
 	if err != nil {
-		pk.logger.Errorln("Failed to kill:", err)
+		pk.logger.Errorln("Failed to terminate:", err)
 
 		pk.ForceKill()
 	}

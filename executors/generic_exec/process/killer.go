@@ -1,6 +1,6 @@
 package process
 
 type Killer interface {
-	Kill()
+	Terminate()
 	ForceKill()
 }

@@ -163,7 +163,7 @@ func (e *executor) killAndWait(cmd *exec.Cmd, waitCh chan error) error {
 	log := e.BuildLogger.WithFields(logrus.Fields{"PID": cmd.Process.Pid})
 
 	processKiller := process.NewKiller(log, cmd.Process)
-	processKiller.Kill()
+	processKiller.Terminate()
 
 	select {
 	case err := <-waitCh:
