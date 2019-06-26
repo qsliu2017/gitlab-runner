@@ -101,7 +101,7 @@ func (e *executor) runCommand(ctx context.Context, script string, args ...string
 	}
 
 	waitCh := make(chan error)
-	go e.executeCommand(cmd, waitCh)
+	go e.waitForCommand(cmd, waitCh)
 
 	select {
 	case err = <-waitCh:
@@ -137,7 +137,7 @@ func (e *executor) createCommand(cmd string, args ...string) *exec.Cmd {
 	return process
 }
 
-func (e *executor) executeCommand(cmd *exec.Cmd, waitCh chan error) {
+func (e *executor) waitForCommand(cmd *exec.Cmd, waitCh chan error) {
 	err := cmd.Wait()
 
 	if eerr, ok := err.(*exec.ExitError); ok {
