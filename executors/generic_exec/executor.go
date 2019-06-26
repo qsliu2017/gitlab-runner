@@ -95,17 +95,14 @@ func (e *executor) runCommand(ctx context.Context, script string, args ...string
 
 	cmd := e.createCommand(scriptDef[0], args...)
 
-	// Start a cmd
 	err := cmd.Start()
 	if err != nil {
 		return fmt.Errorf("failed to start command: %s", err)
 	}
 
-	// Wait for cmd to finish
 	waitCh := make(chan error)
 	go e.executeCommand(cmd, waitCh)
 
-	// Wait for cmd to finish
 	select {
 	case err = <-waitCh:
 		return err
