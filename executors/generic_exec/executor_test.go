@@ -2,6 +2,7 @@ package generic_exec
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -415,4 +416,102 @@ func TestBuildPowerShellCatchesExceptions(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotContains(t, out, "Created fresh repository")
 	assert.Regexp(t, "Checking out [a-f0-9]+ as", out)
+}
+
+func TestExecutor_Connect(t *testing.T) {
+	e := new(executor)
+	connection, err := e.Connect()
+
+	assert.Nil(t, connection)
+	assert.EqualError(t, err, "not yet supported")
+}
+
+func TestExecutor_Prepare(t *testing.T) {
+	tests := map[string]struct {
+		config        common.RunnerConfig
+		expectedError string
+	}{
+		"AbstractExecutor.Prepare failure": {
+			config:        common.RunnerConfig{},
+			expectedError: "the builds_dir is not configured",
+		},
+		"generic executor not set": {
+			config: common.RunnerConfig{
+				RunnerSettings: common.RunnerSettings{
+					BuildsDir: "/builds",
+					CacheDir:  "/cache",
+					Shell:     "bash",
+				},
+			},
+			expectedError: "Generic executor not configured",
+		},
+		"generic executor set without RunExec": {
+			config: common.RunnerConfig{
+				RunnerSettings: common.RunnerSettings{
+					BuildsDir:   "/builds",
+					CacheDir:    "/cache",
+					Shell:       "bash",
+					GenericExec: &common.GenericExecConfig{},
+				},
+			},
+			expectedError: "Generic executor is missing RunExec",
+		},
+		"generic executor set": {
+			config: common.RunnerConfig{
+				RunnerSettings: common.RunnerSettings{
+					BuildsDir: "/builds",
+					CacheDir:  "/cache",
+					Shell:     "bash",
+					GenericExec: &common.GenericExecConfig{
+						RunExec: "bash",
+					},
+				},
+			},
+		},
+		"generic executor set with PrepareExec": {
+			config: common.RunnerConfig{
+				RunnerSettings: common.RunnerSettings{
+					BuildsDir: "/builds",
+					CacheDir:  "/cache",
+					Shell:     "bash",
+					GenericExec: &common.GenericExecConfig{
+						RunExec:     "bash",
+						PrepareExec: "echo test",
+					},
+				},
+			},
+		},
+	}
+
+	for testName, tt := range tests {
+		t.Run(testName, func(t *testing.T) {
+			out := bytes.NewBuffer([]byte{})
+
+			successfulBuild, err := common.GetSuccessfulBuild()
+			require.NoError(t, err)
+
+			options := common.ExecutorPrepareOptions{
+				Build: &common.Build{
+					JobResponse: successfulBuild,
+					Runner:      &tt.config,
+				},
+				Config:  &tt.config,
+				Context: context.Background(),
+				Trace:   &common.Trace{Writer: out},
+			}
+
+			e := new(executor)
+			err = e.Prepare(options)
+
+			output := out.String()
+			t.Log(testName, output)
+
+			if tt.expectedError == "" {
+				assert.NoError(t, err)
+				return
+			}
+
+			assert.EqualError(t, err, tt.expectedError)
+		})
+	}
 }
