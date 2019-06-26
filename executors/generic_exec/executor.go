@@ -224,7 +224,7 @@ func init() {
 		DefaultBuildsDir:              "builds",
 		DefaultCacheDir:               "cache",
 		Shell: common.ShellScriptInfo{
-			Shell:         "bash",
+			Shell:         common.GetDefaultShell(),
 			Type:          common.NormalShell,
 			RunnerCommand: "gitlab-runner",
 		},
