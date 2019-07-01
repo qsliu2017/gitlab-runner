@@ -98,6 +98,15 @@ func TestConfigureSecurityGroupPermissionsDockerAndSsh(t *testing.T) {
 	assert.Empty(t, perms)
 }
 
+func TestConfigureSecurityGroupPermissionsSkipReadOnly(t *testing.T) {
+	driver := NewTestDriver()
+	driver.SecurityGroupReadOnly = true
+	perms, err := driver.configureSecurityGroupPermissions(securityGroup)
+
+	assert.Nil(t, err)
+	assert.Len(t, perms, 0)
+}
+
 func TestConfigureSecurityGroupPermissionsOpenPorts(t *testing.T) {
 	driver := NewTestDriver()
 	driver.OpenPorts = []string{"8888/tcp", "8080/udp", "9090"}
@@ -181,7 +190,7 @@ func TestValidateAwsRegionValid(t *testing.T) {
 }
 
 func TestValidateAwsRegionInvalid(t *testing.T) {
-	regions := []string{"eu-west-2", "eu-central-2"}
+	regions := []string{"eu-central-2"}
 
 	for _, region := range regions {
 		_, err := validateAwsRegion(region)
@@ -215,6 +224,31 @@ func TestDefaultVPCIsMissing(t *testing.T) {
 	vpc, err := driver.getDefaultVPCId()
 
 	assert.EqualError(t, err, "No default-vpc attribute")
+	assert.Empty(t, vpc)
+}
+
+func TestDefaultVPCIsNone(t *testing.T) {
+	driver := NewDriver("machineFoo", "path")
+	attributeName := "default-vpc"
+	vpcName := "none"
+	driver.clientFactory = func() Ec2Client {
+		return &fakeEC2WithDescribe{
+			output: &ec2.DescribeAccountAttributesOutput{
+				AccountAttributes: []*ec2.AccountAttribute{
+					{
+						AttributeName: &attributeName,
+						AttributeValues: []*ec2.AccountAttributeValue{
+							{AttributeValue: &vpcName},
+						},
+					},
+				},
+			},
+		}
+	}
+
+	vpc, err := driver.getDefaultVPCId()
+
+	assert.EqualError(t, err, "default-vpc is 'none'")
 	assert.Empty(t, vpc)
 }
 

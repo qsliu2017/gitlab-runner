@@ -2,6 +2,7 @@ package commands
 
 import (
 	"os/exec"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -46,14 +47,16 @@ func (l *MockHostInfoLoader) load(name string) (HostInfo, error) {
 }
 
 func TestGetInfoForLocalScpArg(t *testing.T) {
-	host, path, opts, err := getInfoForScpArg("/tmp/foo", nil)
+	host, user, path, opts, err := getInfoForScpArg("/tmp/foo", nil)
 	assert.Nil(t, host)
+	assert.Empty(t, user)
 	assert.Equal(t, "/tmp/foo", path)
 	assert.Nil(t, opts)
 	assert.NoError(t, err)
 
-	host, path, opts, err = getInfoForScpArg("localhost:C:\\path", nil)
+	host, user, path, opts, err = getInfoForScpArg("localhost:C:\\path", nil)
 	assert.Nil(t, host)
+	assert.Empty(t, user)
 	assert.Equal(t, "C:\\path", path)
 	assert.Nil(t, opts)
 	assert.NoError(t, err)
@@ -64,20 +67,23 @@ func TestGetInfoForRemoteScpArg(t *testing.T) {
 		sshKeyPath: "/fake/keypath/id_rsa",
 	}}
 
-	host, path, opts, err := getInfoForScpArg("myfunhost:/home/docker/foo", &hostInfoLoader)
+	host, user, path, opts, err := getInfoForScpArg("myuser@myfunhost:/home/docker/foo", &hostInfoLoader)
 	assert.Equal(t, "myfunhost", host.GetMachineName())
+	assert.Equal(t, "myuser", user)
 	assert.Equal(t, "/home/docker/foo", path)
-	assert.Equal(t, []string{"-i", "/fake/keypath/id_rsa"}, opts)
+	assert.Equal(t, []string{"-o", `IdentityFile="/fake/keypath/id_rsa"`}, opts)
 	assert.NoError(t, err)
 
-	host, path, opts, err = getInfoForScpArg("myfunhost:C:\\path", &hostInfoLoader)
+	host, user, path, opts, err = getInfoForScpArg("myfunhost:C:\\path", &hostInfoLoader)
 	assert.Equal(t, "myfunhost", host.GetMachineName())
+	assert.Empty(t, user)
 	assert.Equal(t, "C:\\path", path)
+	assert.Equal(t, []string{"-o", `IdentityFile="/fake/keypath/id_rsa"`}, opts)
 	assert.NoError(t, err)
 }
 
 func TestHostLocation(t *testing.T) {
-	arg, err := generateLocationArg(nil, "/home/docker/foo")
+	arg, err := generateLocationArg(nil, "user1", "/home/docker/foo")
 
 	assert.Equal(t, "/home/docker/foo", arg)
 	assert.NoError(t, err)
@@ -89,9 +95,14 @@ func TestRemoteLocation(t *testing.T) {
 		sshUsername: "root",
 	}
 
-	arg, err := generateLocationArg(&hostInfo, "/home/docker/foo")
+	arg, err := generateLocationArg(&hostInfo, "", "/home/docker/foo")
 
 	assert.Equal(t, "root@12.34.56.78:/home/docker/foo", arg)
+	assert.NoError(t, err)
+
+	argWithUser, err := generateLocationArg(&hostInfo, "user1", "/home/docker/foo")
+
+	assert.Equal(t, "user1@12.34.56.78:/home/docker/foo", argWithUser)
 	assert.NoError(t, err)
 }
 
@@ -103,7 +114,7 @@ func TestGetScpCmd(t *testing.T) {
 		sshKeyPath:  "/fake/keypath/id_rsa",
 	}}
 
-	cmd, err := getScpCmd("/tmp/foo", "myfunhost:/home/docker/foo", true, &hostInfoLoader)
+	cmd, err := getScpCmd("/tmp/foo", "myfunhost:/home/docker/foo", true, false, false, &hostInfoLoader)
 
 	expectedArgs := append(
 		baseSSHArgs,
@@ -111,10 +122,10 @@ func TestGetScpCmd(t *testing.T) {
 		"-r",
 		"-o",
 		"IdentitiesOnly=yes",
-		"-P",
-		"234",
-		"-i",
-		"/fake/keypath/id_rsa",
+		"-o",
+		"Port=234",
+		"-o",
+		`IdentityFile="/fake/keypath/id_rsa"`,
 		"/tmp/foo",
 		"root@12.34.56.78:/home/docker/foo",
 	)
@@ -130,7 +141,7 @@ func TestGetScpCmdWithoutSshKey(t *testing.T) {
 		sshUsername: "user",
 	}}
 
-	cmd, err := getScpCmd("/tmp/foo", "myfunhost:/home/docker/foo", true, &hostInfoLoader)
+	cmd, err := getScpCmd("/tmp/foo", "myfunhost:/home/docker/foo", true, false, false, &hostInfoLoader)
 
 	expectedArgs := append(
 		baseSSHArgs,
@@ -140,6 +151,28 @@ func TestGetScpCmdWithoutSshKey(t *testing.T) {
 		"user@1.2.3.4:/home/docker/foo",
 	)
 	expectedCmd := exec.Command("/usr/bin/scp", expectedArgs...)
+
+	assert.Equal(t, expectedCmd, cmd)
+	assert.NoError(t, err)
+}
+
+func TestGetScpCmdWithDelta(t *testing.T) {
+	hostInfoLoader := MockHostInfoLoader{MockHostInfo{
+		ip:          "1.2.3.4",
+		sshUsername: "user",
+	}}
+
+	cmd, err := getScpCmd("/tmp/foo", "myfunhost:/home/docker/foo", true, true, false, &hostInfoLoader)
+
+	expectedArgs := append(
+		[]string{"--progress"},
+		"-e",
+		"ssh "+strings.Join(baseSSHArgs, " "),
+		"-r",
+		"/tmp/foo",
+		"user@1.2.3.4:/home/docker/foo",
+	)
+	expectedCmd := exec.Command("/usr/bin/rsync", expectedArgs...)
 
 	assert.Equal(t, expectedCmd, cmd)
 	assert.NoError(t, err)

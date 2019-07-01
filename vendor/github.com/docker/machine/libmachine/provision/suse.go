@@ -15,32 +15,14 @@ import (
 )
 
 func init() {
-	Register("openSUSE", &RegisteredProvisioner{
-		New: NewOpenSUSEProvisioner,
-	})
-	Register("SUSE Linux Enterprise Desktop", &RegisteredProvisioner{
-		New: NewSLEDProvisioner,
-	})
-	Register("SUSE Linux Enterprise Server", &RegisteredProvisioner{
-		New: NewSLESProvisioner,
+	Register("SUSE", &RegisteredProvisioner{
+		New: NewSUSEProvisioner,
 	})
 }
 
-func NewSLEDProvisioner(d drivers.Driver) Provisioner {
+func NewSUSEProvisioner(d drivers.Driver) Provisioner {
 	return &SUSEProvisioner{
-		NewSystemdProvisioner("sled", d),
-	}
-}
-
-func NewSLESProvisioner(d drivers.Driver) Provisioner {
-	return &SUSEProvisioner{
-		NewSystemdProvisioner("sles", d),
-	}
-}
-
-func NewOpenSUSEProvisioner(d drivers.Driver) Provisioner {
-	return &SUSEProvisioner{
-		NewSystemdProvisioner("openSUSE", d),
+		NewSystemdProvisioner("SUSE", d),
 	}
 }
 
@@ -49,11 +31,17 @@ type SUSEProvisioner struct {
 }
 
 func (provisioner *SUSEProvisioner) CompatibleWithHost() bool {
-	return strings.ToLower(provisioner.OsReleaseInfo.ID) == strings.ToLower(provisioner.OsReleaseID)
+	ids := strings.Split(provisioner.OsReleaseInfo.IDLike, " ")
+	for _, id := range ids {
+		if id == "suse" {
+			return true
+		}
+	}
+	return false
 }
 
 func (provisioner *SUSEProvisioner) String() string {
-	return "openSUSE"
+	return "SUSE"
 }
 
 func (provisioner *SUSEProvisioner) Package(name string, action pkgaction.PackageAction) error {
@@ -62,6 +50,18 @@ func (provisioner *SUSEProvisioner) Package(name string, action pkgaction.Packag
 	switch action {
 	case pkgaction.Install:
 		packageAction = "in"
+		// This is an optimization that reduces the provisioning time of certain
+		// systems in a significant way.
+		// The invocation of "zypper in <pkg>" causes the download of the metadata
+		// of all the repositories that have never been refreshed or that have
+		// automatic refresh toggled and have not been refreshed recently.
+		// Refreshing the repository metadata can take quite some time and can cause
+		// longer provisioning times for machines that have been pre-optimized for
+		// docker by including all the needed packages.
+		if _, err := provisioner.SSHCommand(fmt.Sprintf("rpm -q %s", name)); err == nil {
+			log.Debugf("%s is already installed, skipping operation", name)
+			return nil
+		}
 	case pkgaction.Remove:
 		packageAction = "rm"
 	case pkgaction.Upgrade:
@@ -98,10 +98,14 @@ func (provisioner *SUSEProvisioner) Provision(swarmOptions swarm.Options, authOp
 	provisioner.EngineOptions = engineOptions
 	swarmOptions.Env = engineOptions.Env
 
-	// figure out the filesytem used by /var/lib
-	fs, err := provisioner.SSHCommand("stat -f -c %T /var/lib/")
+	// figure out the filesystem used by /var/lib/docker
+	fs, err := provisioner.SSHCommand("stat -f -c %T /var/lib/docker")
 	if err != nil {
-		return err
+		// figure out the filesystem used by /var/lib
+		fs, err = provisioner.SSHCommand("stat -f -c %T /var/lib/")
+		if err != nil {
+			return err
+		}
 	}
 	graphDriver := "overlay"
 	if strings.Contains(fs, "btrfs") {
@@ -119,10 +123,10 @@ func (provisioner *SUSEProvisioner) Provision(swarmOptions swarm.Options, authOp
 		return err
 	}
 
-	if strings.ToLower(provisioner.OsReleaseInfo.ID) != "opensuse" {
+	if !strings.HasPrefix(strings.ToLower(provisioner.OsReleaseInfo.ID), "opensuse") {
 		// This is a SLE machine, enable the containers module to have access
 		// to the docker packages
-		if _, err := provisioner.SSHCommand("sudo -E SUSEConnect -p sle-module-containers/12/x86_64 -r ''"); err != nil {
+		if _, err := provisioner.SSHCommand("sudo -E SUSEConnect -p sle-module-containers/12/$(uname -m) -r ''"); err != nil {
 			return fmt.Errorf(
 				"Error while adding the 'containers' module, make sure this machine is registered either against SUSE Customer Center (SCC) or to a local Subscription Management Tool (SMT): %v",
 				err)
@@ -141,16 +145,16 @@ func (provisioner *SUSEProvisioner) Provision(swarmOptions swarm.Options, authOp
 		return err
 	}
 
-	// create symlinks for containerd, containerd-shim and runc.
+	// create symlinks for containerd, containerd-shim and optional runc.
 	// We have to do that because machine overrides the openSUSE systemd
 	// unit of docker
-	if _, err := provisioner.SSHCommand("sudo -E ln -s /usr/sbin/runc /usr/sbin/docker-runc"); err != nil {
+	if _, err := provisioner.SSHCommand("yes no | sudo -E ln -si /usr/sbin/runc /usr/sbin/docker-runc"); err != nil {
 		return err
 	}
-	if _, err := provisioner.SSHCommand("sudo -E ln -s /usr/sbin/containerd /usr/sbin/docker-containerd"); err != nil {
+	if _, err := provisioner.SSHCommand("sudo -E ln -sf /usr/sbin/containerd /usr/sbin/docker-containerd"); err != nil {
 		return err
 	}
-	if _, err := provisioner.SSHCommand("sudo -E ln -s /usr/sbin/containerd-shim /usr/sbin/docker-containerd-shim"); err != nil {
+	if _, err := provisioner.SSHCommand("sudo -E ln -sf /usr/sbin/containerd-shim /usr/sbin/docker-containerd-shim"); err != nil {
 		return err
 	}
 
@@ -186,9 +190,6 @@ func (provisioner *SUSEProvisioner) Provision(swarmOptions swarm.Options, authOp
 
 	// enable in systemd
 	log.Debug("Enabling docker in systemd")
-	if err := provisioner.Service("docker", serviceaction.Enable); err != nil {
-		return err
-	}
-
-	return nil
+	err = provisioner.Service("docker", serviceaction.Enable)
+	return err
 }

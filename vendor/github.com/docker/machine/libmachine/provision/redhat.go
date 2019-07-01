@@ -19,35 +19,11 @@ import (
 
 var (
 	ErrUnknownYumOsRelease = errors.New("unknown OS for Yum repository")
-
-	packageListTemplate = `[docker]
-name=Docker Stable Repository
-baseurl=https://yum.dockerproject.org/repo/main/{{.OsRelease}}/{{.OsReleaseVersion}}
-priority=1
-enabled=1
-gpgkey=https://yum.dockerproject.org/gpg
-`
-	engineConfigTemplate = `[Unit]
-Description=Docker Application Container Engine
-After=network.target
-
-[Service]
-Type=notify
+	engineConfigTemplate   = `[Service]
+ExecStart=
 ExecStart=/usr/bin/dockerd -H tcp://0.0.0.0:{{.DockerPort}} -H unix:///var/run/docker.sock --storage-driver {{.EngineOptions.StorageDriver}} --tlsverify --tlscacert {{.AuthOptions.CaCertRemotePath}} --tlscert {{.AuthOptions.ServerCertRemotePath}} --tlskey {{.AuthOptions.ServerKeyRemotePath}} {{ range .EngineOptions.Labels }}--label {{.}} {{ end }}{{ range .EngineOptions.InsecureRegistry }}--insecure-registry {{.}} {{ end }}{{ range .EngineOptions.RegistryMirror }}--registry-mirror {{.}} {{ end }}{{ range .EngineOptions.ArbitraryFlags }}--{{.}} {{ end }}
-ExecReload=/bin/kill -s HUP $MAINPID
-MountFlags=slave
-LimitNOFILE=infinity
-LimitNPROC=infinity
-LimitCORE=infinity
-TimeoutStartSec=0
-Delegate=yes
-KillMode=process
 Environment={{range .EngineOptions.Env}}{{ printf "%q" . }} {{end}}
-
-[Install]
-WantedBy=multi-user.target
 `
-
 	majorVersionRE = regexp.MustCompile(`^(\d+)(\..*)?`)
 )
 
@@ -110,6 +86,8 @@ func (provisioner *RedHatProvisioner) Package(name string, action pkgaction.Pack
 		packageAction = "install"
 	case pkgaction.Remove:
 		packageAction = "remove"
+	case pkgaction.Purge:
+		packageAction = "remove"
 	case pkgaction.Upgrade:
 		packageAction = "upgrade"
 	}
@@ -132,11 +110,8 @@ func installDocker(provisioner *RedHatProvisioner) error {
 		return err
 	}
 
-	if err := provisioner.Service("docker", serviceaction.Enable); err != nil {
-		return err
-	}
-
-	return nil
+	err := provisioner.Service("docker", serviceaction.Enable)
+	return err
 }
 
 func (provisioner *RedHatProvisioner) dockerDaemonResponding() bool {
@@ -159,7 +134,7 @@ func (provisioner *RedHatProvisioner) Provision(swarmOptions swarm.Options, auth
 	swarmOptions.Env = engineOptions.Env
 
 	// set default storage driver for redhat
-	storageDriver, err := decideStorageDriver(provisioner, "devicemapper", engineOptions.StorageDriver)
+	storageDriver, err := decideStorageDriver(provisioner, "overlay2", engineOptions.StorageDriver)
 	if err != nil {
 		return err
 	}
@@ -200,11 +175,8 @@ func (provisioner *RedHatProvisioner) Provision(swarmOptions swarm.Options, auth
 		return err
 	}
 
-	if err := configureSwarm(provisioner, swarmOptions, provisioner.AuthOptions); err != nil {
-		return err
-	}
-
-	return nil
+	err = configureSwarm(provisioner, swarmOptions, provisioner.AuthOptions)
+	return err
 }
 
 func (provisioner *RedHatProvisioner) GenerateDockerOptions(dockerPort int) (*DockerOptions, error) {

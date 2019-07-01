@@ -22,6 +22,7 @@ type Driver struct {
 	DiskType          string
 	Address           string
 	Network           string
+	Subnetwork        string
 	Preemptible       bool
 	UseInternalIP     bool
 	UseInternalIPOnly bool
@@ -30,17 +31,19 @@ type Driver struct {
 	Project           string
 	Tags              string
 	UseExisting       bool
+	OpenPorts         []string
 }
 
 const (
 	defaultZone        = "us-central1-a"
 	defaultUser        = "docker-user"
 	defaultMachineType = "n1-standard-1"
-	defaultImageName   = "ubuntu-os-cloud/global/images/ubuntu-1604-xenial-v20161130"
+	defaultImageName   = "ubuntu-os-cloud/global/images/ubuntu-1604-xenial-v20170721"
 	defaultScopes      = "https://www.googleapis.com/auth/devstorage.read_only,https://www.googleapis.com/auth/logging.write,https://www.googleapis.com/auth/monitoring.write"
 	defaultDiskType    = "pd-standard"
 	defaultDiskSize    = 10
 	defaultNetwork     = "default"
+	defaultSubnetwork  = ""
 )
 
 // GetCreateFlags registers the flags this driver adds to
@@ -101,6 +104,12 @@ func (d *Driver) GetCreateFlags() []mcnflag.Flag {
 			EnvVar: "GOOGLE_NETWORK",
 		},
 		mcnflag.StringFlag{
+			Name:   "google-subnetwork",
+			Usage:  "Specify subnetwork in which to provision vm",
+			Value:  defaultSubnetwork,
+			EnvVar: "GOOGLE_SUBNETWORK",
+		},
+		mcnflag.StringFlag{
 			Name:   "google-address",
 			Usage:  "GCE Instance External IP",
 			EnvVar: "GOOGLE_ADDRESS",
@@ -131,6 +140,10 @@ func (d *Driver) GetCreateFlags() []mcnflag.Flag {
 			Usage:  "Don't create a new VM, use an existing one",
 			EnvVar: "GOOGLE_USE_EXISTING",
 		},
+		mcnflag.StringSliceFlag{
+			Name:  "google-open-port",
+			Usage: "Make the specified port number accessible from the Internet, e.g, 8080/tcp",
+		},
 	}
 }
 
@@ -143,6 +156,7 @@ func NewDriver(machineName string, storePath string) *Driver {
 		MachineType:  defaultMachineType,
 		MachineImage: defaultImageName,
 		Network:      defaultNetwork,
+		Subnetwork:   defaultSubnetwork,
 		Scopes:       defaultScopes,
 		BaseDriver: &drivers.BaseDriver{
 			SSHUser:     defaultUser,
@@ -182,15 +196,18 @@ func (d *Driver) SetConfigFromFlags(flags drivers.DriverOptions) error {
 	if !d.UseExisting {
 		d.MachineType = flags.String("google-machine-type")
 		d.MachineImage = flags.String("google-machine-image")
+		d.MachineImage = strings.TrimPrefix(d.MachineImage, "https://www.googleapis.com/compute/v1/projects/")
 		d.DiskSize = flags.Int("google-disk-size")
 		d.DiskType = flags.String("google-disk-type")
 		d.Address = flags.String("google-address")
 		d.Network = flags.String("google-network")
+		d.Subnetwork = flags.String("google-subnetwork")
 		d.Preemptible = flags.Bool("google-preemptible")
 		d.UseInternalIP = flags.Bool("google-use-internal-ip") || flags.Bool("google-use-internal-ip-only")
 		d.UseInternalIPOnly = flags.Bool("google-use-internal-ip-only")
 		d.Scopes = flags.String("google-scopes")
 		d.Tags = flags.String("google-tags")
+		d.OpenPorts = flags.StringSlice("google-open-port")
 	}
 	d.SSHUser = flags.String("google-username")
 	d.SSHPort = 22
@@ -323,7 +340,7 @@ func (d *Driver) Start() error {
 
 	instance, err := c.instance()
 	if err != nil {
-		if !strings.Contains(err.Error(), "notFound") {
+		if !isNotFound(err) {
 			return err
 		}
 	}
@@ -379,8 +396,20 @@ func (d *Driver) Remove() error {
 	}
 
 	if err := c.deleteInstance(); err != nil {
-		return err
+		if isNotFound(err) {
+			log.Warn("Remote instance does not exist, proceeding with removing local reference")
+		} else {
+			return err
+		}
 	}
 
-	return c.deleteDisk()
+	if err := c.deleteDisk(); err != nil {
+		if isNotFound(err) {
+			log.Warn("Remote disk does not exist, proceeding")
+		} else {
+			return err
+		}
+	}
+
+	return nil
 }

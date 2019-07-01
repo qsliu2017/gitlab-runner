@@ -36,11 +36,9 @@ var (
 var (
 	SharedCreateFlags = []cli.Flag{
 		cli.StringFlag{
-			Name: "driver, d",
-			Usage: fmt.Sprintf(
-				"Driver to create machine with.",
-			),
-			Value:  "none",
+			Name:   "driver, d",
+			Usage:  "Driver to create machine with.",
+			Value:  "virtualbox",
 			EnvVar: "MACHINE_DRIVER",
 		},
 		cli.StringFlag{
@@ -301,8 +299,7 @@ func cmdCreateOuter(c CommandLine, api libmachine.API) error {
 		//TODO: Check Environment have to include flagHackLookup function.
 		driverName = os.Getenv("MACHINE_DRIVER")
 		if driverName == "" {
-			c.ShowHelp()
-			return nil // ?
+			driverName = "virtualbox"
 		}
 	}
 

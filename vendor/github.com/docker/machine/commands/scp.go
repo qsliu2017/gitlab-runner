@@ -7,7 +7,6 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/docker/machine/libmachine"
 	"github.com/docker/machine/libmachine/log"
 	"github.com/docker/machine/libmachine/persist"
 )
@@ -54,38 +53,27 @@ func (s *storeHostInfoLoader) load(name string) (HostInfo, error) {
 	return host.Driver, nil
 }
 
-func cmdScp(c CommandLine, api libmachine.API) error {
-	args := c.Args()
-	if len(args) != 2 {
-		c.ShowHelp()
-		return errWrongNumberArguments
+func getScpCmd(src, dest string, recursive bool, delta bool, quiet bool, hostInfoLoader HostInfoLoader) (*exec.Cmd, error) {
+	var cmdPath string
+	var err error
+	if !delta {
+		cmdPath, err = exec.LookPath("scp")
+		if err != nil {
+			return nil, errors.New("You must have a copy of the scp binary locally to use the scp feature")
+		}
+	} else {
+		cmdPath, err = exec.LookPath("rsync")
+		if err != nil {
+			return nil, errors.New("You must have a copy of the rsync binary locally to use the --delta option")
+		}
 	}
 
-	src := args[0]
-	dest := args[1]
-
-	hostInfoLoader := &storeHostInfoLoader{api}
-
-	cmd, err := getScpCmd(src, dest, c.Bool("recursive"), hostInfoLoader)
-	if err != nil {
-		return err
-	}
-
-	return runCmdWithStdIo(*cmd)
-}
-
-func getScpCmd(src, dest string, recursive bool, hostInfoLoader HostInfoLoader) (*exec.Cmd, error) {
-	cmdPath, err := exec.LookPath("scp")
-	if err != nil {
-		return nil, errors.New("You must have a copy of the scp binary locally to use the scp feature")
-	}
-
-	srcHost, srcPath, srcOpts, err := getInfoForScpArg(src, hostInfoLoader)
+	srcHost, srcUser, srcPath, srcOpts, err := getInfoForScpArg(src, hostInfoLoader)
 	if err != nil {
 		return nil, err
 	}
 
-	destHost, destPath, destOpts, err := getInfoForScpArg(dest, hostInfoLoader)
+	destHost, destUser, destPath, destOpts, err := getInfoForScpArg(dest, hostInfoLoader)
 	if err != nil {
 		return nil, err
 	}
@@ -93,9 +81,14 @@ func getScpCmd(src, dest string, recursive bool, hostInfoLoader HostInfoLoader) 
 	// TODO: Check that "-3" flag is available in user's version of scp.
 	// It is on every system I've checked, but the manual mentioned it's "newer"
 	sshArgs := baseSSHArgs
-	sshArgs = append(sshArgs, "-3")
-	if recursive {
-		sshArgs = append(sshArgs, "-r")
+	if !delta {
+		sshArgs = append(sshArgs, "-3")
+		if recursive {
+			sshArgs = append(sshArgs, "-r")
+		}
+		if quiet {
+			sshArgs = append(sshArgs, "-q")
+		}
 	}
 
 	// Don't use ssh-agent if both hosts have explicit ssh keys
@@ -108,13 +101,25 @@ func getScpCmd(src, dest string, recursive bool, hostInfoLoader HostInfoLoader) 
 	sshArgs = append(sshArgs, destOpts...)
 
 	// Append actual arguments for the scp command (i.e. docker@<ip>:/path)
-	locationArg, err := generateLocationArg(srcHost, srcPath)
+	locationArg, err := generateLocationArg(srcHost, srcUser, srcPath)
 	if err != nil {
 		return nil, err
 	}
 
+	// TODO: Check that "--progress" flag is available in user's version of rsync.
+	// Use quiet mode as a workaround, if it should happen to not be supported...
+	if delta {
+		sshArgs = append([]string{"-e"}, "ssh "+strings.Join(sshArgs, " "))
+		if !quiet {
+			sshArgs = append([]string{"--progress"}, sshArgs...)
+		}
+		if recursive {
+			sshArgs = append(sshArgs, "-r")
+		}
+	}
+
 	sshArgs = append(sshArgs, locationArg)
-	locationArg, err = generateLocationArg(destHost, destPath)
+	locationArg, err = generateLocationArg(destHost, destUser, destPath)
 	if err != nil {
 		return nil, err
 	}
@@ -129,40 +134,43 @@ func missesExplicitSSHKey(hostInfo HostInfo) bool {
 	return hostInfo != nil && hostInfo.GetSSHKeyPath() == ""
 }
 
-func getInfoForScpArg(hostAndPath string, hostInfoLoader HostInfoLoader) (HostInfo, string, []string, error) {
+func getInfoForScpArg(hostAndPath string, hostInfoLoader HostInfoLoader) (h HostInfo, user string, path string, args []string, err error) {
 	// Local path.  e.g. "/tmp/foo"
 	if !strings.Contains(hostAndPath, ":") {
-		return nil, hostAndPath, nil, nil
+		return nil, "", hostAndPath, nil, nil
 	}
 
 	// Path with hostname.  e.g. "hostname:/usr/bin/cmatrix"
 	parts := strings.SplitN(hostAndPath, ":", 2)
 	hostName := parts[0]
-	path := parts[1]
+	if hParts := strings.SplitN(hostName, "@", 2); len(hParts) == 2 {
+		user, hostName = hParts[0], hParts[1]
+	}
+	path = parts[1]
 	if hostName == "localhost" {
-		return nil, path, nil, nil
+		return nil, "", path, nil, nil
 	}
 
 	// Remote path
-	hostInfo, err := hostInfoLoader.load(hostName)
+	h, err = hostInfoLoader.load(hostName)
 	if err != nil {
-		return nil, "", nil, fmt.Errorf("Error loading host: %s", err)
+		return nil, "", "", nil, fmt.Errorf("Error loading host: %s", err)
 	}
 
-	args := []string{}
-	port, err := hostInfo.GetSSHPort()
+	args = []string{}
+	port, err := h.GetSSHPort()
 	if err == nil && port > 0 {
-		args = append(args, "-P", fmt.Sprintf("%v", port))
+		args = append(args, "-o", fmt.Sprintf("Port=%v", port))
 	}
 
-	if hostInfo.GetSSHKeyPath() != "" {
-		args = append(args, "-i", hostInfo.GetSSHKeyPath())
+	if h.GetSSHKeyPath() != "" {
+		args = append(args, "-o", fmt.Sprintf("IdentityFile=%q", h.GetSSHKeyPath()))
 	}
 
-	return hostInfo, path, args, nil
+	return
 }
 
-func generateLocationArg(hostInfo HostInfo, path string) (string, error) {
+func generateLocationArg(hostInfo HostInfo, user, path string) (string, error) {
 	if hostInfo == nil {
 		return path, nil
 	}
@@ -172,7 +180,10 @@ func generateLocationArg(hostInfo HostInfo, path string) (string, error) {
 		return "", err
 	}
 
-	location := fmt.Sprintf("%s@%s:%s", hostInfo.GetSSHUsername(), hostname, path)
+	if user == "" {
+		user = hostInfo.GetSSHUsername()
+	}
+	location := fmt.Sprintf("%s@%s:%s", user, hostname, path)
 	return location, nil
 }
 

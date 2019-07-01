@@ -60,11 +60,14 @@ func (provisioner *UbuntuSystemdProvisioner) Package(name string, action pkgacti
 	case pkgaction.Remove:
 		packageAction = "remove"
 		updateMetadata = false
+	case pkgaction.Purge:
+		packageAction = "purge"
+		updateMetadata = false
 	}
 
 	switch name {
 	case "docker":
-		name = "docker-engine"
+		name = "docker-ce"
 	}
 
 	if updateMetadata {
@@ -77,11 +80,7 @@ func (provisioner *UbuntuSystemdProvisioner) Package(name string, action pkgacti
 
 	log.Debugf("package: action=%s name=%s", action.String(), name)
 
-	if _, err := provisioner.SSHCommand(command); err != nil {
-		return err
-	}
-
-	return nil
+	return waitForLock(provisioner, command)
 }
 
 func (provisioner *UbuntuSystemdProvisioner) dockerDaemonResponding() bool {
@@ -103,7 +102,7 @@ func (provisioner *UbuntuSystemdProvisioner) Provision(swarmOptions swarm.Option
 	provisioner.EngineOptions = engineOptions
 	swarmOptions.Env = engineOptions.Env
 
-	storageDriver, err := decideStorageDriver(provisioner, "aufs", engineOptions.StorageDriver)
+	storageDriver, err := decideStorageDriver(provisioner, "overlay2", engineOptions.StorageDriver)
 	if err != nil {
 		return err
 	}
@@ -145,9 +144,6 @@ func (provisioner *UbuntuSystemdProvisioner) Provision(swarmOptions swarm.Option
 
 	// enable in systemd
 	log.Debug("enabling docker in systemd")
-	if err := provisioner.Service("docker", serviceaction.Enable); err != nil {
-		return err
-	}
-
-	return nil
+	err = provisioner.Service("docker", serviceaction.Enable)
+	return err
 }

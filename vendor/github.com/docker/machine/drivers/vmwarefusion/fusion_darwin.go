@@ -18,8 +18,6 @@ import (
 	"text/template"
 	"time"
 
-	"errors"
-
 	"github.com/docker/machine/libmachine/drivers"
 	"github.com/docker/machine/libmachine/log"
 	"github.com/docker/machine/libmachine/mcnflag"
@@ -145,9 +143,6 @@ func (d *Driver) DriverName() string {
 }
 
 func (d *Driver) SetConfigFromFlags(flags drivers.DriverOptions) error {
-	if drivers.EngineInstallURLFlagSet(flags) {
-		return errors.New("--engine-install-url cannot be used with the vmwarefusion driver, use --vmwarefusion-boot2docker-url instead")
-	}
 	d.Memory = flags.Int("vmwarefusion-memory-size")
 	d.CPU = flags.Int("vmwarefusion-cpu-count")
 	d.DiskSize = flags.Int("vmwarefusion-disk-size")
@@ -230,11 +225,8 @@ func (d *Driver) PreCreateCheck() error {
 	// Downloading boot2docker to cache should be done here to make sure
 	// that a download failure will not leave a machine half created.
 	b2dutils := mcnutils.NewB2dUtils(d.StorePath)
-	if err := b2dutils.UpdateISOCache(d.Boot2DockerURL); err != nil {
-		return err
-	}
 
-	return nil
+	return b2dutils.UpdateISOCache(d.Boot2DockerURL)
 }
 
 func (d *Driver) Create() error {
@@ -285,7 +277,10 @@ func (d *Driver) Create() error {
 	}
 
 	log.Infof("Starting %s...", d.MachineName)
-	vmrun("start", d.vmxPath(), "nogui")
+	_, _, err = vmrun("start", d.vmxPath(), "nogui")
+	if err != nil {
+		return err
+	}
 
 	var ip string
 
@@ -319,7 +314,7 @@ func (d *Driver) Create() error {
 	d.IPAddress = ip
 
 	// Do not execute the rest of boot2docker specific configuration
-	// The uplaod of the public ssh key uses a ssh connection,
+	// The upload of the public ssh key uses a ssh connection,
 	// this works without installed vmware client tools
 	if d.ConfigDriveURL != "" {
 		var keyfh *os.File
@@ -362,16 +357,34 @@ func (d *Driver) Create() error {
 	}
 
 	// Test if /var/lib/boot2docker exists
-	vmrun("-gu", B2DUser, "-gp", B2DPass, "directoryExistsInGuest", d.vmxPath(), "/var/lib/boot2docker")
+	_, _, err = vmrun("-gu", B2DUser, "-gp", B2DPass, "directoryExistsInGuest", d.vmxPath(), "/var/lib/boot2docker")
+	if err != nil {
+		return err
+	}
 
 	// Copy SSH keys bundle
-	vmrun("-gu", B2DUser, "-gp", B2DPass, "CopyFileFromHostToGuest", d.vmxPath(), d.ResolveStorePath("userdata.tar"), "/home/docker/userdata.tar")
+	_, _, err = vmrun("-gu", B2DUser, "-gp", B2DPass, "CopyFileFromHostToGuest", d.vmxPath(), d.ResolveStorePath("userdata.tar"), "/home/docker/userdata.tar")
+	if err != nil {
+		return err
+	}
 
 	// Expand tar file.
-	vmrun("-gu", B2DUser, "-gp", B2DPass, "runScriptInGuest", d.vmxPath(), "/bin/sh", "sudo /bin/mv /home/docker/userdata.tar /var/lib/boot2docker/userdata.tar && sudo tar xf /var/lib/boot2docker/userdata.tar -C /home/docker/ > /var/log/userdata.log 2>&1 && sudo chown -R docker:staff /home/docker")
+	_, _, err = vmrun("-gu", B2DUser, "-gp", B2DPass, "runScriptInGuest", d.vmxPath(), "/bin/sh", "sudo sh -c \"tar xvf /home/docker/userdata.tar -C /home/docker > /var/log/userdata.log 2>&1 && chown -R docker:staff /home/docker\"")
+	if err != nil {
+		return err
+	}
+
+	// copy to /var/lib/boot2docker
+	_, _, err = vmrun("-gu", B2DUser, "-gp", B2DPass, "runScriptInGuest", d.vmxPath(), "/bin/sh", "sudo /bin/mv /home/docker/userdata.tar /var/lib/boot2docker/userdata.tar")
+	if err != nil {
+		return err
+	}
 
 	// Enable Shared Folders
-	vmrun("-gu", B2DUser, "-gp", B2DPass, "enableSharedFolders", d.vmxPath())
+	_, _, err = vmrun("-gu", B2DUser, "-gp", B2DPass, "enableSharedFolders", d.vmxPath())
+	if err != nil {
+		return err
+	}
 
 	var shareName, shareDir string // TODO configurable at some point
 	switch runtime.GOOS {
@@ -386,9 +399,15 @@ func (d *Driver) Create() error {
 			return err
 		} else if !os.IsNotExist(err) {
 			// add shared folder, create mountpoint and mount it.
-			vmrun("-gu", B2DUser, "-gp", B2DPass, "addSharedFolder", d.vmxPath(), shareName, shareDir)
-			command := "[ ! -d " + shareDir + " ]&& sudo mkdir " + shareDir + "; sudo mount --bind /mnt/hgfs/" + shareDir + " " + shareDir + " || [ -f /usr/local/bin/vmhgfs-fuse ]&& sudo /usr/local/bin/vmhgfs-fuse -o allow_other .host:/" + shareName + " " + shareDir + " || sudo mount -t vmhgfs -o uid=$(id -u),gid=$(id -g) .host:/" + shareName + " " + shareDir
-			vmrun("-gu", B2DUser, "-gp", B2DPass, "runScriptInGuest", d.vmxPath(), "/bin/sh", command)
+			_, _, err = vmrun("-gu", B2DUser, "-gp", B2DPass, "addSharedFolder", d.vmxPath(), shareName, shareDir)
+			if err != nil {
+				return err
+			}
+			command := "([ ! -d " + shareDir + " ]&& sudo mkdir " + shareDir + "; sudo mount --bind /mnt/hgfs/" + shareDir + " " + shareDir + ") || ([ -f /usr/local/bin/vmhgfs-fuse ]&& sudo /usr/local/bin/vmhgfs-fuse -o allow_other .host:/" + shareName + " " + shareDir + ") || sudo mount -t vmhgfs -o uid=$(id -u),gid=$(id -g) .host:/" + shareName + " " + shareDir
+			_, _, err = vmrun("-gu", B2DUser, "-gp", B2DPass, "runScriptInGuest", d.vmxPath(), "/bin/sh", command)
+			if err != nil {
+				return err
+			}
 		}
 	}
 	return nil
@@ -417,7 +436,7 @@ func (d *Driver) Start() error {
 			return err
 		} else if !os.IsNotExist(err) {
 			// create mountpoint and mount shared folder
-			command := "[ ! -d " + shareDir + " ]&& sudo mkdir " + shareDir + "; sudo mount --bind /mnt/hgfs/" + shareDir + " " + shareDir + " || [ -f /usr/local/bin/vmhgfs-fuse ]&& sudo /usr/local/bin/vmhgfs-fuse -o allow_other .host:/" + shareName + " " + shareDir + " || sudo mount -t vmhgfs -o uid=$(id -u),gid=$(id -g) .host:/" + shareName + " " + shareDir
+			command := "([ ! -d " + shareDir + " ]&& sudo mkdir " + shareDir + "; sudo mount --bind /mnt/hgfs/" + shareDir + " " + shareDir + ") || ([ -f /usr/local/bin/vmhgfs-fuse ]&& sudo /usr/local/bin/vmhgfs-fuse -o allow_other .host:/" + shareName + " " + shareDir + ") || sudo mount -t vmhgfs -o uid=$(id -u),gid=$(id -g) .host:/" + shareName + " " + shareDir
 			vmrun("-gu", B2DUser, "-gp", B2DPass, "runScriptInGuest", d.vmxPath(), "/bin/sh", command)
 		}
 	}
@@ -436,10 +455,7 @@ func (d *Driver) Restart() error {
 		return err
 	}
 	// Start it again and mount shared folder
-	if err := d.Start(); err != nil {
-		return err
-	}
-	return nil
+	return d.Start()
 }
 
 func (d *Driver) Kill() error {
@@ -538,7 +554,7 @@ func (d *Driver) getIPfromVmnetConfigurationFile(conffile, macaddr string) (stri
 		return "", err
 	}
 
-	// find all occurences of 'host .* { .. }' and extract
+	// find all occurrences of 'host .* { .. }' and extract
 	// out of the inner block the MAC and IP addresses
 
 	// key = MAC, value = IP
@@ -564,7 +580,7 @@ func (d *Driver) getIPfromVmnetConfigurationFile(conffile, macaddr string) (stri
 			continue
 		}
 
-		// we are only in intressted in endings if we in a block. Otherwise we will count
+		// we are only in interested in endings if we in a block. Otherwise we will count
 		// ending of non host blocks as well
 		if matches := hostend.FindStringSubmatch(line); blockdepth > 0 && matches != nil {
 			blockdepth = blockdepth - 1
@@ -729,12 +745,7 @@ func (d *Driver) generateKeyBundle() error {
 	if _, err := tw.Write([]byte(pubKey)); err != nil {
 		return err
 	}
-	if err := tw.Close(); err != nil {
-		return err
-	}
-
-	return nil
-
+	return tw.Close()
 }
 
 // execute command over SSH with user / password authentication

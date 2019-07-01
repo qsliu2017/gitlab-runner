@@ -68,6 +68,7 @@ func (c *GenericClient) CreateInstance(d *Driver) (string, error) {
 		UserData:         d.UserData,
 		SecurityGroups:   d.SecurityGroups,
 		AvailabilityZone: d.AvailabilityZone,
+		ConfigDrive:      d.ConfigDrive,
 	}
 	if d.NetworkId != "" {
 		serverOpts.Networks = []servers.Network{
@@ -80,8 +81,8 @@ func (c *GenericClient) CreateInstance(d *Driver) (string, error) {
 	log.Info("Creating machine...")
 
 	server, err := servers.Create(c.Compute, keypairs.CreateOptsExt{
-		serverOpts,
-		d.KeyPairName,
+		CreateOptsBuilder: serverOpts,
+		KeyName:           d.KeyPairName,
 	}).Extract()
 	if err != nil {
 		return "", err
@@ -596,7 +597,7 @@ func (c *GenericClient) SetTLSConfig(d *Driver) error {
 		config.RootCAs = certpool
 	}
 
-	transport := &http.Transport{TLSClientConfig: config}
+	transport := &http.Transport{TLSClientConfig: config, Proxy: http.ProxyFromEnvironment}
 	c.Provider.HTTPClient.Transport = transport
 	return nil
 }

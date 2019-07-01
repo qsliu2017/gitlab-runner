@@ -181,7 +181,7 @@ func ConfigureAuth(p Provisioner) error {
 
 	log.Info("Setting Docker configuration on the remote daemon...")
 
-	if _, err = p.SSHCommand(fmt.Sprintf("printf %%s \"%s\" | sudo tee %s", dkrcfg.EngineOptions, dkrcfg.EngineOptionsPath)); err != nil {
+	if _, err = p.SSHCommand(fmt.Sprintf("sudo mkdir -p %s && printf %%s \"%s\" | sudo tee %s", path.Dir(dkrcfg.EngineOptionsPath), dkrcfg.EngineOptions, dkrcfg.EngineOptionsPath)); err != nil {
 		return err
 	}
 
@@ -233,7 +233,7 @@ func decideStorageDriver(p Provisioner, defaultDriver, suppliedDriver string) (s
 		if remoteFilesystemType == "btrfs" {
 			bestSuitedDriver = "btrfs"
 		} else {
-			bestSuitedDriver = "aufs"
+			bestSuitedDriver = defaultDriver
 		}
 	}
 	return bestSuitedDriver, nil
@@ -255,7 +255,7 @@ func checkDaemonUp(p Provisioner, dockerPort int) func() bool {
 	reDaemonListening := fmt.Sprintf(":%d\\s+.*:.*", dockerPort)
 	return func() bool {
 		// HACK: Check netstat's output to see if anyone's listening on the Docker API port.
-		netstatOut, err := p.SSHCommand("netstat -tln")
+		netstatOut, err := p.SSHCommand("if ! type netstat 1>/dev/null; then ss -tln; else netstat -tln; fi")
 		if err != nil {
 			log.Warnf("Error running SSH command: %s", err)
 			return false
@@ -276,7 +276,7 @@ func WaitForDocker(p Provisioner, dockerPort int) error {
 // DockerClientVersion returns the version of the Docker client on the host
 // that ssh is connected to, e.g. "1.12.1".
 func DockerClientVersion(ssh SSHCommander) (string, error) {
-	// `docker version --format {{.Client.Version}}` would be preferrable, but
+	// `docker version --format {{.Client.Version}}` would be preferable, but
 	// that fails if the server isn't running yet.
 	//
 	// output is expected to be something like
@@ -296,9 +296,13 @@ func DockerClientVersion(ssh SSHCommander) (string, error) {
 }
 
 func waitForLockAptGetUpdate(ssh SSHCommander) error {
+	return waitForLock(ssh, "sudo apt-get update")
+}
+
+func waitForLock(ssh SSHCommander, cmd string) error {
 	var sshErr error
 	err := mcnutils.WaitFor(func() bool {
-		_, sshErr = ssh.SSHCommand("sudo apt-get update")
+		_, sshErr = ssh.SSHCommand(cmd)
 		if sshErr != nil {
 			if strings.Contains(sshErr.Error(), "Could not get lock") {
 				sshErr = nil
@@ -309,10 +313,10 @@ func waitForLockAptGetUpdate(ssh SSHCommander) error {
 		return true
 	})
 	if sshErr != nil {
-		return fmt.Errorf("Error running apt-get update: %s", sshErr)
+		return fmt.Errorf("Error running %q: %s", cmd, sshErr)
 	}
 	if err != nil {
-		return fmt.Errorf("Failed to obtain apt-get update lock: %s", err)
+		return fmt.Errorf("Failed to obtain lock: %s", err)
 	}
 	return nil
 }
