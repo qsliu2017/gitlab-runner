@@ -1182,6 +1182,18 @@ func (e *executor) prepareBuildsDir(options common.ExecutorPrepareOptions) error
 func (e *executor) Cleanup() {
 	e.SetCurrentStage(DockerExecutorStageCleanup)
 
+	if !e.Config.SkipCleanup {
+		e.cleanupContainers()
+	}
+
+	if e.client != nil {
+		e.client.Close()
+	}
+
+	e.AbstractExecutor.Cleanup()
+}
+
+func (e *executor) cleanupContainers() {
 	var wg sync.WaitGroup
 
 	ctx, cancel := context.WithTimeout(context.Background(), dockerCleanupTimeout)
@@ -1204,12 +1216,6 @@ func (e *executor) Cleanup() {
 	}
 
 	wg.Wait()
-
-	if e.client != nil {
-		e.client.Close()
-	}
-
-	e.AbstractExecutor.Cleanup()
 }
 
 type serviceHealthCheckError struct {
