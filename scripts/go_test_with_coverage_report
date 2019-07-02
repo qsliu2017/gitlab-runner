@@ -18,6 +18,28 @@ if [[ ${TESTFLAGS} = *"-race"* ]]; then
     coverMode="atomic"
 fi
 
+startSection() {
+    local name="${1}"
+
+    traceSection "${name}" start
+}
+
+endSection() {
+    local name="${1}"
+
+    traceSection "${name}" end
+}
+
+traceSection() {
+    local name="${1}"
+    local tag="${2}"
+
+    local now
+    now=$(date --utc +%s)
+
+    printf "section_%s:%d:%s\\r\\033[0K" "${tag}" "${now}" "${name}"
+}
+
 printMessage() {
   echo -e "\\033[1m${*}\\033[0m"
 }
@@ -93,11 +115,17 @@ executeTestCommand() {
     local pkgSlug
     pkgSlug=$(echo "${pkg}" | tr "/" "-")
 
+    echo -e "\\n\\n"
+
+    local sectionName
+    sectionName=$(echo "test_group_${pkgSlug}_${index}" | sed -r "s/[^a-z0-9_]/_/g")
+    startSection "${sectionName}"
+
     if [[ ${TESTFLAGS} = *"-cover"* ]]; then
         mkdir -p ".cover"
         mkdir -p ".testoutput"
 
-        printMessage "\\n\\n--- Starting part ${index} of go tests of '${pkg}' package with coverprofile in '${coverMode}' mode:\\n"
+        printMessage "--- Starting part ${index} of go tests of '${pkg}' package with coverprofile in '${coverMode}' mode:\\n"
 
         local profileFile=".cover/${pkgSlug}.${index}.${coverMode}.cover.txt"
         options="-covermode=${coverMode} -coverprofile=${profileFile}"
@@ -110,6 +138,8 @@ executeTestCommand() {
     local exitCode=0
     # shellcheck disable=SC2086
     go test ${options} ${TESTFLAGS} -v "${pkg}" -run "${runTestsList}" 2>&1 | tee "${testOutputFile}" || exitCode=1
+
+    endSection "${sectionName}"
 
     return ${exitCode}
 }
