@@ -127,13 +127,30 @@ func TestZipCreateWithGitPath(t *testing.T) {
 }
 
 func TestZipCreateWithCustomCompressionLevel(t *testing.T) {
-	createZip := func(level int, method uint16, supported bool) {
+	options := []struct {
+		level     int
+		method    uint16
+		supported bool
+	}{
+		// NoCompression should result use Store method
+		{flate.NoCompression, zip.Store, true},
+
+		// A valid compression level should use Deflate method
+		{flate.BestSpeed, zip.Deflate, true},
+		{flate.BestCompression, zip.Deflate, true},
+		{flate.HuffmanOnly, zip.Deflate, true},
+
+		// Invalid level should error
+		{42, zip.Deflate, false},
+	}
+
+	for _, option := range options {
 		testInWorkDir(t, func(t *testing.T, fileName string) {
 			paths := []string{
 				createTestFile(t),
 			}
-			err := CreateZipFile(fileName, paths, level)
-			if !supported {
+			err := CreateZipFile(fileName, paths, option.level)
+			if !option.supported {
 				require.Error(t, err)
 				return
 			}
@@ -143,21 +160,10 @@ func TestZipCreateWithCustomCompressionLevel(t *testing.T) {
 			require.NoError(t, err)
 			defer archive.Close()
 
-			assert.Equal(t, method, archive.File[0].FileHeader.Method)
+			assert.Equal(t, option.method, archive.File[0].FileHeader.Method)
 			assert.Equal(t, "test_file.txt", archive.File[0].Name)
 			assert.Equal(t, os.FileMode(0640), archive.File[0].Mode().Perm())
 			assert.NotEmpty(t, archive.File[0].Extra)
 		})
 	}
-
-	// NoCompression should result use Store method
-	createZip(flate.NoCompression, zip.Store, true)
-
-	// A valid compression level should use Deflate method
-	createZip(flate.BestSpeed, zip.Deflate, true)
-	createZip(flate.BestCompression, zip.Deflate, true)
-	createZip(flate.HuffmanOnly, zip.Deflate, true)
-
-	// Invalid level should error
-	createZip(42, zip.Deflate, false)
 }

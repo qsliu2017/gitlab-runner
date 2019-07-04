@@ -817,18 +817,24 @@ func (b *Build) GetCacheRequestTimeout() int {
 }
 
 func (b *Build) GetCacheCompressionLevel() int {
-	level, err := strconv.Atoi(b.GetAllVariables().Get("CACHE_COMPRESSION_LEVEL"))
-	if err != nil {
-		return flate.DefaultCompression
-	}
-	return level
+	return b.getCompressionLevel("CACHE_COMPRESSION_LEVEL")
 }
 
 func (b *Build) GetArtifactCompressionLevel() int {
-	level, err := strconv.Atoi(b.GetAllVariables().Get("ARTIFACT_COMPRESSION_LEVEL"))
+	return b.getCompressionLevel("ARTIFACT_COMPRESSION_LEVEL")
+}
+
+func (b *Build) getCompressionLevel(env string) int {
+	level, err := strconv.Atoi(b.GetAllVariables().Get(env))
 	if err != nil {
 		return flate.DefaultCompression
 	}
+
+	if level < flate.HuffmanOnly || level > flate.BestCompression {
+		b.logger.Warningln(fmt.Sprintf("%q is not set correctly, falling back to default level", env))
+		return flate.DefaultCompression
+	}
+
 	return level
 }
 

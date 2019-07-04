@@ -1,6 +1,7 @@
 package shells
 
 import (
+	"compress/flate"
 	"errors"
 	"fmt"
 	"net/url"
@@ -487,7 +488,10 @@ func (b *AbstractShell) cacheArchiver(w ShellWriter, info common.ShellScriptInfo
 			"cache-archiver",
 			"--file", cacheFile,
 			"--timeout", strconv.Itoa(info.Build.GetCacheRequestTimeout()),
-			"--compression-level", strconv.Itoa(info.Build.GetCacheCompressionLevel()),
+		}
+
+		if level := info.Build.GetCacheCompressionLevel(); level != flate.DefaultCompression {
+			args = append(args, "--compression-level", strconv.Itoa(level))
 		}
 
 		// Create list of files to archive
@@ -534,8 +538,10 @@ func (b *AbstractShell) writeUploadArtifact(w ShellWriter, info common.ShellScri
 		info.Build.Token,
 		"--id",
 		strconv.Itoa(info.Build.ID),
-		"--compression-level",
-		strconv.Itoa(info.Build.GetArtifactCompressionLevel()),
+	}
+
+	if level := info.Build.GetArtifactCompressionLevel(); level != flate.DefaultCompression {
+		args = append(args, "--compression-level", strconv.Itoa(level))
 	}
 
 	// Create list of files to archive
