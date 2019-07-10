@@ -31,3 +31,6 @@ codeclimate.json
 
 # Ignore the generated binary
 /gitlab-runner*
+
+# Mac stuff
+.DS_Store

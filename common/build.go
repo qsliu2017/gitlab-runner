@@ -95,6 +95,7 @@ type Build struct {
 
 	executorStageResolver func() ExecutorStage
 	logger                BuildLogger
+	monitor               BuildMonitor
 	allVariables          JobVariables
 
 	createdAt time.Time
@@ -502,6 +503,9 @@ func (b *Build) Run(globalConfig *Config, trace JobTrace) (err error) {
 	if b.Runner != nil && b.Runner.ShortDescription() != "" {
 		b.logger.Println("  on", b.Runner.Name, b.Runner.ShortDescription())
 	}
+
+	// create a new build monitor to collect metrics from the build
+	b.monitor = NewBuildMonitor()
 
 	b.CurrentState = BuildRunStatePending
 
