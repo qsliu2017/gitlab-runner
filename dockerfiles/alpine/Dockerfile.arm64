@@ -21,7 +21,7 @@ RUN chmod +x /usr/bin/gitlab-runner && \
     gitlab-runner --version && \
     mkdir -p /etc/gitlab-runner/certs && \
     chmod -R 700 /etc/gitlab-runner && \
-    wget -nv https://github.com/docker/machine/releases/download/v${DOCKER_MACHINE_VERSION}/docker-machine-Linux-arm64 -O /usr/bin/docker-machine && \
+    wget -nv https://github.com/docker/machine/releases/download/v${DOCKER_MACHINE_VERSION}/docker-machine-Linux-aarch64 -O /usr/bin/docker-machine && \
     chmod +x /usr/bin/docker-machine && \
     docker-machine --version && \
     wget -nv https://github.com/Yelp/dumb-init/releases/download/v${DUMB_INIT_VERSION}/dumb-init_${DUMB_INIT_VERSION}_arm64 -O /usr/bin/dumb-init && \
@@ -39,6 +39,7 @@ RUN chmod +x /usr/bin/gitlab-runner && \
 COPY entrypoint /
 RUN chmod +x /entrypoint
 
+STOPSIGNAL SIGQUIT
 VOLUME ["/etc/gitlab-runner", "/home/gitlab-runner"]
 ENTRYPOINT ["/usr/bin/dumb-init", "/entrypoint"]
 CMD ["run", "--user=gitlab-runner", "--working-directory=/home/gitlab-runner"]

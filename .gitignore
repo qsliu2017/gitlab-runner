@@ -6,9 +6,13 @@ builds/
 commands/helpers/archive.zip
 dockerfiles/checksums
 dockerfiles/alpine/gitlab-runner-linux-amd64
+dockerfiles/alpine/gitlab-runner-linux-arm
+dockerfiles/alpine/gitlab-runner-linux-arm64
 dockerfiles/alpine/checksums
 dockerfiles/build/binaries/gitlab-runner-helper.*
 dockerfiles/ubuntu/gitlab-runner_amd64.deb
+dockerfiles/ubuntu/gitlab-runner_armhf.deb
+dockerfiles/ubuntu/gitlab-runner_arm64.deb
 dockerfiles/ubuntu/checksums
 .idea/
 .editorconfig

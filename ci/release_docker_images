@@ -23,14 +23,19 @@ _docker() {
 }
 
 build() {
+    local tag=${1}
+    local directory=${2}
+    local dockerfile=${3:-Dockerfile}
+
     echo -e "\033[1mBuilding image: \033[32m${1}\033[0m"
     _docker build \
         --no-cache \
         --build-arg DOCKER_MACHINE_VERSION="${DOCKER_MACHINE_VERSION}" \
         --build-arg DUMB_INIT_VERSION="${DUMB_INIT_VERSION}" \
         --build-arg GIT_LFS_VERSION="${GIT_LFS_VERSION}" \
-        -t "${1}" \
-        "${2}"
+        -t "${tag}" \
+        -f "${directory}/${dockerfile}" \
+        "${directory}"
 }
 
 import() {
@@ -98,26 +103,60 @@ logout() {
     _docker logout "${1}"
 }
 
-echo "${DOCKER_MACHINE_CHECKSUM}  /usr/bin/docker-machine" > dockerfiles/checksums
-echo "${DUMB_INIT_CHECKSUM}  /usr/bin/dumb-init" >> dockerfiles/checksums
-echo "${GIT_LFS_CHECKSUM}  /usr/bin/git-lfs" >> dockerfiles/checksums
-cat dockerfiles/checksums
+checksums() {
+    local arch=${1:-AMD64}
+
+    eval ch=\$"DOCKER_MACHINE_CHECKSUM_${arch}"
+    echo "${ch}  /usr/bin/docker-machine" > dockerfiles/checksums
+
+    eval ch=\$"DUMB_INIT_CHECKSUM_${arch}"
+    echo "${ch}  /usr/bin/dumb-init" >> dockerfiles/checksums
+
+    eval ch=\$"GIT_LFS_CHECKSUM_${arch}"
+    echo "${ch}  /usr/bin/git-lfs" >> dockerfiles/checksums
+
+    echo "Checksums for ${arch} architecture:"
+    cat dockerfiles/checksums
+
+    cp dockerfiles/checksums dockerfiles/alpine
+    cp dockerfiles/checksums dockerfiles/ubuntu
+}
 
 cp out/deb/gitlab-runner_amd64.deb dockerfiles/ubuntu/
-cp dockerfiles/checksums dockerfiles/ubuntu
-cp out/binaries/gitlab-runner-linux-amd64 dockerfiles/alpine
-cp dockerfiles/checksums dockerfiles/alpine
+cp out/deb/gitlab-runner_armhf.deb dockerfiles/ubuntu/
+cp out/deb/gitlab-runner_arm64.deb dockerfiles/ubuntu/
 
+cp out/binaries/gitlab-runner-linux-amd64 dockerfiles/alpine
+cp out/binaries/gitlab-runner-linux-arm dockerfiles/alpine
+cp out/binaries/gitlab-runner-linux-arm64 dockerfiles/alpine
+
+checksums
 build "gitlab/gitlab-runner:ubuntu-${ref_tag}" dockerfiles/ubuntu
 build "gitlab/gitlab-runner:alpine-${ref_tag}" dockerfiles/alpine
 
+checksums ARM
+build "gitlab/gitlab-runner:ubuntu-arm-${ref_tag}" dockerfiles/ubuntu Dockerfile.arm
+build "gitlab/gitlab-runner:alpine-arm-${ref_tag}" dockerfiles/alpine Dockerfile.arm
+
+checksums ARM64
+build "gitlab/gitlab-runner:ubuntu-arm64-${ref_tag}" dockerfiles/ubuntu Dockerfile.arm64
+build "gitlab/gitlab-runner:alpine-arm64-${ref_tag}" dockerfiles/alpine Dockerfile.arm64
+
 tag "gitlab/gitlab-runner:ubuntu-${ref_tag}" "gitlab/gitlab-runner:${ref_tag}"
+tag "gitlab/gitlab-runner:ubuntu-arm-${ref_tag}" "gitlab/gitlab-runner:arm-${ref_tag}"
+tag "gitlab/gitlab-runner:ubuntu-arm64-${ref_tag}" "gitlab/gitlab-runner:arm64-${ref_tag}"
+
+tag_latest "gitlab/gitlab-runner:ubuntu-${ref_tag}" gitlab/gitlab-runner:latest
+tag_latest "gitlab/gitlab-runner:ubuntu-arm-${ref_tag}" gitlab/gitlab-runner:arm
+tag_latest "gitlab/gitlab-runner:ubuntu-arm64-${ref_tag}" gitlab/gitlab-runner:arm64
 
 tag_latest "gitlab/gitlab-runner:ubuntu-${ref_tag}" gitlab/gitlab-runner:ubuntu
-tag_latest "gitlab/gitlab-runner:ubuntu-${ref_tag}" gitlab/gitlab-runner:latest
+tag_latest "gitlab/gitlab-runner:ubuntu-arm-${ref_tag}" gitlab/gitlab-runner:ubuntu-arm
+tag_latest "gitlab/gitlab-runner:ubuntu-arm64-${ref_tag}" gitlab/gitlab-runner:ubuntu-arm64
+
 tag_latest "gitlab/gitlab-runner:alpine-${ref_tag}" gitlab/gitlab-runner:alpine
-tag_latest "gitlab/gitlab-runner:arm-${ref_tag}" gitlab/gitlab-runner:arm
-tag_latest "gitlab/gitlab-runner:arm64-${ref_tag}" gitlab/gitlab-runner:arm64
+tag_latest "gitlab/gitlab-runner:alpine-arm-${ref_tag}" gitlab/gitlab-runner:alpine-arm
+tag_latest "gitlab/gitlab-runner:alpine-arm64-${ref_tag}" gitlab/gitlab-runner:alpine-arm64
 
 if [[ -z "${PUBLISH_IMAGES}" ]] || [[ "${PUBLISH_IMAGES}" != "true" ]]; then
     echo "Skipping images pushing"
@@ -126,31 +165,55 @@ fi
 
 if [[ -n "${CI_REGISTRY}" ]] && [[ -n "${CI_REGISTRY_IMAGE}" ]]; then
     tag "gitlab/gitlab-runner:ubuntu-${ref_tag}" "${CI_REGISTRY_IMAGE}:ubuntu-${ref_tag}"
+    tag "gitlab/gitlab-runner:ubuntu-arm-${ref_tag}" "${CI_REGISTRY_IMAGE}:ubuntu-arm-${ref_tag}"
+    tag "gitlab/gitlab-runner:ubuntu-arm64-${ref_tag}" "${CI_REGISTRY_IMAGE}:ubuntu-arm64-${ref_tag}"
+
     tag "gitlab/gitlab-runner:alpine-${ref_tag}" "${CI_REGISTRY_IMAGE}:alpine-${ref_tag}"
+    tag "gitlab/gitlab-runner:alpine-arm-${ref_tag}" "${CI_REGISTRY_IMAGE}:alpine-arm-${ref_tag}"
+    tag "gitlab/gitlab-runner:alpine-arm64-${ref_tag}" "${CI_REGISTRY_IMAGE}:alpine-arm64-${ref_tag}"
+
+    tag "gitlab/gitlab-runner:${ref_tag}" "${CI_REGISTRY_IMAGE}:${ref_tag}"
     tag "gitlab/gitlab-runner:arm-${ref_tag}" "${CI_REGISTRY_IMAGE}:arm-${ref_tag}"
     tag "gitlab/gitlab-runner:arm64-${ref_tag}" "${CI_REGISTRY_IMAGE}:arm64-${ref_tag}"
-    tag "gitlab/gitlab-runner:${ref_tag}" "${CI_REGISTRY_IMAGE}:${ref_tag}"
 
-    tag_latest gitlab/gitlab-runner:ubuntu "${CI_REGISTRY_IMAGE}:ubuntu"
     tag_latest gitlab/gitlab-runner:latest "${CI_REGISTRY_IMAGE}:latest"
-    tag_latest gitlab/gitlab-runner:alpine "${CI_REGISTRY_IMAGE}:alpine"
     tag_latest gitlab/gitlab-runner:arm "${CI_REGISTRY_IMAGE}:arm"
     tag_latest gitlab/gitlab-runner:arm64 "${CI_REGISTRY_IMAGE}:arm64"
+
+    tag_latest gitlab/gitlab-runner:ubuntu "${CI_REGISTRY_IMAGE}:ubuntu"
+    tag_latest gitlab/gitlab-runner:ubuntu-arm "${CI_REGISTRY_IMAGE}:ubuntu-arm"
+    tag_latest gitlab/gitlab-runner:ubuntu-arm64 "${CI_REGISTRY_IMAGE}:ubuntu-arm64"
+
+    tag_latest gitlab/gitlab-runner:alpine "${CI_REGISTRY_IMAGE}:alpine"
+    tag_latest gitlab/gitlab-runner:alpine-arm "${CI_REGISTRY_IMAGE}:alpine-arm"
+    tag_latest gitlab/gitlab-runner:alpine-arm64 "${CI_REGISTRY_IMAGE}:alpine-arm64"
 
     if [[ -n "${CI_REGISTRY_USER}" ]] && [[ -n "${CI_REGISTRY_PASSWORD}" ]]; then
         login "${CI_REGISTRY_USER}" "${CI_REGISTRY_PASSWORD}" "${CI_REGISTRY}"
 
         push "${CI_REGISTRY_IMAGE}:ubuntu-${ref_tag}"
+        push "${CI_REGISTRY_IMAGE}:ubuntu-arm-${ref_tag}"
+        push "${CI_REGISTRY_IMAGE}:ubuntu-arm64-${ref_tag}"
+
         push "${CI_REGISTRY_IMAGE}:alpine-${ref_tag}"
+        push "${CI_REGISTRY_IMAGE}:alpine-arm-${ref_tag}"
+        push "${CI_REGISTRY_IMAGE}:alpine-arm64-${ref_tag}"
+
+        push "${CI_REGISTRY_IMAGE}:${ref_tag}"
         push "${CI_REGISTRY_IMAGE}:arm-${ref_tag}"
         push "${CI_REGISTRY_IMAGE}:arm64-${ref_tag}"
-        push "${CI_REGISTRY_IMAGE}:${ref_tag}"
 
-        push_latest "${CI_REGISTRY_IMAGE}:ubuntu"
         push_latest "${CI_REGISTRY_IMAGE}:latest"
-        push_latest "${CI_REGISTRY_IMAGE}:alpine"
         push_latest "${CI_REGISTRY_IMAGE}:arm"
         push_latest "${CI_REGISTRY_IMAGE}:arm64"
+
+        push_latest "${CI_REGISTRY_IMAGE}:ubuntu"
+        push_latest "${CI_REGISTRY_IMAGE}:ubuntu-arm"
+        push_latest "${CI_REGISTRY_IMAGE}:ubuntu-arm64"
+
+        push_latest "${CI_REGISTRY_IMAGE}:alpine"
+        push_latest "${CI_REGISTRY_IMAGE}:alpine-arm"
+        push_latest "${CI_REGISTRY_IMAGE}:alpine-arm64"
 
         logout "${CI_REGISTRY}"
     fi

@@ -1,8 +1,9 @@
-FROM multiarch/ubuntu-core:arm64-xenial 
+FROM multiarch/ubuntu-core:arm64-bionic
 
+ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update -y && \
     apt-get upgrade -y && \
-    apt-get install -y ca-certificates wget apt-transport-https vim nano tzdata git git-lfs curl && \
+    apt-get install -y ca-certificates wget apt-transport-https vim nano tzdata git curl && \
     rm -rf /var/lib/apt/lists/*
 
 ARG DOCKER_MACHINE_VERSION
@@ -11,15 +12,15 @@ ARG GIT_LFS_VERSION
 
 COPY gitlab-runner_arm64.deb /tmp/
 COPY checksums /tmp/
-RUN dpkg -i /tmp/gitlab-runner_amd64.deb; \
+RUN dpkg -i /tmp/gitlab-runner_arm64.deb; \
     apt-get update &&  \
     apt-get -f install -y && \
     rm -rf /var/lib/apt/lists/* && \
-    rm /tmp/gitlab-runner_amd64.deb && \
+    rm /tmp/gitlab-runner_arm64.deb && \
     gitlab-runner --version && \
     mkdir -p /etc/gitlab-runner/certs && \
     chmod -R 700 /etc/gitlab-runner && \
-    wget -nv https://github.com/docker/machine/releases/download/v${DOCKER_MACHINE_VERSION}/docker-machine-Linux-arm64 -O /usr/bin/docker-machine && \
+    wget -nv https://github.com/docker/machine/releases/download/v${DOCKER_MACHINE_VERSION}/docker-machine-Linux-aarch64 -O /usr/bin/docker-machine && \
     chmod +x /usr/bin/docker-machine && \
     docker-machine --version && \
     wget -nv https://github.com/Yelp/dumb-init/releases/download/v${DUMB_INIT_VERSION}/dumb-init_${DUMB_INIT_VERSION}_arm64 -O /usr/bin/dumb-init && \
@@ -37,6 +38,7 @@ RUN dpkg -i /tmp/gitlab-runner_amd64.deb; \
 COPY entrypoint /
 RUN chmod +x /entrypoint
 
+STOPSIGNAL SIGQUIT
 VOLUME ["/etc/gitlab-runner", "/home/gitlab-runner"]
 ENTRYPOINT ["/usr/bin/dumb-init", "/entrypoint"]
 CMD ["run", "--user=gitlab-runner", "--working-directory=/home/gitlab-runner"]
