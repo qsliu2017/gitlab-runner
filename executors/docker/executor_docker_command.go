@@ -7,6 +7,7 @@ import (
 
 	"github.com/docker/docker/api/types"
 
+	"gitlab.com/gitlab-org/gitlab-runner/collectors/cadvisor"
 	"gitlab.com/gitlab-org/gitlab-runner/common"
 	"gitlab.com/gitlab-org/gitlab-runner/executors"
 	"gitlab.com/gitlab-org/gitlab-runner/executors/docker/internal/volumes/parser"
@@ -90,10 +91,21 @@ func (s *commandExecutor) Run(cmd common.ExecutorCommand) error {
 	if cmd.Predefined {
 		runOn, err = s.requestNewPredefinedContainer()
 	} else {
+		// user script or after script
 		runOn, err = s.requestBuildContainer()
 	}
 	if err != nil {
 		return err
+	}
+
+	if !cmd.Predefined && (s.Metrics != nil) {
+		collector := cadvisor.New(
+			runOn.Config.Hostname,
+			s.Build.IP,
+			*s.Config.Metrics.CAdvisor,
+		)
+		s.Metrics.RegisterCollector("cadvisor", collector)
+		defer s.Metrics.UnregisterCollector("cadvisor")
 	}
 
 	s.Debugln("Executing on", runOn.Name, "the", cmd.Script)

@@ -10,7 +10,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"gitlab.com/gitlab-org/gitlab-runner/common"
-	"gitlab.com/gitlab-org/gitlab-runner/helpers/docker"
+	docker_helpers "gitlab.com/gitlab-org/gitlab-runner/helpers/docker"
 )
 
 var machineDefaultConfig = &common.RunnerConfig{
@@ -253,7 +253,7 @@ func testMachineProvider(machine ...string) (*machineProvider, *testMachine) {
 	return p, t
 }
 
-func TestMachineDetails(t *testing.T) {
+func TestmachineDetails(t *testing.T) {
 	p, _ := testMachineProvider()
 	m1 := p.machineDetails("test", false)
 	assert.NotNil(t, m1, "returns a new machine")

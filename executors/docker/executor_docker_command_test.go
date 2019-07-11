@@ -41,7 +41,7 @@ func TestDockerCommandSuccessRun(t *testing.T) {
 		},
 	}
 
-	err = build.Run(&common.Config{}, &common.Trace{Writer: os.Stdout})
+	err = build.Run(&common.Config{}, &common.Trace{Writer: os.Stdout}, nil)
 	assert.NoError(t, err)
 }
 
@@ -86,7 +86,7 @@ func TestDockerCommandUsingCustomClonePath(t *testing.T) {
 				},
 			}
 
-			err = build.Run(&common.Config{}, &common.Trace{Writer: os.Stdout})
+			err = build.Run(&common.Config{}, &common.Trace{Writer: os.Stdout}, nil)
 			assert.IsType(t, test.expectedErrorType, err)
 		})
 	}
@@ -113,7 +113,7 @@ func TestDockerCommandNoRootImage(t *testing.T) {
 		},
 	}
 
-	err = build.Run(&common.Config{}, &common.Trace{Writer: os.Stdout})
+	err = build.Run(&common.Config{}, &common.Trace{Writer: os.Stdout}, nil)
 	assert.NoError(t, err)
 }
 
@@ -137,7 +137,7 @@ func TestDockerCommandBuildFail(t *testing.T) {
 		},
 	}
 
-	err = build.Run(&common.Config{}, &common.Trace{Writer: os.Stdout})
+	err = build.Run(&common.Config{}, &common.Trace{Writer: os.Stdout}, nil)
 	require.Error(t, err, "error")
 	assert.IsType(t, err, &common.BuildError{})
 	assert.Contains(t, err.Error(), "exit code 1")
@@ -174,7 +174,7 @@ func TestDockerCommandWithAllowedImagesRun(t *testing.T) {
 		},
 	}
 
-	err = build.Run(&common.Config{}, &common.Trace{Writer: os.Stdout})
+	err = build.Run(&common.Config{}, &common.Trace{Writer: os.Stdout}, nil)
 	assert.NoError(t, err)
 }
 
@@ -238,7 +238,7 @@ func TestDockerCommandDisableEntrypointOverwrite(t *testing.T) {
 			}
 
 			var buffer bytes.Buffer
-			err = build.Run(&common.Config{}, &common.Trace{Writer: &buffer})
+			err = build.Run(&common.Config{}, &common.Trace{Writer: &buffer}, nil)
 			assert.NoError(t, err)
 			out := buffer.String()
 			if test.disabled {
@@ -287,7 +287,7 @@ func TestDockerCommandMissingImage(t *testing.T) {
 		},
 	}
 
-	err := build.Run(&common.Config{}, &common.Trace{Writer: os.Stdout})
+	err := build.Run(&common.Config{}, &common.Trace{Writer: os.Stdout}, nil)
 	require.Error(t, err)
 	assert.IsType(t, &common.BuildError{}, err)
 
@@ -315,7 +315,7 @@ func TestDockerCommandMissingTag(t *testing.T) {
 		},
 	}
 
-	err := build.Run(&common.Config{}, &common.Trace{Writer: os.Stdout})
+	err := build.Run(&common.Config{}, &common.Trace{Writer: os.Stdout}, nil)
 	require.Error(t, err)
 	assert.IsType(t, &common.BuildError{}, err)
 	assert.Contains(t, err.Error(), "not found")
@@ -354,7 +354,7 @@ func TestDockerCommandBuildAbort(t *testing.T) {
 	})
 	defer timeoutTimer.Stop()
 
-	err = build.Run(&common.Config{}, &common.Trace{Writer: os.Stdout})
+	err = build.Run(&common.Config{}, &common.Trace{Writer: os.Stdout}, nil)
 	assert.EqualError(t, err, "aborted: interrupt")
 }
 
@@ -392,7 +392,7 @@ func TestDockerCommandBuildCancel(t *testing.T) {
 	})
 	defer timeoutTimer.Stop()
 
-	err = build.Run(&common.Config{}, trace)
+	err = build.Run(&common.Config{}, trace, nil)
 	assert.IsType(t, err, &common.BuildError{})
 	assert.Contains(t, err.Error(), "canceled")
 }
@@ -423,7 +423,7 @@ func TestDockerCommandTwoServicesFromOneImage(t *testing.T) {
 
 	var buffer bytes.Buffer
 
-	err = build.Run(&common.Config{}, &common.Trace{Writer: &buffer})
+	err = build.Run(&common.Config{}, &common.Trace{Writer: &buffer}, nil)
 	assert.NoError(t, err)
 	str := buffer.String()
 
@@ -454,7 +454,7 @@ func TestDockerCommandOutput(t *testing.T) {
 
 	var buffer bytes.Buffer
 
-	err = build.Run(&common.Config{}, &common.Trace{Writer: &buffer})
+	err = build.Run(&common.Config{}, &common.Trace{Writer: &buffer}, nil)
 	assert.NoError(t, err)
 
 	re, err := regexp.Compile("(?m)^Initialized empty Git repository in /builds/gitlab-org/ci-cd/tests/gitlab-test/.git/")
@@ -513,7 +513,7 @@ func TestDockerPrivilegedServiceAccessingBuildsFolder(t *testing.T) {
 			Key: "GIT_STRATEGY", Value: strategy,
 		})
 
-		err = build.Run(&common.Config{}, &common.Trace{Writer: os.Stdout})
+		err = build.Run(&common.Config{}, &common.Trace{Writer: os.Stdout}, nil)
 		assert.NoError(t, err)
 	}
 }
@@ -604,7 +604,7 @@ func TestDockerExtendedConfigurationFromJob(t *testing.T) {
 			build.Services = example.services
 			build.Variables = append(build.Variables, example.variables...)
 
-			err := build.Run(&common.Config{}, &common.Trace{Writer: os.Stdout})
+			err := build.Run(&common.Config{}, &common.Trace{Writer: os.Stdout}, nil)
 			assert.NoError(t, err)
 		})
 	}
@@ -613,7 +613,7 @@ func TestDockerExtendedConfigurationFromJob(t *testing.T) {
 func runTestJobWithOutput(t *testing.T, build *common.Build) (output string) {
 	var buffer bytes.Buffer
 
-	err := build.Run(&common.Config{}, &common.Trace{Writer: &buffer})
+	err := build.Run(&common.Config{}, &common.Trace{Writer: &buffer}, nil)
 	assert.NoError(t, err)
 
 	output = buffer.String()
@@ -841,7 +841,7 @@ func testDockerVersion(t *testing.T, version string) {
 		},
 	}
 
-	err = build.Run(&common.Config{}, &common.Trace{Writer: os.Stdout})
+	err = build.Run(&common.Config{}, &common.Trace{Writer: os.Stdout}, nil)
 	assert.NoError(t, err)
 }
 
@@ -942,7 +942,7 @@ func TestDockerCommandWithBrokenGitSSLCAInfo(t *testing.T) {
 
 	var buffer bytes.Buffer
 
-	err = build.Run(&common.Config{}, &common.Trace{Writer: &buffer})
+	err = build.Run(&common.Config{}, &common.Trace{Writer: &buffer}, nil)
 	assert.Error(t, err)
 	out := buffer.String()
 	assert.Contains(t, out, "Created fresh repository")
@@ -974,7 +974,7 @@ func TestDockerCommandWithGitSSLCAInfo(t *testing.T) {
 
 	var buffer bytes.Buffer
 
-	err = build.Run(&common.Config{}, &common.Trace{Writer: &buffer})
+	err = build.Run(&common.Config{}, &common.Trace{Writer: &buffer}, nil)
 	assert.NoError(t, err)
 	out := buffer.String()
 	assert.Contains(t, out, "Created fresh repository")
@@ -1005,7 +1005,7 @@ func TestDockerCommandWithHelperImageConfig(t *testing.T) {
 	}
 
 	var buffer bytes.Buffer
-	err = build.Run(&common.Config{}, &common.Trace{Writer: &buffer})
+	err = build.Run(&common.Config{}, &common.Trace{Writer: &buffer}, nil)
 	assert.NoError(t, err)
 	out := buffer.String()
 	assert.Contains(t, out, "Using docker image sha256:3cf24b1b62b6a4c55c5de43db4f50c0ff8b455238c836945d4b5c645411bfc77 for gitlab/gitlab-runner-helper:x86_64-5a147c92 ...")
@@ -1047,7 +1047,7 @@ func TestDockerCommandWithDoingPruneAndAfterScript(t *testing.T) {
 		},
 	}
 
-	err = build.Run(&common.Config{}, &common.Trace{Writer: os.Stdout})
+	err = build.Run(&common.Config{}, &common.Trace{Writer: os.Stdout}, nil)
 	assert.NoError(t, err)
 }
 
@@ -1107,7 +1107,7 @@ func TestDockerCommandUsingBuildsVolume(t *testing.T) {
 				},
 			}
 
-			err = build.Run(&common.Config{}, &common.Trace{Writer: os.Stdout})
+			err = build.Run(&common.Config{}, &common.Trace{Writer: os.Stdout}, nil)
 			assert.NoError(t, err)
 		})
 	}

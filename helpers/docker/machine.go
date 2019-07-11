@@ -14,4 +14,5 @@ type Machine interface {
 
 	CanConnect(name string, skipCache bool) bool
 	Credentials(name string) (DockerCredentials, error)
+	IP(name string) (string, error)
 }

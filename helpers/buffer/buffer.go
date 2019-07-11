@@ -1,4 +1,4 @@
-package trace
+package buffer
 
 import (
 	"bufio"
@@ -177,8 +177,8 @@ func (b *Buffer) process(pipe *io.PipeReader) {
 	close(b.finish)
 }
 
-func New() (*Buffer, error) {
-	logFile, err := ioutil.TempFile("", "trace")
+func New(name string) (*Buffer, error) {
+	logFile, err := ioutil.TempFile("", name)
 	if err != nil {
 		return nil, err
 	}

@@ -262,6 +262,15 @@ type CacheConfig struct {
 	GCS *CacheGCSConfig `toml:"gcs,omitempty" json:"gcs" namespace:"gcs"`
 }
 
+type CAdvisorConfig struct {
+	Port int `toml:"port,omitzero" json:"port" long:"port" env:"PORT" description:"cAdvisor port number"`
+}
+
+type MetricsConfig struct {
+	Interval int             `toml:"interval,omitzero" json:"interval" long:"interval" env:"INTERVAL" description:"Collection interval"`
+	CAdvisor *CAdvisorConfig `toml:"cadvisor,omitempty" json:"cadvisor" group:"cAdvisor configuration" namespace:"cadvisor"`
+}
+
 type RunnerSettings struct {
 	Executor  string `toml:"executor" json:"executor" long:"executor" env:"RUNNER_EXECUTOR" required:"true" description:"Select executor, eg. shell, docker, etc."`
 	BuildsDir string `toml:"builds_dir,omitempty" json:"builds_dir" long:"builds-dir" env:"RUNNER_BUILDS_DIR" description:"Directory where builds are stored"`
@@ -285,6 +294,7 @@ type RunnerSettings struct {
 	Cache          *CacheConfig      `toml:"cache,omitempty" json:"cache" group:"cache configuration" namespace:"cache"`
 	Machine        *DockerMachine    `toml:"machine,omitempty" json:"machine" group:"docker machine provider" namespace:"machine"`
 	Kubernetes     *KubernetesConfig `toml:"kubernetes,omitempty" json:"kubernetes" group:"kubernetes executor" namespace:"kubernetes"`
+	Metrics        *MetricsConfig    `toml:"metrics,omitempty" json:"metrics" group:"metrics collector" namespace:"metrics"`
 }
 
 type RunnerConfig struct {
@@ -307,15 +317,16 @@ type Config struct {
 	ListenAddress string        `toml:"listen_address,omitempty" json:"listen_address"`
 	SessionServer SessionServer `toml:"session_server,omitempty" json:"session_server"`
 
-	Concurrent    int             `toml:"concurrent" json:"concurrent"`
-	CheckInterval int             `toml:"check_interval" json:"check_interval" description:"Define active checking interval of jobs"`
-	LogLevel      *string         `toml:"log_level" json:"log_level" description:"Define log level (one of: panic, fatal, error, warning, info, debug)"`
-	LogFormat     *string         `toml:"log_format" json:"log_format" description:"Define log format (one of: runner, text, json)"`
-	User          string          `toml:"user,omitempty" json:"user"`
-	Runners       []*RunnerConfig `toml:"runners" json:"runners"`
-	SentryDSN     *string         `toml:"sentry_dsn"`
-	ModTime       time.Time       `toml:"-"`
-	Loaded        bool            `toml:"-"`
+	Concurrent         int             `toml:"concurrent" json:"concurrent"`
+	CheckInterval      int             `toml:"check_interval" json:"check_interval" description:"Define active checking interval of jobs"`
+	LogLevel           *string         `toml:"log_level" json:"log_level" description:"Define log level (one of: panic, fatal, error, warning, info, debug)"`
+	LogFormat          *string         `toml:"log_format" json:"log_format" description:"Define log format (one of: runner, text, json)"`
+	User               string          `toml:"user,omitempty" json:"user"`
+	Runners            []*RunnerConfig `toml:"runners" json:"runners"`
+	CollectionInterval int             `toml:"collection_interval" json:"collection_interval" description:"How often to collect runner metrics"`
+	SentryDSN          *string         `toml:"sentry_dsn"`
+	ModTime            time.Time       `toml:"-"`
+	Loaded             bool            `toml:"-"`
 }
 
 type CustomBuildDir struct {

@@ -22,7 +22,7 @@ import (
 	"gitlab.com/gitlab-org/gitlab-runner/common"
 	"gitlab.com/gitlab-org/gitlab-runner/executors"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers"
-	"gitlab.com/gitlab-org/gitlab-runner/helpers/docker"
+	docker_helpers "gitlab.com/gitlab-org/gitlab-runner/helpers/docker"
 	"gitlab.com/gitlab-org/gitlab-runner/session"
 )
 
@@ -53,7 +53,7 @@ func TestInteractiveTerminal(t *testing.T) {
 
 	// Start build
 	go func() {
-		_ = build.Run(&common.Config{}, &common.Trace{Writer: os.Stdout})
+		_ = build.Run(&common.Config{}, &common.Trace{Writer: os.Stdout}, nil)
 	}()
 
 	srv := httptest.NewServer(build.Session.Mux())
@@ -118,26 +118,26 @@ func TestCommandExecutor_Connect(t *testing.T) {
 		expectedErr           error
 	}{
 		{
-			name: "Connect Timeout",
+			name:                  "Connect Timeout",
 			buildContainerRunning: false,
 			hasBuildContainer:     true,
 			expectedErr:           buildContainerTerminalTimeout{},
 		},
 		{
-			name: "Successful connect",
+			name:                  "Successful connect",
 			buildContainerRunning: true,
 			hasBuildContainer:     true,
 			containerInspectErr:   nil,
 		},
 		{
-			name: "Container inspect failed",
+			name:                  "Container inspect failed",
 			buildContainerRunning: false,
 			hasBuildContainer:     true,
 			containerInspectErr:   errors.New("container not found"),
 			expectedErr:           errors.New("container not found"),
 		},
 		{
-			name: "No build container",
+			name:                  "No build container",
 			buildContainerRunning: false,
 			hasBuildContainer:     false,
 			expectedErr:           buildContainerTerminalTimeout{},
@@ -200,12 +200,12 @@ func TestTerminalConn_FailToStart(t *testing.T) {
 		containerExecAttachErr error
 	}{
 		{
-			name: "Failed to create exec container",
+			name:                   "Failed to create exec container",
 			containerExecCreateErr: errors.New("failed to create exec container"),
 			containerExecAttachErr: nil,
 		},
 		{
-			name: "Failed to attach exec container",
+			name:                   "Failed to attach exec container",
 			containerExecCreateErr: nil,
 			containerExecAttachErr: errors.New("failed to attach exec container"),
 		},

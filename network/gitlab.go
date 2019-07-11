@@ -172,8 +172,8 @@ func (n *GitLabClient) RegisterRunner(runner common.RunnerCredentials, parameter
 	// TODO: pass executor
 	request := common.RegisterRunnerRequest{
 		RegisterRunnerParameters: parameters,
-		Token: runner.Token,
-		Info:  n.getRunnerVersion(common.RunnerConfig{}),
+		Token:                    runner.Token,
+		Info:                     n.getRunnerVersion(common.RunnerConfig{}),
 	}
 
 	var response common.RegisterRunnerResponse
@@ -432,7 +432,6 @@ func uploadRawArtifactsQuery(options common.ArtifactsOptions) url.Values {
 func (n *GitLabClient) UploadRawArtifacts(config common.JobCredentials, reader io.Reader, options common.ArtifactsOptions) common.UploadState {
 	pr, pw := io.Pipe()
 	defer pr.Close()
-
 	mpw := multipart.NewWriter(pw)
 
 	go func() {
@@ -465,6 +464,11 @@ func (n *GitLabClient) UploadRawArtifacts(config common.JobCredentials, reader i
 	}
 	defer res.Body.Close()
 	defer io.Copy(ioutil.Discard, res.Body)
+
+	buf := new(bytes.Buffer)
+	buf.ReadFrom(res.Body)
+	s := buf.String()
+	fmt.Printf("RESPONSE: %s", s)
 
 	switch res.StatusCode {
 	case http.StatusCreated:
@@ -530,14 +534,23 @@ func (n *GitLabClient) DownloadArtifacts(config common.JobCredentials, artifacts
 	}
 }
 
-func (n *GitLabClient) ProcessJob(config common.RunnerConfig, jobCredentials *common.JobCredentials) (common.JobTrace, error) {
+func (n *GitLabClient) ProcessJob(config common.RunnerConfig, jobCredentials *common.JobCredentials) (common.JobTrace, common.JobMetrics, error) {
 	trace, err := newJobTrace(n, config, jobCredentials)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
+	}
+	trace.start()
+
+	if config.RunnerSettings.Metrics != nil {
+		metrics, err := newJobMetrics(n, config, jobCredentials)
+		if err != nil {
+			return nil, nil, err
+		}
+		metrics.start()
+		return trace, metrics, nil
 	}
 
-	trace.start()
-	return trace, nil
+	return trace, nil, nil
 }
 
 func NewGitLabClientWithRequestStatusesMap(rsMap *APIRequestStatusesMap) *GitLabClient {

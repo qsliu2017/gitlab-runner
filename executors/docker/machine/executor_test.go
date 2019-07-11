@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"gitlab.com/gitlab-org/gitlab-runner/common"
-	"gitlab.com/gitlab-org/gitlab-runner/helpers/docker"
+	docker_helpers "gitlab.com/gitlab-org/gitlab-runner/helpers/docker"
 )
 
 func getRunnerConfig() *common.RunnerConfig {
@@ -95,7 +95,7 @@ func testMachineCredentialsUsage(t *testing.T, name string, runnerConfigSource f
 		defer executorProvider.AssertExpectations(t)
 
 		fakeExecutor := &machineCredentialsUsageFakeExecutor{
-			t: t,
+			t:                          t,
 			expectedmachineCredentials: machineCredentials,
 			expectedRunnerConfig:       runnerConfigSource(),
 		}

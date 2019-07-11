@@ -19,6 +19,7 @@ type machineDetails struct {
 	Reason     string
 	RetryCount int
 	LastSeen   time.Time
+	IP         string
 }
 
 func (m *machineDetails) isUsed() bool {
@@ -73,4 +74,4 @@ func (m *machineDetails) logger() *logrus.Entry {
 	})
 }
 
-type machinesDetails map[string]*machineDetails
+type machinesDetailsMap map[string]*machineDetails

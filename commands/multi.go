@@ -12,7 +12,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/ayufan/golang-kardianos-service"
+	service "github.com/ayufan/golang-kardianos-service"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/sirupsen/logrus"
@@ -23,7 +23,7 @@ import (
 	"gitlab.com/gitlab-org/gitlab-runner/helpers/certificate"
 	prometheus_helper "gitlab.com/gitlab-org/gitlab-runner/helpers/prometheus"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers/sentry"
-	"gitlab.com/gitlab-org/gitlab-runner/helpers/service"
+	service_helpers "gitlab.com/gitlab-org/gitlab-runner/helpers/service"
 	"gitlab.com/gitlab-org/gitlab-runner/log"
 	"gitlab.com/gitlab-org/gitlab-runner/network"
 	"gitlab.com/gitlab-org/gitlab-runner/session"
@@ -133,11 +133,11 @@ func (mr *RunCommand) requeueRunner(runner *common.RunnerConfig, runners chan *c
 
 // requestJob will check if the runner can send another concurrent request to
 // GitLab, if not the return value is nil.
-func (mr *RunCommand) requestJob(runner *common.RunnerConfig, sessionInfo *common.SessionInfo) (common.JobTrace, *common.JobResponse, error) {
+func (mr *RunCommand) requestJob(runner *common.RunnerConfig, sessionInfo *common.SessionInfo) (common.JobTrace, common.JobMetrics, *common.JobResponse, error) {
 	if !mr.buildsHelper.acquireRequest(runner) {
 		mr.log().WithField("runner", runner.ShortDescription()).
 			Debugln("Failed to request job: runner requestConcurrency meet")
-		return nil, nil, nil
+		return nil, nil, nil, nil
 	}
 	defer mr.buildsHelper.releaseRequest(runner)
 
@@ -145,16 +145,17 @@ func (mr *RunCommand) requestJob(runner *common.RunnerConfig, sessionInfo *commo
 	mr.makeHealthy(runner.UniqueID(), healthy)
 
 	if jobData == nil {
-		return nil, nil, nil
+		return nil, nil, nil, nil
 	}
 
 	// Make sure to always close output
 	jobCredentials := &common.JobCredentials{
 		ID:    jobData.ID,
 		Token: jobData.Token,
+		URL:   runner.RunnerCredentials.URL,
 	}
 
-	trace, err := mr.network.ProcessJob(*runner, jobCredentials)
+	trace, metrics, err := mr.network.ProcessJob(*runner, jobCredentials)
 	if err != nil {
 		jobInfo := common.UpdateJobInfo{
 			ID:            jobCredentials.ID,
@@ -164,11 +165,11 @@ func (mr *RunCommand) requestJob(runner *common.RunnerConfig, sessionInfo *commo
 
 		// send failure once
 		mr.network.UpdateJob(*runner, jobCredentials, jobInfo)
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	trace.SetFailuresCollector(mr.failuresCollector)
-	return trace, jobData, nil
+	return trace, metrics, jobData, nil
 }
 
 func (mr *RunCommand) processRunner(id int, runner *common.RunnerConfig, runners chan *common.RunnerConfig) (err error) {
@@ -189,7 +190,7 @@ func (mr *RunCommand) processRunner(id int, runner *common.RunnerConfig, runners
 	}
 
 	// Receive a new build
-	trace, jobData, err := mr.requestJob(runner, sessionInfo)
+	trace, metrics, jobData, err := mr.requestJob(runner, sessionInfo)
 	if err != nil || jobData == nil {
 		return
 	}
@@ -218,7 +219,7 @@ func (mr *RunCommand) processRunner(id int, runner *common.RunnerConfig, runners
 	mr.requeueRunner(runner, runners)
 
 	// Process a build
-	return build.Run(mr.config, trace)
+	return build.Run(mr.config, trace, metrics)
 }
 
 func (mr *RunCommand) acquireRunnerResources(provider common.ExecutorProvider, runner *common.RunnerConfig) (common.ExecutorData, func(), error) {
@@ -739,8 +740,8 @@ func init() {
 	requestStatusesCollector := network.NewAPIRequestStatusesMap()
 
 	common.RegisterCommand2("run", "run multi runner service", &RunCommand{
-		ServiceName: defaultServiceName,
-		network:     network.NewGitLabClientWithRequestStatusesMap(requestStatusesCollector),
+		ServiceName:                     defaultServiceName,
+		network:                         network.NewGitLabClientWithRequestStatusesMap(requestStatusesCollector),
 		networkRequestStatusesCollector: requestStatusesCollector,
 		prometheusLogHook:               prometheus_helper.NewLogHook(),
 		failuresCollector:               prometheus_helper.NewFailuresCollector(),

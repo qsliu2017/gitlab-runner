@@ -7,7 +7,7 @@ import (
 
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
-	"gitlab.com/ayufan/golang-cli-helpers"
+	clihelpers "gitlab.com/ayufan/golang-cli-helpers"
 	"gitlab.com/gitlab-org/gitlab-runner/common"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers/gitlab_ci_yaml_parser"
 
@@ -135,7 +135,7 @@ func (c *ExecCommand) Execute(context *cli.Context) {
 		logrus.Fatalln(err)
 	}
 
-	err = build.Run(&common.Config{}, &common.Trace{Writer: os.Stdout})
+	err = build.Run(&common.Config{}, &common.Trace{Writer: os.Stdout}, nil)
 	if err != nil {
 		logrus.Fatalln(err)
 	}

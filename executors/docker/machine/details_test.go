@@ -1,12 +1,13 @@
 package machine
 
 import (
+	"testing"
+
 	"github.com/stretchr/testify/assert"
 	"gitlab.com/gitlab-org/gitlab-runner/common"
-	"testing"
 )
 
-func TestMachineDetailsUsed(t *testing.T) {
+func TestmachineDetailsUsed(t *testing.T) {
 	d := machineDetails{}
 	d.State = machineStateIdle
 	assert.False(t, d.isUsed())
@@ -20,7 +21,7 @@ func TestMachineDetailsUsed(t *testing.T) {
 	assert.True(t, d.isUsed())
 }
 
-func TestMachineDetailsMatcher(t *testing.T) {
+func TestmachineDetailsMatcher(t *testing.T) {
 	config := &common.RunnerConfig{
 		RunnerSettings: common.RunnerSettings{
 			Machine: &common.DockerMachine{

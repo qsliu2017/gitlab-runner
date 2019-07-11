@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"io"
 
-	"gitlab.com/gitlab-org/gitlab-runner/helpers/url"
+	url_helpers "gitlab.com/gitlab-org/gitlab-runner/helpers/url"
 )
 
 type UpdateState int
@@ -371,6 +371,12 @@ type JobTrace interface {
 	IsStdout() bool
 }
 
+type JobMetrics interface {
+	RegisterCollector(name string, collector Collector)
+	UnregisterCollector(name string)
+	Stop()
+}
+
 type Network interface {
 	RegisterRunner(config RunnerCredentials, parameters RegisterRunnerParameters) *RegisterRunnerResponse
 	VerifyRunner(config RunnerCredentials) bool
@@ -380,5 +386,5 @@ type Network interface {
 	PatchTrace(config RunnerConfig, jobCredentials *JobCredentials, content []byte, startOffset int) (int, UpdateState)
 	DownloadArtifacts(config JobCredentials, artifactsFile string) DownloadState
 	UploadRawArtifacts(config JobCredentials, reader io.Reader, options ArtifactsOptions) UploadState
-	ProcessJob(config RunnerConfig, buildCredentials *JobCredentials) (JobTrace, error)
+	ProcessJob(config RunnerConfig, buildCredentials *JobCredentials) (JobTrace, JobMetrics, error)
 }

@@ -75,8 +75,10 @@ func (e *machineExecutor) Prepare(options common.ExecutorPrepareOptions) (err er
 	e.build.ProjectRunnerID = 0
 	if details, _ := options.Build.ExecutorData.(*machineDetails); details != nil {
 		options.Build.Hostname = details.Name
+		options.Build.IP = details.IP
 	} else if details, _ := e.data.(*machineDetails); details != nil {
 		options.Build.Hostname = details.Name
+		options.Build.IP = details.IP
 	}
 
 	e.log().Infoln("Starting docker-machine build...")

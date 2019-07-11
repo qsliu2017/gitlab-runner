@@ -78,7 +78,8 @@ type Build struct {
 	BuildDir         string         `json:"-" yaml:"-"`
 	CacheDir         string         `json:"-" yaml:"-"`
 	Hostname         string         `json:"-" yaml:"-"`
-	Runner           *RunnerConfig  `json:"runner"`
+	IP               string
+	Runner           *RunnerConfig `json:"runner"`
 	ExecutorData     ExecutorData
 	ExecutorFeatures FeaturesInfo `json:"-" yaml:"-"`
 
@@ -95,7 +96,6 @@ type Build struct {
 
 	executorStageResolver func() ExecutorStage
 	logger                BuildLogger
-	monitor               BuildMonitor
 	allVariables          JobVariables
 
 	createdAt time.Time
@@ -495,7 +495,7 @@ func (b *Build) CurrentExecutorStage() ExecutorStage {
 	return b.executorStageResolver()
 }
 
-func (b *Build) Run(globalConfig *Config, trace JobTrace) (err error) {
+func (b *Build) Run(globalConfig *Config, trace JobTrace, metrics JobMetrics) (err error) {
 	var executor Executor
 
 	b.logger = NewBuildLogger(trace, b.Log())
@@ -503,9 +503,6 @@ func (b *Build) Run(globalConfig *Config, trace JobTrace) (err error) {
 	if b.Runner != nil && b.Runner.ShortDescription() != "" {
 		b.logger.Println("  on", b.Runner.Name, b.Runner.ShortDescription())
 	}
-
-	// create a new build monitor to collect metrics from the build
-	b.monitor = NewBuildMonitor()
 
 	b.CurrentState = BuildRunStatePending
 
@@ -527,6 +524,7 @@ func (b *Build) Run(globalConfig *Config, trace JobTrace) (err error) {
 		Config:  b.Runner,
 		Build:   b,
 		Trace:   trace,
+		Metrics: metrics,
 		User:    globalConfig.User,
 		Context: ctx,
 	}
@@ -558,6 +556,8 @@ func (b *Build) Run(globalConfig *Config, trace JobTrace) (err error) {
 	if executor != nil {
 		executor.Finish(err)
 	}
+
+	metrics.Stop()
 
 	return err
 }

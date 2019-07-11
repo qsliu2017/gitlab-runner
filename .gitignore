@@ -34,3 +34,4 @@ codeclimate.json
 
 # Mac stuff
 .DS_Store
+__debug_bin

@@ -30,6 +30,7 @@ type ExecutorPrepareOptions struct {
 	Config  *RunnerConfig
 	Build   *Build
 	Trace   JobTrace
+	Metrics JobMetrics
 	User    string
 	Context context.Context
 }

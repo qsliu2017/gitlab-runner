@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"gitlab.com/gitlab-org/gitlab-runner/common"
-	"gitlab.com/gitlab-org/gitlab-runner/helpers/trace"
+	"gitlab.com/gitlab-org/gitlab-runner/helpers/buffer"
 )
 
 type clientJobTrace struct {
@@ -16,7 +16,7 @@ type clientJobTrace struct {
 	id             int
 	cancelFunc     context.CancelFunc
 
-	buffer *trace.Buffer
+	buffer *buffer.Buffer
 
 	lock          sync.RWMutex
 	state         common.JobState
@@ -244,7 +244,7 @@ func (c *clientJobTrace) setupLogLimit() {
 }
 
 func newJobTrace(client common.Network, config common.RunnerConfig, jobCredentials *common.JobCredentials) (*clientJobTrace, error) {
-	buffer, err := trace.New()
+	buffer, err := buffer.New("trace")
 	if err != nil {
 		return nil, err
 	}

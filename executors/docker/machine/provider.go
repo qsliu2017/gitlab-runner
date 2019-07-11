@@ -10,13 +10,13 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"gitlab.com/gitlab-org/gitlab-runner/common"
-	"gitlab.com/gitlab-org/gitlab-runner/helpers/docker"
+	docker_helpers "gitlab.com/gitlab-org/gitlab-runner/helpers/docker"
 )
 
 type machineProvider struct {
 	name        string
 	machine     docker_helpers.Machine
-	details     machinesDetails
+	details     machinesDetailsMap
 	lock        sync.RWMutex
 	acquireLock sync.Mutex
 	// provider stores a real executor that is used to start run the builds
@@ -363,6 +363,16 @@ func (m *machineProvider) Use(config *common.RunnerConfig, data common.ExecutorD
 		return
 	}
 
+	// Get machine IP
+	ip, err := m.machine.IP(details.Name)
+	if err != nil {
+		if newData != nil {
+			m.Release(config, newData)
+		}
+		newData = nil
+		return
+	}
+
 	// Create shallow copy of config and store in it docker credentials
 	newConfig = *config
 	newConfig.Docker = &common.DockerConfig{}
@@ -376,6 +386,7 @@ func (m *machineProvider) Use(config *common.RunnerConfig, data common.ExecutorD
 	details.Used = time.Now()
 	details.UsedCount++
 	m.totalActions.WithLabelValues("used").Inc()
+	details.IP = ip
 	return
 }
 
@@ -426,7 +437,7 @@ func newMachineProvider(name, executor string) *machineProvider {
 
 	return &machineProvider{
 		name:     name,
-		details:  make(machinesDetails),
+		details:  make(machinesDetailsMap),
 		machine:  docker_helpers.NewMachineCommand(),
 		provider: provider,
 		totalActions: prometheus.NewCounterVec(
