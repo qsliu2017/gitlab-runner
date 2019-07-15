@@ -46,12 +46,12 @@ To install the Runner:
 
     >**Note:**
     _Debian users should use APT pinning_
-    >
-    Since Debian Stretch, Debian maintainers added their native package
+    > 
+    > Since Debian Stretch, Debian maintainers added their native package
     with the same name as is used by our package, and by default the official
     repositories will have a higher priority.
-    >
-    If you want to use our package you should manually set the source of
+    > 
+    > If you want to use our package you should manually set the source of
     the package. The best would be to add the pinning configuration file.
     Thanks to this every next update of the Runner's package - whether it will
     be done manually or automatically - will be done using the same source:
