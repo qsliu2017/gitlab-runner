@@ -12,11 +12,11 @@ type cAdvisorCollector struct {
 	containerName string
 	ipAddress     string
 	port          int
+	url           string
 }
 
 func (c *cAdvisorCollector) Collect() io.Reader {
 	url := fmt.Sprintf("http://%s:%d/api/v1.2/docker/%s", c.ipAddress, c.port, c.containerName)
-	fmt.Printf("---------METRICS BEING COLLECTED---------\nURL: %s\n----------------------------------\n", url)
 	resp, _ := http.Get(url)
 	return resp.Body
 }

@@ -131,6 +131,11 @@ func (e *AbstractExecutor) PrepareBuildAndShell() error {
 	return nil
 }
 
+func (e *AbstractExecutor) Monitor() {
+	e.currentStage = common.ExecutorStageMonitor
+	e.Metrics.Stop()
+}
+
 func (e *AbstractExecutor) Finish(err error) {
 	e.currentStage = common.ExecutorStageFinish
 }

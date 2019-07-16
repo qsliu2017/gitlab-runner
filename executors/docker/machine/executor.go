@@ -137,6 +137,12 @@ func (e *machineExecutor) SetCurrentStage(stage common.ExecutorStage) {
 	e.executor.SetCurrentStage(stage)
 }
 
+func (e *machineExecutor) Monitor() {
+	if e.executor != nil {
+		e.executor.Monitor()
+	}
+}
+
 func init() {
 	common.RegisterExecutor("docker+machine", newMachineProvider("docker+machine", "docker"))
 	common.RegisterExecutor("docker-ssh+machine", newMachineProvider("docker-ssh+machine", "docker-ssh"))

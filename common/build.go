@@ -268,6 +268,8 @@ func (b *Build) executeScript(ctx context.Context, executor Executor) error {
 		defer timeoutCancel()
 
 		b.executeStage(timeoutContext, BuildStageAfterScript, executor)
+
+		executor.Monitor()
 	}
 
 	// Execute post script (cache store, artifacts upload)
@@ -556,8 +558,6 @@ func (b *Build) Run(globalConfig *Config, trace JobTrace, metrics JobMetrics) (e
 	if executor != nil {
 		executor.Finish(err)
 	}
-
-	metrics.Stop()
 
 	return err
 }

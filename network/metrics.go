@@ -3,7 +3,6 @@ package network
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"sync"
 	"time"
 
@@ -49,8 +48,6 @@ func (c *clientJobMetrics) readCollectors() {
 		buf := new(bytes.Buffer)
 		buf.ReadFrom(reader)
 		c.buffer.Write(buf.Bytes())
-		//s := buf.String()
-		//fmt.Printf("BUFFER: %s\n", s)
 	}
 }
 
@@ -72,13 +69,12 @@ func (c *clientJobMetrics) poll() {
 func (c *clientJobMetrics) uploadArtifact() {
 	// upload artifact
 	options := common.ArtifactsOptions{
-		BaseName: "metrics.log",
+		BaseName: "monitor.log",
 		Format:   "raw",
-		Type:     "metrics",
+		Type:     "monitor",
 		ExpireIn: "10000000",
 	}
 	reader, _ := c.buffer.Reader(0, c.buffer.Size())
-	fmt.Printf("SIZE: %d", c.buffer.Size())
 	c.client.UploadRawArtifacts(*c.jobCredentials, reader, options)
 	// close buffer
 	c.buffer.Close()

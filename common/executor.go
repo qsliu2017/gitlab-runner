@@ -24,6 +24,7 @@ const (
 	ExecutorStagePrepare ExecutorStage = "prepare"
 	ExecutorStageFinish  ExecutorStage = "finish"
 	ExecutorStageCleanup ExecutorStage = "cleanup"
+	ExecutorStageMonitor ExecutorStage = "monitor"
 )
 
 type ExecutorPrepareOptions struct {
@@ -43,6 +44,7 @@ type Executor interface {
 	Cleanup()
 	GetCurrentStage() ExecutorStage
 	SetCurrentStage(stage ExecutorStage)
+	Monitor()
 }
 
 type ExecutorProvider interface {
