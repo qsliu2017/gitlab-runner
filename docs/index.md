@@ -97,6 +97,11 @@ To jump into the specific documentation of each executor, see:
 - [SSH](executors/ssh.md).
 - [Kubernetes](executors/kubernetes.md).
 
+No development of new executors is planned and we are not accepting
+contributions for new ones. Please check
+[CONTRIBUTION.md](https://gitlab.com/gitlab-org/gitlab-runner/blob/master/CONTRIBUTING.md#contributing-a-new-executors)
+for details.
+
 ## Configuring GitLab Runner
 
 See information on [configuring GitLab Runner](configuration/index.md), and:
@@ -120,8 +125,9 @@ Read the [FAQ](faq/README.md) for troubleshooting common issues.
 
 ## Release process
 
-The description of release process of the GitLab Runner project can be found in
-the [release documentation](release_process/README.md).
+The description of release process of the GitLab Runner project can be
+found in
+[PROCESS.md](https://gitlab.com/gitlab-org/gitlab-runner/blob/master/PROCESS.md)
 
 ## Contributing
 

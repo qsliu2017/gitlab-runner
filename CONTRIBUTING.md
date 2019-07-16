@@ -17,15 +17,42 @@ _This notice should stay as the first item in the CONTRIBUTING.md file._
 
 ---
 
-## Contribute to GitLab runner
+## Contribute to GitLab Runner
 
 The following contents has to be considered as an extension over [gitlab-ce contributing guidelines](https://docs.gitlab.com/ce/development/contributing/index.html).
 
-## Workflow lables
+### How we prioritize MRs from the wider community
+
+Currently we use a system of [scoped labels](https://docs.gitlab.com/ee/user/project/labels.html#scoped-labels-premium) to help us prioritize which MRs our team will review. 
+
+| Label | Meaning | Use Cases |
+| ---- | ----- | ----- |
+| ~"Review::P1" | Highest priority to review | Indicates an MR that might solve an urgent pain point for users, contributes to the strategic direction of the runner development as laid out by the Product team, or fixes a critical issue. We maintain a hard cap on the number of contributions marked ~"Review::P1" at which is currently set at 3. |
+| ~"Review::P2" | Default priority to review | All incoming MRs should default to this. |
+| ~"Review::P3" | Lowest priority to review | WIP MRs, feature enhancements that only appear to serve a small number of users. |
+
+### Contributing new [executors](https://docs.gitlab.com/runner/#selecting-the-executor)
+
+We are no longer accepting or developing new executors for a few
+reasons listed below:
+
+- Some executors require licensed software or hardware that GitLab Inc.
+  doesn't have.
+- Each new executor brings its own set of problems when it comes to
+  testing it properly.
+- Adding new executors can add new dependencies, which adds maintenance costs.
+- Having a lot of executors adds to maintenance costs.
+
+With GitLab 12.1, we introduced the [custom
+executor](https://gitlab.com/gitlab-org/gitlab-runner/issues/2885),
+which will provide a way to create an executor of choice.
+
+## Workflow labels
 
 We have some additional labels plus those defined in [gitlab-ce workflow labels](https://docs.gitlab.com/ce/development/contributing/issue_workflow.html)
 
 - Additional subjects: ~cache, ~executors, ~"git operations"
 - OS: ~"os::Linux" ~"os::MacOSX" ~"os:FreeBSD" ~"os::Windows" 
 - executor: ~"executor::docker" ~"executor::kubernetes" ~"executor::docker\-machine" ~"executor::docker\-machine" ~"executor::shell" ~"executor::parallels" ~"executor::virtualbox" 
+
 
