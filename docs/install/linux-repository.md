@@ -27,7 +27,7 @@ using the Runner. [Read how to install Docker for your distribution](https://doc
 
 ## Installing the Runner
 
-CAUTION: **Important:**
+**Important:**
 If you are using or upgrading from a version prior to GitLab Runner 10, read how
 to [upgrade to the new version](#upgrading-to-gitlab-runner-10). If you want
 to install a version prior to GitLab Runner 10, [visit the old docs](old.md).
@@ -46,16 +46,16 @@ To install the Runner:
 
     >**Note:**
     _Debian users should use APT pinning_
-    >
+    
     A native package called gitlab-ci-multi-runner is available in Debian, by
     default when installing gitlab-runner that package from the official
     repositories will have a higher priority.
-    >
+    
     If you want to use our package you should manually set the source of
     the package. The best would be to add the pinning configuration file.
     Thanks to this every next update of the Runner's package - whether it will
     be done manually or automatically - will be done using the same source:
-    >
+    
     ```bash
     cat <<EOF | sudo tee /etc/apt/preferences.d/pin-gitlab-runner.pref
     Explanation: Prefer GitLab provided packages over the Debian native ones
