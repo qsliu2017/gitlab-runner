@@ -1,6 +1,6 @@
 # GitLab Runner Helm Chart
 
-NOTE: **Note:**
+**Note:**
 This chart has been tested on Google Kubernetes Engine and Azure Container Service.
 Other Kubernetes installations may work as well, if not please
 [open an issue](https://gitlab.com/gitlab-org/gitlab-runner/issues).
