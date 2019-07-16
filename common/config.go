@@ -314,11 +314,8 @@ type RunnerSettings struct {
 	Cache          *CacheConfig      `toml:"cache,omitempty" json:"cache" group:"cache configuration" namespace:"cache"`
 	Machine        *DockerMachine    `toml:"machine,omitempty" json:"machine" group:"docker machine provider" namespace:"machine"`
 	Kubernetes     *KubernetesConfig `toml:"kubernetes,omitempty" json:"kubernetes" group:"kubernetes executor" namespace:"kubernetes"`
-<<<<<<< HEAD
 	Metrics        *MetricsConfig    `toml:"metrics,omitempty" json:"metrics" group:"metrics collector" namespace:"metrics"`
-=======
 	Custom         *CustomConfig     `toml:"custom,omitempty" json:"custom" group:"custom executor" namespace:"custom"`
->>>>>>> 7d8ad4137f979e0acd41b3db389e3c0c99aa299a
 }
 
 type RunnerConfig struct {
