@@ -64,6 +64,10 @@ func TestLinuxParser_ParseVolume(t *testing.T) {
 			volumeSpec:    "volume_name:/destination",
 			expectedParts: &Volume{Source: "volume_name", Destination: "/destination"},
 		},
+		"dir name with spaces": {
+			volumeSpec:    "/source dir:/destination dir",
+			expectedParts: &Volume{Source: "/source dir", Destination: "/destination dir"},
+		},
 	}
 
 	for testName, testCase := range testCases {
