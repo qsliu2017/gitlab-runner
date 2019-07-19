@@ -178,11 +178,7 @@ func (b *AbstractShell) writeGetSourcesScript(w ShellWriter, info common.ShellSc
 		b.writeCommands(w, info.PreCloneScript)
 	}
 
-	if err := b.writeCloneFetchCmds(w, info); err != nil {
-		return err
-	}
-
-	return b.writeSubmoduleUpdateCmds(w, info)
+	return b.writeCloneFetchCmds(w, info)
 }
 
 func (b *AbstractShell) writeExports(w ShellWriter, info common.ShellScriptInfo) {
@@ -222,6 +218,17 @@ func (b *AbstractShell) writeGitSSLConfig(w ShellWriter, build *common.Build, wh
 func (b *AbstractShell) writeCloneFetchCmds(w ShellWriter, info common.ShellScriptInfo) error {
 	build := info.Build
 
+	b.disableLFSSmudge(w, build)
+
+	err := b.handleGetSourcesStrategy(w, build)
+	if err != nil {
+		return err
+	}
+
+	return b.handleCheckoutAndSubmodulesStrategy(w, build)
+}
+
+func (b *AbstractShell) disableLFSSmudge(w ShellWriter, build *common.Build) {
 	// If LFS smudging was disabled by the user (by setting the GIT_LFS_SKIP_SMUDGE variable
 	// when defining the job) we're skipping this step.
 	//
@@ -230,41 +237,11 @@ func (b *AbstractShell) writeCloneFetchCmds(w ShellWriter, info common.ShellScri
 	//
 	// Please read https://gitlab.com/gitlab-org/gitlab-runner/issues/3366 and
 	// https://github.com/git-lfs/git-lfs/issues/3524 for context.
-	if !build.IsLFSSmudgeDisabled() {
-		w.Variable(common.JobVariable{Key: "GIT_LFS_SKIP_SMUDGE", Value: "1"})
+	if build.IsLFSSmudgeDisabled() {
+		return
 	}
 
-	err := b.handleGetSourcesStrategy(w, build)
-	if err != nil {
-		return err
-	}
-
-	if build.GetGitCheckout() {
-		b.writeCheckoutCmd(w, build)
-
-		// If LFS smudging was disabled by the user (by setting the GIT_LFS_SKIP_SMUDGE variable
-		// when defining the job) we're skipping this step.
-		//
-		// In other case, because we've disabled LFS smudging above, we need now manually call
-		// `git lfs pull` to fetch and checkout all LFS objects that may be present in
-		// the repository.
-		//
-		// Repositories without LFS objects (and without any LFS metadata) will be not
-		// affected by this command.
-		//
-		// Please read https://gitlab.com/gitlab-org/gitlab-runner/issues/3366 and
-		// https://github.com/git-lfs/git-lfs/issues/3524 for context.
-		if !build.IsLFSSmudgeDisabled() {
-			w.IfCmd("git-lfs", "version")
-			w.Command("git", "lfs", "pull")
-			w.EmptyLine()
-			w.EndIf()
-		}
-	} else {
-		w.Notice("Skipping Git checkout")
-	}
-
-	return nil
+	w.Variable(common.JobVariable{Key: "GIT_LFS_SKIP_SMUDGE", Value: "1"})
 }
 
 func (b *AbstractShell) handleGetSourcesStrategy(w ShellWriter, build *common.Build) error {
@@ -335,25 +312,88 @@ func (b *AbstractShell) writeGitCleanup(w ShellWriter, build *common.Build) {
 	w.RmFile(".git/hooks/post-checkout")
 }
 
+func (b *AbstractShell) handleCheckoutAndSubmodulesStrategy(w ShellWriter, build *common.Build) error {
+	if build.GetGitCheckout() {
+		b.writeCheckoutCmd(w, build)
+		b.writeCleanCmd(w, build)
+		b.writeLFSPullCmd(w, build)
+	} else {
+		w.Notice("Skipping Git checkout")
+	}
+
+	return b.handleSubmodulesStrategy(w, build)
+}
+
 func (b *AbstractShell) writeCheckoutCmd(w ShellWriter, build *common.Build) {
 	w.Notice("Checking out %s as %s...", build.GitInfo.Sha[0:8], build.GitInfo.Ref)
 	w.Command("git", "checkout", "-f", "-q", build.GitInfo.Sha)
-
-	cleanFlags := build.GetGitCleanFlags()
-	if len(cleanFlags) > 0 {
-		cleanArgs := append([]string{"clean"}, cleanFlags...)
-		w.Command("git", cleanArgs...)
-	}
 }
 
-func (b *AbstractShell) writeSubmoduleUpdateCmds(w ShellWriter, info common.ShellScriptInfo) (err error) {
-	build := info.Build
+func (b *AbstractShell) writeCleanCmd(w ShellWriter, build *common.Build, args ...string) {
+	b.writeCleanCmdWthArgs(w, build, b.getCleanCmdArgs(build)...)
+}
 
+func (b *AbstractShell) writeCleanCmdWthArgs(w ShellWriter, build *common.Build, args ...string) {
+	b.guardCleanCmd(w, build, args...)
+}
+
+func (b *AbstractShell) guardCleanCmd(w ShellWriter, build *common.Build, args ...string) {
+	if len(build.GetGitCleanFlags()) <= 0 {
+		return
+	}
+
+	w.Command("git", args...)
+}
+
+func (b *AbstractShell) getCleanCmdArgs(build *common.Build, args ...string) []string {
+	cleanArgs := append(args, "clean")
+	cleanArgs = append(cleanArgs, build.GetGitCleanFlags()...)
+
+	return cleanArgs
+}
+
+func (b *AbstractShell) writeLFSPullCmd(w ShellWriter, build *common.Build) {
+	b.writeLFSPullCmdWithArgs(w, build, b.getLFSPullCmdArgs(build)...)
+}
+
+func (b *AbstractShell) writeLFSPullCmdWithArgs(w ShellWriter, build *common.Build, args ...string) {
+	b.guardLFSPullCmd(w, build, args...)
+}
+
+func (b *AbstractShell) guardLFSPullCmd(w ShellWriter, build *common.Build, args ...string) {
+	// If LFS smudging was disabled by the user (by setting the GIT_LFS_SKIP_SMUDGE variable
+	// when defining the job) we're skipping this step.
+	//
+	// In other case, because we've disabled LFS smudging above, we need now manually call
+	// `git lfs pull` to fetch and checkout all LFS objects that may be present in
+	// the repository.
+	//
+	// Repositories without LFS objects (and without any LFS metadata) will be not
+	// affected by this command.
+	//
+	// Please read https://gitlab.com/gitlab-org/gitlab-runner/issues/3366 and
+	// https://github.com/git-lfs/git-lfs/issues/3524 for context.
+	if build.IsLFSSmudgeDisabled() {
+		return
+	}
+
+	w.IfCmd("git-lfs", "version")
+	w.Command("git", args...)
+	w.EndIf()
+}
+
+func (b *AbstractShell) getLFSPullCmdArgs(build *common.Build, args ...string) []string {
+	return append(args, "lfs", "pull")
+}
+
+func (b *AbstractShell) handleSubmodulesStrategy(w ShellWriter, build *common.Build) (err error) {
 	switch build.GetSubmoduleStrategy() {
 	case common.SubmoduleNormal:
+		w.Notice("Updating/initializing submodules...")
 		b.writeSubmoduleUpdateCmd(w, build, false)
 
 	case common.SubmoduleRecursive:
+		w.Notice("Updating/initializing submodules recursively...")
 		b.writeSubmoduleUpdateCmd(w, build, true)
 
 	case common.SubmoduleNone:
@@ -367,38 +407,39 @@ func (b *AbstractShell) writeSubmoduleUpdateCmds(w ShellWriter, info common.Shel
 }
 
 func (b *AbstractShell) writeSubmoduleUpdateCmd(w ShellWriter, build *common.Build, recursive bool) {
-	if recursive {
-		w.Notice("Updating/initializing submodules recursively...")
-	} else {
-		w.Notice("Updating/initializing submodules...")
-	}
-
 	// Sync .git/config to .gitmodules in case URL changes (e.g. new build token)
-	args := []string{"submodule", "sync"}
-	if recursive {
-		args = append(args, "--recursive")
-	}
+	args := withRecursive(recursive, "submodule", "sync")
 	w.Command("git", args...)
 
-	// Update / initialize submodules
-	updateArgs := []string{"submodule", "update", "--init"}
-	foreachArgs := []string{"submodule", "foreach"}
-	if recursive {
-		updateArgs = append(updateArgs, "--recursive")
-		foreachArgs = append(foreachArgs, "--recursive")
-	}
+	foreachArgs := withRecursive(recursive, "submodule", "foreach")
 
 	// Clean changed files in submodules
 	// "git submodule update --force" option not supported in Git 1.7.1 (shipped with CentOS 6)
-	w.Command("git", append(foreachArgs, "git clean -ffxd")...)
-	w.Command("git", append(foreachArgs, "git reset --hard")...)
+	cleanArgs := append(foreachArgs, wrapArgsToString(b.getCleanCmdArgs(build, "git")...))
+	b.writeCleanCmdWthArgs(w, build, cleanArgs...)
+
+	resetArgs := append(foreachArgs, wrapArgsToString("git", "reset", "--hard"))
+	w.Command("git", resetArgs...)
+
+	// Update/initialize submodules
+	updateArgs := withRecursive(recursive, "submodule", "update", "--init")
 	w.Command("git", updateArgs...)
 
-	if !build.IsLFSSmudgeDisabled() {
-		w.IfCmd("git-lfs", "version")
-		w.Command("git", append(foreachArgs, "git lfs pull")...)
-		w.EndIf()
+	// Update LFS objects within submodules
+	lfsArgs := append(foreachArgs, wrapArgsToString(b.getLFSPullCmdArgs(build, "git")...))
+	b.writeLFSPullCmdWithArgs(w, build, lfsArgs...)
+}
+
+func withRecursive(recursive bool, args ...string) []string {
+	if !recursive {
+		return args
 	}
+
+	return append(args, "--recursive")
+}
+
+func wrapArgsToString(args ...string) string {
+	return strings.Join(args, " ")
 }
 
 func (b *AbstractShell) writeRestoreCacheScript(w ShellWriter, info common.ShellScriptInfo) (err error) {

@@ -242,16 +242,13 @@ func TestGitCleanFlags(t *testing.T) {
 			mockWriter := new(MockShellWriter)
 			defer mockWriter.AssertExpectations(t)
 
-			mockWriter.On("Notice", "Checking out %s as %s...", dummySha[0:8], dummyRef).Once()
-			mockWriter.On("Command", "git", "checkout", "-f", "-q", dummySha).Once()
-
 			if test.expectedGitClean {
 				command := []interface{}{"git", "clean"}
 				command = append(command, test.expectedGitCleanFlags...)
 				mockWriter.On("Command", command...).Once()
 			}
 
-			shell.writeCheckoutCmd(mockWriter, build)
+			shell.writeCleanCmd(mockWriter, build)
 		})
 	}
 }
@@ -261,10 +258,9 @@ func TestAbstractShell_writeSubmoduleUpdateCmdRecursive(t *testing.T) {
 	mockWriter := new(MockShellWriter)
 	defer mockWriter.AssertExpectations(t)
 
-	mockWriter.On("Notice", "Updating/initializing submodules recursively...").Once()
 	mockWriter.On("Command", "git", "submodule", "sync", "--recursive").Once()
 	mockWriter.On("Command", "git", "submodule", "update", "--init", "--recursive").Once()
-	mockWriter.On("Command", "git", "submodule", "foreach", "--recursive", "git clean -ffxd").Once()
+	mockWriter.On("Command", "git", "submodule", "foreach", "--recursive", "git clean -ffdx").Once()
 	mockWriter.On("Command", "git", "submodule", "foreach", "--recursive", "git reset --hard").Once()
 	mockWriter.On("IfCmd", "git-lfs", "version").Once()
 	mockWriter.On("Command", "git", "submodule", "foreach", "--recursive", "git lfs pull").Once()
@@ -278,10 +274,9 @@ func TestAbstractShell_writeSubmoduleUpdateCmd(t *testing.T) {
 	mockWriter := new(MockShellWriter)
 	defer mockWriter.AssertExpectations(t)
 
-	mockWriter.On("Notice", "Updating/initializing submodules...").Once()
 	mockWriter.On("Command", "git", "submodule", "sync").Once()
 	mockWriter.On("Command", "git", "submodule", "update", "--init").Once()
-	mockWriter.On("Command", "git", "submodule", "foreach", "git clean -ffxd").Once()
+	mockWriter.On("Command", "git", "submodule", "foreach", "git clean -ffdx").Once()
 	mockWriter.On("Command", "git", "submodule", "foreach", "git reset --hard").Once()
 	mockWriter.On("IfCmd", "git-lfs", "version").Once()
 	mockWriter.On("Command", "git", "submodule", "foreach", "git lfs pull").Once()
