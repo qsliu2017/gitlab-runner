@@ -66,22 +66,22 @@ func TestMain(m *testing.M) {
 	os.Exit(code)
 }
 
-func runBuildWithOptions(t *testing.T, build *common.Build, config *common.Config, trace *common.Trace) error {
+func runBuildWithOptions(t *testing.T, build *common.Build, config *common.Config, trace *common.Trace, metrics *common.Metrics) error {
 	timeoutTimer := time.AfterFunc(TestTimeout, func() {
 		t.Log("Timed out")
 		t.FailNow()
 	})
 	defer timeoutTimer.Stop()
 
-	return build.Run(config, trace)
+	return build.Run(config, trace, metrics)
 }
 
-func runBuildWithTrace(t *testing.T, build *common.Build, trace *common.Trace) error {
-	return runBuildWithOptions(t, build, &common.Config{}, trace)
+func runBuildWithTrace(t *testing.T, build *common.Build, trace *common.Trace, metrics *common.Metrics) error {
+	return runBuildWithOptions(t, build, &common.Config{}, trace, metrics)
 }
 
 func runBuild(t *testing.T, build *common.Build) error {
-	err := runBuildWithTrace(t, build, &common.Trace{Writer: os.Stdout})
+	err := runBuildWithTrace(t, build, &common.Trace{Writer: os.Stdout}, &common.Metrics{})
 	assert.True(t, build.IsSharedEnv())
 
 	return err
@@ -89,7 +89,7 @@ func runBuild(t *testing.T, build *common.Build) error {
 
 func runBuildReturningOutput(t *testing.T, build *common.Build) (string, error) {
 	buf := bytes.NewBuffer(nil)
-	err := runBuildWithTrace(t, build, &common.Trace{Writer: buf})
+	err := runBuildWithTrace(t, build, &common.Trace{Writer: buf}, &common.Metrics{})
 	output := buf.String()
 	t.Log(output)
 
@@ -254,7 +254,7 @@ func TestBuildCancel(t *testing.T) {
 		})
 		defer cancelTimer.Stop()
 
-		err = runBuildWithTrace(t, build, trace)
+		err = runBuildWithTrace(t, build, trace, &common.Metrics{})
 		assert.EqualError(t, err, "canceled")
 		assert.IsType(t, err, &common.BuildError{})
 	})

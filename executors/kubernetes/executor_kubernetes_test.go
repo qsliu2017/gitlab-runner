@@ -1938,7 +1938,7 @@ func TestKubernetesSuccessRun(t *testing.T) {
 		},
 	}
 
-	err = build.Run(&common.Config{}, &common.Trace{Writer: os.Stdout})
+	err = build.Run(&common.Config{}, &common.Trace{Writer: os.Stdout}, &common.Metrics{})
 	assert.NoError(t, err)
 }
 
@@ -1964,7 +1964,7 @@ func TestKubernetesNoRootImage(t *testing.T) {
 		},
 	}
 
-	err = build.Run(&common.Config{}, &common.Trace{Writer: os.Stdout})
+	err = build.Run(&common.Config{}, &common.Trace{Writer: os.Stdout}, &common.Metrics{})
 	assert.NoError(t, err)
 }
 
@@ -2009,7 +2009,7 @@ func TestKubernetesCustomClonePath(t *testing.T) {
 				},
 			}
 
-			err = build.Run(&common.Config{}, &common.Trace{Writer: os.Stdout})
+			err = build.Run(&common.Config{}, &common.Trace{Writer: os.Stdout}, &common.Metrics{})
 			assert.IsType(t, test.expectedErrorType, err)
 		})
 	}
@@ -2034,7 +2034,7 @@ func TestKubernetesBuildFail(t *testing.T) {
 	}
 	build.Image.Name = common.TestDockerGitImage
 
-	err = build.Run(&common.Config{}, &common.Trace{Writer: os.Stdout})
+	err = build.Run(&common.Config{}, &common.Trace{Writer: os.Stdout}, &common.Metrics{})
 	require.Error(t, err, "error")
 	assert.IsType(t, err, &common.BuildError{})
 	assert.Contains(t, err.Error(), "command terminated with exit code")
@@ -2058,7 +2058,7 @@ func TestKubernetesMissingImage(t *testing.T) {
 	}
 	build.Image.Name = "some/non-existing/image"
 
-	err = build.Run(&common.Config{}, &common.Trace{Writer: os.Stdout})
+	err = build.Run(&common.Config{}, &common.Trace{Writer: os.Stdout}, &common.Metrics{})
 	require.Error(t, err)
 	assert.IsType(t, err, &common.BuildError{})
 	assert.Contains(t, err.Error(), "image pull failed")
@@ -2082,7 +2082,7 @@ func TestKubernetesMissingTag(t *testing.T) {
 	}
 	build.Image.Name = "docker:missing-tag"
 
-	err = build.Run(&common.Config{}, &common.Trace{Writer: os.Stdout})
+	err = build.Run(&common.Config{}, &common.Trace{Writer: os.Stdout}, &common.Metrics{})
 	require.Error(t, err)
 	assert.IsType(t, err, &common.BuildError{})
 	assert.Contains(t, err.Error(), "image pull failed")
@@ -2121,7 +2121,7 @@ func TestKubernetesBuildAbort(t *testing.T) {
 	})
 	defer timeoutTimer.Stop()
 
-	err = build.Run(&common.Config{}, &common.Trace{Writer: os.Stdout})
+	err = build.Run(&common.Config{}, &common.Trace{Writer: os.Stdout}, &common.Metrics{})
 	assert.EqualError(t, err, "aborted: interrupt")
 }
 
@@ -2160,7 +2160,7 @@ func TestKubernetesBuildCancel(t *testing.T) {
 	})
 	defer timeoutTimer.Stop()
 
-	err = build.Run(&common.Config{}, trace)
+	err = build.Run(&common.Config{}, trace, &common.Metrics{})
 	assert.IsType(t, err, &common.BuildError{})
 	assert.EqualError(t, err, "canceled")
 }
@@ -2195,7 +2195,7 @@ func TestOverwriteNamespaceNotMatch(t *testing.T) {
 	}
 	build.Image.Name = common.TestDockerGitImage
 
-	err := build.Run(&common.Config{}, &common.Trace{Writer: os.Stdout})
+	err := build.Run(&common.Config{}, &common.Trace{Writer: os.Stdout}, &common.Metrics{})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "does not match")
 }
@@ -2230,7 +2230,7 @@ func TestOverwriteServiceAccountNotMatch(t *testing.T) {
 	}
 	build.Image.Name = common.TestDockerGitImage
 
-	err := build.Run(&common.Config{}, &common.Trace{Writer: os.Stdout})
+	err := build.Run(&common.Config{}, &common.Trace{Writer: os.Stdout}, &common.Metrics{})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "does not match")
 }
@@ -2274,6 +2274,7 @@ func TestInteractiveTerminal(t *testing.T) {
 				},
 			},
 			&common.Trace{Writer: outBuffer},
+			&common.Metrics{},
 		)
 		require.NoError(t, err)
 

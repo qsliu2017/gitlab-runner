@@ -83,3 +83,11 @@ func (_m *MockExecutor) Shell() *ShellScriptInfo {
 
 	return r0
 }
+
+func (_m *MockExecutor) CollectMetrics() {
+	_m.Called()
+}
+
+func (_m *MockExecutor) UploadMetrics() {
+	_m.Called()
+}

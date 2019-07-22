@@ -87,6 +87,7 @@ func createMachineOffPeakIdleConfig(offPeakPeriod string) *common.RunnerConfig {
 
 type testMachine struct {
 	machines []string
+	address  string
 	second   bool
 
 	Created chan bool
@@ -181,6 +182,13 @@ func (m *testMachine) Credentials(name string) (dc docker_helpers.DockerCredenti
 		err = errors.New("Failed to connect")
 	}
 	return
+}
+
+func (m *testMachine) IP(name string) (string, error) {
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+
+	return m.address, nil
 }
 
 func countIdleMachines(p *machineProvider) (count int) {

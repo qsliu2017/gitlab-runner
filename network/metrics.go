@@ -2,7 +2,6 @@ package network
 
 import (
 	"bytes"
-	"context"
 	"sync"
 	"time"
 
@@ -14,7 +13,6 @@ type clientJobMetrics struct {
 	client         common.Network
 	config         common.RunnerConfig
 	jobCredentials *common.JobCredentials
-	cancelFunc     context.CancelFunc
 
 	buffer *buffer.Buffer
 

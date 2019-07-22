@@ -119,6 +119,29 @@ func (_m *MockMachine) Provision(name string) error {
 	return r0
 }
 
+// Provision provides a mock function with given fields: ip
+func (_m *MockMachine) IP(name string) (string, error) {
+	ret := _m.Called()
+
+	var r0 string
+	if rf, ok := ret.Get(0).(func() string); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(string)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func() error); ok {
+		r1 = rf()
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // Remove provides a mock function with given fields: name
 func (_m *MockMachine) Remove(name string) error {
 	ret := _m.Called(name)

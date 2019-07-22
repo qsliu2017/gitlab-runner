@@ -17,7 +17,7 @@ func TestVariablesMasking(t *testing.T) {
 		"containing",
 	}
 
-	buffer, err := New()
+	buffer, err := New("buffer")
 	require.NoError(t, err)
 	defer buffer.Close()
 
@@ -37,7 +37,7 @@ func TestVariablesMasking(t *testing.T) {
 func TestTraceLimit(t *testing.T) {
 	traceMessage := "This is the long message"
 
-	buffer, err := New()
+	buffer, err := New("buffer")
 	require.NoError(t, err)
 	defer buffer.Close()
 

@@ -19,7 +19,7 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	"gitlab.com/gitlab-org/gitlab-runner/helpers/docker"
+	docker_helpers "gitlab.com/gitlab-org/gitlab-runner/helpers/docker"
 	"gitlab.com/gitlab-org/gitlab-runner/session"
 	"gitlab.com/gitlab-org/gitlab-runner/session/terminal"
 )
@@ -73,7 +73,7 @@ func TestBuildRun(t *testing.T) {
 			},
 		},
 	}
-	err = build.Run(&Config{}, &Trace{Writer: os.Stdout})
+	err = build.Run(&Config{}, &Trace{Writer: os.Stdout}, &Metrics{})
 	assert.NoError(t, err)
 }
 
@@ -123,7 +123,7 @@ func TestBuildPredefinedVariables(t *testing.T) {
 			},
 		},
 	}
-	err = build.Run(&Config{}, &Trace{Writer: os.Stdout})
+	err = build.Run(&Config{}, &Trace{Writer: os.Stdout}, &Metrics{})
 	assert.NoError(t, err)
 
 	projectDir := build.GetAllVariables().Get("CI_PROJECT_DIR")
@@ -182,7 +182,7 @@ func TestBuildRunNoModifyConfig(t *testing.T) {
 	build, err := NewBuild(successfulBuild, rc, nil, nil)
 	assert.NoError(t, err)
 
-	err = build.Run(&Config{}, &Trace{Writer: os.Stdout})
+	err = build.Run(&Config{}, &Trace{Writer: os.Stdout}, &Metrics{})
 	assert.NoError(t, err)
 	assert.Equal(t, "10.0.0.1", rc.Docker.DockerCredentials.Host)
 }
@@ -227,7 +227,7 @@ func TestRetryPrepare(t *testing.T) {
 			},
 		},
 	}
-	err = build.Run(&Config{}, &Trace{Writer: os.Stdout})
+	err = build.Run(&Config{}, &Trace{Writer: os.Stdout}, &Metrics{})
 	assert.NoError(t, err)
 }
 
@@ -264,7 +264,7 @@ func TestPrepareFailure(t *testing.T) {
 			},
 		},
 	}
-	err = build.Run(&Config{}, &Trace{Writer: os.Stdout})
+	err = build.Run(&Config{}, &Trace{Writer: os.Stdout}, &Metrics{})
 	assert.EqualError(t, err, "prepare failed")
 }
 
@@ -299,7 +299,7 @@ func TestPrepareFailureOnBuildError(t *testing.T) {
 			},
 		},
 	}
-	err = build.Run(&Config{}, &Trace{Writer: os.Stdout})
+	err = build.Run(&Config{}, &Trace{Writer: os.Stdout}, &Metrics{})
 	assert.IsType(t, err, &BuildError{})
 }
 
@@ -349,7 +349,7 @@ func TestJobFailure(t *testing.T) {
 	trace.On("SetMasked", mock.Anything).Once()
 	trace.On("Fail", thrownErr, ScriptFailure).Once()
 
-	err = build.Run(&Config{}, trace)
+	err = build.Run(&Config{}, trace, &Metrics{})
 	require.IsType(t, &BuildError{}, err)
 }
 
@@ -406,7 +406,7 @@ func TestJobFailureOnExecutionTimeout(t *testing.T) {
 		assert.Error(t, arguments.Get(0).(error))
 	}).Once()
 
-	err = build.Run(&Config{}, trace)
+	err = build.Run(&Config{}, trace, &Metrics{})
 	require.IsType(t, &BuildError{}, err)
 }
 
@@ -457,7 +457,7 @@ func TestRunFailureRunsAfterScriptAndArtifactsOnFailure(t *testing.T) {
 			},
 		},
 	}
-	err = build.Run(&Config{}, &Trace{Writer: os.Stdout})
+	err = build.Run(&Config{}, &Trace{Writer: os.Stdout}, &Metrics{})
 	assert.EqualError(t, err, "build fail")
 }
 
@@ -500,7 +500,7 @@ func TestGetSourcesRunFailure(t *testing.T) {
 	}
 
 	build.Variables = append(build.Variables, JobVariable{Key: "GET_SOURCES_ATTEMPTS", Value: "3"})
-	err = build.Run(&Config{}, &Trace{Writer: os.Stdout})
+	err = build.Run(&Config{}, &Trace{Writer: os.Stdout}, &Metrics{})
 	assert.EqualError(t, err, "build fail")
 }
 
@@ -545,7 +545,7 @@ func TestArtifactDownloadRunFailure(t *testing.T) {
 	}
 
 	build.Variables = append(build.Variables, JobVariable{Key: "ARTIFACT_DOWNLOAD_ATTEMPTS", Value: "3"})
-	err = build.Run(&Config{}, &Trace{Writer: os.Stdout})
+	err = build.Run(&Config{}, &Trace{Writer: os.Stdout}, &Metrics{})
 	assert.EqualError(t, err, "build fail")
 }
 
@@ -599,7 +599,7 @@ func TestArtifactUploadRunFailure(t *testing.T) {
 		},
 	}
 
-	err = build.Run(&Config{}, &Trace{Writer: os.Stdout})
+	err = build.Run(&Config{}, &Trace{Writer: os.Stdout}, &Metrics{})
 	assert.EqualError(t, err, "upload fail")
 }
 
@@ -643,7 +643,7 @@ func TestRestoreCacheRunFailure(t *testing.T) {
 	}
 
 	build.Variables = append(build.Variables, JobVariable{Key: "RESTORE_CACHE_ATTEMPTS", Value: "3"})
-	err = build.Run(&Config{}, &Trace{Writer: os.Stdout})
+	err = build.Run(&Config{}, &Trace{Writer: os.Stdout}, &Metrics{})
 	assert.EqualError(t, err, "build fail")
 }
 
@@ -684,7 +684,7 @@ func TestRunWrongAttempts(t *testing.T) {
 	}
 
 	build.Variables = append(build.Variables, JobVariable{Key: "GET_SOURCES_ATTEMPTS", Value: "0"})
-	err = build.Run(&Config{}, &Trace{Writer: os.Stdout})
+	err = build.Run(&Config{}, &Trace{Writer: os.Stdout}, &Metrics{})
 	assert.EqualError(t, err, "Number of attempts out of the range [1, 10] for stage: get_sources")
 }
 
@@ -725,7 +725,7 @@ func TestRunSuccessOnSecondAttempt(t *testing.T) {
 	}
 
 	build.Variables = append(build.Variables, JobVariable{Key: "GET_SOURCES_ATTEMPTS", Value: "3"})
-	err = build.Run(&Config{}, &Trace{Writer: os.Stdout})
+	err = build.Run(&Config{}, &Trace{Writer: os.Stdout}, &Metrics{})
 	assert.NoError(t, err)
 }
 
