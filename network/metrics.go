@@ -14,78 +14,89 @@ type clientJobMetrics struct {
 	client         common.Network
 	config         common.RunnerConfig
 	jobCredentials *common.JobCredentials
-	id             int
 	cancelFunc     context.CancelFunc
 
 	buffer *buffer.Buffer
 
-	lock     sync.RWMutex
-	finished chan bool
+	lock      sync.RWMutex
+	finishing chan bool
+	stopped   bool
 
-	interval            int
+	interval            time.Duration
 	maxMetricsPatchSize int
 
-	collectors map[string]*common.Collector
+	collectors map[common.Collector]common.Collector
 }
 
-func (c *clientJobMetrics) RegisterCollector(name string, collector common.Collector) {
-	c.lock.Lock()
-	defer c.lock.Unlock()
-	c.collectors[name] = &collector
+var metricsArtifactOptions = common.ArtifactsOptions{
+	BaseName: "monitor.log",
+	Format:   "raw",
+	Type:     "monitor",
+	ExpireIn: "10000000",
 }
 
-func (c *clientJobMetrics) UnregisterCollector(name string) {
+func (c *clientJobMetrics) RegisterCollector(collector common.Collector) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
-	delete(c.collectors, name)
+	c.collectors[collector] = collector
+}
+
+func (c *clientJobMetrics) UnregisterCollector(collector common.Collector) {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+	delete(c.collectors, collector)
 }
 
 func (c *clientJobMetrics) readCollectors() {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 	for _, collector := range c.collectors {
-		reader := (*collector).Collect()
+		reader := collector.Collect()
 		buf := new(bytes.Buffer)
 		buf.ReadFrom(reader)
 		c.buffer.Write(buf.Bytes())
 	}
 }
 
-func (c *clientJobMetrics) start() {
+func (c *clientJobMetrics) Start() {
+	c.stopped = false
+	c.finishing = make(chan bool)
 	go c.poll()
 }
 
 func (c *clientJobMetrics) poll() {
 	for {
 		select {
-		case <-c.finished:
+		case <-c.finishing:
 			return
-		case <-time.After(time.Duration(c.interval) * time.Second):
+		case <-time.After(c.interval):
 			go c.readCollectors()
 		}
 	}
 }
 
-func (c *clientJobMetrics) uploadArtifact() {
+func (c *clientJobMetrics) Finish() {
+	// mark stopped
+	c.stopped = true
+	// end the polling loop
+	c.finishing <- true
 	// upload artifact
-	options := common.ArtifactsOptions{
-		BaseName: "monitor.log",
-		Format:   "raw",
-		Type:     "monitor",
-		ExpireIn: "10000000",
+	c.uploadArtifact()
+}
+
+func (c *clientJobMetrics) uploadArtifact() {
+	size := c.buffer.Size()
+	if size > 0 {
+		// create a reader and upload the raw artifact to GitLab
+		reader, _ := c.buffer.Reader(0, size)
+		c.client.UploadRawArtifacts(*c.jobCredentials, reader, metricsArtifactOptions)
 	}
-	reader, _ := c.buffer.Reader(0, c.buffer.Size())
-	c.client.UploadRawArtifacts(*c.jobCredentials, reader, options)
 	// close buffer
 	c.buffer.Close()
 }
 
-func (c *clientJobMetrics) Stop() {
-	// end the polling loop
-	c.finished = make(chan bool)
-	c.finished <- true
-	// upload artifacts
-	go c.uploadArtifact()
+func (c *clientJobMetrics) IsStarted() bool {
+	return !c.stopped
 }
 
 func newJobMetrics(client common.Network, config common.RunnerConfig, jobCredentials *common.JobCredentials) (*clientJobMetrics, error) {
@@ -99,9 +110,9 @@ func newJobMetrics(client common.Network, config common.RunnerConfig, jobCredent
 		config:              config,
 		buffer:              buffer,
 		jobCredentials:      jobCredentials,
-		id:                  jobCredentials.ID,
 		maxMetricsPatchSize: common.DefaultMetricsPatchLimit,
-		interval:            config.RunnerSettings.Metrics.Interval,
-		collectors:          make(map[string]*common.Collector),
+		interval:            time.Duration(config.RunnerSettings.Metrics.Interval) * time.Second,
+		collectors:          make(map[common.Collector]common.Collector),
+		stopped:             true,
 	}, nil
 }

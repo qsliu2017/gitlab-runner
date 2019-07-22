@@ -267,16 +267,19 @@ func (b *Build) executeScript(ctx context.Context, executor Executor) error {
 	}
 
 	if err == nil {
+		// start metrics collection
+		executor.CollectMetrics()
+
 		// Execute user build script (before_script + script)
 		err = b.executeStage(ctx, BuildStageUserScript, executor)
 
 		// Execute after script (after_script)
 		timeoutContext, timeoutCancel := context.WithTimeout(ctx, AfterScriptTimeout)
 		defer timeoutCancel()
-
 		b.executeStage(timeoutContext, BuildStageAfterScript, executor)
 
-		executor.Monitor()
+		// stop monitoring and upload metrics
+		executor.UploadMetrics()
 	}
 
 	// Execute post script (cache store, artifacts upload)

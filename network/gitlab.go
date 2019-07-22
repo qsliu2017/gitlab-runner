@@ -465,11 +465,6 @@ func (n *GitLabClient) UploadRawArtifacts(config common.JobCredentials, reader i
 	defer res.Body.Close()
 	defer io.Copy(ioutil.Discard, res.Body)
 
-	buf := new(bytes.Buffer)
-	buf.ReadFrom(res.Body)
-	s := buf.String()
-	fmt.Printf("RESPONSE: %s", s)
-
 	switch res.StatusCode {
 	case http.StatusCreated:
 		log.Println("Uploading artifacts to coordinator...", "ok")
@@ -546,7 +541,6 @@ func (n *GitLabClient) ProcessJob(config common.RunnerConfig, jobCredentials *co
 		if err != nil {
 			return nil, nil, err
 		}
-		metrics.start()
 		return trace, metrics, nil
 	}
 

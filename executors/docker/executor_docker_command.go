@@ -98,14 +98,15 @@ func (s *commandExecutor) Run(cmd common.ExecutorCommand) error {
 		return err
 	}
 
-	if !cmd.Predefined && (s.Metrics != nil) {
+	// attach cadvisor collector for metrics collection
+	if (s.Metrics != nil) && (s.Metrics.IsStarted()) {
 		collector := cadvisor.New(
 			runOn.Config.Hostname,
 			s.Build.IP,
 			*s.Config.Metrics.CAdvisor,
 		)
-		s.Metrics.RegisterCollector("cadvisor", collector)
-		defer s.Metrics.UnregisterCollector("cadvisor")
+		s.Metrics.RegisterCollector(collector)
+		defer s.Metrics.UnregisterCollector(collector)
 	}
 
 	s.Debugln("Executing on", runOn.Name, "the", cmd.Script)

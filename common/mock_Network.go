@@ -48,7 +48,7 @@ func (_m *MockNetwork) PatchTrace(config RunnerConfig, jobCredentials *JobCreden
 }
 
 // ProcessJob provides a mock function with given fields: config, buildCredentials
-func (_m *MockNetwork) ProcessJob(config RunnerConfig, buildCredentials *JobCredentials) (JobTrace, error) {
+func (_m *MockNetwork) ProcessJob(config RunnerConfig, buildCredentials *JobCredentials) (JobTrace, JobMetrics, error) {
 	ret := _m.Called(config, buildCredentials)
 
 	var r0 JobTrace
@@ -60,14 +60,23 @@ func (_m *MockNetwork) ProcessJob(config RunnerConfig, buildCredentials *JobCred
 		}
 	}
 
-	var r1 error
-	if rf, ok := ret.Get(1).(func(RunnerConfig, *JobCredentials) error); ok {
+	var r1 JobMetrics
+	if rf, ok := ret.Get(1).(func(RunnerConfig, *JobCredentials) JobMetrics); ok {
 		r1 = rf(config, buildCredentials)
 	} else {
-		r1 = ret.Error(1)
+		if ret.Get(1) != nil {
+			r1 = ret.Get(1).(JobMetrics)
+		}
 	}
 
-	return r0, r1
+	var r2 error
+	if rf, ok := ret.Get(2).(func(RunnerConfig, *JobCredentials) error); ok {
+		r2 = rf(config, buildCredentials)
+	} else {
+		r2 = ret.Error(1)
+	}
+
+	return r0, r1, r2
 }
 
 // RegisterRunner provides a mock function with given fields: config, parameters

@@ -372,9 +372,11 @@ type JobTrace interface {
 }
 
 type JobMetrics interface {
-	RegisterCollector(name string, collector Collector)
-	UnregisterCollector(name string)
-	Stop()
+	RegisterCollector(collector Collector)
+	UnregisterCollector(collector Collector)
+	Start()
+	Finish()
+	IsStarted() bool
 }
 
 type Network interface {

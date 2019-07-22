@@ -137,9 +137,15 @@ func (e *machineExecutor) SetCurrentStage(stage common.ExecutorStage) {
 	e.executor.SetCurrentStage(stage)
 }
 
-func (e *machineExecutor) Monitor() {
+func (e *machineExecutor) CollectMetrics() {
 	if e.executor != nil {
-		e.executor.Monitor()
+		e.executor.CollectMetrics()
+	}
+}
+
+func (e *machineExecutor) UploadMetrics() {
+	if e.executor != nil {
+		e.executor.UploadMetrics()
 	}
 }
 
