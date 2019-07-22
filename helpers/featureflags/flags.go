@@ -8,6 +8,8 @@ const (
 	CmdDisableDelayedErrorLevelExpansion string = "FF_CMD_DISABLE_DELAYED_ERROR_LEVEL_EXPANSION"
 	UseLegacyBuildsDirForDocker          string = "FF_USE_LEGACY_BUILDS_DIR_FOR_DOCKER"
 	UseLegacyVolumesMountingOrder        string = "FF_USE_LEGACY_VOLUMES_MOUNTING_ORDER"
+
+	UseLegacyGitCheckoutAndSubmodulesStrategy string = "FF_USE_LEGACY_GIT_CHECKOUT_AND_SUBMODULES_STRATEGY"
 )
 
 type FeatureFlag struct {
@@ -44,6 +46,13 @@ var flags = []FeatureFlag{
 		Deprecated:      true,
 		ToBeRemovedWith: "12.6",
 		Description:     "Disables the new ordering of volumes mounting when `docker*` executors are being used.",
+	},
+	{
+		Name: UseLegacyGitCheckoutAndSubmodulesStrategy,
+		DefaultValue: "false",
+		Deprecated: true,
+		ToBeRemovedWith: "TBA",
+		Description: "Disables the new strategy for git checkout, cleanup, lfs pull and submodules updating, that makes all of these steps not executed when `GIT_CHECKOUT_STRATEGY=none` is used.",
 	},
 }
 

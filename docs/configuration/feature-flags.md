@@ -40,5 +40,6 @@ The flags are defined in `./helpers/feature_flags/flags.go` file.
 | `FF_CMD_DISABLE_DELAYED_ERROR_LEVEL_EXPANSION` | `false` | ✗ |  | Disables [EnableDelayedExpansion](https://ss64.com/nt/delayedexpansion.html) for error checking for when using [Window Batch](https://docs.gitlab.com/runner/shells/#windows-batch) shell |
 | `FF_USE_LEGACY_BUILDS_DIR_FOR_DOCKER` | `false` | ✓ | 12.3 | Disables the new strategy for Docker executor to cache the content of `/builds` directory instead of `/builds/group-org` |
 | `FF_USE_LEGACY_VOLUMES_MOUNTING_ORDER` | `false` | ✓ | 12.6 | Disables the new ordering of volumes mounting when `docker*` executors are being used. |
+| `FF_USE_LEGACY_GIT_CHECKOUT_AND_SUBMODULES_STRATEGY` | `false` | ✓ | TBA | Disables the new strategy for git checkout, cleanup, lfs pull and submodules updating, that makes all of these steps not executed when `GIT_CHECKOUT_STRATEGY=none` is used. |
 
 <!-- feature_flags_list_end -->

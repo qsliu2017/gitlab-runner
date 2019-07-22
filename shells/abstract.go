@@ -11,6 +11,7 @@ import (
 
 	"gitlab.com/gitlab-org/gitlab-runner/cache"
 	"gitlab.com/gitlab-org/gitlab-runner/common"
+	"gitlab.com/gitlab-org/gitlab-runner/helpers/featureflags"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers/tls"
 )
 
@@ -313,6 +314,17 @@ func (b *AbstractShell) writeGitCleanup(w ShellWriter, build *common.Build) {
 }
 
 func (b *AbstractShell) handleCheckoutAndSubmodulesStrategy(w ShellWriter, build *common.Build) error {
+	if build.IsFeatureFlagOn(featureflags.UseLegacyGitCheckoutAndSubmodulesStrategy) {
+		return b.handleOldCheckoutAndSubmodulesStrategy(w, build)
+	}
+
+	return b.handleNewCheckoutAndSubmodulesStrategy(w, build)
+}
+
+// TODO: Remove in XX.XX
+//
+// DEPRECATED
+func (b *AbstractShell) handleOldCheckoutAndSubmodulesStrategy(w ShellWriter, build *common.Build) error {
 	if build.GetGitCheckout() {
 		b.writeCheckoutCmd(w, build)
 		b.writeCleanCmd(w, build)
@@ -324,12 +336,29 @@ func (b *AbstractShell) handleCheckoutAndSubmodulesStrategy(w ShellWriter, build
 	return b.handleSubmodulesStrategy(w, build)
 }
 
+// TODO: In XX.XX move it to 'handleCheckoutAndSubmodulesStrategy' and
+//       make it the only supported strategy
+//
+// DEPRECATED
+func (b *AbstractShell) handleNewCheckoutAndSubmodulesStrategy(w ShellWriter, build *common.Build) error {
+	if !build.GetGitCheckout() {
+		w.Notice("Skipping Git checkout")
+		return nil
+	}
+
+	b.writeCheckoutCmd(w, build)
+	b.writeCleanCmd(w, build)
+	b.writeLFSPullCmd(w, build)
+
+	return b.handleSubmodulesStrategy(w, build)
+}
+
 func (b *AbstractShell) writeCheckoutCmd(w ShellWriter, build *common.Build) {
 	w.Notice("Checking out %s as %s...", build.GitInfo.Sha[0:8], build.GitInfo.Ref)
 	w.Command("git", "checkout", "-f", "-q", build.GitInfo.Sha)
 }
 
-func (b *AbstractShell) writeCleanCmd(w ShellWriter, build *common.Build, args ...string) {
+func (b *AbstractShell) writeCleanCmd(w ShellWriter, build *common.Build) {
 	b.writeCleanCmdWthArgs(w, build, b.getCleanCmdArgs(build)...)
 }
 

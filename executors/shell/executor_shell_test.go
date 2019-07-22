@@ -750,6 +750,7 @@ func TestBuildWithGitSubmoduleStrategyRecursiveAndGitStrategyNone(t *testing.T) 
 
 		build.Variables = append(build.Variables, common.JobVariable{Key: "GIT_STRATEGY", Value: "none"})
 		build.Variables = append(build.Variables, common.JobVariable{Key: "GIT_SUBMODULE_STRATEGY", Value: "recursive"})
+		build.Variables = append(build.Variables, common.JobVariable{Key: "FF_USE_LEGACY_GIT_CHECKOUT_AND_SUBMODULES_STRATEGY", Value: "true"})
 
 		out, err := runBuildReturningOutput(t, build)
 		assert.NoError(t, err)
