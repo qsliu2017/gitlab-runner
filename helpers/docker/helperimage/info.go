@@ -10,7 +10,7 @@ const (
 	OSTypeLinux   = "linux"
 	OSTypeWindows = "windows"
 
-	name = "gitlab/gitlab-runner-helper"
+	name = "docker.io/gitlab/gitlab-runner-helper"
 
 	headRevision        = "HEAD"
 	latestImageRevision = "latest"
