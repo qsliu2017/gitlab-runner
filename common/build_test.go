@@ -49,6 +49,8 @@ func TestBuildRun(t *testing.T) {
 	e.On("Prepare", mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
 	e.On("Finish", nil).Return().Once()
 	e.On("Cleanup").Return().Once()
+	e.On("CollectMetrics").Return().Once()
+	e.On("UploadMetrics").Return().Once()
 
 	// Run script successfully
 	e.On("Shell").Return(&ShellScriptInfo{Shell: "script-shell"})
@@ -99,6 +101,8 @@ func TestBuildPredefinedVariables(t *testing.T) {
 		}).Once()
 	e.On("Finish", nil).Return().Once()
 	e.On("Cleanup").Return().Once()
+	e.On("CollectMetrics").Return().Once()
+	e.On("UploadMetrics").Return().Once()
 
 	// Run script successfully
 	e.On("Shell").Return(&ShellScriptInfo{Shell: "script-shell"})
@@ -153,6 +157,8 @@ func TestBuildRunNoModifyConfig(t *testing.T) {
 	// We run everything else once
 	e.On("Finish", nil).Return().Once()
 	e.On("Cleanup").Return().Once()
+	e.On("CollectMetrics").Return().Once()
+	e.On("UploadMetrics").Return().Once()
 
 	// Run script successfully
 	e.On("Shell").Return(&ShellScriptInfo{Shell: "script-shell"})
@@ -214,6 +220,8 @@ func TestRetryPrepare(t *testing.T) {
 	e.On("Shell").Return(&ShellScriptInfo{Shell: "script-shell"})
 	e.On("Run", mock.Anything).Return(nil)
 	e.On("Finish", nil).Return().Once()
+	e.On("CollectMetrics").Return().Once()
+	e.On("UploadMetrics").Return().Once()
 
 	RegisterExecutor("build-run-retry-prepare", &p)
 
@@ -379,6 +387,8 @@ func TestJobFailureOnExecutionTimeout(t *testing.T) {
 	}).Return(nil)
 	e.On("Run", mock.Anything).Return(nil)
 	e.On("Finish", mock.Anything).Return().Once()
+	e.On("CollectMetrics").Return().Once()
+	e.On("UploadMetrics").Return().Once()
 
 	RegisterExecutor("build-run-job-failure-on-execution-timeout", p)
 
@@ -444,6 +454,8 @@ func TestRunFailureRunsAfterScriptAndArtifactsOnFailure(t *testing.T) {
 	e.On("Run", matchBuildStage(BuildStageAfterScript)).Return(nil).Once()
 	e.On("Run", matchBuildStage(BuildStageUploadOnFailureArtifacts)).Return(nil).Once()
 	e.On("Finish", errors.New("build fail")).Return().Once()
+	e.On("CollectMetrics").Return().Once()
+	e.On("UploadMetrics").Return().Once()
 
 	RegisterExecutor("build-run-run-failure", &p)
 
@@ -578,6 +590,8 @@ func TestArtifactUploadRunFailure(t *testing.T) {
 	e.On("Run", matchBuildStage(BuildStageArchiveCache)).Return(nil).Once()
 	e.On("Run", matchBuildStage(BuildStageUploadOnSuccessArtifacts)).Return(errors.New("upload fail")).Once()
 	e.On("Finish", errors.New("upload fail")).Return().Once()
+	e.On("CollectMetrics").Return().Once()
+	e.On("UploadMetrics").Return().Once()
 
 	RegisterExecutor("build-upload-artifacts-run-failure", &p)
 
@@ -703,6 +717,8 @@ func TestRunSuccessOnSecondAttempt(t *testing.T) {
 	e.On("Prepare", mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
 	e.On("Finish", mock.Anything).Return().Twice()
 	e.On("Cleanup").Return().Twice()
+	e.On("CollectMetrics").Return().Once()
+	e.On("UploadMetrics").Return().Once()
 
 	// Run script successfully
 	e.On("Shell").Return(&ShellScriptInfo{Shell: "script-shell"})

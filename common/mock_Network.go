@@ -73,7 +73,7 @@ func (_m *MockNetwork) ProcessJob(config RunnerConfig, buildCredentials *JobCred
 	if rf, ok := ret.Get(2).(func(RunnerConfig, *JobCredentials) error); ok {
 		r2 = rf(config, buildCredentials)
 	} else {
-		r2 = ret.Error(1)
+		r2 = ret.Error(2)
 	}
 
 	return r0, r1, r2

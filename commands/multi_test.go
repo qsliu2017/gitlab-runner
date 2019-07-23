@@ -46,7 +46,7 @@ func TestProcessRunner_BuildLimit(t *testing.T) {
 	mNetwork := common.MockNetwork{}
 	defer mNetwork.AssertExpectations(t)
 	mNetwork.On("RequestJob", mock.Anything, mock.Anything).Return(&jobData, true)
-	mNetwork.On("ProcessJob", mock.Anything, mock.Anything).Return(&mJobTrace, nil)
+	mNetwork.On("ProcessJob", mock.Anything, mock.Anything).Return(&mJobTrace, &common.Metrics{}, nil)
 
 	var runningBuilds uint32
 	e := common.MockExecutor{}
@@ -54,6 +54,8 @@ func TestProcessRunner_BuildLimit(t *testing.T) {
 	e.On("Prepare", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 	e.On("Cleanup").Maybe().Return()
 	e.On("Shell").Return(&common.ShellScriptInfo{Shell: "script-shell"})
+	e.On("CollectMetrics").Maybe().Return()
+	e.On("UploadMetrics").Maybe().Return()
 	e.On("Finish", mock.Anything).Return(nil).Maybe()
 	e.On("Run", mock.Anything).Run(func(args mock.Arguments) {
 		atomic.AddUint32(&runningBuilds, 1)

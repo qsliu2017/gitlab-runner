@@ -77,7 +77,7 @@ func mockingExecutionStack(t *testing.T, executorName string, maxBuilds int, job
 	_, cancel := context.WithCancel(context.Background())
 	jobTrace := common.Trace{Writer: ioutil.Discard, CancelFunc: cancel}
 	mockNetwork.On("RequestJob", mock.Anything, mock.Anything).Return(&jobData, true).Times(maxBuilds)
-	processJob := mockNetwork.On("ProcessJob", mock.Anything, mock.Anything).Return(&jobTrace, nil).Times(maxBuilds)
+	processJob := mockNetwork.On("ProcessJob", mock.Anything, mock.Anything).Return(&jobTrace, &common.Metrics{}, nil).Times(maxBuilds)
 	if job != nil {
 		processJob.Run(job)
 	}
@@ -95,6 +95,8 @@ func mockingExecutionStack(t *testing.T, executorName string, maxBuilds int, job
 	e.On("Prepare", mock.Anything, mock.Anything, mock.Anything).Return(nil).Times(maxBuilds)
 	e.On("Finish", nil).Return().Times(maxBuilds)
 	e.On("Cleanup").Return().Times(maxBuilds)
+	e.On("CollectMetrics").Return().Times(maxBuilds)
+	e.On("UploadMetrics").Return().Times(maxBuilds)
 
 	// Run script successfully
 	e.On("Shell").Return(&common.ShellScriptInfo{Shell: "script-shell"})
