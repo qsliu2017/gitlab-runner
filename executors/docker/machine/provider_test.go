@@ -323,7 +323,8 @@ func TestMachineCreationAndRemoval(t *testing.T) {
 	assert.NoError(t, <-errCh)
 	assert.Equal(t, machineStateUsed, d3.State)
 
-	p.remove(d.Name)
+	err := p.remove(d.Name)
+	assert.NoError(t, err)
 	assert.Equal(t, machineStateRemoving, d.State)
 }
 
@@ -443,11 +444,13 @@ func TestMachineLimitMax(t *testing.T) {
 
 	config.Limit = 8
 	d, err = p.Acquire(config)
+	assert.NoError(t, err)
 	p.Release(config, d)
 	assertIdleMachines(t, p, 8, "it should upscale to 8 nodes")
 
 	config.Limit = 2
 	d, err = p.Acquire(config)
+	assert.NoError(t, err)
 	p.Release(config, d)
 	assertIdleMachines(t, p, 2, "it should downscale to 2 nodes")
 }

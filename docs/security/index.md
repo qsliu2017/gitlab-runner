@@ -58,7 +58,7 @@ for more information.
 ## Systems with Docker installed
 
 >**Note:**
-This applies to installations below 0.5.0 or one's that were upgraded to newer version.
+This applies to installations below 0.5.0 or ones that were upgraded to newer version.
 
 When installing package on Linux systems with Docker installed, `gitlab-runner`
 will create user that will have permission to access `Docker` daemon. This makes
@@ -81,4 +81,4 @@ it blocks access to all peripherals and shared folders.
 
 Runners use a token to identify to the GitLab Server. If you clone a runner then
 the cloned runner could be picking up the same jobs for that token. This is a possible
-attack vector to "steal" runner jobs. 
+attack vector to "steal" runner jobs.
