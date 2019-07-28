@@ -9,9 +9,11 @@ import (
 const (
 	windows1809 = "1809"
 	windows1803 = "1803"
+	windows1607 = "1607"
 
 	baseImage1809 = "servercore1809"
 	baseImage1803 = "servercore1803"
+	baseImage1607 = "servercore1607"
 
 	windowsSupportedArchitecture = "x86_64"
 )
@@ -19,6 +21,7 @@ const (
 var supportedOSVersions = map[string]string{
 	windows1803: baseImage1803,
 	windows1809: baseImage1809,
+	windows1607: baseImage1607,
 }
 
 var ErrUnsupportedOSVersion = errors.New("could not determine windows version")
@@ -34,11 +37,11 @@ func (w *windowsInfo) Create(revision string, cfg Config) (Info, error) {
 	}
 
 	return Info{
-		Architecture: windowsSupportedArchitecture,
-		Name:         name,
-		Tag:          fmt.Sprintf("%s-%s-%s", windowsSupportedArchitecture, revision, osVersion),
+		Architecture:            windowsSupportedArchitecture,
+		Name:                    name,
+		Tag:                     fmt.Sprintf("%s-%s-%s", windowsSupportedArchitecture, revision, osVersion),
 		IsSupportingLocalImport: false,
-		Cmd: powerShellCmd,
+		Cmd:                     powerShellCmd,
 	}, nil
 
 }

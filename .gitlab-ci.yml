@@ -53,6 +53,14 @@ image: $CI_IMAGE
   tags:
   - docker
 
+.windows1607: &windows1607
+  variables: &windows1607_variables
+    <<: *windows_base_variables
+    WINDOWS_VERSION: servercore1607
+  tags:
+  - windows-1607
+  - shell
+
 .windows1803: &windows1803
   variables: &windows1803_variables
     <<: *windows_base_variables
@@ -325,6 +333,10 @@ docs lint:
   only:
   - /.*/@gitlab-org/gitlab-runner
 
+windows 1607 tests:
+  <<: *windows1607
+  extends: .windows test
+
 windows 1803 tests:
   <<: *windows1803
   extends: .windows test
@@ -398,6 +410,11 @@ test junit report:
     - .test-failures.*.txt.updated
     expire_in: 7d
   when: always
+
+check windows 1607 test failures:
+  variables:
+    <<: *windows1607_variables
+  extends: .check windows test failures
 
 check windows 1803 test failures:
   variables:
@@ -561,6 +578,11 @@ development docker images:
   tags:
   - docker
 
+development servercore1607 helper docker image:
+  <<: *release_development
+  <<: *windows1607
+  extends: .build_windows_docker_images
+
 development servercore1803 helper docker image:
   <<: *release_development
   <<: *windows1803
@@ -590,6 +612,17 @@ bleeding edge docker images:
   <<: *release_bleeding_edge
   environment:
     name: bleeding_edge/docker_images
+    url: https://hub.docker.com/r/gitlab/gitlab-runner/tags/
+
+bleeding edge servercore1607 docker images:
+  <<: *release_bleeding_edge
+  <<: *windows1607
+  extends: .build_windows_docker_images
+  variables:
+    <<: *windows1607_variables
+    PUSH_TO_DOCKER_HUB: "true"
+  environment:
+    name: bleeding_edge/docker_images/windows1607
     url: https://hub.docker.com/r/gitlab/gitlab-runner/tags/
 
 bleeding edge servercore1803 docker images:
@@ -633,6 +666,17 @@ stable docker images:
   <<: *release_stable
   environment:
     name: stable/docker_images
+    url: https://hub.docker.com/r/gitlab/gitlab-runner/tags/
+
+stable servercore1607 docker images:
+  <<: *release_stable
+  <<: *windows1607
+  extends: .build_windows_docker_images
+  variables:
+    <<: *windows1607_variables
+    PUSH_TO_DOCKER_HUB: "true"
+  environment:
+    name: stable/docker_images/windows1607
     url: https://hub.docker.com/r/gitlab/gitlab-runner/tags/
 
 stable servercore1803 docker images:
