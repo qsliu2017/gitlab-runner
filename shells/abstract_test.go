@@ -2,6 +2,7 @@ package shells
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/mock"
@@ -194,6 +195,9 @@ func TestWriteWritingArtifactsOnFailure(t *testing.T) {
 	require.NoError(t, err)
 }
 
+const dummySha = "01234567abcdef"
+const dummyRef = "master"
+
 func TestGitCleanFlags(t *testing.T) {
 	tests := map[string]struct {
 		value string
@@ -226,9 +230,6 @@ func TestGitCleanFlags(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			shell := AbstractShell{}
 
-			const dummySha = "01234567abcdef"
-			const dummyRef = "master"
-
 			build := &common.Build{
 				Runner: &common.RunnerConfig{},
 				JobResponse: common.JobResponse{
@@ -253,34 +254,116 @@ func TestGitCleanFlags(t *testing.T) {
 	}
 }
 
-func TestAbstractShell_writeSubmoduleUpdateCmdRecursive(t *testing.T) {
-	shell := AbstractShell{}
-	mockWriter := new(MockShellWriter)
-	defer mockWriter.AssertExpectations(t)
-
-	mockWriter.On("Command", "git", "submodule", "sync", "--recursive").Once()
-	mockWriter.On("Command", "git", "submodule", "update", "--init", "--recursive").Once()
-	mockWriter.On("Command", "git", "submodule", "foreach", "--recursive", "git clean -ffdx").Once()
-	mockWriter.On("Command", "git", "submodule", "foreach", "--recursive", "git reset --hard").Once()
-	mockWriter.On("IfCmd", "git-lfs", "version").Once()
-	mockWriter.On("Command", "git", "submodule", "foreach", "--recursive", "git lfs pull").Once()
-	mockWriter.On("EndIf").Once()
-
-	shell.writeSubmoduleUpdateCmd(mockWriter, &common.Build{}, true)
+type submodulesUpdateTestCase struct {
+	cleanFlags    string
+	expectedFlags string
 }
 
-func TestAbstractShell_writeSubmoduleUpdateCmd(t *testing.T) {
-	shell := AbstractShell{}
-	mockWriter := new(MockShellWriter)
-	defer mockWriter.AssertExpectations(t)
+var submodulesUpdateTestCases = map[string]submodulesUpdateTestCase{
+	"empty clean flags": {
+		cleanFlags:    "",
+		expectedFlags: "-ffdx",
+	},
+	"use custom flags": {
+		cleanFlags:    "custom-flags",
+		expectedFlags: "custom-flags",
+	},
+	"use custom flags with multiple arguments": {
+		cleanFlags:    "-ffdx -e cache/",
+		expectedFlags: "-ffdx -e cache/",
+	},
+	"disabled": {
+		cleanFlags:    "none",
+		expectedFlags: "",
+	},
+}
 
-	mockWriter.On("Command", "git", "submodule", "sync").Once()
-	mockWriter.On("Command", "git", "submodule", "update", "--init").Once()
-	mockWriter.On("Command", "git", "submodule", "foreach", "git clean -ffdx").Once()
-	mockWriter.On("Command", "git", "submodule", "foreach", "git reset --hard").Once()
-	mockWriter.On("IfCmd", "git-lfs", "version").Once()
-	mockWriter.On("Command", "git", "submodule", "foreach", "git lfs pull").Once()
-	mockWriter.On("EndIf").Once()
+func getSubmoduleUpdateTestBuild(cleanFlags string) *common.Build {
+	return &common.Build{
+		Runner: &common.RunnerConfig{},
+		JobResponse: common.JobResponse{
+			GitInfo: common.GitInfo{Sha: dummySha, Ref: dummyRef},
+			Variables: common.JobVariables{
+				{Key: "GIT_CLEAN_FLAGS", Value: cleanFlags},
+			},
+		},
+	}
+}
 
-	shell.writeSubmoduleUpdateCmd(mockWriter, &common.Build{}, false)
+func prepareSubmoduleArgs(recursive bool, command string, args []string) []interface{} {
+	outputArgs := make([]interface{}, 0)
+	for _, arg := range args {
+		outputArgs = append(outputArgs, arg)
+	}
+
+	if recursive {
+		outputArgs = append(outputArgs, "--recursive")
+	}
+
+	if command != "" {
+		outputArgs = append(outputArgs, command)
+	}
+
+	return outputArgs
+}
+
+func mockWriterCall(msw *MockShellWriter, r bool, command string, submoduleCommand string, args ...string) *mock.Call {
+	return msw.On(command, prepareSubmoduleArgs(r, submoduleCommand, args)...)
+}
+
+func runSubmoduleUpdateTest(t *testing.T, recursive bool) {
+	for tn, tc := range submodulesUpdateTestCases {
+		t.Run(tn, func(t *testing.T) {
+			mockWriter := new(MockShellWriter)
+			defer mockWriter.AssertExpectations(t)
+
+			mockWriterCall(
+				mockWriter, recursive,
+				"Command",
+				"",
+				"git", "submodule", "sync",
+			).Once()
+			mockWriterCall(
+				mockWriter, recursive,
+				"Command",
+				"",
+				"git", "submodule", "update", "--init",
+			).Once()
+
+			if tc.expectedFlags != "" {
+				mockWriterCall(
+					mockWriter, recursive,
+					"Command",
+					strings.Join([]string{"git clean", tc.expectedFlags}, " "),
+					"git", "submodule", "foreach",
+				).Once()
+			}
+
+			mockWriterCall(
+				mockWriter, recursive,
+				"Command",
+				"git reset --hard",
+				"git", "submodule", "foreach",
+			).Once()
+			mockWriter.On("IfCmd", "git-lfs", "version").Once()
+			mockWriterCall(
+				mockWriter, recursive,
+				"Command",
+				"git lfs pull",
+				"git", "submodule", "foreach",
+			).Once()
+			mockWriter.On("EndIf").Once()
+
+			shell := AbstractShell{}
+			shell.writeSubmoduleUpdateCmd(mockWriter, getSubmoduleUpdateTestBuild(tc.cleanFlags), recursive)
+		})
+	}
+}
+
+func TestAbstractShell_writeSubmoduleUpdateCmdRecursive(t *testing.T) {
+	runSubmoduleUpdateTest(t, true)
+}
+
+func TestAbstractShell_writeSubmoduleUpdateCmdWithoutRecursive(t *testing.T) {
+	runSubmoduleUpdateTest(t, false)
 }
