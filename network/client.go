@@ -272,13 +272,13 @@ func (n *client) do(uri, method string, request io.Reader, requestType string, h
 	return
 }
 
-func (n *client) doJSON(uri, method string, statusCode int, request interface{}, response interface{}) (int, string, ResponseTLSData, *http.Response) {
+func (n *client) doJSON(uri, method string, expectedStatusCode int, request interface{}, response interface{}) (int, string, ResponseTLSData, *http.Response, []byte) {
 	var body io.Reader
 
 	if request != nil {
 		requestBody, err := json.Marshal(request)
 		if err != nil {
-			return -1, fmt.Sprintf("failed to marshal project object: %v", err), ResponseTLSData{}, nil
+			return -1, fmt.Sprintf("failed to marshal project object: %v", err), ResponseTLSData{}, nil, nil
 		}
 		body = bytes.NewReader(requestBody)
 	}
@@ -290,24 +290,18 @@ func (n *client) doJSON(uri, method string, statusCode int, request interface{},
 
 	res, err := n.do(uri, method, body, "application/json", headers)
 	if err != nil {
-		return -1, err.Error(), ResponseTLSData{}, nil
+		return -1, err.Error(), ResponseTLSData{}, nil, nil
 	}
 	defer res.Body.Close()
-	defer io.Copy(ioutil.Discard, res.Body)
 
-	if res.StatusCode == statusCode {
-		if response != nil {
-			isApplicationJSON, err := isResponseApplicationJSON(res)
-			if !isApplicationJSON {
-				return -1, err.Error(), ResponseTLSData{}, nil
-			}
+	respBody, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		return -1, err.Error(), ResponseTLSData{}, nil, nil
+	}
 
-			d := json.NewDecoder(res.Body)
-			err = d.Decode(response)
-			if err != nil {
-				return -1, fmt.Sprintf("Error decoding json payload %v", err), ResponseTLSData{}, nil
-			}
-		}
+	err = decodeJSONResponse(res, respBody, expectedStatusCode, response)
+	if err != nil {
+		return -1, err.Error(), ResponseTLSData{}, nil, respBody
 	}
 
 	n.setLastUpdate(res.Header)
@@ -318,7 +312,30 @@ func (n *client) doJSON(uri, method string, statusCode int, request interface{},
 		KeyFile:  n.keyFile,
 	}
 
-	return res.StatusCode, res.Status, TLSData, res
+	return res.StatusCode, res.Status, TLSData, res, respBody
+}
+
+func decodeJSONResponse(jsonResponse *http.Response, respBody []byte, expectedStatusCode int, response interface{}) error {
+	if jsonResponse.StatusCode != expectedStatusCode {
+		return nil
+	}
+
+	if response == nil {
+		return nil
+	}
+
+	isApplicationJSON, err := isResponseApplicationJSON(jsonResponse)
+	if !isApplicationJSON {
+		return err
+	}
+
+	d := json.NewDecoder(bytes.NewReader(respBody))
+	err = d.Decode(response)
+	if err != nil {
+		return fmt.Errorf("error decoding json payload %v", err)
+	}
+
+	return nil
 }
 
 func isResponseApplicationJSON(res *http.Response) (result bool, err error) {
