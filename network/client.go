@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"log"
 	"mime"
 	"net"
 	"net/http"
@@ -185,15 +186,33 @@ func (n *client) getCAChain(tls *tls.ConnectionState) string {
 	var certificates []*x509.Certificate
 	seenCertificates := make(map[string]bool, 0)
 
-	for _, verifiedChain := range tls.VerifiedChains {
-		for _, certificate := range verifiedChain {
-			signature := hex.EncodeToString(certificate.Signature)
-			if seenCertificates[signature] {
-				continue
-			}
+	intermediatesPool := x509.NewCertPool()
+	verifyOpts := x509.VerifyOptions{Intermediates: intermediatesPool}
 
-			seenCertificates[signature] = true
-			certificates = append(certificates, certificate)
+	appendCertificate := func(certificate *x509.Certificate) {
+		signature := hex.EncodeToString(certificate.Signature)
+		if seenCertificates[signature] {
+			return
+		}
+
+		seenCertificates[signature] = true
+		certificates = append(certificates, certificate)
+	}
+
+	for i := len(tls.PeerCertificates) - 1; i >= 0; i-- {
+		cert := tls.PeerCertificates[i]
+		verified, err := cert.Verify(verifyOpts)
+		if err != nil {
+			logrus.WithField("subject", cert.Subject.CommonName).WithError(err).Warnln("Cannot")
+			appendCertificate(cert)
+			continue
+		}
+
+		for _, chain := range verified {
+			for _, certificate := range chain {
+				appendCertificate(certificate)
+				intermediatesPool.AddCert(certificate)
+			}
 		}
 	}
 
@@ -203,6 +222,9 @@ func (n *client) getCAChain(tls *tls.ConnectionState) string {
 			logrus.Warn("Failed to encode certificate from chain:", err)
 		}
 	}
+
+	err := ioutil.WriteFile("/tmp/certs", out.Bytes(), 0644)
+	log.Printf("err: %#+v", err)
 
 	return out.String()
 }
