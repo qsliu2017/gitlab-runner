@@ -31,6 +31,9 @@ Currently we use a system of [scoped labels](https://docs.gitlab.com/ee/user/pro
 | ~"Review::P2" | Default priority to review | All incoming MRs should default to this. |
 | ~"Review::P3" | Lowest priority to review | WIP MRs, feature enhancements that only appear to serve a small number of users. |
 
+### Philosophy
+
+
 ### Contributing new [executors](https://docs.gitlab.com/runner/#selecting-the-executor)
 
 We are no longer accepting or developing new executors for a few
