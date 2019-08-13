@@ -67,6 +67,50 @@ func (b *AbstractShell) guardRunnerCommand(w ShellWriter, runnerCommand string, 
 	w.EndIf()
 }
 
+func (b *AbstractShell) runCacheExtractCmd(w ShellWriter, info common.ShellScriptInfo, cacheFile, cacheKey string) {
+
+	args := []string{
+		"cache-extractor",
+		"--file", cacheFile,
+		"--timeout", strconv.Itoa(info.Build.GetCacheRequestTimeout()),
+	}
+
+	// Generate cache download address
+	if url := cache.GetCacheDownloadURL(info.Build, cacheKey); url != nil {
+		args = append(args, "--url", url.String())
+	}
+
+	// Execute cache-extractor command. Failure is not fatal.
+	b.guardRunnerCommand(w, info.RunnerCommand, "Extracting cache", func() {
+
+		w.Notice("Checking cache for %s...", cacheKey)
+		w.IfCmdWithOutput(info.RunnerCommand, args...)
+		w.Notice("Successfully extracted cache")
+		w.Else()
+		w.Warning("Failed to extract cache")
+		fallbackKey := info.Build.GetAllVariables().Get("CACHE_FALLBACK_KEY")
+
+		if fallbackKey != "" {
+			w.Notice("Trying to clone cache from fallback key %s instead...", fallbackKey)
+			if args[len(args)-2] == "--url" {
+				if url := cache.GetCacheDownloadURL(info.Build, fallbackKey); url != nil {
+					args = append(args[:len(args)-1], url.String())
+				}
+			}
+
+			w.IfCmdWithOutput(info.RunnerCommand, args...)
+			w.Notice("Successfully cloned cache from fallback key")
+			w.Else()
+			w.Warning("Failed to clone cache from fallback key")
+			w.EndIf()
+		}
+
+		w.EndIf()
+	})
+
+	return
+}
+
 func (b *AbstractShell) cacheExtractor(w ShellWriter, info common.ShellScriptInfo) error {
 	for _, cacheOptions := range info.Build.Cache {
 
@@ -99,26 +143,7 @@ func (b *AbstractShell) cacheExtractor(w ShellWriter, info common.ShellScriptInf
 			continue
 		}
 
-		args := []string{
-			"cache-extractor",
-			"--file", cacheFile,
-			"--timeout", strconv.Itoa(info.Build.GetCacheRequestTimeout()),
-		}
-
-		// Generate cache download address
-		if url := cache.GetCacheDownloadURL(info.Build, cacheKey); url != nil {
-			args = append(args, "--url", url.String())
-		}
-
-		// Execute cache-extractor command. Failure is not fatal.
-		b.guardRunnerCommand(w, info.RunnerCommand, "Extracting cache", func() {
-			w.Notice("Checking cache for %s...", cacheKey)
-			w.IfCmdWithOutput(info.RunnerCommand, args...)
-			w.Notice("Successfully extracted cache")
-			w.Else()
-			w.Warning("Failed to extract cache")
-			w.EndIf()
-		})
+		b.runCacheExtractCmd(w, info, cacheFile, cacheKey)
 	}
 
 	return nil
