@@ -1,6 +1,6 @@
 include:
-  - template: License-Management.gitlab-ci.yml
-  - template: SAST.gitlab-ci.yml
+  - template: Security/License-Management.gitlab-ci.yml
+  - template: Security/SAST.gitlab-ci.yml
 
 stages:
 - prepare
