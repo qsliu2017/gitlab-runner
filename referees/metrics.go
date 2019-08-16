@@ -1,7 +1,6 @@
 package referees
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -13,24 +12,20 @@ import (
 	prometheusV1 "github.com/prometheus/client_golang/api/prometheus/v1"
 	"github.com/prometheus/common/model"
 	"github.com/sirupsen/logrus"
+	"gitlab.com/gitlab-org/labkit/log"
 )
 
 type MetricsReferee struct {
 	prometheusAPI prometheusV1.API
 	queries       []string
 	queryInterval time.Duration
-	selector      string
-	logger        logrus.FieldLogger
+	*BaseReferee
 }
 
 type MetricsRefereeConfig struct {
 	PrometheusAddress string   `toml:"prometheus_address,omitempty" json:"prometheus_address" description:"A host:port to a prometheus metrics server"`
 	QueryInterval     int      `toml:"query_interval,omitempty" json:"query_interval" description:"Query interval (in seconds)"`
 	Queries           []string `toml:"queries" json:"queries" description:"A list of metrics to query (in PromQL)"`
-}
-
-type MetricsExecutor interface {
-	GetMetricsSelector() string
 }
 
 func (mr *MetricsReferee) ArtifactBaseName() string {
@@ -49,7 +44,7 @@ func (mr *MetricsReferee) Execute(
 	ctx context.Context,
 	startTime time.Time,
 	endTime time.Time,
-) (*bytes.Reader, error) {
+) ([]byte, error) {
 	// specify the range used for the PromQL query
 	queryRange := prometheusV1.Range{
 		Start: startTime.UTC(),
@@ -82,14 +77,15 @@ func (mr *MetricsReferee) Execute(
 
 	// convert metrics sample pairs to JSON
 	output, _ := json.Marshal(metrics)
-	return bytes.NewReader(output), nil
+	return output, nil
 }
 
 func (mr *MetricsReferee) queryMetrics(ctx context.Context, query string, queryRange prometheusV1.Range) []model.SamplePair {
 	interval := fmt.Sprintf("%.0fs", mr.queryInterval.Seconds())
+	selector := fmt.Sprintf("instance=%q", mr.hostname)
 
-	query = strings.Replace(query, "{selector}", mr.selector, -1)
 	query = strings.Replace(query, "{interval}", interval, -1)
+	query = strings.Replace(query, "{selector}", selector, -1)
 
 	queryLogger := mr.logger.WithFields(logrus.Fields{
 		"query": query,
@@ -126,16 +122,9 @@ func (mr *MetricsReferee) queryMetrics(ctx context.Context, query string, queryR
 	return matrix[0].Values
 }
 
-func newMetricsReferee(executor interface{}, config *Config, log logrus.FieldLogger) Referee {
+func newMetricsReferee(base *BaseReferee, config *Config) Referee {
 	logger := log.WithField("referee", "metrics")
 	if config.Metrics == nil {
-		return nil
-	}
-
-	// see if provider supports metrics refereeing
-	refereed, ok := executor.(MetricsExecutor)
-	if !ok {
-		logger.Info("executor not supported")
 		return nil
 	}
 
@@ -143,7 +132,7 @@ func newMetricsReferee(executor interface{}, config *Config, log logrus.FieldLog
 	clientConfig := api.Config{Address: config.Metrics.PrometheusAddress}
 	prometheusClient, err := api.NewClient(clientConfig)
 	if err != nil {
-		logger.WithError(err).Error("failed to create prometheus client")
+		logger.WithError(err).Error("Failed to create prometheus client")
 		return nil
 	}
 
@@ -153,7 +142,6 @@ func newMetricsReferee(executor interface{}, config *Config, log logrus.FieldLog
 		prometheusAPI: prometheusAPI,
 		queryInterval: time.Duration(config.Metrics.QueryInterval) * time.Second,
 		queries:       config.Metrics.Queries,
-		selector:      refereed.GetMetricsSelector(),
-		logger:        logger,
+		BaseReferee:   base,
 	}
 }

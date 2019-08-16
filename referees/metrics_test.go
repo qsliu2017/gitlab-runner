@@ -245,15 +245,11 @@ func TestMetricsRefereeExecute(t *testing.T) {
 	require.NotNil(t, mr)
 
 	ctx := context.Background()
-	reader, err := mr.Execute(ctx, startTime, endTime)
+	body, err := mr.Execute(ctx, startTime, endTime)
 	require.NoError(t, err)
 
-	// convert reader result to golang maps
-	buf := new(bytes.Buffer)
-	_, err = buf.ReadFrom(reader)
-	require.NoError(t, err)
 	var metrics interface{}
-	err = json.Unmarshal(buf.Bytes(), &metrics)
+	err = json.Unmarshal(body, &metrics)
 	require.NoError(t, err)
 
 	// confirm length of elements

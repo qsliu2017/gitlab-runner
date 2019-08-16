@@ -134,13 +134,13 @@ func (e *machineExecutor) SetCurrentStage(stage common.ExecutorStage) {
 	e.executor.SetCurrentStage(stage)
 }
 
-func (e *machineExecutor) GetMetricsSelector() string {
-	refereed, ok := e.executor.(referees.MetricsExecutor)
+func (e *machineExecutor) GetHostname() string {
+	refereed, ok := e.executor.(referees.RefereeExecutor)
 	if !ok {
 		return ""
 	}
 
-	return refereed.GetMetricsSelector()
+	return refereed.GetHostname()
 }
 
 func init() {

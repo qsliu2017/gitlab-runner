@@ -3,7 +3,6 @@ package docker
 import (
 	"bytes"
 	"errors"
-	"fmt"
 	"sync"
 
 	"github.com/docker/docker/api/types"
@@ -136,8 +135,8 @@ func (s *commandExecutor) getContainer(cmd common.ExecutorCommand) (*types.Conta
 	return s.requestBuildContainer()
 }
 
-func (s *commandExecutor) GetMetricsSelector() string {
-	return fmt.Sprintf("instance=%q", s.executor.info.Name)
+func (s *commandExecutor) GetHostname() string {
+	return s.executor.info.Name
 }
 
 func init() {

@@ -1,6 +1,7 @@
 package common
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -387,14 +388,14 @@ func (b *Build) executeUploadReferees(ctx context.Context, startTime time.Time, 
 			continue
 		}
 
-		reader, err := referee.Execute(ctx, startTime, endTime)
+		body, err := referee.Execute(ctx, startTime, endTime)
 		// keep moving even if a subset of the referees have failed
 		if err != nil {
 			continue
 		}
 
 		// referee ran successfully, upload its results to GitLab as an artifact
-		b.ArtifactUploader(jobCredentials, reader, ArtifactsOptions{
+		b.ArtifactUploader(jobCredentials, bytes.NewReader(body), ArtifactsOptions{
 			BaseName: referee.ArtifactBaseName(),
 			Type:     referee.ArtifactType(),
 			Format:   ArtifactFormat(referee.ArtifactFormat()),

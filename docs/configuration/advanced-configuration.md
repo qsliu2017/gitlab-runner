@@ -838,14 +838,16 @@ Example:
 
 ## The `[runners.referees]` section
 
-> - [Introduced](https://gitlab.com/gitlab-org/gitlab-runner/-/merge_requests/1545) in GitLab Runner 12.7.
-> - Requires [GitLab v12.6](https://about.gitlab.com/releases/2019/12/22/gitlab-12-6-released/) or later.
+> - [Introduced](https://gitlab.com/gitlab-org/gitlab-runner/merge_requests/1545) in GitLab Runner 12.7.
+> - Requires [GitLab v12.7](https://about.gitlab.com/releases/2020/01/22/gitlab-12-7-released/) or later.
 
 Use Runner Referees to pass extra job monitoring data to GitLab. Runner referees are special workers within the Runner manager that query and collect additional data related to a job and upload their results to GitLab as job artifacts.
 
 ### Using the Metrics Runner Referee
 
-If the machine/container that is running the job exposes [Prometheus](https://prometheus.io) metrics that are gathered by a Prometheus server, GitLab Runner can query the Prometheus server for the entirety of the job duration. After the metrics are received, they are uploaded as a job artifact which can be used for analysis later.
+> [Introduced](https://gitlab.com/gitlab-org/gitlab-runner/merge_requests/1545) in GitLab Runner 12.7.
+
+If the machine/container that is running the job exposes [Prometheus](https://prometheus.io) metrics that are gathered by a Prometheus server, GitLab Runner can query the Prometheus server for the entirety of the job duration. After the metrics referee receives the metrics, they are uploaded as a job artifact and can be used for performance analysis.
 
 Currently, only the [`docker-machine` executor](../executors/docker_machine.md) supports the referee.
 
@@ -867,7 +869,7 @@ Here is a complete configuration example for `node_exporter` metrics:
     [runners.referees.metrics]
       prometheus_address = "http://localhost:9090"
       query_interval = 10
-      metric_queries = [
+      queries = [
         "arp_entries:rate(node_arp_entries{{selector}}[{interval}])",
         "context_switches:rate(node_context_switches_total{{selector}}[{interval}])",
         "cpu_seconds:rate(node_cpu_seconds_total{{selector}}[{interval}])",
@@ -896,6 +898,55 @@ Metrics queries are in `canonical_name:query_string` format. The query string su
 | `{interval}` | Replaced with the `query_interval` parameter from the `[runners.referees.metrics]` configuration for this referee.            |
 
 For example, a shared Runner environment using the docker-machine executor would have a `{selector}` similar to `node=shared-runner-123`.
+
+### Using the Network Runner Referee
+
+> - [Introduced](https://gitlab.com/gitlab-org/gitlab-runner/merge_requests/1669) in GitLab Runner 12.10.
+> - Requires Elastic Cloud using Elasticsearch 7.x or later.
+
+If the machine/container that is running the job has an attached instance of [Suricata](https://suricata-ids.org) that monitors the job's network traffic, GitLab Runner can query the Suricata log from Elastic Cloud when the job completes.
+
+Suricata must be configured to output its log in [Eve JSON format](https://suricata.readthedocs.io/en/suricata-5.0.1/output/eve/eve-json-output.html). After it's configured, the Eve log can be pushed to an instance of Elastic Cloud using the [Suricata file beat module](https://www.elastic.co/guide/en/beats/filebeat/current/filebeat-module-suricata.html).
+
+After the network referee receives the Suricata log from Elastic Cloud, it is uploaded as a job artifact and can be used for network activity analysis.
+
+### Configuring the Network Referee for a Runner
+
+In your `config.toml` file, add a `[runner.referees]` and `[runner.referees.network]` and configure them with the following fields:
+
+| Setting                   | Description                                                                     |
+| ------------------------- | ------------------------------------------------------------------------------- |
+| `elasticsearch_addresses` | An array of non-cloud Elasticsearch node addresses.                             |
+| `elasticsearch_cloud_id`  | The cloud ID of an Elastic Cloud instance (overrides node addresses).           |
+| `elasticsearch_username`  | The username for Elasticsearch authentication.                                  |
+| `elasticsearch_password`  | The password for Elasticsearch authentication.                                  |
+| `elasticsearch_api_key`   | The API key for Elasticsearch authentication (overrides username and password). |
+| `elasticsearch_index`     | The Elasticsearch Cloud index that contains the Suricata Eve log.               |
+
+You can define `elasticsearch_addresses` to connect this referee to your own Elasticsearch cluster or define `elasticsearch_cloud_id` to connect to an Elastic Cloud instance. In either case, an `elasticsearch_username` and `elasticsearch_password` must be used for authentication, or alternatively, an `elasticsearch_api_key`.
+
+Here is a complete configuration example using Elasticsearch Cloud and a username and password:
+
+```toml
+[[runners]]
+  [runners.referees]
+    [runners.referees.network]
+      elasticsearch_cloud_id = "staging:dXMtZWFzdC0xLmF3cy5mb3VuZC5pbyRjZWM2ZjI2MWE3NGJmMjRjZTMzYmI4ODExYjg0Mjk0ZiRjNmMyY2E2ZDA0MjI0OWFmMGNjN2Q3YTllOTYyNTc0Mw=="
+      elasticsearch_username = "elastic_user"
+      elasticsearch_password = "12345678"
+      elasticsearch_index = "suricata"
+```
+
+Here is a complete configuration example using Elasticsearch nodes with an API key:
+
+```toml
+[[runners]]
+  [runners.referees]
+    [runners.referees.network]
+      elasticsearch_addresses = ["192.168.1.2", "192.168.1.3"]
+      elasticsearch_api_key = "abcdefg"
+      elasticsearch_index = "suricata"
+```
 
 ## Note
 
