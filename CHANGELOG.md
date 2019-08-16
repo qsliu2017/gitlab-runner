@@ -1,3 +1,7 @@
+v12.2.0 (2019-08-05)
+
+- Update github.com/prometheus/client_golang dep !1150
+
 v12.1.0 (2019-07-22)
 
 - Extend custom executor with configuration injects !1449

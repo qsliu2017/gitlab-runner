@@ -304,6 +304,12 @@ func (b *Build) attemptExecuteStage(ctx context.Context, buildStage BuildStage, 
 	return
 }
 
+func (b *Build) collectAndUploadMetrics(ctx context.Context, executor Executor) {
+	// b.Hostname == instance
+	// b.Runner.RunnerSettings.Prometheus.Step,Address,NodeExporter
+	//fmt.Println("EXECUTOR HOSTNAME: %s", executor.build.Hostname)
+}
+
 func (b *Build) GetBuildTimeout() time.Duration {
 	buildTimeout := b.RunnerInfo.Timeout
 	if buildTimeout <= 0 {
@@ -350,6 +356,8 @@ func (b *Build) run(ctx context.Context, executor Executor) (err error) {
 	// Run build script
 	go func() {
 		buildFinish <- b.executeScript(runContext, executor)
+		// collect and upload metrics when script is finished
+		b.collectAndUploadMetrics(runContext, executor)
 	}()
 
 	// Wait for signals: cancel, timeout, abort or finish

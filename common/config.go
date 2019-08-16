@@ -324,9 +324,16 @@ type SessionServer struct {
 	SessionTimeout   int    `toml:"session_timeout,omitempty" json:"session_timeout" description:"How long a terminal session can be active after a build completes, in seconds"`
 }
 
+type MetricsCollectorConfig struct {
+	CollectionInterval string   `toml:"collection_interval,omitempty" json:"collection_interval" description:"Collection step"`
+	ServerAddress      string   `toml:"server_address,omitempty" json:"server_address" description:"A host:port to a prometheus metrics server"`
+	MetricTypes        []string `toml:"metric_types" json:"metric_types" description:"One of node_exporter, etc"`
+}
+
 type Config struct {
-	ListenAddress string        `toml:"listen_address,omitempty" json:"listen_address"`
-	SessionServer SessionServer `toml:"session_server,omitempty" json:"session_server"`
+	ListenAddress    string                  `toml:"listen_address,omitempty" json:"listen_address"`
+	SessionServer    SessionServer           `toml:"session_server,omitempty" json:"session_server"`
+	MetricsCollector *MetricsCollectorConfig `toml:"metrics_collector,omitempty" json:"metrics_collector"`
 
 	Concurrent    int             `toml:"concurrent" json:"concurrent"`
 	CheckInterval int             `toml:"check_interval" json:"check_interval" description:"Define active checking interval of jobs"`

@@ -12,7 +12,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/ayufan/golang-kardianos-service"
+	service "github.com/ayufan/golang-kardianos-service"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/sirupsen/logrus"
@@ -23,7 +23,7 @@ import (
 	"gitlab.com/gitlab-org/gitlab-runner/helpers/certificate"
 	prometheus_helper "gitlab.com/gitlab-org/gitlab-runner/helpers/prometheus"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers/sentry"
-	"gitlab.com/gitlab-org/gitlab-runner/helpers/service"
+	service_helpers "gitlab.com/gitlab-org/gitlab-runner/helpers/service"
 	"gitlab.com/gitlab-org/gitlab-runner/log"
 	"gitlab.com/gitlab-org/gitlab-runner/network"
 	"gitlab.com/gitlab-org/gitlab-runner/session"
@@ -57,9 +57,9 @@ type RunCommand struct {
 	User             string `short:"u" long:"user" description:"Use specific user to execute shell scripts"`
 	Syslog           bool   `long:"syslog" description:"Log to system service logger" env:"LOG_SYSLOG"`
 
-	sentryLogHook     sentry.LogHook
-	prometheusLogHook prometheus_helper.LogHook
-
+	sentryLogHook                   sentry.LogHook
+	prometheusLogHook               prometheus_helper.LogHook
+	metricsCollector                *prometheus_helper.MetricsCollector
 	failuresCollector               *prometheus_helper.FailuresCollector
 	networkRequestStatusesCollector prometheus.Collector
 
@@ -575,6 +575,19 @@ func (mr *RunCommand) setupSessionServer() {
 		Info("Session server listening")
 }
 
+func (mr *RunCommand) setupMetricsCollector() {
+	if mr.config.MetricsCollector.ServerAddress == "" {
+		mr.log().Info("[metrics_collector].server_address not defined, metrics collection disabled")
+		return
+	}
+
+	var err error
+	mr.metricsCollector, err = prometheus_helper.NewMetricsCollector(mr.config.MetricsCollector)
+	if err != nil {
+		mr.log().WithError(err).Fatal("Failed to create metrics collector")
+	}
+}
+
 func (mr *RunCommand) RunWithLock() {
 	log := mr.log().WithFields(logrus.Fields{
 		"file": mr.ConfigFile,
@@ -591,6 +604,7 @@ func (mr *RunCommand) RunWithLock() {
 func (mr *RunCommand) Run() {
 	mr.setupMetricsAndDebugServer()
 	mr.setupSessionServer()
+	mr.setupMetricsCollector()
 
 	runners := make(chan *common.RunnerConfig)
 	go mr.feedRunners(runners)
@@ -752,8 +766,8 @@ func init() {
 	requestStatusesCollector := network.NewAPIRequestStatusesMap()
 
 	common.RegisterCommand2("run", "run multi runner service", &RunCommand{
-		ServiceName: defaultServiceName,
-		network:     network.NewGitLabClientWithRequestStatusesMap(requestStatusesCollector),
+		ServiceName:                     defaultServiceName,
+		network:                         network.NewGitLabClientWithRequestStatusesMap(requestStatusesCollector),
 		networkRequestStatusesCollector: requestStatusesCollector,
 		prometheusLogHook:               prometheus_helper.NewLogHook(),
 		failuresCollector:               prometheus_helper.NewFailuresCollector(),
