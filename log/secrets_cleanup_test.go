@@ -12,6 +12,7 @@ func TestSecretsCleanupHook(t *testing.T) {
 	tests := []struct {
 		name     string
 		message  string
+		fields   logrus.Fields
 		expected string
 	}{
 		{
@@ -20,9 +21,25 @@ func TestSecretsCleanupHook(t *testing.T) {
 			expected: "Get http://localhost/?id=123&X-Amz-Signature=[FILTERED]&private_token=[FILTERED]",
 		},
 		{
+			name:    "Secrets in fields",
+			message: "Something happened",
+			fields: map[string]interface{}{
+				"error": "Get http://localhost/?id=123&X-Amz-Signature=abcd1234&private_token=abcd1234",
+			},
+			expected: `error="Get http://localhost/?id=123&X-Amz-Signature=[FILTERED]&private_token=[FILTERED]"`,
+		},
+		{
 			name:     "No Secrets",
 			message:  "Fatal: Get http://localhost/?id=123",
 			expected: "Fatal: Get http://localhost/?id=123",
+		},
+		{
+			name:    "It drops fields that can't be converted to string",
+			message: "Something happened",
+			fields: map[string]interface{}{
+				"error": SecretsCleanupHook{},
+			},
+			expected: "error=\n",
 		},
 	}
 
@@ -34,9 +51,24 @@ func TestSecretsCleanupHook(t *testing.T) {
 			logger.Out = buffer
 			AddSecretsCleanupLogHook(logger)
 
-			logger.Errorln(test.message)
+			logger.WithFields(test.fields).Errorln(test.message)
 
 			assert.Contains(t, buffer.String(), test.expected)
 		})
+	}
+}
+
+func BenchmarkSecretsCleanupHook_Fire(b *testing.B) {
+	for n := 0; n < b.N; n++ {
+		entry := &logrus.Entry{
+			Data: map[string]interface{}{
+				"error": "Get http://localhost/?id=123&X-Amz-Signature=abcd1234&private_token=abcd1234",
+			},
+			Message: "Something happened",
+		}
+
+		hook := SecretsCleanupHook{}
+
+		_ = hook.Fire(entry)
 	}
 }
