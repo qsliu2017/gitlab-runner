@@ -59,7 +59,7 @@ type RunCommand struct {
 
 	sentryLogHook                   sentry.LogHook
 	prometheusLogHook               prometheus_helper.LogHook
-	metricsCollector                *prometheus_helper.MetricsCollector
+	metricsCollector                *network.MetricsCollector
 	failuresCollector               *prometheus_helper.FailuresCollector
 	networkRequestStatusesCollector prometheus.Collector
 
@@ -208,6 +208,9 @@ func (mr *RunCommand) processRunner(id int, runner *common.RunnerConfig, runners
 		return
 	}
 	build.Session = buildSession
+
+	// set metrics collector
+	build.MetricsCollector = mr.metricsCollector
 
 	// Add build to list of builds to assign numbers
 	mr.buildsHelper.addBuild(build)
@@ -582,7 +585,11 @@ func (mr *RunCommand) setupMetricsCollector() {
 	}
 
 	var err error
-	mr.metricsCollector, err = prometheus_helper.NewMetricsCollector(mr.config.MetricsCollector)
+	mr.metricsCollector, err = network.NewMetricsCollector(
+		mr.config.MetricsCollector.ServerAddress,
+		mr.config.MetricsCollector.CollectionInterval,
+		mr.config.MetricsCollector.MetricTypes,
+	)
 	if err != nil {
 		mr.log().WithError(err).Fatal("Failed to create metrics collector")
 	}

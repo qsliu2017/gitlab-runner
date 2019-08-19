@@ -4,8 +4,9 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"time"
 
-	"gitlab.com/gitlab-org/gitlab-runner/helpers/url"
+	url_helpers "gitlab.com/gitlab-org/gitlab-runner/helpers/url"
 )
 
 type UpdateState int
@@ -381,4 +382,8 @@ type Network interface {
 	DownloadArtifacts(config JobCredentials, artifactsFile string) DownloadState
 	UploadRawArtifacts(config JobCredentials, reader io.Reader, options ArtifactsOptions) UploadState
 	ProcessJob(config RunnerConfig, buildCredentials *JobCredentials) (JobTrace, error)
+}
+
+type MetricsCollector interface {
+	Collect(ctx context.Context, labelValue string, startTime time.Time, endTime time.Time) error
 }

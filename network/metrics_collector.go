@@ -1,11 +1,9 @@
-package prometheus
+package network
 
 import (
 	"context"
 	"fmt"
 	"time"
-
-	"gitlab.com/gitlab-org/gitlab-runner/common"
 
 	"github.com/prometheus/client_golang/api"
 	v1 "github.com/prometheus/client_golang/api/prometheus/v1"
@@ -101,9 +99,13 @@ func (c *MetricsCollector) Collect(
 	return nil
 }
 
-func NewMetricsCollector(config *common.MetricsCollectorConfig) (*MetricsCollector, error) {
+func NewMetricsCollector(
+	serverAddress string,
+	collectionInterval string,
+	metricTypes []string,
+) (*MetricsCollector, error) {
 	clientConfig := api.Config{
-		Address: config.ServerAddress,
+		Address: serverAddress,
 	}
 
 	prometheusClient, err := api.NewClient(clientConfig)
@@ -113,7 +115,7 @@ func NewMetricsCollector(config *common.MetricsCollectorConfig) (*MetricsCollect
 
 	prometheusApi := v1.NewAPI(prometheusClient)
 
-	collectionIntervalDuration, err := time.ParseDuration(config.CollectionInterval)
+	collectionIntervalDuration, err := time.ParseDuration(collectionInterval)
 	if err != nil {
 		return nil, fmt.Errorf("Unable to parse step duration from config", err)
 	}
@@ -121,6 +123,6 @@ func NewMetricsCollector(config *common.MetricsCollectorConfig) (*MetricsCollect
 	return &MetricsCollector{
 		prometheusApi:      prometheusApi,
 		collectionInterval: collectionIntervalDuration,
-		metricTypes:        config.MetricTypes,
+		metricTypes:        metricTypes,
 	}, nil
 }

@@ -93,6 +93,8 @@ type Build struct {
 
 	Session *session.Session
 
+	MetricsCollector MetricsCollector
+
 	executorStageResolver func() ExecutorStage
 	logger                BuildLogger
 	allVariables          JobVariables
@@ -304,10 +306,12 @@ func (b *Build) attemptExecuteStage(ctx context.Context, buildStage BuildStage, 
 	return
 }
 
-func (b *Build) collectAndUploadMetrics(ctx context.Context, executor Executor) {
-	// b.Hostname == instance
-	// b.Runner.RunnerSettings.Prometheus.Step,Address,NodeExporter
-	//fmt.Println("EXECUTOR HOSTNAME: %s", executor.build.Hostname)
+func (b *Build) collectAndUploadMetrics(ctx context.Context, startTime time.Time, endTime time.Time) {
+	if b.MetricsCollector == nil {
+		return
+	}
+
+	b.MetricsCollector.Collect(ctx, b.Hostname, startTime, endTime)
 }
 
 func (b *Build) GetBuildTimeout() time.Duration {
@@ -355,9 +359,10 @@ func (b *Build) run(ctx context.Context, executor Executor) (err error) {
 
 	// Run build script
 	go func() {
+		startTime := time.Now()
 		buildFinish <- b.executeScript(runContext, executor)
-		// collect and upload metrics when script is finished
-		b.collectAndUploadMetrics(runContext, executor)
+		endTime := time.Now()
+		b.collectAndUploadMetrics(runContext, startTime, endTime)
 	}()
 
 	// Wait for signals: cancel, timeout, abort or finish
