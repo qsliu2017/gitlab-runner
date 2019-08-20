@@ -93,7 +93,7 @@ type Build struct {
 
 	Session *session.Session
 
-	MetricsCollector MetricsCollector
+	MetricCollector MetricCollector
 
 	executorStageResolver func() ExecutorStage
 	logger                BuildLogger
@@ -311,9 +311,9 @@ func (b *Build) attemptExecuteStage(ctx context.Context, buildStage BuildStage, 
 	return
 }
 
-func (b *Build) collectAndUploadMetrics(ctx context.Context, startTime time.Time, endTime time.Time) {
-	if b.MetricsCollector == nil {
-		return
+func (b *Build) collectAndUploadMetrics(ctx context.Context, startTime time.Time, endTime time.Time) error {
+	if b.MetricCollector == nil {
+		return nil
 	}
 
 	jobCredentials := &JobCredentials{
@@ -322,10 +322,17 @@ func (b *Build) collectAndUploadMetrics(ctx context.Context, startTime time.Time
 		URL:   b.Runner.RunnerCredentials.URL,
 	}
 
-	error := b.MetricsCollector.CollectAndUpload(ctx, b.Hostname, jobCredentials, startTime, endTime)
+	metrics, error := b.MetricCollector.Collect(ctx, b.Hostname, startTime, endTime)
 	if error != nil {
-		return
+		return error
 	}
+
+	error2 := b.MetricCollector.Upload(metrics, jobCredentials)
+	if error2 != nil {
+		return error2
+	}
+
+	return nil
 }
 
 func (b *Build) GetBuildTimeout() time.Duration {

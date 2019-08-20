@@ -13,6 +13,8 @@ import (
 	"time"
 
 	service "github.com/ayufan/golang-kardianos-service"
+	"github.com/prometheus/client_golang/api"
+	v1 "github.com/prometheus/client_golang/api/prometheus/v1"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/sirupsen/logrus"
@@ -59,7 +61,7 @@ type RunCommand struct {
 
 	sentryLogHook                   sentry.LogHook
 	prometheusLogHook               prometheus_helper.LogHook
-	metricsCollector                *network.MetricsCollector
+	metricCollector                 common.MetricCollector
 	failuresCollector               *prometheus_helper.FailuresCollector
 	networkRequestStatusesCollector prometheus.Collector
 
@@ -209,8 +211,8 @@ func (mr *RunCommand) processRunner(id int, runner *common.RunnerConfig, runners
 	}
 	build.Session = buildSession
 
-	// set metrics collector
-	build.MetricsCollector = mr.metricsCollector
+	// set metric collector
+	build.MetricCollector = mr.metricCollector
 
 	// Add build to list of builds to assign numbers
 	mr.buildsHelper.addBuild(build)
@@ -578,26 +580,33 @@ func (mr *RunCommand) setupSessionServer() {
 		Info("Session server listening")
 }
 
-func (mr *RunCommand) setupMetricsCollector() {
-	if mr.config.MetricsCollector == nil {
-		mr.log().Info("[metrics_collector] not defined, metrics collection disabled")
+func (mr *RunCommand) setupMetricCollector() {
+	if mr.config.MetricCollector == nil {
+		mr.log().Info("[metric_collector] not defined, metric collection disabled")
 		return
 	}
 
-	if mr.config.MetricsCollector.ServerAddress == "" {
-		mr.log().Info("[metrics_collector].server_address not defined, metrics collection disabled")
+	if mr.config.MetricCollector.ServerAddress == "" {
+		mr.log().Info("[metric_collector].server_address not defined, metric collection disabled")
 		return
 	}
 
-	var err error
-	mr.metricsCollector, err = network.NewMetricsCollector(
-		mr.config.MetricsCollector.ServerAddress,
-		mr.config.MetricsCollector.CollectionInterval,
-		mr.config.MetricsCollector.CollectMetrics,
+	clientConfig := api.Config{Address: mr.config.MetricCollector.ServerAddress}
+	prometheusClient, err := api.NewClient(clientConfig)
+	if err != nil {
+		mr.log().Info("Unable to create prometheus collector")
+		return
+	}
+
+	prometheusApi := v1.NewAPI(prometheusClient)
+	mr.metricCollector, err = network.NewPrometheusMetricCollector(
+		prometheusApi,
+		mr.config.MetricCollector.CollectionInterval,
+		mr.config.MetricCollector.CollectMetrics,
 		mr.network,
 	)
 	if err != nil {
-		mr.log().WithError(err).Fatal("Failed to create metrics collector")
+		mr.log().WithError(err).Fatal("Failed to create metric collector")
 	}
 }
 
@@ -617,7 +626,7 @@ func (mr *RunCommand) RunWithLock() {
 func (mr *RunCommand) Run() {
 	mr.setupMetricsAndDebugServer()
 	mr.setupSessionServer()
-	mr.setupMetricsCollector()
+	mr.setupMetricCollector()
 
 	runners := make(chan *common.RunnerConfig)
 	go mr.feedRunners(runners)

@@ -12,7 +12,6 @@ import (
 
 	"github.com/prometheus/common/model"
 
-	"github.com/prometheus/client_golang/api"
 	v1 "github.com/prometheus/client_golang/api/prometheus/v1"
 )
 
@@ -80,7 +79,7 @@ var metricsArtifactOptions = common.ArtifactsOptions{
 	ExpireIn: "10000000",
 }
 
-type MetricsCollector struct {
+type PrometheusMetricCollector struct {
 	prometheusApi      v1.API
 	prometheusAddress  string
 	collectionInterval time.Duration
@@ -88,13 +87,12 @@ type MetricsCollector struct {
 	network            common.Network
 }
 
-func (c *MetricsCollector) CollectAndUpload(
+func (c *PrometheusMetricCollector) Collect(
 	ctx context.Context,
 	labelValue string,
-	jobCredentials *common.JobCredentials,
 	startTime time.Time,
 	endTime time.Time,
-) error {
+) (map[string][]model.SamplePair, error) {
 	rng := v1.Range{
 		Start: startTime,
 		End:   endTime,
@@ -110,8 +108,8 @@ func (c *MetricsCollector) CollectAndUpload(
 			query := fmt.Sprintf("%s{%s=\"%s\"}", metricFullName, labelName, labelValue)
 			result, err := c.prometheusApi.QueryRange(ctx, query, rng)
 			if err != nil {
-				fmt.Errorf("Unable to collect metrics for range", err)
-				return err
+				fmt.Errorf("Unable to collect metrics for range")
+				return nil, err
 			}
 
 			// check for a result
@@ -129,10 +127,17 @@ func (c *MetricsCollector) CollectAndUpload(
 		}
 	}
 
+	return metrics, nil
+}
+
+func (c *PrometheusMetricCollector) Upload(
+	metrics map[string][]model.SamplePair,
+	jobCredentials *common.JobCredentials,
+) error {
 	// convert metrics to JSON
 	output, err := json.Marshal(metrics)
 	if err != nil {
-		fmt.Errorf("Failed to marshall metrics into json for upload", err)
+		fmt.Errorf("Failed to marshall metrics into json for upload")
 		return err
 	}
 
@@ -151,29 +156,18 @@ func mapCollectMetrics(collectMetrics []string) map[string]string {
 	return collectMetricsMap
 }
 
-func NewMetricsCollector(
-	serverAddress string,
+func NewPrometheusMetricCollector(
+	prometheusApi v1.API,
 	collectionInterval string,
 	collectMetrics []string,
 	network common.Network,
-) (*MetricsCollector, error) {
-	clientConfig := api.Config{
-		Address: serverAddress,
-	}
-
-	prometheusClient, err := api.NewClient(clientConfig)
-	if err != nil {
-		return nil, fmt.Errorf("Unable to create prometheus collector", err)
-	}
-
-	prometheusApi := v1.NewAPI(prometheusClient)
-
+) (*PrometheusMetricCollector, error) {
 	collectionIntervalDuration, err := time.ParseDuration(collectionInterval)
 	if err != nil {
-		return nil, fmt.Errorf("Unable to parse step duration from config", err)
+		return nil, fmt.Errorf("Unable to parse step duration from config")
 	}
 
-	return &MetricsCollector{
+	return &PrometheusMetricCollector{
 		prometheusApi:      prometheusApi,
 		collectionInterval: collectionIntervalDuration,
 		collectMetrics:     mapCollectMetrics(collectMetrics),

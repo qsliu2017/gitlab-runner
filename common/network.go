@@ -6,6 +6,7 @@ import (
 	"io"
 	"time"
 
+	"github.com/prometheus/common/model"
 	url_helpers "gitlab.com/gitlab-org/gitlab-runner/helpers/url"
 )
 
@@ -384,6 +385,7 @@ type Network interface {
 	ProcessJob(config RunnerConfig, buildCredentials *JobCredentials) (JobTrace, error)
 }
 
-type MetricsCollector interface {
-	CollectAndUpload(ctx context.Context, labelValue string, jobCredentials *JobCredentials, startTime time.Time, endTime time.Time) error
+type MetricCollector interface {
+	Collect(ctx context.Context, labelValue string, startTime time.Time, endTime time.Time) (map[string][]model.SamplePair, error)
+	Upload(metrics map[string][]model.SamplePair, jobCredentials *JobCredentials) error
 }
