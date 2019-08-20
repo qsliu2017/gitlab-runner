@@ -316,7 +316,13 @@ func (b *Build) collectAndUploadMetrics(ctx context.Context, startTime time.Time
 		return
 	}
 
-	error := b.MetricsCollector.CollectAndUpload(ctx, b.Hostname, b.JobResponse, startTime, endTime)
+	jobCredentials := &JobCredentials{
+		ID:    b.JobResponse.ID,
+		Token: b.JobResponse.Token,
+		URL:   b.Runner.RunnerCredentials.URL,
+	}
+
+	error := b.MetricsCollector.CollectAndUpload(ctx, b.Hostname, jobCredentials, startTime, endTime)
 	if error != nil {
 		return
 	}

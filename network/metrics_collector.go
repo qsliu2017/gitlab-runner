@@ -91,7 +91,7 @@ type MetricsCollector struct {
 func (c *MetricsCollector) CollectAndUpload(
 	ctx context.Context,
 	labelValue string,
-	jobData common.JobResponse,
+	jobCredentials *common.JobCredentials,
 	startTime time.Time,
 	endTime time.Time,
 ) error {
@@ -127,8 +127,6 @@ func (c *MetricsCollector) CollectAndUpload(
 		}
 	}
 
-	return nil
-
 	output, err := json.Marshal(metrics)
 	if err != nil {
 		fmt.Errorf("Failed to marshall metrics into json for upload", err)
@@ -136,14 +134,6 @@ func (c *MetricsCollector) CollectAndUpload(
 	}
 
 	reader := bytes.NewReader(output)
-
-	jobCredentials := &common.JobCredentials{
-		ID:    jobData.ID,
-		Token: jobData.Token,
-	}
-
-	// TODO FILL IN URL ^^
-
 	c.network.UploadRawArtifacts(*jobCredentials, reader, metricsArtifactOptions)
 	return nil
 }

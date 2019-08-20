@@ -385,5 +385,5 @@ type Network interface {
 }
 
 type MetricsCollector interface {
-	CollectAndUpload(ctx context.Context, labelValue string, jobData JobResponse, startTime time.Time, endTime time.Time) error
+	CollectAndUpload(ctx context.Context, labelValue string, jobCredentials *JobCredentials, startTime time.Time, endTime time.Time) error
 }
