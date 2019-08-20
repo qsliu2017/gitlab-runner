@@ -579,6 +579,11 @@ func (mr *RunCommand) setupSessionServer() {
 }
 
 func (mr *RunCommand) setupMetricsCollector() {
+	if mr.config.MetricsCollector == nil {
+		mr.log().Info("[metrics_collector] not defined, metrics collection disabled")
+		return
+	}
+
 	if mr.config.MetricsCollector.ServerAddress == "" {
 		mr.log().Info("[metrics_collector].server_address not defined, metrics collection disabled")
 		return
@@ -588,7 +593,8 @@ func (mr *RunCommand) setupMetricsCollector() {
 	mr.metricsCollector, err = network.NewMetricsCollector(
 		mr.config.MetricsCollector.ServerAddress,
 		mr.config.MetricsCollector.CollectionInterval,
-		mr.config.MetricsCollector.MetricTypes,
+		mr.config.MetricsCollector.CollectMetrics,
+		mr.network,
 	)
 	if err != nil {
 		mr.log().WithError(err).Fatal("Failed to create metrics collector")

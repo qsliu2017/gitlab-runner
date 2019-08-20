@@ -254,6 +254,7 @@ func (b *Build) executeUploadArtifacts(ctx context.Context, state error, executo
 }
 
 func (b *Build) executeScript(ctx context.Context, executor Executor) error {
+	startTime := time.Now()
 	// Prepare stage
 	err := b.executeStage(ctx, BuildStagePrepare, executor)
 
@@ -285,6 +286,10 @@ func (b *Build) executeScript(ctx context.Context, executor Executor) error {
 
 	uploadError := b.executeUploadArtifacts(ctx, err, executor)
 
+	endTime := time.Now()
+	// upload metrics as artifacts
+	b.collectAndUploadMetrics(ctx, startTime, endTime)
+
 	// Use job's error as most important
 	if err != nil {
 		return err
@@ -311,7 +316,10 @@ func (b *Build) collectAndUploadMetrics(ctx context.Context, startTime time.Time
 		return
 	}
 
-	b.MetricsCollector.Collect(ctx, b.Hostname, startTime, endTime)
+	error := b.MetricsCollector.CollectAndUpload(ctx, b.Hostname, b.JobResponse, startTime, endTime)
+	if error != nil {
+		return
+	}
 }
 
 func (b *Build) GetBuildTimeout() time.Duration {
@@ -359,10 +367,7 @@ func (b *Build) run(ctx context.Context, executor Executor) (err error) {
 
 	// Run build script
 	go func() {
-		startTime := time.Now()
 		buildFinish <- b.executeScript(runContext, executor)
-		endTime := time.Now()
-		b.collectAndUploadMetrics(runContext, startTime, endTime)
 	}()
 
 	// Wait for signals: cancel, timeout, abort or finish

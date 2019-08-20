@@ -327,7 +327,7 @@ type SessionServer struct {
 type MetricsCollectorConfig struct {
 	CollectionInterval string   `toml:"collection_interval,omitempty" json:"collection_interval" description:"Collection step"`
 	ServerAddress      string   `toml:"server_address,omitempty" json:"server_address" description:"A host:port to a prometheus metrics server"`
-	MetricTypes        []string `toml:"metric_types" json:"metric_types" description:"One of node_exporter, etc"`
+	CollectMetrics     []string `toml:"collect_metrics" json:"collect_metrics" description:"A list of metrics to collect in metric_type:job_name format, such as node_exporter:node"`
 }
 
 type Config struct {

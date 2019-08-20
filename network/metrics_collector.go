@@ -1,9 +1,16 @@
 package network
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
+
+	"gitlab.com/gitlab-org/gitlab-runner/common"
+
+	"github.com/prometheus/common/model"
 
 	"github.com/prometheus/client_golang/api"
 	v1 "github.com/prometheus/client_golang/api/prometheus/v1"
@@ -58,24 +65,33 @@ var NodeExporterMetrics = []string{
 	"network_transmit_queue_length",
 }
 
-var MetricTypeMetrics = map[string](*[]string){
-	"node": &NodeExporterMetrics,
+var MetricTypeMetrics = map[string][]string{
+	"node_exporter": NodeExporterMetrics,
 }
 
 var MetricTypeLabels = map[string]string{
-	"node": "instance",
+	"node_exporter": "instance",
+}
+
+var metricsArtifactOptions = common.ArtifactsOptions{
+	BaseName: "monitor.log",
+	Format:   "raw",
+	Type:     "monitor",
+	ExpireIn: "10000000",
 }
 
 type MetricsCollector struct {
 	prometheusApi      v1.API
 	prometheusAddress  string
 	collectionInterval time.Duration
-	metricTypes        []string
+	collectMetrics     map[string]string
+	network            common.Network
 }
 
-func (c *MetricsCollector) Collect(
+func (c *MetricsCollector) CollectAndUpload(
 	ctx context.Context,
 	labelValue string,
+	jobData common.JobResponse,
 	startTime time.Time,
 	endTime time.Time,
 ) error {
@@ -85,24 +101,67 @@ func (c *MetricsCollector) Collect(
 		Step:  c.collectionInterval,
 	}
 
-	for _, metricType := range c.metricTypes {
-		for _, metric := range *MetricTypeMetrics[metricType] {
-			query := fmt.Sprintf("%s{%s=%s}", metric, MetricTypeLabels[metricType], labelValue)
-			value, err := c.prometheusApi.QueryRange(ctx, query, rng)
+	metrics := make(map[string][]model.SamplePair)
+	// use config file to pull metrics from prometheus range queries
+	for metricType, metricJob := range c.collectMetrics {
+		labelName := MetricTypeLabels[metricType]
+		for _, metricName := range MetricTypeMetrics[metricType] {
+			metricFullName := fmt.Sprintf("%s_%s", metricJob, metricName)
+			query := fmt.Sprintf("%s{%s=\"%s\"}", metricFullName, labelName, labelValue)
+			result, err := c.prometheusApi.QueryRange(ctx, query, rng)
 			if err != nil {
 				fmt.Errorf("Unable to collect metrics for range", err)
+				return err
 			}
-			fmt.Printf("%+v\n", value)
+
+			if result == nil {
+				continue
+			}
+
+			if result.(model.Matrix).Len() == 0 {
+				continue
+			}
+
+			// save first result set values at metric
+			metrics[metricFullName] = (result.(model.Matrix)[0]).Values
 		}
 	}
 
 	return nil
+
+	output, err := json.Marshal(metrics)
+	if err != nil {
+		fmt.Errorf("Failed to marshall metrics into json for upload", err)
+		return err
+	}
+
+	reader := bytes.NewReader(output)
+
+	jobCredentials := &common.JobCredentials{
+		ID:    jobData.ID,
+		Token: jobData.Token,
+	}
+
+	// TODO FILL IN URL ^^
+
+	c.network.UploadRawArtifacts(*jobCredentials, reader, metricsArtifactOptions)
+	return nil
+}
+
+func mapCollectMetrics(collectMetrics []string) map[string]string {
+	collectMetricsMap := make(map[string]string)
+	for _, collectMetric := range collectMetrics {
+		collectMetricParts := strings.Split(collectMetric, ":")
+		collectMetricsMap[collectMetricParts[0]] = collectMetricParts[1]
+	}
+	return collectMetricsMap
 }
 
 func NewMetricsCollector(
 	serverAddress string,
 	collectionInterval string,
-	metricTypes []string,
+	collectMetrics []string,
+	network common.Network,
 ) (*MetricsCollector, error) {
 	clientConfig := api.Config{
 		Address: serverAddress,
@@ -123,6 +182,7 @@ func NewMetricsCollector(
 	return &MetricsCollector{
 		prometheusApi:      prometheusApi,
 		collectionInterval: collectionIntervalDuration,
-		metricTypes:        metricTypes,
+		collectMetrics:     mapCollectMetrics(collectMetrics),
+		network:            network,
 	}, nil
 }
