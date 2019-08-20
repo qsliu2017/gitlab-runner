@@ -114,10 +114,12 @@ func (c *MetricsCollector) CollectAndUpload(
 				return err
 			}
 
+			// check for a result
 			if result == nil {
 				continue
 			}
 
+			// pull first result
 			if result.(model.Matrix).Len() == 0 {
 				continue
 			}
@@ -127,12 +129,14 @@ func (c *MetricsCollector) CollectAndUpload(
 		}
 	}
 
+	// convert metrics to JSON
 	output, err := json.Marshal(metrics)
 	if err != nil {
 		fmt.Errorf("Failed to marshall metrics into json for upload", err)
 		return err
 	}
 
+	// upload JSON to GitLab as monitor.log artifact
 	reader := bytes.NewReader(output)
 	c.network.UploadRawArtifacts(*jobCredentials, reader, metricsArtifactOptions)
 	return nil
