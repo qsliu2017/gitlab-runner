@@ -10,6 +10,7 @@ const (
 	CmdDisableDelayedErrorLevelExpansion string = "FF_CMD_DISABLE_DELAYED_ERROR_LEVEL_EXPANSION"
 	UseLegacyGitCleanStrategy            string = "FF_USE_LEGACY_GIT_CLEAN_STRATEGY"
 	UseLegacyBuildsDirForDocker          string = "FF_USE_LEGACY_BUILDS_DIR_FOR_DOCKER"
+	UseLegacyUnixProcessKillSignal       string = "FF_USE_LEGACY_UNIX_PROCESS_KILL_SIGNAL"
 )
 
 type FeatureFlag struct {
@@ -60,6 +61,13 @@ var flags = []FeatureFlag{
 		Deprecated:      true,
 		ToBeRemovedWith: "12.3",
 		Description:     "Disables the new strategy for Docker executor to cache the content of `/builds` directory instead of `/builds/group-org`",
+	},
+	{
+		Name:            UseLegacyUnixProcessKillSignal,
+		DefaultValue:    "false",
+		Deprecated:      false,
+		ToBeRemovedWith: "",
+		Description:     "Switches back from `SIGTERM` to `SIGKILL` for process termination on Unix systems when Shell executor is used",
 	},
 }
 

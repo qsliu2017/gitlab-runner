@@ -17,6 +17,7 @@ import (
 	"gitlab.com/gitlab-org/gitlab-runner/common"
 	"gitlab.com/gitlab-org/gitlab-runner/executors"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers"
+	"gitlab.com/gitlab-org/gitlab-runner/helpers/featureflags"
 )
 
 type executor struct {
@@ -59,13 +60,22 @@ func (s *executor) Prepare(options common.ExecutorPrepareOptions) error {
 func (s *executor) killAndWait(cmd *exec.Cmd, waitCh chan error) error {
 	for {
 		s.Debugln("Aborting command...")
-		helpers.KillProcessGroup(cmd)
+		s.killProcessGroup(cmd)
 		select {
 		case <-time.After(time.Second):
 		case err := <-waitCh:
 			return err
 		}
 	}
+}
+
+func (s *executor) killProcessGroup(cmd *exec.Cmd) {
+	if s.Build.IsFeatureFlagOn(featureflags.UseLegacyUnixProcessKillSignal) {
+		helpers.LegacyKillProcessGroup(cmd)
+		return
+	}
+
+	helpers.KillProcessGroup(cmd)
 }
 
 func (s *executor) Run(cmd common.ExecutorCommand) error {
@@ -76,7 +86,7 @@ func (s *executor) Run(cmd common.ExecutorCommand) error {
 	}
 
 	helpers.SetProcessGroup(c)
-	defer helpers.KillProcessGroup(c)
+	defer s.killProcessGroup(c)
 
 	// Fill process environment variables
 	c.Env = append(os.Environ(), s.BuildShell.Environment...)

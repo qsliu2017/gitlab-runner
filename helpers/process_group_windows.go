@@ -16,3 +16,7 @@ func KillProcessGroup(cmd *exec.Cmd) {
 	exec.Command("taskkill", "/F", "/T", "/PID", strconv.Itoa(cmd.Process.Pid)).Run()
 	cmd.Process.Kill()
 }
+
+func LegacyKillProcessGroup(cmd *exec.Cmd) {
+	KillProcessGroup(cmd)
+}

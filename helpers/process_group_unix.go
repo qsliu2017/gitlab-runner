@@ -15,6 +15,14 @@ func SetProcessGroup(cmd *exec.Cmd) {
 }
 
 func KillProcessGroup(cmd *exec.Cmd) {
+	killUnixProcessGroup(cmd, syscall.SIGTERM)
+}
+
+func LegacyKillProcessGroup(cmd *exec.Cmd) {
+	killUnixProcessGroup(cmd, syscall.SIGKILL)
+}
+
+func killUnixProcessGroup(cmd *exec.Cmd, signal syscall.Signal) {
 	if cmd == nil {
 		return
 	}
@@ -26,10 +34,10 @@ func KillProcessGroup(cmd *exec.Cmd) {
 		 * likewise for each of those child processes.
 		 */
 		if process.Pid > 0 {
-			syscall.Kill(-process.Pid, syscall.SIGTERM)
+			_ = syscall.Kill(-process.Pid, signal)
 		} else {
 			// doing normal kill
-			process.Signal(syscall.SIGTERM)
+			_ = process.Signal(signal)
 		}
 	}
 }
