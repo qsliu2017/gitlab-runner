@@ -22,7 +22,7 @@ type Logger interface {
 }
 
 type KillWaiter interface {
-	KillAndWait(process *os.Process, waitCh chan error) error
+	KillAndWait(command Commander, waitCh chan error) error
 }
 
 type DefaultKillWaiter struct {
@@ -40,7 +40,9 @@ func NewKillWaiter(logger Logger, gracefulKillTimeout time.Duration, forceKillTi
 	}
 }
 
-func (kw *DefaultKillWaiter) KillAndWait(process *os.Process, waitCh chan error) error {
+func (kw *DefaultKillWaiter) KillAndWait(command Commander, waitCh chan error) error {
+	process := command.Process()
+
 	if process == nil {
 		return errors.New("process not started yet")
 	}
@@ -49,7 +51,7 @@ func (kw *DefaultKillWaiter) KillAndWait(process *os.Process, waitCh chan error)
 		"PID": process.Pid,
 	})
 
-	processKiller := newKillerFactory(log, process)
+	processKiller := newKillerFactory(log, command)
 	processKiller.Terminate()
 
 	select {

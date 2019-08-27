@@ -1,21 +1,38 @@
-package command
+package process
 
 import (
+	"io"
 	"os"
 	"os/exec"
+	"syscall"
+	"time"
 )
 
-type commander interface {
+type Commander interface {
 	Start() error
 	Wait() error
 	Process() *os.Process
+	SysProcAttr() *syscall.SysProcAttr
+}
+
+type CommandOptions struct {
+	Dir string
+	Env []string
+
+	Stdout io.Writer
+	Stderr io.Writer
+
+	Logger Logger
+
+	GracefulKillTimeout time.Duration
+	ForceKillTimeout    time.Duration
 }
 
 type cmd struct {
 	internal *exec.Cmd
 }
 
-var newCmd = func(executable string, args []string, options CreateOptions) commander {
+var NewCmd = func(executable string, args []string, options CommandOptions) Commander {
 	c := exec.Command(executable, args...)
 	c.Dir = options.Dir
 	c.Env = options.Env
@@ -36,4 +53,8 @@ func (c *cmd) Wait() error {
 
 func (c *cmd) Process() *os.Process {
 	return c.internal.Process
+}
+
+func (c *cmd) SysProcAttr() *syscall.SysProcAttr {
+	return c.internal.SysProcAttr
 }

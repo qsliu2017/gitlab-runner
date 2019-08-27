@@ -27,7 +27,7 @@ func mockKillerFactory(t *testing.T) (*mockKiller, func()) {
 		killerMock.AssertExpectations(t)
 	}
 
-	newKillerFactory = func(logger Logger, process *os.Process) killer {
+	newKillerFactory = func(logger Logger, cmd Commander) killer {
 		return killerMock
 	}
 
@@ -74,6 +74,11 @@ func TestDefaultKillWaiter_KillAndWait(t *testing.T) {
 			loggerMock := new(MockLogger)
 			defer loggerMock.AssertExpectations(t)
 
+			commanderMock := new(MockCommander)
+			defer commanderMock.AssertExpectations(t)
+
+			commanderMock.On("Process").Return(testCase.process)
+
 			if testCase.process != nil {
 				loggerMock.
 					On("WithFields", mock.Anything).
@@ -96,7 +101,7 @@ func TestDefaultKillWaiter_KillAndWait(t *testing.T) {
 			}
 
 			kw := NewKillWaiter(loggerMock, 10*time.Millisecond, 10*time.Millisecond)
-			err := kw.KillAndWait(testCase.process, waitCh)
+			err := kw.KillAndWait(commanderMock, waitCh)
 
 			if testCase.expectedError == "" {
 				assert.NoError(t, err)
@@ -108,7 +113,7 @@ func TestDefaultKillWaiter_KillAndWait(t *testing.T) {
 	}
 }
 
-func newKillerWithLoggerAndCommand(t *testing.T, duration string, skipTerminate bool) (killer, *MockLogger, *exec.Cmd, func()) {
+func newKillerWithLoggerAndCommand(t *testing.T, duration string, skipTerminate bool) (killer, *MockLogger, Commander, func()) {
 	t.Helper()
 
 	loggerMock := new(MockLogger)
@@ -119,11 +124,11 @@ func newKillerWithLoggerAndCommand(t *testing.T, duration string, skipTerminate 
 		args = append(args, "skip-terminate-signals")
 	}
 
-	command := exec.Command(sleepBinary, args...)
+	command := NewCmd(sleepBinary, args, CommandOptions{})
 	err := command.Start()
 	require.NoError(t, err)
 
-	k := newKiller(loggerMock, command.Process)
+	k := newKiller(loggerMock, command)
 
 	cleanup := func() {
 		loggerMock.AssertExpectations(t)
@@ -174,7 +179,7 @@ func TestKiller(t *testing.T) {
 			waitCh := make(chan error)
 
 			if testCase.alreadyStopped {
-				_ = cmd.Process.Kill()
+				_ = cmd.Process().Kill()
 
 				loggerMock.On("Errorln",
 					"Failed to terminate process:",

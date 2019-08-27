@@ -3,14 +3,11 @@ package command
 import (
 	"context"
 	"fmt"
-	"io"
 	"os"
 	"os/exec"
 	"strconv"
 	"syscall"
 	"time"
-
-	"github.com/sirupsen/logrus"
 
 	"gitlab.com/gitlab-org/gitlab-runner/common"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers/process"
@@ -24,52 +21,25 @@ const (
 	SystemFailureExitCodeVariable = "SYSTEM_FAILURE_EXIT_CODE"
 )
 
-type CreateOptions struct {
-	Dir string
-	Env []string
-
-	Stdout io.Writer
-	Stderr io.Writer
-
-	Logger common.BuildLogger
-
-	GracefulKillTimeout time.Duration
-	ForceKillTimeout    time.Duration
-}
-
 type Command interface {
 	Run() error
 }
 
 var newProcessKillWaiter = process.NewKillWaiter
 
-type processLoggerAdapter struct {
-	buildLogger common.BuildLogger
-}
-
-func (l *processLoggerAdapter) WithFields(fields logrus.Fields) process.Logger {
-	l.buildLogger = l.buildLogger.WithFields(fields)
-
-	return l
-}
-
-func (l *processLoggerAdapter) Errorln(args ...interface{}) {
-	l.buildLogger.Errorln(args...)
-}
-
 type command struct {
 	context context.Context
-	cmd     commander
+	cmd     process.Commander
 
 	waitCh chan error
 
-	logger common.BuildLogger
+	logger process.Logger
 
 	gracefulKillTimeout time.Duration
 	forceKillTimeout    time.Duration
 }
 
-func New(ctx context.Context, executable string, args []string, options CreateOptions) Command {
+func New(ctx context.Context, executable string, args []string, options process.CommandOptions) Command {
 	defaultVariables := map[string]string{
 		"TMPDIR":                      options.Dir,
 		BuildFailureExitCodeVariable:  strconv.Itoa(BuildFailureExitCode),
@@ -84,7 +54,7 @@ func New(ctx context.Context, executable string, args []string, options CreateOp
 
 	return &command{
 		context:             ctx,
-		cmd:                 newCmd(executable, args, options),
+		cmd:                 process.NewCmd(executable, args, options),
 		waitCh:              make(chan error),
 		logger:              options.Logger,
 		gracefulKillTimeout: options.GracefulKillTimeout,
@@ -105,10 +75,8 @@ func (c *command) Run() error {
 		return err
 
 	case <-c.context.Done():
-		logger := &processLoggerAdapter{buildLogger: c.logger}
-
-		return newProcessKillWaiter(logger, c.gracefulKillTimeout, c.forceKillTimeout).
-			KillAndWait(c.cmd.Process(), c.waitCh)
+		return newProcessKillWaiter(c.logger, c.gracefulKillTimeout, c.forceKillTimeout).
+			KillAndWait(c.cmd, c.waitCh)
 	}
 }
 
