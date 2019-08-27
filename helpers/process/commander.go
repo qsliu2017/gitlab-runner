@@ -20,6 +20,7 @@ type CommandOptions struct {
 	Dir string
 	Env []string
 
+	Stdin  io.Reader
 	Stdout io.Writer
 	Stderr io.Writer
 
@@ -37,7 +38,7 @@ var NewCmd = func(executable string, args []string, options CommandOptions) Comm
 	c := exec.Command(executable, args...)
 	c.Dir = options.Dir
 	c.Env = options.Env
-	c.Stdin = nil
+	c.Stdin = options.Stdin
 	c.Stdout = options.Stdout
 	c.Stderr = options.Stderr
 

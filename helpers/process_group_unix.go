@@ -3,23 +3,22 @@
 package helpers
 
 import (
-	"os/exec"
 	"syscall"
+
+	"gitlab.com/gitlab-org/gitlab-runner/helpers/process"
 )
 
-func SetProcessGroup(cmd *exec.Cmd) {
+func SetProcessGroup(cmd process.Commander) {
 	// Create process group
-	cmd.SysProcAttr = &syscall.SysProcAttr{
-		Setpgid: true,
-	}
+	process.SetProcessGroup(cmd)
 }
 
-func KillProcessGroup(cmd *exec.Cmd) {
+func KillProcessGroup(cmd process.Commander) {
 	if cmd == nil {
 		return
 	}
 
-	process := cmd.Process
+	process := cmd.Process()
 	if process != nil {
 		if process.Pid > 0 {
 			syscall.Kill(-process.Pid, syscall.SIGKILL)
