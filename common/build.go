@@ -322,14 +322,14 @@ func (b *Build) collectAndUploadMetrics(ctx context.Context, startTime time.Time
 		URL:   b.Runner.RunnerCredentials.URL,
 	}
 
-	metrics, error := b.MetricCollector.Collect(ctx, b.Hostname, startTime, endTime)
-	if error != nil {
-		return error
+	metrics, err := b.MetricCollector.Collect(ctx, b.Hostname, startTime, endTime)
+	if err != nil {
+		return err
 	}
 
-	error2 := b.MetricCollector.Upload(metrics, jobCredentials)
-	if error2 != nil {
-		return error2
+	err = b.MetricCollector.Upload(metrics, jobCredentials)
+	if err != nil {
+		return err
 	}
 
 	return nil
