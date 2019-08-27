@@ -18,20 +18,6 @@ import (
 	"gitlab.com/gitlab-org/gitlab-runner/helpers/process"
 )
 
-type processLoggerAdapter struct {
-	buildLogger common.BuildLogger
-}
-
-func (l *processLoggerAdapter) WithFields(fields logrus.Fields) process.Logger {
-	l.buildLogger = l.buildLogger.WithFields(fields)
-
-	return l
-}
-
-func (l *processLoggerAdapter) Errorln(args ...interface{}) {
-	l.buildLogger.Errorln(args...)
-}
-
 type commandOutputs struct {
 	stdout io.Writer
 	stderr io.Writer
@@ -203,9 +189,7 @@ func (e *executor) defaultCommandOutputs() commandOutputs {
 var commandFactory = command.New
 
 func (e *executor) prepareCommand(ctx context.Context, opts prepareCommandOpts) command.Command {
-	logger := &processLoggerAdapter{
-		buildLogger: e.BuildLogger,
-	}
+	logger := common.NewProcessLoggerAdapter(e.BuildLogger)
 
 	cmdOpts := process.CommandOptions{
 		Dir:                 e.tempDir,

@@ -17,7 +17,13 @@ import (
 	"gitlab.com/gitlab-org/gitlab-runner/common"
 	"gitlab.com/gitlab-org/gitlab-runner/executors"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers"
+	"gitlab.com/gitlab-org/gitlab-runner/helpers/featureflags"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers/process"
+)
+
+const (
+	defaultGracefulKillTimeout = 10 * time.Minute
+	defaultForceKillTimeout    = 10 * time.Second
 )
 
 type executor struct {
@@ -82,8 +88,7 @@ func (s *executor) Run(cmd common.ExecutorCommand) error {
 		return errors.New("failed to generate execution command")
 	}
 
-	helpers.SetProcessGroup(c)
-	defer helpers.KillProcessGroup(c)
+	defer s.setProcessGroup(c)()
 
 	// Start a process
 	err := c.Start()
@@ -130,16 +135,39 @@ func getExecutionScript(cmd common.ExecutorCommand, extension string) (string, f
 	return scriptFile, cleanup, nil
 }
 
-func (s *executor) killAndWait(cmd process.Commander, waitCh chan error) error {
-	for {
-		s.Debugln("Aborting command...")
-		helpers.KillProcessGroup(cmd)
-		select {
-		case <-time.After(time.Second):
-		case err := <-waitCh:
-			return err
+func (s *executor) setProcessGroup(cmd process.Commander) func() {
+	// TODO: Remove in 12.9 and make the usage of process.SetProcessGroup() the only supported way
+	if s.Build.IsFeatureFlagOn(featureflags.UseLegacyProcessTermination) {
+		helpers.SetProcessGroup(cmd)
+
+		return func() {
+			helpers.KillProcessGroup(cmd)
 		}
 	}
+
+	process.SetProcessGroup(cmd)
+
+	return func() {}
+}
+
+func (s *executor) killAndWait(cmd process.Commander, waitCh chan error) error {
+	// TODO: Remove in 12.9 and make the usage of process.KillWaiter the only supported way
+	if s.Build.IsFeatureFlagOn(featureflags.UseLegacyProcessTermination) {
+		for {
+			s.Debugln("Aborting command...")
+			helpers.KillProcessGroup(cmd)
+			select {
+			case <-time.After(time.Second):
+			case err := <-waitCh:
+				return err
+			}
+		}
+	}
+
+	kw := process.NewKillWaiter(common.NewProcessLoggerAdapter(s.BuildLogger),
+		defaultGracefulKillTimeout, defaultForceKillTimeout)
+
+	return kw.KillAndWait(cmd, waitCh)
 }
 
 func init() {

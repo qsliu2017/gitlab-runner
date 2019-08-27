@@ -7,6 +7,7 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"gitlab.com/gitlab-org/gitlab-runner/helpers"
+	"gitlab.com/gitlab-org/gitlab-runner/helpers/process"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers/url"
 )
 
@@ -94,4 +95,24 @@ func NewBuildLogger(log JobTrace, entry *logrus.Entry) BuildLogger {
 		log:   log,
 		entry: entry,
 	}
+}
+
+type ProcessLoggerAdapter struct {
+	buildLogger BuildLogger
+}
+
+func NewProcessLoggerAdapter(buildlogger BuildLogger) *ProcessLoggerAdapter {
+	return &ProcessLoggerAdapter{
+		buildLogger: buildlogger,
+	}
+}
+
+func (l *ProcessLoggerAdapter) WithFields(fields logrus.Fields) process.Logger {
+	l.buildLogger = l.buildLogger.WithFields(fields)
+
+	return l
+}
+
+func (l *ProcessLoggerAdapter) Errorln(args ...interface{}) {
+	l.buildLogger.Errorln(args...)
 }

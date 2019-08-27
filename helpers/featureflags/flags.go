@@ -8,6 +8,7 @@ const (
 	CmdDisableDelayedErrorLevelExpansion string = "FF_CMD_DISABLE_DELAYED_ERROR_LEVEL_EXPANSION"
 	UseLegacyBuildsDirForDocker          string = "FF_USE_LEGACY_BUILDS_DIR_FOR_DOCKER"
 	UseLegacyVolumesMountingOrder        string = "FF_USE_LEGACY_VOLUMES_MOUNTING_ORDER"
+	UseLegacyProcessTermination          string = "FF_USE_LEGACY_PROCESS_TERMINATION"
 )
 
 type FeatureFlag struct {
@@ -44,6 +45,13 @@ var flags = []FeatureFlag{
 		Deprecated:      true,
 		ToBeRemovedWith: "12.6",
 		Description:     "Disables the new ordering of volumes mounting when `docker*` executors are being used.",
+	},
+	{
+		Name:            UseLegacyProcessTermination,
+		DefaultValue:    "false",
+		Deprecated:      false,
+		ToBeRemovedWith: "12.9",
+		Description:     "Switches back from `SIGTERM` to `SIGKILL` and to old termination strategy for process termination on Unix systems when Shell executor is used",
 	},
 }
 
