@@ -10,6 +10,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/sirupsen/logrus"
+
 	"gitlab.com/gitlab-org/gitlab-runner/common"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers/process"
 )
@@ -40,6 +42,20 @@ type Command interface {
 }
 
 var newProcessKillWaiter = process.NewKillWaiter
+
+type processLoggerAdapter struct {
+	buildLogger common.BuildLogger
+}
+
+func (l *processLoggerAdapter) WithFields(fields logrus.Fields) process.Logger {
+	l.buildLogger = l.buildLogger.WithFields(fields)
+
+	return l
+}
+
+func (l *processLoggerAdapter) Errorln(args ...interface{}) {
+	l.buildLogger.Errorln(args...)
+}
 
 type command struct {
 	context context.Context
@@ -89,7 +105,9 @@ func (c *command) Run() error {
 		return err
 
 	case <-c.context.Done():
-		return newProcessKillWaiter(c.logger, c.gracefulKillTimeout, c.forceKillTimeout).
+		logger := &processLoggerAdapter{buildLogger: c.logger}
+
+		return newProcessKillWaiter(logger, c.gracefulKillTimeout, c.forceKillTimeout).
 			KillAndWait(c.cmd.Process(), c.waitCh)
 	}
 }

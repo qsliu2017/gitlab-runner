@@ -7,8 +7,6 @@ import (
 	"time"
 
 	"github.com/sirupsen/logrus"
-
-	"gitlab.com/gitlab-org/gitlab-runner/common"
 )
 
 type killer interface {
@@ -18,18 +16,23 @@ type killer interface {
 
 var newKillerFactory = newKiller
 
+type Logger interface {
+	WithFields(fields logrus.Fields) Logger
+	Errorln(args ...interface{})
+}
+
 type KillWaiter interface {
 	KillAndWait(process *os.Process, waitCh chan error) error
 }
 
 type DefaultKillWaiter struct {
-	logger common.BuildLogger
+	logger Logger
 
 	gracefulKillTimeout time.Duration
 	forceKillTimeout    time.Duration
 }
 
-func NewKillWaiter(logger common.BuildLogger, gracefulKillTimeout time.Duration, forceKillTimeout time.Duration) KillWaiter {
+func NewKillWaiter(logger Logger, gracefulKillTimeout time.Duration, forceKillTimeout time.Duration) KillWaiter {
 	return &DefaultKillWaiter{
 		logger:              logger,
 		gracefulKillTimeout: gracefulKillTimeout,

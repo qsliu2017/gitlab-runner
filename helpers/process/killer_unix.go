@@ -5,16 +5,14 @@ package process
 import (
 	"os"
 	"syscall"
-
-	"gitlab.com/gitlab-org/gitlab-runner/common"
 )
 
 type unixKiller struct {
-	logger  common.BuildLogger
+	logger  Logger
 	process *os.Process
 }
 
-func newKiller(logger common.BuildLogger, process *os.Process) killer {
+func newKiller(logger Logger, process *os.Process) killer {
 	return &unixKiller{
 		logger:  logger,
 		process: process,

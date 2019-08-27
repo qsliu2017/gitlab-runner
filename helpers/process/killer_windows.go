@@ -2,16 +2,14 @@ package process
 
 import (
 	"os"
-
-	"gitlab.com/gitlab-org/gitlab-runner/common"
 )
 
 type windowsKiller struct {
-	logger  common.BuildLogger
+	logger  Logger
 	process *os.Process
 }
 
-func newKiller(logger common.BuildLogger, process *os.Process) killer {
+func newKiller(logger Logger, process *os.Process) killer {
 	return &windowsKiller{
 		logger:  logger,
 		process: process,
