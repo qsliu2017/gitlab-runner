@@ -27,6 +27,11 @@ func (_m *MockCommander) Process() *os.Process {
 	return r0
 }
 
+// SetSysProcAttr provides a mock function with given fields: attr
+func (_m *MockCommander) SetSysProcAttr(attr *syscall.SysProcAttr) {
+	_m.Called(attr)
+}
+
 // Start provides a mock function with given fields:
 func (_m *MockCommander) Start() error {
 	ret := _m.Called()

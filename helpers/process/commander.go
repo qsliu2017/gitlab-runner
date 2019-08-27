@@ -13,6 +13,7 @@ type Commander interface {
 	Wait() error
 	Process() *os.Process
 	SysProcAttr() *syscall.SysProcAttr
+	SetSysProcAttr(attr *syscall.SysProcAttr)
 }
 
 type CommandOptions struct {
@@ -57,4 +58,8 @@ func (c *cmd) Process() *os.Process {
 
 func (c *cmd) SysProcAttr() *syscall.SysProcAttr {
 	return c.internal.SysProcAttr
+}
+
+func (c *cmd) SetSysProcAttr(attr *syscall.SysProcAttr) {
+	c.internal.SysProcAttr = attr
 }

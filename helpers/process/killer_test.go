@@ -113,7 +113,7 @@ func TestDefaultKillWaiter_KillAndWait(t *testing.T) {
 	}
 }
 
-func newKillerWithLoggerAndCommand(t *testing.T, duration string, skipTerminate bool) (killer, *MockLogger, Commander, func()) {
+func newKillerWithLoggerAndCommand(t *testing.T, duration string, skipTerminate bool, setProcessGroup bool) (killer, *MockLogger, Commander, func()) {
 	t.Helper()
 
 	loggerMock := new(MockLogger)
@@ -125,6 +125,10 @@ func newKillerWithLoggerAndCommand(t *testing.T, duration string, skipTerminate 
 	}
 
 	command := NewCmd(sleepBinary, args, CommandOptions{})
+	if setProcessGroup {
+		SetProcessGroup(command)
+	}
+
 	err := command.Start()
 	require.NoError(t, err)
 
@@ -163,9 +167,10 @@ func prepareTestBinary(t *testing.T) string {
 // Unix and Windows have different test cases expecting different data, check
 // killer_unix_test.go and killer_windows_test.go for each system test case.
 type testKillerTestCase struct {
-	alreadyStopped bool
-	skipTerminate  bool
-	expectedError  string
+	setProcessGroup bool
+	alreadyStopped  bool
+	skipTerminate   bool
+	expectedError   string
 }
 
 func TestKiller(t *testing.T) {
@@ -173,7 +178,7 @@ func TestKiller(t *testing.T) {
 
 	for testName, testCase := range testKillerTestCases() {
 		t.Run(testName, func(t *testing.T) {
-			k, loggerMock, cmd, cleanup := newKillerWithLoggerAndCommand(t, sleepDuration, testCase.skipTerminate)
+			k, loggerMock, cmd, cleanup := newKillerWithLoggerAndCommand(t, sleepDuration, testCase.skipTerminate, testCase.setProcessGroup)
 			defer cleanup()
 
 			waitCh := make(chan error)

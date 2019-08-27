@@ -3,24 +3,28 @@
 package process
 
 import (
-	"os"
 	"syscall"
 )
 
 type unixKiller struct {
-	logger  Logger
-	process *os.Process
+	logger Logger
+	cmd    Commander
 }
 
 func newKiller(logger Logger, cmd Commander) killer {
 	return &unixKiller{
-		logger:  logger,
-		process: cmd.Process(),
+		logger: logger,
+		cmd:    cmd,
 	}
 }
 
 func (pk *unixKiller) Terminate() {
-	err := syscall.Kill(pk.process.Pid, syscall.SIGTERM)
+	pid := pk.cmd.Process().Pid
+	if pk.isProcessGroupCommand() {
+		pid *= -1
+	}
+
+	err := syscall.Kill(pid, syscall.SIGTERM)
 	if err != nil {
 		pk.logger.Errorln("Failed to terminate process:", err)
 
@@ -29,8 +33,14 @@ func (pk *unixKiller) Terminate() {
 	}
 }
 
+func (pk *unixKiller) isProcessGroupCommand() bool {
+	attr := pk.cmd.SysProcAttr()
+
+	return attr != nil && attr.Setpgid
+}
+
 func (pk *unixKiller) ForceKill() {
-	err := pk.process.Kill()
+	err := pk.cmd.Process().Kill()
 	if err != nil {
 		pk.logger.Errorln("Failed to force-kill:", err)
 	}

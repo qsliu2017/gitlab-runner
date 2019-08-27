@@ -9,6 +9,12 @@ func testKillerTestCases() map[string]testKillerTestCase {
 			skipTerminate:  true,
 			expectedError:  "",
 		},
+		"command with process group terminated": {
+			setProcessGroup: true,
+			alreadyStopped:  false,
+			skipTerminate:   true,
+			expectedError:   "",
+		},
 		"command not terminated": {
 			alreadyStopped: false,
 			skipTerminate:  false,
