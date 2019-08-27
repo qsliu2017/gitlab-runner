@@ -19,7 +19,7 @@ func newKiller(logger Logger, process *os.Process) killer {
 func (pk *windowsKiller) Terminate() {
 	err := pk.process.Kill()
 	if err != nil {
-		pk.logger.Errorln("Failed to terminate:", err)
+		pk.logger.Errorln("Failed to terminate process:", err)
 
 		// try to kill right-after
 		pk.ForceKill()

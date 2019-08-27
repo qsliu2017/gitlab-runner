@@ -20,9 +20,9 @@ func newKiller(logger Logger, process *os.Process) killer {
 }
 
 func (pk *unixKiller) Terminate() {
-	err := pk.process.Signal(syscall.SIGTERM)
+	err := syscall.Kill(pk.process.Pid, syscall.SIGTERM)
 	if err != nil {
-		pk.logger.Errorln("Failed to send SIGTERM signal:", err)
+		pk.logger.Errorln("Failed to terminate process:", err)
 
 		// try to kill right-after
 		pk.ForceKill()
