@@ -14,7 +14,7 @@ type unixKiller struct {
 	process *os.Process
 }
 
-func NewKiller(logger common.BuildLogger, process *os.Process) Killer {
+func newKiller(logger common.BuildLogger, process *os.Process) killer {
 	return &unixKiller{
 		logger:  logger,
 		process: process,

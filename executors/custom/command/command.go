@@ -2,7 +2,6 @@ package command
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -11,10 +10,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/sirupsen/logrus"
-
 	"gitlab.com/gitlab-org/gitlab-runner/common"
-	"gitlab.com/gitlab-org/gitlab-runner/executors/custom/process"
+	"gitlab.com/gitlab-org/gitlab-runner/helpers/process"
 )
 
 const (
@@ -41,6 +38,8 @@ type CreateOptions struct {
 type Command interface {
 	Run() error
 }
+
+var newProcessKillWaiter = process.NewKillWaiter
 
 type command struct {
 	context context.Context
@@ -90,7 +89,8 @@ func (c *command) Run() error {
 		return err
 
 	case <-c.context.Done():
-		return c.killAndWait()
+		return newProcessKillWaiter(c.logger, c.gracefulKillTimeout, c.forceKillTimeout).
+			KillAndWait(c.cmd.Process(), c.waitCh)
 	}
 }
 
@@ -114,35 +114,4 @@ func (c *command) waitForCommand() {
 	}
 
 	c.waitCh <- err
-}
-
-var newProcessKiller = process.NewKiller
-
-func (c *command) killAndWait() error {
-	if c.cmd.Process() == nil {
-		return errors.New("process not started yet")
-	}
-
-	logger := c.logger.WithFields(logrus.Fields{
-		"PID": c.cmd.Process().Pid,
-	})
-
-	processKiller := newProcessKiller(logger, c.cmd.Process())
-	processKiller.Terminate()
-
-	select {
-	case err := <-c.waitCh:
-		return err
-
-	case <-time.After(c.gracefulKillTimeout):
-		processKiller.ForceKill()
-
-		select {
-		case err := <-c.waitCh:
-			return err
-
-		case <-time.After(c.forceKillTimeout):
-			return errors.New("failed to kill process, likely process is dormant")
-		}
-	}
 }

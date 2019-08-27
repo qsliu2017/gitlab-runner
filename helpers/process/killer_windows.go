@@ -11,7 +11,7 @@ type windowsKiller struct {
 	process *os.Process
 }
 
-func NewKiller(logger common.BuildLogger, process *os.Process) Killer {
+func newKiller(logger common.BuildLogger, process *os.Process) killer {
 	return &windowsKiller{
 		logger:  logger,
 		process: process,
@@ -23,6 +23,7 @@ func (pk *windowsKiller) Terminate() {
 	if err != nil {
 		pk.logger.Errorln("Failed to terminate:", err)
 
+		// try to kill right-after
 		pk.ForceKill()
 	}
 }
