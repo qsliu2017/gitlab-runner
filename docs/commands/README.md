@@ -245,6 +245,13 @@ gitlab-runner register
 
 > **Note:** Boolean parameters must be passed in the command line with `--key={true|false}`.
 
+#### `[[runners]]` configuration template file
+
+> [Introduced](https://gitlab.com/gitlab-org/gitlab-runner/issues/4228) in GitLab Runner 12.2.
+
+Additional options can be easily configured during Runner registration using the
+[configuration template file](../register/index.md#runners-configuration-template-file) feature.
+
 ### gitlab-runner list
 
 This command lists all runners saved in the
@@ -302,13 +309,13 @@ Then use this information to unregister it, using one of the following commands.
 This operation cannot be undone, it will update the configuration file, so
 make sure to have a backup of `config.toml` before executing it.
 
-#### By URL and token:
+#### By URL and token
 
 ```bash
 gitlab-runner unregister --url http://gitlab.example.com/ --token t0k3n
 ```
 
-#### By name:
+#### By name
 
 > **Note:** If there is more than one runner with the given name, only the first one will be removed
 
@@ -316,7 +323,7 @@ gitlab-runner unregister --url http://gitlab.example.com/ --token t0k3n
 gitlab-runner unregister --name test-runner
 ```
 
-#### All Runners:
+#### All Runners
 
 ```bash
 gitlab-runner unregister --all-runners

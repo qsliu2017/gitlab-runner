@@ -128,10 +128,6 @@ func (e *executor) getBuildAuthConfiguration(indexName string) (string, *types.A
 		}
 	}
 
-	if authConfigs == nil {
-		return "", nil
-	}
-
 	return AuthConfigSourceNameJobPayload, docker_helpers.ResolveDockerAuthConfig(indexName, authConfigs)
 }
 
@@ -471,7 +467,7 @@ func (e *executor) splitServiceAndVersion(serviceDescription string) (service, v
 
 func (e *executor) createService(serviceIndex int, service, version, image string, serviceDefinition common.Image) (*types.Container, error) {
 	if len(service) == 0 {
-		return nil, errors.New("invalid service name")
+		return nil, fmt.Errorf("invalid service name: %s", serviceDefinition.Name)
 	}
 
 	if e.volumesManager == nil {

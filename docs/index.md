@@ -3,7 +3,7 @@ comments: false
 last_updated: 2019-01-17
 ---
 
-# GitLab Runner
+# GitLab Runner Docs
 
 GitLab Runner is the open source project that is used to run your jobs and
 send the results back to GitLab. It is used in conjunction with [GitLab CI](https://about.gitlab.com/product/continuous-integration/),
@@ -78,6 +78,7 @@ Learn how to [register a GitLab Runner](register/index.md).
 ## Using GitLab Runner
 
 - See the [commands documentation](commands/README.md).
+- See [best practice documentation](best_practice/index.md).
 
 ## Selecting the executor
 
