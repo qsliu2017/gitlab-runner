@@ -282,6 +282,10 @@ type CacheConfig struct {
 	GCS *CacheGCSConfig `toml:"gcs,omitempty" json:"gcs" namespace:"gcs"`
 }
 
+type MetricsConfig struct {
+	PrometheusAddress string `toml:"prometheus_address,omitempty" json:"prometheus_address" description:"A host:port to a prometheus metrics server"`
+}
+
 type RunnerSettings struct {
 	Executor  string `toml:"executor" json:"executor" long:"executor" env:"RUNNER_EXECUTOR" required:"true" description:"Select executor, eg. shell, docker, etc."`
 	BuildsDir string `toml:"builds_dir,omitempty" json:"builds_dir" long:"builds-dir" env:"RUNNER_BUILDS_DIR" description:"Directory where builds are stored"`
@@ -306,6 +310,7 @@ type RunnerSettings struct {
 	Machine        *DockerMachine    `toml:"machine,omitempty" json:"machine" group:"docker machine provider" namespace:"machine"`
 	Kubernetes     *KubernetesConfig `toml:"kubernetes,omitempty" json:"kubernetes" group:"kubernetes executor" namespace:"kubernetes"`
 	Custom         *CustomConfig     `toml:"custom,omitempty" json:"custom" group:"custom executor" namespace:"custom"`
+	Metrics        *MetricsConfig    `toml:"metrics,omitempty" json:"metrics" group:"metrics configuration" namespace:"metrics"`
 }
 
 type RunnerConfig struct {
@@ -324,16 +329,15 @@ type SessionServer struct {
 	SessionTimeout   int    `toml:"session_timeout,omitempty" json:"session_timeout" description:"How long a terminal session can be active after a build completes, in seconds"`
 }
 
-type MetricCollectorConfig struct {
-	CollectionInterval string   `toml:"collection_interval,omitempty" json:"collection_interval" description:"Collection step"`
-	ServerAddress      string   `toml:"server_address,omitempty" json:"server_address" description:"A host:port to a prometheus metrics server"`
-	CollectMetrics     []string `toml:"collect_metrics" json:"collect_metrics" description:"A list of metrics to collect in metric_type:job_name format, such as node_exporter:node"`
+type QueryMetricsConfig struct {
+	QueryInterval string   `toml:"collection_interval,omitempty" json:"collection_interval" description:"Collection step"`
+	MetricQueries []string `toml:"collect_metrics" json:"collect_metrics" description:"A list of metrics to collect in metric_type:job_name format, such as node_exporter:node"`
 }
 
 type Config struct {
-	ListenAddress   string                 `toml:"listen_address,omitempty" json:"listen_address"`
-	SessionServer   SessionServer          `toml:"session_server,omitempty" json:"session_server"`
-	MetricCollector *MetricCollectorConfig `toml:"metric_collector,omitempty" json:"metric_collector"`
+	ListenAddress   string              `toml:"listen_address,omitempty" json:"listen_address"`
+	SessionServer   SessionServer       `toml:"session_server,omitempty" json:"session_server"`
+	MetricCollector *QueryMetricsConfig `toml:"query_metrics,omitempty" json:"query_metrics"`
 
 	Concurrent    int             `toml:"concurrent" json:"concurrent"`
 	CheckInterval int             `toml:"check_interval" json:"check_interval" description:"Define active checking interval of jobs"`

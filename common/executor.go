@@ -42,6 +42,8 @@ type Executor interface {
 	Cleanup()
 	GetCurrentStage() ExecutorStage
 	SetCurrentStage(stage ExecutorStage)
+	GetMetricsLabelName() string
+	GetMetricsLabelValue() string
 }
 
 type ExecutorProvider interface {

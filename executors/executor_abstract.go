@@ -144,3 +144,11 @@ func (e *AbstractExecutor) GetCurrentStage() common.ExecutorStage {
 func (e *AbstractExecutor) SetCurrentStage(stage common.ExecutorStage) {
 	e.currentStage = stage
 }
+
+func (e *AbstractExecutor) GetMetricsLabelName() string {
+	return ""
+}
+
+func (e *AbstractExecutor) GetMetricsLabelValue() string {
+	return ""
+}
