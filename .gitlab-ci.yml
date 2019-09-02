@@ -19,7 +19,7 @@ variables:
   DUMB_INIT_VERSION: "1.0.2"
   GIT_VERSION: "2.21.0"
   GIT_VERSION_BUILD: "1"
-  GIT_LFS_VERSION: "2.7.1"
+  GIT_LFS_VERSION: "2.8.0"
   LICENSE_MANAGEMENT_SETUP_CMD: echo "Skip setup. Dependency already vendored"
   DOCS_GITLAB_REPO_SUFFIX: "runner"
 
@@ -434,8 +434,8 @@ package-rpm: *packages
     PUSH_TO_DOCKER_HUB: "true"
     DOCKER_MACHINE_CHECKSUM: "a4c69bffb78d3cfe103b89dae61c3ea11cc2d1a91c4ff86e630c9ae88244db02"
     DUMB_INIT_CHECKSUM: "a8defac40aaca2ca0896c7c5adbc241af60c7c3df470c1a4c469a860bd805429"
-    GIT_LFS_VERSION: "2.7.1"
-    GIT_LFS_CHECKSUM: "c8952ee72af214e3669f834d829e8a0a3becd160dead18237f99e40d75a3e920"
+    GIT_LFS_VERSION: "2.8.0"
+    GIT_LFS_CHECKSUM: "54054178deea7c97ce58edf9c0a2f79eb30c1e836fbc7e6dece9b2c9ff516863"
 
   script:
   - source ci/touch_make_dependencies
@@ -449,7 +449,7 @@ package-rpm: *packages
   variables:
     PUSH_TO_DOCKER_HUB: "false"
     GIT_256_CHECKSUM: "bd91db55bd95eaa80687df28877e2df8c8858a0266e9c67331cfddba2735f25c"
-    GIT_LFS_256_CHECKSUM: "5c12db9728b53cba23e5f58f4a53d88cb2132e82fa1de0f8a79ce9d112e4d396"
+    GIT_LFS_256_CHECKSUM: "b416379939b9eeaec5cae3565dd641858c72d8d2788e57f3518c6d67007585a8"
   before_script:
   - if (Test-Path env:GPG_KEY) { Remove-Item Env:GPG_KEY }
   script:
