@@ -96,3 +96,7 @@ func (_m *MockExecutorProvider) GetFeatures(features *FeaturesInfo) error {
 func (_m *MockExecutorProvider) Release(config *RunnerConfig, data ExecutorData) {
 	_m.Called(config, data)
 }
+
+func (_m *MockExecutorProvider) GetMetricsLabelName() string {
+	return ""
+}

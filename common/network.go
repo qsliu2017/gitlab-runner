@@ -6,6 +6,7 @@ import (
 	"io"
 	"time"
 
+	prometheusV1 "github.com/prometheus/client_golang/api/prometheus/v1"
 	"github.com/prometheus/common/model"
 	url_helpers "gitlab.com/gitlab-org/gitlab-runner/helpers/url"
 )
@@ -388,7 +389,7 @@ type Network interface {
 type MetricsQueryer interface {
 	Query(
 		ctx context.Context,
-		prometheusAddress string,
+		prometheusAPI prometheusV1.API,
 		lavelValue string,
 		startTime time.Time,
 		endTime time.Time,

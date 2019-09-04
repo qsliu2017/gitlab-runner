@@ -8,7 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/prometheus/client_golang/api"
 	prometheusV1 "github.com/prometheus/client_golang/api/prometheus/v1"
 	"github.com/prometheus/common/model"
 	"github.com/sirupsen/logrus"
@@ -22,7 +21,7 @@ var metricsArtifactOptions = common.ArtifactsOptions{
 	ExpireIn: "10000000",
 }
 
-type MetricsQueryer struct {
+type PrometheusQueryer struct {
 	metricQueries []string
 	queryInterval time.Duration
 	network       common.Network
@@ -30,22 +29,13 @@ type MetricsQueryer struct {
 	log           func() *logrus.Entry
 }
 
-func (mq *MetricsQueryer) Query(
+func (mq *PrometheusQueryer) Query(
 	ctx context.Context,
-	prometheusAddress string,
+	prometheusAPI prometheusV1.API,
 	labelValue string,
 	startTime time.Time,
 	endTime time.Time,
 ) (map[string][]model.SamplePair, error) {
-	// create prometheus client from server address in config
-	clientConfig := api.Config{Address: prometheusAddress}
-	prometheusClient, err := api.NewClient(clientConfig)
-	if err != nil {
-		return nil, err
-	}
-
-	// create a prometheus api from the client config
-	prometheusAPI := prometheusV1.NewAPI(prometheusClient)
 	// specify the range used for the PromQL query
 	queryRange := prometheusV1.Range{
 		Start: startTime,
@@ -75,7 +65,7 @@ func (mq *MetricsQueryer) Query(
 	return metrics, nil
 }
 
-func (mq *MetricsQueryer) Upload(
+func (mq *PrometheusQueryer) Upload(
 	metrics map[string][]model.SamplePair,
 	jobCredentials *common.JobCredentials,
 ) error {
@@ -92,17 +82,17 @@ func (mq *MetricsQueryer) Upload(
 	return nil
 }
 
-func NewMetricsQueryer(
+func NewPrometheusQueryer(
 	queryMetrics common.QueryMetricsConfig,
 	labelName string,
 	network common.Network,
-) (*MetricsQueryer, error) {
+) (*PrometheusQueryer, error) {
 	queryIntervalDuration, err := time.ParseDuration(queryMetrics.QueryInterval)
 	if err != nil {
 		return nil, fmt.Errorf("Unable to parse query interval from config")
 	}
 
-	return &MetricsQueryer{
+	return &PrometheusQueryer{
 		metricQueries: queryMetrics.MetricQueries,
 		queryInterval: queryIntervalDuration,
 		labelName:     labelName,

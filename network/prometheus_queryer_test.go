@@ -27,21 +27,24 @@ func generateReaderMatcher(metricsJson string) interface{} {
 	})
 }
 
-func TestCollectAndUploadMetrics(t *testing.T) {
+func TestQueryAndUploadMetrics(t *testing.T) {
 	mockPrometheusApi := new(MockPrometheusApi)
 	mockNetwork := new(common.MockNetwork)
 	ctx, _ := context.WithCancel(context.Background())
 
-	collectMetrics := []string{"node_exporter:node"}
-	collectionInterval := "10s"
-	m, err := NewPrometheusMetricCollector(mockPrometheusApi, collectionInterval, collectMetrics, mockNetwork)
+	config := common.QueryMetricsConfig{
+		QueryInterval: "10s",
+		MetricQueries: []string{"metric1{{selector}}", "metric2{{selector}}"},
+	}
+
+	m, err := NewPrometheusQueryer(config, "instance", mockNetwork)
 	require.NoError(t, err)
 
-	metrics, err := m.Collect(ctx, "test", time.Now(), time.Now())
+	metrics, err := m.Query(ctx, mockPrometheusApi, "test", time.Now(), time.Now())
 	require.NoError(t, err)
 
 	// make sure same length of metrics returned
-	assert.Len(t, metrics, len(NodeExporterMetrics))
+	assert.Len(t, metrics, len(config.MetricQueries))
 
 	metricsBytes, err := json.Marshal(metrics)
 	require.NoError(t, err)

@@ -12,8 +12,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/prometheus/client_golang/api"
+	prometheusV1 "github.com/prometheus/client_golang/api/prometheus/v1"
 	"github.com/sirupsen/logrus"
-
 	"gitlab.com/gitlab-org/gitlab-runner/helpers"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers/featureflags"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers/tls"
@@ -322,22 +323,31 @@ func (b *Build) queryAndUploadMetrics(ctx context.Context, executor Executor, st
 		return nil
 	}
 
-	jobCredentials := &JobCredentials{
-		ID:    b.JobResponse.ID,
-		Token: b.JobResponse.Token,
-		URL:   b.Runner.RunnerCredentials.URL,
+	// create prometheus client from server address in config
+	clientConfig := api.Config{Address: b.Runner.Metrics.PrometheusAddress}
+	prometheusClient, err := api.NewClient(clientConfig)
+	if err != nil {
+		return err
 	}
 
+	// create a prometheus api from the client config
+	prometheusAPI := prometheusV1.NewAPI(prometheusClient)
 	// query metrics
 	metrics, err := b.MetricsQueryer.Query(
 		ctx,
-		b.Runner.Metrics.PrometheusAddress,
+		prometheusAPI,
 		executor.GetMetricsLabelValue(),
 		startTime,
 		endTime,
 	)
 	if err != nil {
 		return err
+	}
+
+	jobCredentials := &JobCredentials{
+		ID:    b.JobResponse.ID,
+		Token: b.JobResponse.Token,
+		URL:   b.Runner.RunnerCredentials.URL,
 	}
 
 	// upload metrics
