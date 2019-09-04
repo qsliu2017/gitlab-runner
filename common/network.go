@@ -66,7 +66,6 @@ type FeaturesInfo struct {
 	Refspecs                bool `json:"refspecs"`
 	Masking                 bool `json:"masking"`
 	Proxy                   bool `json:"proxy"`
-	Metrics                 bool `json:"metrics"`
 }
 
 type RegisterRunnerParameters struct {
@@ -386,17 +385,16 @@ type Network interface {
 	ProcessJob(config RunnerConfig, buildCredentials *JobCredentials) (JobTrace, error)
 }
 
-type MetricQueryer interface {
-	Collect(
+type MetricsQueryer interface {
+	Query(
 		ctx context.Context,
 		prometheusAddress string,
-		labelName string,
 		lavelValue string,
 		startTime time.Time,
 		endTime time.Time,
 	) (map[string][]model.SamplePair, error)
 	Upload(
 		metrics map[string][]model.SamplePair,
-		jobCredentials *common.JobCredentials,
+		jobCredentials *JobCredentials,
 	) error
 }

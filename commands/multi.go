@@ -208,9 +208,13 @@ func (mr *RunCommand) processRunner(id int, runner *common.RunnerConfig, runners
 	}
 	build.Session = buildSession
 
-	build.MetricQueryer, err = network.NewMetricQueryer(mr.config.MetricCollector, mr.network)
-	if err != nil {
-		mr.log().WithError(err).Fatal("Failed to create metric queryer")
+	metricsLabelName := provider.GetMetricsLabelName()
+	// set the build's metric queryer if the provider has a metric label name set for prometheus
+	if metricsLabelName != "" {
+		build.MetricsQueryer, err = network.NewMetricsQueryer(*mr.config.QueryMetrics, metricsLabelName, mr.network)
+		if err != nil {
+			mr.log().WithError(err).Fatal("Failed to create metrics queryer")
+		}
 	}
 
 	// Add build to list of builds to assign numbers

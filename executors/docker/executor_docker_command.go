@@ -103,6 +103,10 @@ func (s *commandExecutor) Run(cmd common.ExecutorCommand) error {
 	return s.watchContainer(cmd.Context, runOn.ID, bytes.NewBufferString(cmd.Script))
 }
 
+func (s *commandExecutor) GetMetricsLabelValue() string {
+	return s.Config.Docker.Hostname
+}
+
 func init() {
 	options := executors.ExecutorOptions{
 		DefaultCustomBuildsDirEnabled: true,
@@ -141,9 +145,14 @@ func init() {
 		features.Terminal = true
 	}
 
+	metricsLabelName := func() string {
+		return "instance"
+	}
+
 	common.RegisterExecutor("docker", executors.DefaultExecutorProvider{
 		Creator:          creator,
 		FeaturesUpdater:  featuresUpdater,
 		DefaultShellName: options.Shell.Shell,
+		MetricsLabelName: metricsLabelName,
 	})
 }

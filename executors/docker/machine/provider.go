@@ -10,7 +10,7 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"gitlab.com/gitlab-org/gitlab-runner/common"
-	"gitlab.com/gitlab-org/gitlab-runner/helpers/docker"
+	docker_helpers "gitlab.com/gitlab-org/gitlab-runner/helpers/docker"
 )
 
 type machineProvider struct {
@@ -416,6 +416,10 @@ func (m *machineProvider) Create() common.Executor {
 	return &machineExecutor{
 		provider: m,
 	}
+}
+
+func (m *machineProvider) GetMetricsLabelName() string {
+	return m.provider.GetMetricsLabelName()
 }
 
 func newMachineProvider(name, executor string) *machineProvider {

@@ -335,9 +335,9 @@ type QueryMetricsConfig struct {
 }
 
 type Config struct {
-	ListenAddress   string              `toml:"listen_address,omitempty" json:"listen_address"`
-	SessionServer   SessionServer       `toml:"session_server,omitempty" json:"session_server"`
-	MetricCollector *QueryMetricsConfig `toml:"query_metrics,omitempty" json:"query_metrics"`
+	ListenAddress string              `toml:"listen_address,omitempty" json:"listen_address"`
+	SessionServer SessionServer       `toml:"session_server,omitempty" json:"session_server"`
+	QueryMetrics  *QueryMetricsConfig `toml:"query_metrics,omitempty" json:"query_metrics"`
 
 	Concurrent    int             `toml:"concurrent" json:"concurrent"`
 	CheckInterval int             `toml:"check_interval" json:"check_interval" description:"Define active checking interval of jobs"`

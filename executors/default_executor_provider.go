@@ -10,6 +10,7 @@ type DefaultExecutorProvider struct {
 	Creator          func() common.Executor
 	FeaturesUpdater  func(features *common.FeaturesInfo)
 	DefaultShellName string
+	MetricsLabelName func() string
 }
 
 func (e DefaultExecutorProvider) CanCreate() bool {
@@ -40,4 +41,11 @@ func (e DefaultExecutorProvider) GetFeatures(features *common.FeaturesInfo) erro
 
 func (e DefaultExecutorProvider) GetDefaultShell() string {
 	return e.DefaultShellName
+}
+
+func (e DefaultExecutorProvider) GetMetricsLabelName() string {
+	if e.MetricsLabelName != nil {
+		return e.MetricsLabelName()
+	}
+	return ""
 }

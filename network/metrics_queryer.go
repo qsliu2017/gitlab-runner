@@ -8,11 +8,11 @@ import (
 	"strings"
 	"time"
 
-	"gitlab.com/gitlab-org/gitlab-runner/common"
-
+	"github.com/prometheus/client_golang/api"
+	prometheusV1 "github.com/prometheus/client_golang/api/prometheus/v1"
 	"github.com/prometheus/common/model"
-
-	v1 "github.com/prometheus/client_golang/api/prometheus/v1"
+	"github.com/sirupsen/logrus"
+	"gitlab.com/gitlab-org/gitlab-runner/common"
 )
 
 var metricsArtifactOptions = common.ArtifactsOptions{
@@ -23,100 +23,89 @@ var metricsArtifactOptions = common.ArtifactsOptions{
 }
 
 type MetricsQueryer struct {
-	metricQueries string[]
+	metricQueries []string
 	queryInterval time.Duration
-	network            common.Network
+	network       common.Network
+	labelName     string
+	log           func() *logrus.Entry
 }
 
-func (c *MetricsQueryer) Collect(
+func (mq *MetricsQueryer) Query(
 	ctx context.Context,
 	prometheusAddress string,
-	labelName string,
-	lavelValue string,
+	labelValue string,
 	startTime time.Time,
 	endTime time.Time,
 ) (map[string][]model.SamplePair, error) {
-
+	// create prometheus client from server address in config
 	clientConfig := api.Config{Address: prometheusAddress}
 	prometheusClient, err := api.NewClient(clientConfig)
 	if err != nil {
-		mr.log().Info("Unable to create prometheus collector")
-		return
+		return nil, err
 	}
 
-	prometheusApi := v1.NewAPI(prometheusClient)
-
-	rng := v1.Range{
+	// create a prometheus api from the client config
+	prometheusAPI := prometheusV1.NewAPI(prometheusClient)
+	// specify the range used for the PromQL query
+	queryRange := prometheusV1.Range{
 		Start: startTime,
 		End:   endTime,
-		Step:  c.collectionInterval,
+		Step:  mq.queryInterval,
 	}
 
 	metrics := make(map[string][]model.SamplePair)
 	// use config file to pull metrics from prometheus range queries
-	for metricQuery := range c.metricQueries {
-		query := fmt.Sprintf("%s{%s=\"%s\"}", metricQuery, labelName, labelValue)
-		result, err := prometheusApi.QueryRange(ctx, query, rng)
+	for _, metricQuery := range mq.metricQueries {
+		selector := fmt.Sprintf("%s=\"%s\"", mq.labelName, labelValue)
+		query := strings.ReplaceAll(metricQuery, "{selector}", selector)
+		result, err := prometheusAPI.QueryRange(ctx, query, queryRange)
 		if err != nil {
-			fmt.Errorf("Unable to collect metrics for range")
 			return nil, err
 		}
 
-		// check for a result
-		if result == nil {
-			continue
-		}
-
-		// pull first result
-		if result.(model.Matrix).Len() == 0 {
+		// check for a result and pull first
+		if result == nil || result.(model.Matrix).Len() == 0 {
 			continue
 		}
 
 		// save first result set values at metric
-		metrics[metricFullName] = (result.(model.Matrix)[0]).Values
+		metrics[query] = (result.(model.Matrix)[0]).Values
 	}
 
 	return metrics, nil
 }
 
-func (c *MetricsQueryer) Upload(
+func (mq *MetricsQueryer) Upload(
 	metrics map[string][]model.SamplePair,
 	jobCredentials *common.JobCredentials,
 ) error {
-	// convert metrics to JSON
+	// convert metrics sample pairs to JSON
 	output, err := json.Marshal(metrics)
 	if err != nil {
-		fmt.Errorf("Failed to marshall metrics into json for upload")
+		fmt.Errorf("Failed to marshall metrics into json for artifact upload")
 		return err
 	}
 
 	// upload JSON to GitLab as monitor.log artifact
 	reader := bytes.NewReader(output)
-	c.network.UploadRawArtifacts(*jobCredentials, reader, metricsArtifactOptions)
+	mq.network.UploadRawArtifacts(*jobCredentials, reader, metricsArtifactOptions)
 	return nil
 }
 
-func mapCollectMetrics(collectMetrics []string) map[string]string {
-	collectMetricsMap := make(map[string]string)
-	for _, collectMetric := range collectMetrics {
-		collectMetricParts := strings.Split(collectMetric, ":")
-		collectMetricsMap[collectMetricParts[0]] = collectMetricParts[1]
-	}
-	return collectMetricsMap
-}
-
-func NewMetricQueryer(
-	queryMetrics common.QueryMetricsConfig
+func NewMetricsQueryer(
+	queryMetrics common.QueryMetricsConfig,
+	labelName string,
 	network common.Network,
 ) (*MetricsQueryer, error) {
-	queryIntervalDuration, err := time.ParseDuration(queryInterval)
+	queryIntervalDuration, err := time.ParseDuration(queryMetrics.QueryInterval)
 	if err != nil {
 		return nil, fmt.Errorf("Unable to parse query interval from config")
 	}
 
 	return &MetricsQueryer{
-		metricQueries:  queryMetrics.MetricQueries,
-		queryInterval: queryIntervalDuration
+		metricQueries: queryMetrics.MetricQueries,
+		queryInterval: queryIntervalDuration,
+		labelName:     labelName,
 		network:       network,
 	}, nil
 }

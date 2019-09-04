@@ -12,8 +12,6 @@ import (
 	"strings"
 	"time"
 
-	common "github.com/gophercloud/gophercloud/openstack/loadbalancer/v2/testhelper"
-
 	"github.com/sirupsen/logrus"
 
 	"gitlab.com/gitlab-org/gitlab-runner/helpers"
@@ -83,7 +81,7 @@ type Build struct {
 	Runner           *RunnerConfig  `json:"runner"`
 	ExecutorData     ExecutorData
 	ExecutorFeatures FeaturesInfo `json:"-" yaml:"-"`
-	MetricQueryer    *common.MetricQueryer
+	MetricsQueryer   MetricsQueryer
 
 	// Unique ID for all running builds on this runner
 	RunnerID int `json:"runner_id"`
@@ -288,8 +286,8 @@ func (b *Build) executeScript(ctx context.Context, executor Executor) error {
 	uploadError := b.executeUploadArtifacts(ctx, err, executor)
 
 	endTime := time.Now()
-	// upload metrics as artifacts
-	b.collectAndUploadMetrics(ctx, executor, startTime, endTime)
+	// query and upload runner prometheus metrics as artifacts
+	b.queryAndUploadMetrics(ctx, executor, startTime, endTime)
 
 	// Use job's error as most important
 	if err != nil {
@@ -312,21 +310,16 @@ func (b *Build) attemptExecuteStage(ctx context.Context, buildStage BuildStage, 
 	return
 }
 
-func (b *Build) collectAndUploadMetrics(ctx context.Context, executor Executor, startTime time.Time, endTime time.Time) error {
+func (b *Build) queryAndUploadMetrics(ctx context.Context, executor Executor, startTime time.Time, endTime time.Time) error {
 
-	if b.IsMetricsEnabled() {
-		mr.log().Info("this executor does not support metrics querying (yet)")
-		return
+	if b.MetricsQueryer == nil {
+		b.Log().Info("this executor does not support metrics querying (yet)")
+		return nil
 	}
 
-	if b.Runner.Metrics == nil {
-		mr.log().Info("[runner.metrics] not defined, metric querying disabled")
-		return
-	}
-
-	if b.Runner.Metrics.PrometheusAddress == "" {
-		mr.log().Info("[runner.metrics].prometheus_address not defined, metric querying disabled")
-		return
+	if b.Runner.Metrics == nil || b.Runner.Metrics.PrometheusAddress == "" {
+		b.Log().Info("[runner.metrics] not defined or prometheus server not specified")
+		return nil
 	}
 
 	jobCredentials := &JobCredentials{
@@ -335,10 +328,10 @@ func (b *Build) collectAndUploadMetrics(ctx context.Context, executor Executor, 
 		URL:   b.Runner.RunnerCredentials.URL,
 	}
 
-	metrics, err := b.MetricQueryer.Collect(
+	// query metrics
+	metrics, err := b.MetricsQueryer.Query(
 		ctx,
 		b.Runner.Metrics.PrometheusAddress,
-		executor.GetMetricsLabelName(),
 		executor.GetMetricsLabelValue(),
 		startTime,
 		endTime,
@@ -347,7 +340,8 @@ func (b *Build) collectAndUploadMetrics(ctx context.Context, executor Executor, 
 		return err
 	}
 
-	err = b.MetricCollector.Upload(metrics, jobCredentials)
+	// upload metrics
+	err = b.MetricsQueryer.Upload(metrics, jobCredentials)
 	if err != nil {
 		return err
 	}
@@ -697,10 +691,6 @@ func (b *Build) GetGitTLSVariables() JobVariables {
 
 func (b *Build) IsSharedEnv() bool {
 	return b.ExecutorFeatures.Shared
-}
-
-func (b *Build) IsMetricsEnabled() bool {
-	return b.ExecutorFeatures.Metrics
 }
 
 func (b *Build) refreshAllVariables() {

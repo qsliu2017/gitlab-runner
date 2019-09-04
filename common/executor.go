@@ -42,7 +42,6 @@ type Executor interface {
 	Cleanup()
 	GetCurrentStage() ExecutorStage
 	SetCurrentStage(stage ExecutorStage)
-	GetMetricsLabelName() string
 	GetMetricsLabelValue() string
 }
 
@@ -53,6 +52,7 @@ type ExecutorProvider interface {
 	Release(config *RunnerConfig, data ExecutorData)
 	GetFeatures(features *FeaturesInfo) error
 	GetDefaultShell() string
+	GetMetricsLabelName() string
 }
 
 type BuildError struct {
