@@ -48,7 +48,7 @@ image: $CI_IMAGE
   services:
   - docker:19.03-dind
   variables: &docker_variables
-    CI_IMAGE: registry.gitlab.com/gitlab-org/gitlab-runner/ci:1.8.7-2
+    CI_IMAGE: registry.gitlab.com/gitlab-org/gitlab-runner/ci:1.10
     DOCKER_DRIVER: overlay2
     DOCKER_HOST: tcp://docker:2376
     DOCKER_TLS_VERIFY: 1
