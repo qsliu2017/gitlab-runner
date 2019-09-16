@@ -12,7 +12,7 @@ stages:
 - docs
 
 variables:
-  CI_IMAGE: registry.gitlab.com/gitlab-org/gitlab-runner/ci:1.8.7-2
+  CI_IMAGE: registry.gitlab.com/gitlab-org/gitlab-runner/ci:1.10
   GOROOT: /usr/local/go
   # Following variables are used in some jobs to install specified software
   DOCKER_MACHINE_VERSION: "0.14.0"
