@@ -391,7 +391,13 @@ func (mr *RunCommand) Start(s service.Service) error {
 	}
 
 	// Start should not block. Do the actual work async.
-	go mr.RunWithLock()
+	// Disable locking for Windows since we are using exclusive locks
+	// https://gitlab.com/gitlab-org/gitlab-runner/issues/4691
+	if runtime.GOOS == "windows" {
+		go mr.Run()
+	} else {
+		go mr.RunWithLock()
+	}
 
 	return nil
 }
