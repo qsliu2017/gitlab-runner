@@ -247,7 +247,7 @@ Here's an example of the `runners.machine` section:
 ```
 
 NOTE: **Note:**
-GitLab Runner's require the access-key and secret-key values to be filled out. Even if you're using 
+GitLab Runners require the access-key and secret-key values to be filled out. Even if you're using 
 iamroles. If you want to use iamroles, enter XXXX as the value for access-key and secret-key.
 
 The Docker Machine driver is set to `amazonec2` and the machine name has a
