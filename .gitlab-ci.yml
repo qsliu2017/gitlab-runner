@@ -268,7 +268,7 @@ license_management:
 .windows test:
   extends: .except_docs
   stage: test
-  needs: ["dep check"]
+  needs: ["tests definitions"]
   parallel: 3
   variables:
     GOROOT: "C:\\Go"
