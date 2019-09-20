@@ -623,6 +623,7 @@ static QA:
   cache: {}
   dependencies:
   - code_quality
+  needs: ["code_quality"]
   script: |
     if [ "$(cat gl-code-quality-report.json)" != "[]" ] ; then
       apk add -U --no-cache jq > /dev/null
