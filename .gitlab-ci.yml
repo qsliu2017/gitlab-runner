@@ -199,8 +199,8 @@ code_quality:
     CODECLIMATE_FORMAT: json
   cache: {}
   dependencies: []
-  # I don't think it actually does need this, but we can't do needs []
-  needs: ["dep check"]
+  # It doesn't actually need this, but we can't do needs []
+  needs: ["check feature flags docs"]
   script:
     - ./scripts/codequality analyze -f json --dev | tee gl-code-quality-report.json
   artifacts:
@@ -368,11 +368,13 @@ test junit report:
   when: always
 
 check windows 1803 test failures:
+  needs: ["windows 1803 tests"]
   variables:
     <<: *windows1803_variables
   extends: .check windows test failures
 
 check windows 1809 test failures:
+  needs: ["windows 1809 tests"]
   variables:
     <<: *windows1809_variables
   extends: .check windows test failures
@@ -399,6 +401,7 @@ binaries darwin/386 darwin/amd64: *binaries
 binaries freebsd/386 freebsd/amd64 freebsd/arm: *binaries
 binaries linux/386 linux/amd64 linux/arm: *binaries
 binaries windows/386 windows/amd64: *binaries
+  needs: ["check windows 1803 test failures", "check windows 1809 test failures"]
 
 #
 # Package stage
@@ -456,6 +459,7 @@ package-rpm: *packages
 .build_windows_docker_images:
   <<: *except_docs
   stage: release
+  needs: ["binaries windows/386 windows/amd64"]
   variables:
     PUSH_TO_DOCKER_HUB: "false"
     GIT_256_CHECKSUM: "bd91db55bd95eaa80687df28877e2df8c8858a0266e9c67331cfddba2735f25c"
