@@ -210,6 +210,7 @@ code_quality:
 unit test: &unit_tests
   <<: *docker
   stage: test
+  needs: ["dep check"]
   parallel: 5
   variables:
     <<: *docker_variables
@@ -302,7 +303,7 @@ git 1.7.1:
   image: centos:6
   stage: test
   # I don't think it actually does need this, but we can't do needs []
-  needs: ["dep check"]
+  needs: ["helper images"]
   variables:
     GOROOT: /usr/local/go
     GOPATH: /go
