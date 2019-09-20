@@ -243,6 +243,7 @@ docs lint:
   stage: test
   cache: {}
   dependencies: []
+  needs: ["check feature flags docs"]
   before_script:
     - unset GPG_KEY
   script:
@@ -257,6 +258,9 @@ docs lint:
     - bundle exec nanoc check internal_links
     # Check the internal anchor links
     - bundle exec nanoc check internal_anchors
+
+license_management:
+    needs: ["check feature flags docs"]
 
 .windows test:
   extends: .except_docs
