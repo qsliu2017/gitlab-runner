@@ -199,6 +199,8 @@ code_quality:
     CODECLIMATE_FORMAT: json
   cache: {}
   dependencies: []
+  # I don't think it actually does need this, but we can't do needs []
+  needs: ["dep check"]
   script:
     - ./scripts/codequality analyze -f json --dev | tee gl-code-quality-report.json
   artifacts:
@@ -265,6 +267,7 @@ license_management:
 .windows test:
   extends: .except_docs
   stage: test
+  needs: ["dep check"]
   parallel: 3
   variables:
     GOROOT: "C:\\Go"
@@ -298,6 +301,8 @@ git 1.7.1:
   <<: *except_docs
   image: centos:6
   stage: test
+  # I don't think it actually does need this, but we can't do needs []
+  needs: ["dep check"]
   variables:
     GOROOT: /usr/local/go
     GOPATH: /go
