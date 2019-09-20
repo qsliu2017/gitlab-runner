@@ -459,7 +459,7 @@ package-rpm: *packages
 .build_windows_docker_images:
   <<: *except_docs
   stage: release
-  needs: ["binaries windows/386 windows/amd64"]
+  needs: ["binaries windows/386 windows/amd64", "helper images"]
   variables:
     PUSH_TO_DOCKER_HUB: "false"
     GIT_256_CHECKSUM: "bd91db55bd95eaa80687df28877e2df8c8858a0266e9c67331cfddba2735f25c"
