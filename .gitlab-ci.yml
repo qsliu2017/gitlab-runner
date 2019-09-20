@@ -210,7 +210,7 @@ code_quality:
 unit test: &unit_tests
   <<: *docker
   stage: test
-  needs: ["dep check"]
+  needs: ["tests definitions"]
   parallel: 5
   variables:
     <<: *docker_variables
