@@ -1,6 +1,7 @@
 package common
 
 import (
+	"compress/flate"
 	"context"
 	"errors"
 	"fmt"
@@ -781,6 +782,78 @@ func TestDebugTrace(t *testing.T) {
 
 			isTraceEnabled := build.IsDebugTraceEnabled()
 			assert.Equal(t, testCase.expectedValue, isTraceEnabled)
+
+			if testCase.expectedLogOutput != "" {
+				output, err := hooks.LastEntry().String()
+				require.NoError(t, err)
+				assert.Contains(t, output, testCase.expectedLogOutput)
+			}
+		})
+	}
+}
+
+func TestCompressionLevel(t *testing.T) {
+	testCases := map[string]struct {
+		compressionLevelValue string
+		expectedValue         int
+		expectedLogOutput     string
+	}{
+		"variable not set": {
+			expectedValue: flate.DefaultCompression,
+		},
+		"variable set to no compression": {
+			compressionLevelValue: "0",
+			expectedValue:         flate.NoCompression,
+		},
+		"variable set to best speed": {
+			compressionLevelValue: "1",
+			expectedValue:         flate.BestSpeed,
+		},
+		"variable set to best compression": {
+			compressionLevelValue: "9",
+			expectedValue:         flate.BestCompression,
+		},
+		"variable set to default compression": {
+			compressionLevelValue: "-1",
+			expectedValue:         flate.DefaultCompression,
+		},
+		"variable set to huffman only": {
+			compressionLevelValue: "-2",
+			expectedValue:         flate.HuffmanOnly,
+		},
+		"variable set to non-numeric level": {
+			compressionLevelValue: "xyz",
+			expectedValue:         flate.DefaultCompression,
+		},
+		"variable set to invalid level": {
+			compressionLevelValue: "10",
+			expectedValue:         flate.DefaultCompression,
+			expectedLogOutput:     "is not set correctly, falling back to default level",
+		},
+	}
+
+	for testName, testCase := range testCases {
+		t.Run(testName, func(t *testing.T) {
+			logger, hooks := test.NewNullLogger()
+
+			build := &Build{
+				logger: NewBuildLogger(nil, logrus.NewEntry(logger)),
+				JobResponse: JobResponse{
+					Variables: JobVariables{
+						JobVariable{Key: "CACHE_COMPRESSION_LEVEL", Value: testCase.compressionLevelValue},
+						JobVariable{Key: "ARTIFACT_COMPRESSION_LEVEL", Value: testCase.compressionLevelValue},
+					},
+				},
+				Runner: &RunnerConfig{
+					RunnerSettings: RunnerSettings{},
+				},
+			}
+
+			cacheCompressionLevel := build.GetCacheCompressionLevel()
+			assert.Equal(t, testCase.expectedValue, cacheCompressionLevel)
+
+			artifactCompressionLevel := build.GetArtifactCompressionLevel()
+			assert.Equal(t, testCase.expectedValue, artifactCompressionLevel)
 
 			if testCase.expectedLogOutput != "" {
 				output, err := hooks.LastEntry().String()
