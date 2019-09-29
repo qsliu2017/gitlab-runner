@@ -106,25 +106,21 @@ func TestWriteWritingArtifactsOnSuccess(t *testing.T) {
 		"--url", gitlabURL,
 		"--token", "token",
 		"--id", "1000",
-		"--compression-level", "-1",
 		"--path", "default").Once()
 	mockWriter.On("Command", "gitlab-runner-helper", "artifacts-uploader",
 		"--url", gitlabURL,
 		"--token", "token",
 		"--id", "1000",
-		"--compression-level", "-1",
 		"--path", "on-success").Once()
 	mockWriter.On("Command", "gitlab-runner-helper", "artifacts-uploader",
 		"--url", gitlabURL,
 		"--token", "token",
 		"--id", "1000",
-		"--compression-level", "-1",
 		"--path", "always").Once()
 	mockWriter.On("Command", "gitlab-runner-helper", "artifacts-uploader",
 		"--url", gitlabURL,
 		"--token", "token",
 		"--id", "1000",
-		"--compression-level", "-1",
 		"--path", "zip-archive",
 		"--artifact-format", "zip",
 		"--artifact-type", "archive").Once()
@@ -132,7 +128,6 @@ func TestWriteWritingArtifactsOnSuccess(t *testing.T) {
 		"--url", gitlabURL,
 		"--token", "token",
 		"--id", "1000",
-		"--compression-level", "-1",
 		"--path", "gzip-junit",
 		"--artifact-format", "gzip",
 		"--artifact-type", "junit").Once()
@@ -171,19 +166,16 @@ func TestWriteWritingArtifactsOnFailure(t *testing.T) {
 		"--url", gitlabURL,
 		"--token", "token",
 		"--id", "1000",
-		"--compression-level", "-1",
 		"--path", "on-failure").Once()
 	mockWriter.On("Command", "gitlab-runner-helper", "artifacts-uploader",
 		"--url", gitlabURL,
 		"--token", "token",
 		"--id", "1000",
-		"--compression-level", "-1",
 		"--path", "always").Once()
 	mockWriter.On("Command", "gitlab-runner-helper", "artifacts-uploader",
 		"--url", gitlabURL,
 		"--token", "token",
 		"--id", "1000",
-		"--compression-level", "-1",
 		"--path", "zip-archive",
 		"--artifact-format", "zip",
 		"--artifact-type", "archive").Once()
@@ -191,7 +183,6 @@ func TestWriteWritingArtifactsOnFailure(t *testing.T) {
 		"--url", gitlabURL,
 		"--token", "token",
 		"--id", "1000",
-		"--compression-level", "-1",
 		"--path", "gzip-junit",
 		"--artifact-format", "gzip",
 		"--artifact-type", "junit").Once()
@@ -201,6 +192,64 @@ func TestWriteWritingArtifactsOnFailure(t *testing.T) {
 
 	err := shell.writeScript(mockWriter, common.BuildStageUploadOnFailureArtifacts, info)
 	require.NoError(t, err)
+}
+
+func TestWriteWritingArtifactsCompressionLevels(t *testing.T) {
+	gitlabURL := "https://example.com:3443"
+
+	testCases := []struct {
+		compressionLevel string
+		args             []interface{}
+	}{
+		{"", []interface{}{"gitlab-runner-helper", "artifacts-uploader", "--url", gitlabURL, "--token", "token", "--id", "1000", "--path", "default"}},
+		{"-1", []interface{}{"gitlab-runner-helper", "artifacts-uploader", "--url", gitlabURL, "--token", "token", "--id", "1000", "--path", "default"}},
+		{"1", []interface{}{"gitlab-runner-helper", "artifacts-uploader", "--url", gitlabURL, "--token", "token", "--id", "1000", "--compression-level", "1", "--path", "default"}},
+		{"9", []interface{}{"gitlab-runner-helper", "artifacts-uploader", "--url", gitlabURL, "--token", "token", "--id", "1000", "--compression-level", "9", "--path", "default"}},
+	}
+
+	for _, tc := range testCases {
+		build := &common.Build{
+			JobResponse: common.JobResponse{
+				ID:    1000,
+				Token: "token",
+				Artifacts: common.Artifacts{
+					common.Artifact{
+						Paths: []string{"default"},
+					},
+				},
+			},
+			Runner: &common.RunnerConfig{
+				RunnerCredentials: common.RunnerCredentials{
+					URL: gitlabURL,
+				},
+			},
+		}
+		info := common.ShellScriptInfo{
+			RunnerCommand: "gitlab-runner-helper",
+			Build:         build,
+		}
+
+		if tc.compressionLevel != "" {
+			build.JobResponse.Variables = common.JobVariables{
+				common.JobVariable{Key: "ARTIFACT_COMPRESSION_LEVEL", Value: tc.compressionLevel},
+			}
+		}
+
+		mockWriter := new(MockShellWriter)
+		defer mockWriter.AssertExpectations(t)
+		mockWriter.On("Variable", mock.Anything)
+		mockWriter.On("Cd", mock.Anything)
+		mockWriter.On("IfCmd", "gitlab-runner-helper", "--version")
+		mockWriter.On("Notice", mock.Anything)
+		mockWriter.On("Command", tc.args...).Once()
+		mockWriter.On("Else")
+		mockWriter.On("Warning", mock.Anything, mock.Anything, mock.Anything)
+		mockWriter.On("EndIf")
+
+		shell := AbstractShell{}
+		err := shell.writeScript(mockWriter, common.BuildStageUploadOnSuccessArtifacts, info)
+		require.NoError(t, err)
+	}
 }
 
 func TestGitCleanFlags(t *testing.T) {
