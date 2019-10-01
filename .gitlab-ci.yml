@@ -207,6 +207,10 @@ code_quality:
 
 unit test: &unit_tests
   <<: *docker
+  needs:
+  - helper images
+  - clone test repo
+  - tests definitions
   stage: test
   parallel: 5
   variables:
@@ -262,6 +266,10 @@ docs lint:
   extends: .except_docs
   stage: test
   parallel: 3
+  needs:
+  - helper images
+  - clone test repo
+  - tests definitions
   variables:
     GOROOT: "C:\\Go"
   before_script:
@@ -294,6 +302,10 @@ git 1.7.1:
   <<: *except_docs
   image: centos:6
   stage: test
+  needs:
+  - helper images
+  - clone test repo
+  - tests definitions
   variables:
     GOROOT: /usr/local/go
     GOPATH: /go
@@ -321,6 +333,8 @@ git 1.7.1:
 test coverage report:
   <<: *coverage_job
   coverage: /regular total:\s+\(statements\)\s+\d+.\d+\%/
+  needs:
+  - unit test
   script:
     - source ci/touch_make_dependencies
     - make parallel_test_coverage_report
@@ -332,6 +346,8 @@ test coverage report:
 
 race conditions detector:
   <<: *coverage_job
+  needs:
+  - unit test with race
   script:
   - source ci/touch_make_dependencies
   - make check_race_conditions
@@ -339,6 +355,8 @@ race conditions detector:
 test junit report:
   <<: *coverage_job
   image: $CI_IMAGE
+  needs:
+  - unit test
   script:
   - source ci/touch_make_dependencies
   - make parallel_test_junit_report
@@ -360,11 +378,15 @@ test junit report:
 check windows 1803 test failures:
   variables:
     <<: *windows1803_variables
+  needs:
+  - windows 1803 tests
   extends: .check windows test failures
 
 check windows 1809 test failures:
   variables:
     <<: *windows1809_variables
+  needs:
+    - windows 1809 tests
   extends: .check windows test failures
 
 #
@@ -397,6 +419,8 @@ binaries windows/386 windows/amd64: *binaries
 .packages: &packages
   <<: *except_docs
   stage: package
+  needs:
+  - binaries linux/386 linux/amd64 linux/arm
   before_script:
   - |
     # checking GPG signing support
