@@ -2,14 +2,22 @@ package archives
 
 import (
 	"archive/zip"
+	"bufio"
 	"compress/flate"
 	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"sync"
 
 	"github.com/sirupsen/logrus"
 )
+
+var bufioPool = sync.Pool{
+	New: func() interface{} {
+		return bufio.NewReader(nil)
+	},
+}
 
 func createZipDirectoryEntry(archive *zip.Writer, fh *zip.FileHeader) error {
 	fh.Name += "/"
@@ -49,13 +57,15 @@ func createZipFileEntry(archive *zip.Writer, fh *zip.FileHeader, level int) erro
 	if err != nil {
 		return err
 	}
+	defer file.Close()
 
-	_, err = io.Copy(fw, file)
-	file.Close()
-	if err != nil {
-		return err
-	}
-	return nil
+	br := bufioPool.Get().(*bufio.Reader)
+	defer bufioPool.Put(br)
+	br.Reset(file)
+
+	_, err = io.Copy(fw, br)
+
+	return err
 }
 
 func createZipEntry(archive *zip.Writer, fileName string, level int) error {
@@ -95,8 +105,15 @@ func CreateZipArchive(w io.Writer, fileNames []string, level int) error {
 	archive := zip.NewWriter(w)
 	defer archive.Close()
 
+	comp, err := flate.NewWriter(nil, level)
+	if err != nil {
+		return err
+	}
+
 	archive.RegisterCompressor(zip.Deflate, func(out io.Writer) (io.WriteCloser, error) {
-		return flate.NewWriter(out, level)
+		comp.Reset(out)
+
+		return comp, nil
 	})
 
 	for _, fileName := range fileNames {
