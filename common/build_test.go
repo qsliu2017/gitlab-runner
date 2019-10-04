@@ -824,6 +824,7 @@ func TestCompressionLevel(t *testing.T) {
 		"variable set to non-numeric level": {
 			compressionLevelValue: "xyz",
 			expectedValue:         flate.DefaultCompression,
+			expectedLogOutput:     "is not set correctly, falling back to default level",
 		},
 		"variable set to invalid level": {
 			compressionLevelValue: "10",

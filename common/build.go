@@ -826,11 +826,8 @@ func (b *Build) GetArtifactCompressionLevel() int {
 
 func (b *Build) getCompressionLevel(env string) int {
 	level, err := strconv.Atoi(b.GetAllVariables().Get(env))
-	if err != nil {
-		return flate.DefaultCompression
-	}
 
-	if level < flate.HuffmanOnly || level > flate.BestCompression {
+	if err != nil || level < flate.HuffmanOnly || level > flate.BestCompression {
 		b.logger.Warningln(fmt.Sprintf("%q is not set correctly, falling back to default level", env))
 		return flate.DefaultCompression
 	}

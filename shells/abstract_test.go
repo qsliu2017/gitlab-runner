@@ -196,15 +196,28 @@ func TestWriteWritingArtifactsOnFailure(t *testing.T) {
 
 func TestWriteWritingArtifactsCompressionLevels(t *testing.T) {
 	gitlabURL := "https://example.com:3443"
+	baseArgs := []interface{}{"gitlab-runner-helper", "artifacts-uploader", "--url", gitlabURL, "--token", "token", "--id", "1000"}
 
 	testCases := []struct {
 		compressionLevel string
 		args             []interface{}
 	}{
-		{"", []interface{}{"gitlab-runner-helper", "artifacts-uploader", "--url", gitlabURL, "--token", "token", "--id", "1000", "--path", "default"}},
-		{"-1", []interface{}{"gitlab-runner-helper", "artifacts-uploader", "--url", gitlabURL, "--token", "token", "--id", "1000", "--path", "default"}},
-		{"1", []interface{}{"gitlab-runner-helper", "artifacts-uploader", "--url", gitlabURL, "--token", "token", "--id", "1000", "--compression-level", "1", "--path", "default"}},
-		{"9", []interface{}{"gitlab-runner-helper", "artifacts-uploader", "--url", gitlabURL, "--token", "token", "--id", "1000", "--compression-level", "9", "--path", "default"}},
+		{
+			compressionLevel: "",
+			args:             append(baseArgs, "--path", "default"),
+		},
+		{
+			compressionLevel: "-1",
+			args:             append(baseArgs, "--path", "default"),
+		},
+		{
+			compressionLevel: "1",
+			args:             append(baseArgs, "--compression-level", "1", "--path", "default"),
+		},
+		{
+			compressionLevel: "9",
+			args:             append(baseArgs, "--compression-level", "9", "--path", "default"),
+		},
 	}
 
 	for _, tc := range testCases {
@@ -236,7 +249,6 @@ func TestWriteWritingArtifactsCompressionLevels(t *testing.T) {
 		}
 
 		mockWriter := new(MockShellWriter)
-		defer mockWriter.AssertExpectations(t)
 		mockWriter.On("Variable", mock.Anything)
 		mockWriter.On("Cd", mock.Anything)
 		mockWriter.On("IfCmd", "gitlab-runner-helper", "--version")
@@ -249,6 +261,7 @@ func TestWriteWritingArtifactsCompressionLevels(t *testing.T) {
 		shell := AbstractShell{}
 		err := shell.writeScript(mockWriter, common.BuildStageUploadOnSuccessArtifacts, info)
 		require.NoError(t, err)
+		mockWriter.AssertExpectations(t)
 	}
 }
 
