@@ -284,19 +284,26 @@ func (b *Build) executeScript(ctx context.Context, executor Executor) error {
 		err = b.executeStage(ctx, BuildStageArchiveCache, executor)
 	}
 
-	uploadError := b.executeUploadArtifacts(ctx, err, executor)
+	artifactUploadError := b.executeUploadArtifacts(ctx, err, executor)
 
+	// end metrics tracking
 	endTime := time.Now()
+
 	// query and upload runner prometheus metrics as artifacts
-	b.queryAndUploadMetrics(ctx, executor, startTime, endTime)
+	metricsUploadError := b.queryUploadMetrics(ctx, executor, startTime, endTime)
 
 	// Use job's error as most important
 	if err != nil {
 		return err
 	}
 
+	// metrics upload is second most important
+	if metricsUploadError != nil {
+		return metricsUploadError
+	}
+
 	// Otherwise, use uploadError
-	return uploadError
+	return artifactUploadError
 }
 
 func (b *Build) attemptExecuteStage(ctx context.Context, buildStage BuildStage, executor Executor, attempts int) (err error) {
@@ -311,7 +318,12 @@ func (b *Build) attemptExecuteStage(ctx context.Context, buildStage BuildStage, 
 	return
 }
 
-func (b *Build) queryAndUploadMetrics(ctx context.Context, executor Executor, startTime time.Time, endTime time.Time) error {
+func (b *Build) queryUploadMetrics(ctx context.Context, executor Executor, startTime time.Time, endTime time.Time) error {
+
+	// make sure this feature is enabled
+	if !b.JobResponse.Features.QueryMetrics {
+		return nil
+	}
 
 	if b.MetricsQueryer == nil {
 		b.Log().Info("this executor does not support metrics querying (yet)")

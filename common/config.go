@@ -329,15 +329,15 @@ type SessionServer struct {
 	SessionTimeout   int    `toml:"session_timeout,omitempty" json:"session_timeout" description:"How long a terminal session can be active after a build completes, in seconds"`
 }
 
-type QueryMetricsConfig struct {
-	QueryInterval string   `toml:"collection_interval,omitempty" json:"collection_interval" description:"Collection step"`
-	MetricQueries []string `toml:"collect_metrics" json:"collect_metrics" description:"A list of metrics to collect in metric_type:job_name format, such as node_exporter:node"`
+type MetricsQueryerConfig struct {
+	QueryInterval string   `toml:"query_interval,omitempty" json:"query_interval" description:"Query interval"`
+	MetricQueries []string `toml:"metric_queries" json:"metric_queries" description:"A list of metrics to query"`
 }
 
 type Config struct {
-	ListenAddress string              `toml:"listen_address,omitempty" json:"listen_address"`
-	SessionServer SessionServer       `toml:"session_server,omitempty" json:"session_server"`
-	QueryMetrics  *QueryMetricsConfig `toml:"query_metrics,omitempty" json:"query_metrics"`
+	ListenAddress  string                `toml:"listen_address,omitempty" json:"listen_address"`
+	SessionServer  SessionServer         `toml:"session_server,omitempty" json:"session_server"`
+	MetricsQueryer *MetricsQueryerConfig `toml:"metrics_queryer,omitempty" json:"metrics_queryer"`
 
 	Concurrent    int             `toml:"concurrent" json:"concurrent"`
 	CheckInterval int             `toml:"check_interval" json:"check_interval" description:"Define active checking interval of jobs"`

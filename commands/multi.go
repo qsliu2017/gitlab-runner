@@ -211,9 +211,13 @@ func (mr *RunCommand) processRunner(id int, runner *common.RunnerConfig, runners
 	metricsLabelName := provider.GetMetricsLabelName()
 	// set the build's metric queryer if the provider has a metric label name set for prometheus
 	if metricsLabelName != "" {
-		build.MetricsQueryer, err = network.NewPrometheusQueryer(*mr.config.QueryMetrics, metricsLabelName, mr.network)
-		if err != nil {
-			mr.log().WithError(err).Fatal("Failed to create metrics queryer")
+		// this provider supports metrics querying, check for config
+		if mr.config.MetricsQueryer != nil {
+			// create the metrics queryer from config
+			build.MetricsQueryer, err = network.NewPrometheusQueryer(*mr.config.MetricsQueryer, metricsLabelName, mr.network)
+			if err != nil {
+				mr.log().WithError(err).Fatal("Failed to create metrics queryer")
+			}
 		}
 	}
 

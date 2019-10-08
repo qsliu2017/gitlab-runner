@@ -283,6 +283,7 @@ type Dependencies []Dependency
 
 type GitlabFeatures struct {
 	TraceSections bool `json:"trace_sections"`
+	QueryMetrics  bool `json:"query_metrics"`
 }
 
 type JobResponse struct {

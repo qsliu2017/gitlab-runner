@@ -46,8 +46,20 @@ func (mq *PrometheusQueryer) Query(
 	metrics := make(map[string][]model.SamplePair)
 	// use config file to pull metrics from prometheus range queries
 	for _, metricQuery := range mq.metricQueries {
+		// break up query into name:query
+		components := strings.Split(metricQuery, ":")
+		if len(components) != 2 {
+			return nil, fmt.Errorf("prometheus_queryer: %s not in name:query format", metricQuery)
+		}
+
+		name := components[0]
+		query := components[1]
 		selector := fmt.Sprintf("%s=\"%s\"", mq.labelName, labelValue)
-		query := strings.ReplaceAll(metricQuery, "{selector}", selector)
+		interval := fmt.Sprintf("%ds", mq.queryInterval.Seconds)
+		query = strings.ReplaceAll(query, "{selector}", selector)
+		query = strings.ReplaceAll(query, "{interval}", interval)
+
+		// execute query over range
 		result, err := prometheusAPI.QueryRange(ctx, query, queryRange)
 		if err != nil {
 			return nil, err
@@ -59,7 +71,7 @@ func (mq *PrometheusQueryer) Query(
 		}
 
 		// save first result set values at metric
-		metrics[query] = (result.(model.Matrix)[0]).Values
+		metrics[name] = (result.(model.Matrix)[0]).Values
 	}
 
 	return metrics, nil
@@ -83,17 +95,17 @@ func (mq *PrometheusQueryer) Upload(
 }
 
 func NewPrometheusQueryer(
-	queryMetrics common.QueryMetricsConfig,
+	metricQueryerConfig common.MetricsQueryerConfig,
 	labelName string,
 	network common.Network,
 ) (*PrometheusQueryer, error) {
-	queryIntervalDuration, err := time.ParseDuration(queryMetrics.QueryInterval)
+	queryIntervalDuration, err := time.ParseDuration(metricQueryerConfig.QueryInterval)
 	if err != nil {
 		return nil, fmt.Errorf("Unable to parse query interval from config")
 	}
 
 	return &PrometheusQueryer{
-		metricQueries: queryMetrics.MetricQueries,
+		metricQueries: metricQueryerConfig.MetricQueries,
 		queryInterval: queryIntervalDuration,
 		labelName:     labelName,
 		network:       network,
