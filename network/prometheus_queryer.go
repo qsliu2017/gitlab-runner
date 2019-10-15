@@ -55,7 +55,7 @@ func (mq *PrometheusQueryer) Query(
 		name := components[0]
 		query := components[1]
 		selector := fmt.Sprintf("%s=\"%s\"", mq.labelName, labelValue)
-		interval := fmt.Sprintf("%ds", mq.queryInterval.Seconds)
+		interval := fmt.Sprintf("%fs", mq.queryInterval.Seconds())
 		query = strings.Replace(query, "{selector}", selector, -1)
 		query = strings.Replace(query, "{interval}", interval, -1)
 

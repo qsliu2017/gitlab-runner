@@ -27,14 +27,31 @@ func generateReaderMatcher(metricsJson string) interface{} {
 	})
 }
 
-func TestQueryAndUploadMetrics(t *testing.T) {
+func TestQueryAndUploadMetricsParseError(t *testing.T) {
 	mockPrometheusApi := new(MockPrometheusApi)
 	mockNetwork := new(common.MockNetwork)
 	ctx, _ := context.WithCancel(context.Background())
 
-	config := common.QueryMetricsConfig{
+	config := common.MetricsQueryerConfig{
 		QueryInterval: "10s",
-		MetricQueries: []string{"metric1{{selector}}", "metric2{{selector}}"},
+		MetricQueries: []string{"name1=metric1{{selector}}", "name2=metric2{{selector}}"},
+	}
+
+	m, err := NewPrometheusQueryer(config, "instance", mockNetwork)
+	require.NoError(t, err)
+
+	_, err = m.Query(ctx, mockPrometheusApi, "test", time.Now(), time.Now())
+	require.Error(t, err)
+}
+
+func TestQueryAndUploadMetricsWorks(t *testing.T) {
+	mockPrometheusApi := new(MockPrometheusApi)
+	mockNetwork := new(common.MockNetwork)
+	ctx, _ := context.WithCancel(context.Background())
+
+	config := common.MetricsQueryerConfig{
+		QueryInterval: "10s",
+		MetricQueries: []string{"name1:metric1{{selector}}", "name2:metric2{{selector}}"},
 	}
 
 	m, err := NewPrometheusQueryer(config, "instance", mockNetwork)
