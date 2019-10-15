@@ -60,7 +60,7 @@ func (mq *PrometheusQueryer) Query(
 		query = strings.Replace(query, "{interval}", interval, -1)
 
 		// execute query over range
-		result, err := prometheusAPI.QueryRange(ctx, query, queryRange)
+		result, _, err := prometheusAPI.QueryRange(ctx, query, queryRange)
 		if err != nil {
 			return nil, err
 		}
