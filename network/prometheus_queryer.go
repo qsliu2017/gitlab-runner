@@ -56,8 +56,8 @@ func (mq *PrometheusQueryer) Query(
 		query := components[1]
 		selector := fmt.Sprintf("%s=\"%s\"", mq.labelName, labelValue)
 		interval := fmt.Sprintf("%ds", mq.queryInterval.Seconds)
-		query = strings.ReplaceAll(query, "{selector}", selector)
-		query = strings.ReplaceAll(query, "{interval}", interval)
+		query = strings.Replace(query, "{selector}", selector, -1)
+		query = strings.Replace(query, "{interval}", interval, -1)
 
 		// execute query over range
 		result, err := prometheusAPI.QueryRange(ctx, query, queryRange)
