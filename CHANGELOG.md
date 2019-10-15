@@ -1,3 +1,72 @@
+v12.4.0-rc1 (2019-10-08)
+
+- Fix err logging for runner limit !1403
+- Add the note about incompatibility of session_server with helm chart runner !1575
+- Fix prepare_exec typo in docs !1576
+- Docs edits to clarify feature flags motivations and usage in Runner !1568
+- Change log levels for common errors !1578
+- Extend custom executor config !1583
+- Fix JSON inside of docs !1587
+- Update link for Helm chart issue tracker !1588
+- Add pipeline ID to docker labels !1592
+- Fix typo in helpers/path/windows_path !1594
+- Fix broken check for Git LFS that breaks lfs pulling !1599
+- Update advanced-configuration.md !1597
+- Use certutil to create certificate chain for Git !1581
+- Add Go Report Card badge to the README file !1601
+- Add pipeline link !1608
+- Rename mentions of OSX to MacOS !1440
+- Enable pinentry mode to loopback for GPG signing !1614
+- Update various runner doc links !1585
+- Add note about IAM role usage for s3 cache configuration !1598
+- Bump used Go version to 1.10.8 !1617
+- Update gopkg.in/yaml.v2 !1619
+- Update prometheus libraries !1620
+- Bump github.com/json-iterator/go to 1.1.7 !1621
+- Update k8s client go to 11.0 !1615
+- Rename log to trace in runner docs !1616
+- Change Review priority label meaning !1600
+- Add timeout when waiting for the build to finish !1609
+
+v12.3.0 (2019-09-20)
+
+- Change log levels for common errors !1578
+- Update a redirected link !1520
+- Removal of conditions which are always evaluated either to true or false !1517
+- Add initial docs for best practice !1509
+- Update VirtualBox executor docs !1527
+- Document configuration template file feature !1522
+- Rename landing page for consistency !1528
+- Edit new config template file section !1529
+- Update windows dev environment to git 2.22 !1530
+- Update PowerShell ErrorActionPreference documentation !1535
+- Remove debian buster from package list !1536
+- Update tls-self-signed.md !1537
+- Improve windows helper images build !1519
+- show which service exactly is invalid !1531
+- Change docs markdown linter from mdl to markdownlint !1540
+- Replace bastion with Runner Manager !1547
+- Add entry to FAQ, restructure also !1539
+- Change docs review and cleanup jobs to same CI stage !1543
+- docker.md: Correct Image Sizes !1542
+- Add note on shell-based Docker image requirement !1459
+- Fixed powershell commands for Windows Runner !1544
+- Remove the scripting  for release checklist issue creation !1556
+- Use new location for helm charts repo !1553
+- Make Notes look consistent !1555
+- Change markdownlint wildcard format !1554
+- Edit Docker images section !1550
+- Update capitalization in runner docs !1559
+- Docs/update ubuntu dev docs !1557
+- Use standard commands for directory creation to make it powershell core compatible !1563
+- Fix exiting with zero exit code when cmdlets fail !1558
+- Enable support for long paths !1524
+- Prevent dollar signs in shell codeblocks !1574
+- Clarify feature flag usage instructions !1566
+- Expose variable containing the 'short token' value !1571
+- Update documentation about OffPeakTimezone !1567
+- Set default PATH for helper image !1573
+
 v12.2.0 (2019-08-22)
 
 - Update docs executor titles !1454

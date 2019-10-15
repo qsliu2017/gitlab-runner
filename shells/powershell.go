@@ -69,7 +69,7 @@ func (b *PsWriter) Unindent() {
 }
 
 func (b *PsWriter) checkErrorLevel() {
-	b.Line("if(!$?) { Exit $LASTEXITCODE }")
+	b.Line("if(!$?) { Exit &{if($LASTEXITCODE) {$LASTEXITCODE} else {1}} }")
 	b.Line("")
 }
 
@@ -102,7 +102,7 @@ func (b *PsWriter) EnvVariableKey(name string) string {
 func (b *PsWriter) Variable(variable common.JobVariable) {
 	if variable.File {
 		variableFile := b.TmpFile(variable.Key)
-		b.Line(fmt.Sprintf("md %s -Force | out-null", psQuote(helpers.ToBackslash(b.TemporaryPath))))
+		b.Line(fmt.Sprintf("New-Item -ItemType directory -Force -Path %s | out-null", psQuote(helpers.ToBackslash(b.TemporaryPath))))
 		b.Line(fmt.Sprintf("Set-Content %s -Value %s -Encoding UTF8 -Force", psQuote(variableFile), psQuoteVariable(variable.Value)))
 		b.Line("$" + variable.Key + "=" + psQuote(variableFile))
 	} else {
@@ -135,7 +135,7 @@ func (b *PsWriter) ifInTryCatch(cmd string) {
 	b.Line("Try {")
 	b.Indent()
 	b.Line(cmd)
-	b.Line("if(!$?) { throw $LASTEXITCODE }")
+	b.Line("if(!$?) { throw &{if($LASTEXITCODE) {$LASTEXITCODE} else {1}} }")
 	b.Unindent()
 	b.Line("} Catch {")
 	b.Indent()
@@ -163,7 +163,7 @@ func (b *PsWriter) Cd(path string) {
 }
 
 func (b *PsWriter) MkDir(path string) {
-	b.Line(fmt.Sprintf("md %s -Force | out-null", psQuote(helpers.ToBackslash(path))))
+	b.Line(fmt.Sprintf("New-Item -ItemType directory -Force -Path %s | out-null", psQuote(helpers.ToBackslash(path))))
 }
 
 func (b *PsWriter) MkTmpDir(name string) string {

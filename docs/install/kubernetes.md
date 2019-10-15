@@ -3,7 +3,7 @@
 NOTE: **Note:**
 This chart has been tested on Google Kubernetes Engine and Azure Container Service.
 Other Kubernetes installations may work as well, if not please
-[open an issue](https://gitlab.com/gitlab-org/gitlab-runner/issues).
+[open an issue](https://gitlab.com/gitlab-org/charts/gitlab-runner/issues).
 
 The official way of deploying a GitLab Runner instance into your
 Kubernetes cluster is by using the `gitlab-runner` Helm chart.
@@ -19,12 +19,12 @@ This chart configures the Runner to:
 - Your GitLab Server's API is reachable from the cluster.
 - Kubernetes 1.4+ with Beta APIs enabled.
 - The `kubectl` CLI installed locally and authenticated for the cluster.
-- The [Helm client](https://github.com/kubernetes/helm/blob/master/docs/quickstart.md) installed locally on your machine.
+- The [Helm client](https://github.com/helm/helm/blob/master/docs/quickstart.md) installed locally on your machine.
 
 ## Configuring GitLab Runner using the Helm Chart
 
 Create a `values.yaml` file for your GitLab Runner configuration. See
-[Helm docs](https://github.com/kubernetes/helm/blob/master/docs/chart_template_guide/values_files.md)
+[Helm docs](https://github.com/helm/helm/blob/master/docs/chart_template_guide/values_files.md)
 for information on how your values file will override the defaults.
 
 The default configuration can always be found in the

@@ -72,10 +72,10 @@ are required fields.
 The user must set up the environment, including the following that must
 be present in the `PATH`:
 
-- [git](https://git-scm.com/download): Used to clone the repositories.
-- [git-lfs](https://git-lfs.github.com/): Pulls any LFS objects that
+- [Git](https://git-scm.com/download): Used to clone the repositories.
+- [Git LFS](https://git-lfs.github.com/): Pulls any LFS objects that
   might be in the repository.
-- [gitlab-runner](https://docs.gitlab.com/runner/install/): Used to
+- [GitLab Runner](https://docs.gitlab.com/runner/install/): Used to
   download/update artifacts and cache.
 
 ## Stages
@@ -127,9 +127,14 @@ For example:
 
 cat << EOS
 {
-  "builds_dir": "/builds/${CUSTOM_ENV_CI_CONCURRENT_PROJECT_ID}/${CUSTOM_ENV_CI_PROJECT_PATH_SLUG}"
-  "cache_dir": "/cache/${CUSTOM_ENV_CI_CONCURRENT_PROJECT_ID}/${CUSTOM_ENV_CI_PROJECT_PATH_SLUG}"
-  "builds_dir_is_shared": true
+  "builds_dir": "/builds/${CUSTOM_ENV_CI_CONCURRENT_PROJECT_ID}/${CUSTOM_ENV_CI_PROJECT_PATH_SLUG}",
+  "cache_dir": "/cache/${CUSTOM_ENV_CI_CONCURRENT_PROJECT_ID}/${CUSTOM_ENV_CI_PROJECT_PATH_SLUG}",
+  "builds_dir_is_shared": true,
+  "hostname": "custom-hostname",
+  "driver": {
+    "name": "test driver",
+    "version": "v0.0.1"
+  }
 }
 EOS
 ```
@@ -143,6 +148,9 @@ times.
 | `builds_dir` | string | ✗ | ✗ | The base directory where the working directory of the job will be created. |
 | `cache_dir` | string | ✗ | ✗ | The base directory where local cache will be stored. |
 | `builds_dir_is_shared` | bool | ✗ | n/a | Defines whether the environment is shared between concurrent job or not. |
+| `hostname` | string | ✗ | ✓ | The hostname to associate with job's "metadata" stored by Runner. If undefined, the hostname is not set. |
+| `driver.name` | string | ✗ | ✓ | The user-defined name for the driver. Printed with the `Using custom executor...` line. If undefined, no information about driver is printed. |
+| `driver.version` | string | ✗ | ✓ | The user-defined version for the drive. Printed with the `Using custom executor...` line. If undefined, only the name information is printed. |
 
 The `STDERR` of the executable will print to the job log.
 
@@ -199,7 +207,7 @@ are defined, these will be added in order to the executable defined in
 ...
 [runners.custom]
   ...
-  preapre_exec = "/path/to/bin"
+  prepare_exec = "/path/to/bin"
   prepare_args = [ "Arg1", "Arg2" ]
   ...
 ```
@@ -284,7 +292,7 @@ what the main goal of that script is.
 | Script Name | Script Contents |
 |:-----------:|:---------------:|
 | `prepare_script` | Simple debug info on which machine the Job is running on. |
-| `get_sources`    | Prepares the Git config, and clone/fetch the repository. We suggest you keep this as is since you get all of the benefits of git strategies that GitLab provides. |
+| `get_sources`    | Prepares the Git config, and clone/fetch the repository. We suggest you keep this as is since you get all of the benefits of Git strategies that GitLab provides. |
 | `restore_cache` | Extract the cache if any are defined. This expects the `gitlab-runner` binary is available in `$PATH`. |
 | `download_artifacts` | Download artifacts, if any are defined. This expects `gitlab-runner` binary is available in `$PATH`. |
 | `build_script` | This is a combination of [`before_script`](https://docs.gitlab.com/ee/ci/yaml/#before_script-and-after_script) and [script](https://docs.gitlab.com/ee/ci/yaml/#script). |
@@ -394,7 +402,7 @@ Below is a table of what stages are retried, and by how many times.
 
 | Stage Name           | Number of attempts                                          | Duration to wait between each retry |
 |----------------------|-------------------------------------------------------------|-------------------------------------|
-| `preapre_exec`       | 3                                                           | 3 seconds                           |
+| `prepare_exec`       | 3                                                           | 3 seconds                           |
 | `get_sources`        | Value of `GET_SOURCES_ATTEMPTS` variable. (Default 1)       | 0 seconds                           |
 | `restore_cache`      | Value of `RESTORE_CACHE_ATTEMPTS` variable. (Default 1)     | 0 seconds                           |
 | `download_artifacts` | Value of `ARTIFACT_DOWNLOAD_ATTEMPTS` variable. (Default 1) | 0 seconds                           |

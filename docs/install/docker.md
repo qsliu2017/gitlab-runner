@@ -45,7 +45,7 @@ command stays as it is described in the [register documentation](../register/ind
 The only difference is that the `gitlab-runner` command is executed inside of a
 Docker container.
 
-## Docker image installation and configuration
+## Docker image installation
 
 1. Install Docker first:
 
@@ -91,9 +91,18 @@ Docker container.
 Make sure that you read the [FAQ](../faq/README.md) section which describes
 some of the most common problems with GitLab Runner.
 
-## Update
+## Update configuration
 
-Pull the latest version:
+If you change the configuration in `config.toml`, you might need to restart the runner to apply the change.
+Make sure to restart the whole container instead of using `gitlab-runner restart`:
+
+```bash
+docker restart gitlab-runner
+```
+
+## Upgrade version
+
+Pull the latest version (or a specific tag):
 
 ```bash
 docker pull gitlab/gitlab-runner:latest
@@ -148,12 +157,12 @@ where `gitlab-runner` is the name of the container, set with `--name gitlab-runn
 the first command.
 
 You may find more information about handling container logs at the [Docker documentation
-page](https://docs.docker.com/engine/reference/commandline/logs).
+page](https://docs.docker.com/engine/reference/commandline/logs/).
 
 ## Installing trusted SSL server certificates
 
 If your GitLab CI server is using self-signed SSL certificates then you should
-make sure the GitLab CI server certificate is trusted by the gitlab-runner
+make sure the GitLab CI server certificate is trusted by the GitLab Runner
 container for them to be able to talk to each other.
 
 The `gitlab/gitlab-runner` image is configured to look for the trusted SSL
@@ -162,17 +171,21 @@ certificates at `/etc/gitlab-runner/certs/ca.crt`, this can however be changed u
 
 Copy the `ca.crt` file into the `certs` directory on the data volume (or container).
 The `ca.crt` file should contain the root certificates of all the servers you
-want gitlab-runner to trust. The gitlab-runner container will
+want GitLab Runner to trust. The GitLab Runner container will
 import the `ca.crt` file on startup so if your container is already running you
 may need to restart it for the changes to take effect.
 
-## Docker Images
+## Docker images
 
-The original `gitlab/gitlab-runner:latest` is based on Ubuntu, see [gitlab-org/gitlab-runner](https://gitlab.com/gitlab-org/gitlab-runner/tree/master/dockerfiles) source for possible build instructions for both Ubuntu and Alpine images.
+The following Docker images are available:
 
-You can alternatively use [Alpine Linux](https://www.alpinelinux.org/)-based image called `gitlab/gitlab-runner:alpine` with much a smaller footprint (~160/350 MB Ubuntu vs ~45/130 MB Alpine compressed/decompressed):
+- `gitlab/gitlab-runner:latest` based on Ubuntu.
+- `gitlab/gitlab-runner:alpine` based on Alpine with much a smaller footprint
+  (~160/350 MB Ubuntu vs ~45/130 MB Alpine compressed/decompressed).
 
-**Alpine Linux image is designed to use only Docker as the method of spawning runners.**
+TIP: **Tip:**
+See [gitlab-org/gitlab-runner](https://gitlab.com/gitlab-org/gitlab-runner/tree/master/dockerfiles)
+source for possible build instructions for both Ubuntu and Alpine images.
 
 ## SELinux
 

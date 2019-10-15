@@ -58,7 +58,7 @@ This type of executor allows you to use an already created virtual machine, whic
 is cloned and used to run your build. We offer two full system virtualization
 options: **VirtualBox** and **Parallels**. They can prove useful if you want to run
 your builds on different operating systems, since it allows the creation of virtual
-machines on Windows, Linux, OSX or FreeBSD, then GitLab Runner connects to the
+machines on Windows, Linux, macOS or FreeBSD, then GitLab Runner connects to the
 virtual machine and runs the build on it. Its usage can also be useful for reducing
 infrastructure costs.
 
@@ -106,11 +106,10 @@ Supported features by different executors:
 |:---------------------------------------------|:----:|:-------:|:----------:|:---------:|:------:|:----------:|:------:|
 | Secure Variables                             | ✓    | ✓       | ✓          | ✓         | ✓      | ✓          | ✓      |
 | GitLab Runner Exec command                   | ✗    | ✓       | ✗          | ✗         | ✓      | ✓          | ✓      |
-| gitlab-ci.yml: image                         | ✗    | ✗       | ✗          | ✗         | ✓      | ✓          | ✗      |
-| gitlab-ci.yml: services                      | ✗    | ✗       | ✗          | ✗         | ✓      | ✓          | ✗      |
-| gitlab-ci.yml: cache                         | ✓    | ✓       | ✓          | ✓         | ✓      | ✓          | ✓      |
-| gitlab-ci.yml: artifacts                     | ✓    | ✓       | ✓          | ✓         | ✓      | ✓          | ✓      |
-| Absolute paths: caching, artifacts           | ✗    | ✗       | ✗          | ✗         | ✗      | ✓          | ✗      |
+| `gitlab-ci.yml`: image                       | ✗    | ✗       | ✗          | ✗         | ✓      | ✓          | ✗      |
+| `gitlab-ci.yml`: services                    | ✗    | ✗       | ✗          | ✗         | ✓      | ✓          | ✗      |
+| `gitlab-ci.yml`: cache                       | ✓    | ✓       | ✓          | ✓         | ✓      | ✓          | ✓      |
+| `gitlab-ci.yml`: artifacts                   | ✓    | ✓       | ✓          | ✓         | ✓      | ✓          | ✓      |
 | Passing artifacts between stages             | ✓    | ✓       | ✓          | ✓         | ✓      | ✓          | ✓      |
 | Use GitLab Container Registry private images | n/a  | n/a     | n/a        | n/a       | ✓      | ✓          | n/a    |
 | Interactive Web terminal                     | ✗    | ✓ (bash)| ✗          | ✗         | ✓      | ✓          | ✗      |
@@ -121,7 +120,7 @@ Supported systems by different shells:
 |:-------:|:-----------:|:-------------:|:----------:|
 | Windows | ✗ (4)       | ✓ (2)         | ✓ (3)      |
 | Linux   | ✓ (1)       | ✗             | ✗          |
-| OSX     | ✓ (1)       | ✗             | ✗          |
+| macOS     | ✓ (1)       | ✗             | ✗          |
 | FreeBSD | ✓ (1)       | ✗             | ✗          |
 
 1. Default shell.
@@ -139,5 +138,5 @@ Supported systems for interactive web terminals by different shells:
 |:-------:|:-----------:|:-------------:|:----------:|
 | Windows | ✗           | ✗             | ✗          |
 | Linux   | ✓           | ✗             | ✗          |
-| OSX     | ✓           | ✗             | ✗          |
+| macOS     | ✓           | ✗             | ✗          |
 | FreeBSD | ✓           | ✗             | ✗          |

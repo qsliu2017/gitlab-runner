@@ -1,6 +1,6 @@
 # VirtualBox
 
->**Note:**
+NOTE: **Note:**
 The Parallels executor works the same as the VirtualBox executor. The
 caching feature is currently not supported.
 
@@ -36,7 +36,7 @@ directories](https://docs.gitlab.com/ce/ci/yaml/README.html#custom-build-directo
    add VirtualBox installation folder (e.g. `C:\Program Files\Oracle\VirtualBox`)
    to `PATH` environment variable
 1. Import or create a new virtual machine in VirtualBox
-1. Config Network Adapter 1 as "NAT" (that's currently the only way the gitlab-runner is able to connect over ssh into the guest)
+1. Config Network Adapter 1 as "NAT" (that's currently the only way the GitLab Runner is able to connect over ssh into the guest)
 1. (optional) Config another Network Adapter as "Bridged networking" to get access to the internet from the guest (for example)
 1. Log into the new virtual machine
 1. If Windows VM, see [Checklist for Windows VMs](#checklist-for-windows-vms)
@@ -76,11 +76,11 @@ When a new build is started:
 ## Checklist for Windows VMs
 
 - Install [Cygwin]
-- Install sshd and git from Cygwin (do not use *Git For Windows*, you will get lots of path issues!)
+- Install sshd and Git from Cygwin (do not use *Git For Windows*, you will get lots of path issues!)
 - Install Git LFS
-- Configure sshd and set it up as a service (see [Cygwin wiki](http://cygwin.wikia.com/wiki/Sshd))
+- Configure sshd and set it up as a service (see [Cygwin wiki](https://cygwin.fandom.com/wiki/Sshd))
 - Create a rule for the Windows Firewall to allow incoming TCP traffic on port 22
 - Add the GitLab server(s) to `~/.ssh/known_hosts`
-- To convert paths between cygwin and windows, use the `cygpath` utility which is documented [here](http://cygwin.wikia.com/wiki/Cygpath_utility)
+- To convert paths between cygwin and windows, use the `cygpath` utility which is documented [here](https://cygwin.fandom.com/wiki/Cygpath_utility)
 
 [cygwin]: https://cygwin.com/
