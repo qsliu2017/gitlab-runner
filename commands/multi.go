@@ -215,18 +215,8 @@ func (mr *RunCommand) processRunner(id int, runner *common.RunnerConfig, runners
 	}
 	build.Session = buildSession
 
-	metricsLabelName := provider.GetMetricsLabelName()
-	// set the build's metric queryer if the provider has a metric label name set for prometheus
-	if metricsLabelName != "" {
-		// this provider supports metrics querying, check for config
-		if mr.config.MetricsQueryer != nil {
-			// create the metrics queryer from config
-			build.MetricsQueryer, err = network.NewPrometheusQueryer(*mr.config.MetricsQueryer, metricsLabelName, mr.network)
-			if err != nil {
-				mr.log().WithError(err).Fatal("Failed to create metrics queryer")
-			}
-		}
-	}
+	// setup build metrics queryer
+	mr.createMetricsQueryer(provider, build)
 
 	// Add build to list of builds to assign numbers
 	mr.buildsHelper.addBuild(build)
@@ -238,6 +228,23 @@ func (mr *RunCommand) processRunner(id int, runner *common.RunnerConfig, runners
 
 	// Process a build
 	return build.Run(mr.config, trace)
+}
+
+func (mr *RunCommand) createMetricsQueryer(provider common.ExecutorProvider, build *common.Build) {
+	metricsLabelName := provider.GetMetricsLabelName()
+	// set the build's metric queryer if the provider has a metric label name set for prometheus
+	if metricsLabelName != "" {
+		// this provider supports metrics querying, check for config
+		if mr.config.MetricsQueryer != nil {
+			// create the metrics queryer from config
+			metricsQueryer, err := network.NewPrometheusQueryer(*mr.config.MetricsQueryer, metricsLabelName, mr.network)
+			if err != nil {
+				mr.log().WithError(err).Fatal("Failed to create metrics queryer")
+			} else {
+				build.MetricsQueryer = metricsQueryer
+			}
+		}
+	}
 }
 
 func (mr *RunCommand) createSession(provider common.ExecutorProvider) (*session.Session, *common.SessionInfo, error) {
