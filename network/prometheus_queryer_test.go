@@ -18,19 +18,19 @@ var (
 	metricsJobCredentials = &common.JobCredentials{ID: -1}
 )
 
-func generateReaderMatcher(metricsJson string) interface{} {
+func generateReaderMatcher(metricsJSON string) interface{} {
 	return mock.MatchedBy(func(reader *io.SectionReader) bool {
 		buf := new(bytes.Buffer)
 		buf.ReadFrom(reader)
 		s := buf.String()
-		return s == metricsJson
+		return s == metricsJSON
 	})
 }
 
 func TestQueryAndUploadMetricsParseError(t *testing.T) {
-	mockPrometheusApi := new(MockPrometheusApi)
+	mockPrometheusAPI := new(MockPrometheusAPI)
 	mockNetwork := new(common.MockNetwork)
-	ctx, _ := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(context.Background())
 
 	config := common.MetricsQueryerConfig{
 		QueryInterval: "10s",
@@ -40,14 +40,15 @@ func TestQueryAndUploadMetricsParseError(t *testing.T) {
 	m, err := NewPrometheusQueryer(config, "instance", mockNetwork)
 	require.NoError(t, err)
 
-	_, err = m.Query(ctx, mockPrometheusApi, "test", time.Now(), time.Now())
+	_, err = m.Query(ctx, mockPrometheusAPI, "test", time.Now(), time.Now())
 	require.Error(t, err)
+	cancel()
 }
 
 func TestQueryAndUploadMetricsWorks(t *testing.T) {
-	mockPrometheusApi := new(MockPrometheusApi)
+	mockPrometheusAPI := new(MockPrometheusAPI)
 	mockNetwork := new(common.MockNetwork)
-	ctx, _ := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(context.Background())
 
 	config := common.MetricsQueryerConfig{
 		QueryInterval: "10s",
@@ -57,7 +58,7 @@ func TestQueryAndUploadMetricsWorks(t *testing.T) {
 	m, err := NewPrometheusQueryer(config, "instance", mockNetwork)
 	require.NoError(t, err)
 
-	metrics, err := m.Query(ctx, mockPrometheusApi, "test", time.Now(), time.Now())
+	metrics, err := m.Query(ctx, mockPrometheusAPI, "test", time.Now(), time.Now())
 	require.NoError(t, err)
 
 	// make sure same length of metrics returned
@@ -66,9 +67,11 @@ func TestQueryAndUploadMetricsWorks(t *testing.T) {
 	metricsBytes, err := json.Marshal(metrics)
 	require.NoError(t, err)
 
-	metricsJson := string(metricsBytes)
-	readerMatcher := generateReaderMatcher(metricsJson)
+	metricsJSON := string(metricsBytes)
+	readerMatcher := generateReaderMatcher(metricsJSON)
 	mockNetwork.On("UploadRawArtifacts", *metricsJobCredentials, readerMatcher, metricsArtifactOptions).
 		Return(common.UploadSucceeded).Once()
+
+	cancel()
 
 }

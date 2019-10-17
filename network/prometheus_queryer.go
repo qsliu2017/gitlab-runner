@@ -84,8 +84,7 @@ func (mq *PrometheusQueryer) Upload(
 	// convert metrics sample pairs to JSON
 	output, err := json.Marshal(metrics)
 	if err != nil {
-		fmt.Errorf("Failed to marshall metrics into json for artifact upload")
-		return err
+		return fmt.Errorf("Failed to marshall metrics into json for artifact upload: %v", err)
 	}
 
 	// upload JSON to GitLab as monitor.log artifact
@@ -101,7 +100,7 @@ func NewPrometheusQueryer(
 ) (*PrometheusQueryer, error) {
 	queryIntervalDuration, err := time.ParseDuration(metricQueryerConfig.QueryInterval)
 	if err != nil {
-		return nil, fmt.Errorf("Unable to parse query interval from config")
+		return nil, fmt.Errorf("Unable to parse query interval from config: %v", err)
 	}
 
 	return &PrometheusQueryer{
