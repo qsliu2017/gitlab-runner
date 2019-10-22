@@ -99,7 +99,7 @@ External Prometheus instances that have been pre-configured to collect metrics f
 
 ### Configuration of the Metrics Queryer
 
-A single `[metrics_queryer]` must be defined at the top level of the `config.toml` file with a `query_interval` and `metric_queries`. The `query_interval` determine how often the Prometheus instance associated with a job is queried for time series data. The `metric_queries` are an array of [PromQL](https://prometheus.io/docs/prometheus/latest/querying/basics) queries that will be exectued for each interval. 
+A single `[metrics_queryer]` must be defined at the top level of the `config.toml` file with a `query_interval` and `metric_queries`. The `query_interval` determine how often the Prometheus instance associated with a job is queried for time series data. The `metric_queries` are an array of [PromQL](https://prometheus.io/docs/prometheus/latest/querying/basics) queries that will be exectued for each interval.
 
 ```
 [metrics_queryer]
