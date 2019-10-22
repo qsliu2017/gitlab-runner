@@ -43,6 +43,7 @@ GitLab Runner requires a minimum of Docker `v1.13.0`.
 - Enables caching of Docker containers.
 - Easy installation as a service for GNU/Linux, macOS, and Windows.
 - Embedded Prometheus metrics HTTP server.
+- Can query Prometheus metrics from runner job instances.
 
 ## Compatibility with GitLab versions
 
