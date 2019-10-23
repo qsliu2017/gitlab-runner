@@ -75,15 +75,14 @@ func FetchCertificateChain(cert *x509.Certificate) ([]*x509.Certificate, error) 
 					"newCert-issuerCertURL": cert.IssuingCertificateURL,
 				})
 
-			if isChainRootNode(cert) {
-				log.Info("[cert verification] Requesting issure certificate - cert is a ROOT certificate so not adding to chain and exiting the loop")
-				break
-			}
-
 			log.Info("[cert verification] Requesting issure certificate - appending the certificate to the chain")
 			time.Sleep(1000 * time.Millisecond)
 
 			certs = append(certs, cert)
+			if isChainRootNode(cert) {
+				log.Info("[cert verification] Requesting issure certificate - cert is a ROOT certificate so exiting the loop")
+			}
+
 		} else {
 			log.Info("[cert verification] Certificate doesn't provide parent URL - exiting the loop")
 			break
@@ -116,9 +115,6 @@ func AddRootCA(certs []*x509.Certificate) ([]*x509.Certificate, error) {
 	}
 
 	for _, cert := range chains[0] {
-		if lastCert.Equal(cert) {
-			continue
-		}
 		logrus.
 			WithFields(logrus.Fields{
 				"subject":       cert.Subject.CommonName,
