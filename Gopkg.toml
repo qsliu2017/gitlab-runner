@@ -60,11 +60,6 @@ ignored = ["test", "appengine"]
   version = "0.3.0"
 
 [[constraint]]
-  name = "github.com/docker/machine"
-  # version = "0.13.0"
-  revision = "7b7a141da84480342357c51838be142bf183b095"
-
-[[constraint]]
   name = "github.com/getsentry/raven-go"
   revision = "dffeb57df75d6a911f00232155194e43d79d38d7"
 

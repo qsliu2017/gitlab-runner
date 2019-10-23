@@ -219,18 +219,6 @@
   revision = "eb879ae3e2b84e2a142af415b679ddeda47ec71c"
 
 [[projects]]
-  digest = "1:1d3e28cedbad2ef940919033303d3b6c0a0f1267d525bc3cc2e38131ee7e28f8"
-  name = "github.com/docker/machine"
-  packages = [
-    "commands/mcndirs",
-    "libmachine/log",
-    "libmachine/mcnutils",
-    "version",
-  ]
-  pruneopts = "N"
-  revision = "7b7a141da84480342357c51838be142bf183b095"
-
-[[projects]]
   digest = "1:5f4377ed898e1bc113f6b63bc519a2657eae3d440f5ed361b707840b089bec1f"
   name = "github.com/docker/spdystream"
   packages = [
@@ -1095,7 +1083,6 @@
     "github.com/docker/go-connections/sockets",
     "github.com/docker/go-connections/tlsconfig",
     "github.com/docker/go-units",
-    "github.com/docker/machine/commands/mcndirs",
     "github.com/getsentry/raven-go",
     "github.com/gofrs/flock",
     "github.com/golang/mock/gomock",

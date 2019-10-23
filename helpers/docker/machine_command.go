@@ -10,11 +10,11 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"time"
 
-	"github.com/docker/machine/commands/mcndirs"
 	"github.com/sirupsen/logrus"
 )
 
@@ -170,7 +170,7 @@ func (m *machineCommand) Remove(name string) error {
 }
 
 func (m *machineCommand) List() (hostNames []string, err error) {
-	dir, err := ioutil.ReadDir(mcndirs.GetMachineDir())
+	dir, err := ioutil.ReadDir(getMachineDir())
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil, nil
@@ -221,7 +221,7 @@ func (m *machineCommand) Status(name string) (string, error) {
 }
 
 func (m *machineCommand) Exist(name string) bool {
-	configPath := filepath.Join(mcndirs.GetMachineDir(), name, "config.json")
+	configPath := filepath.Join(getMachineDir(), name, "config.json")
 	_, err := os.Stat(configPath)
 	if err != nil {
 		return false
@@ -301,6 +301,25 @@ func newDockerMachineCommandCtx(ctx context.Context, args ...string) *exec.Cmd {
 	cmd.Env = os.Environ()
 
 	return cmd
+}
+
+func getBaseDir() string {
+	homeDir := os.Getenv("HOME")
+	if runtime.GOOS == "windows" {
+		homeDir = os.Getenv("USERPROFILE")
+	}
+
+	baseDir := os.Getenv("MACHINE_STORAGE_PATH")
+
+	if baseDir == "" {
+		baseDir = filepath.Join(homeDir, ".docker", "machine")
+	}
+
+	return baseDir
+}
+
+func getMachineDir() string {
+	return filepath.Join(getMachineDir(), "machines")
 }
 
 func newDockerMachineCommand(args ...string) *exec.Cmd {
