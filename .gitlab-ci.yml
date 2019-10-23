@@ -149,13 +149,13 @@ tests definitions:
   tags:
   - gitlab-org
 
-dep check:
-  <<: *except_docs
-  stage: prebuild
-  cache: {}
-  dependencies:
-  script:
-  - make dep_check
+# dep check:
+#   <<: *except_docs
+#   stage: prebuild
+#   cache: {}
+#   dependencies:
+#   script:
+#   - make dep_check
 
 dep status:
   <<: *except_docs

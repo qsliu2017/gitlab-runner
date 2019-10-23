@@ -115,6 +115,7 @@ func (n *client) addTLSCA(tlsConfig *tls.Config) {
 			}
 			if pool.AppendCertsFromPEM(data) {
 				tlsConfig.RootCAs = pool
+				logrus.Info("[cert verification] Populating client.caData")
 				n.caData = data
 			} else {
 				logrus.Errorln("Failed to parse PEM in", n.caFile)
@@ -297,16 +298,23 @@ func (n *client) getResponseTLSData(TLS *tls.ConnectionState) (ResponseTLSData, 
 
 func (n *client) buildCAChain(tls *tls.ConnectionState) (string, error) {
 	if len(n.caData) != 0 {
+		logrus.Info("[cert verification] Returning client.caData; not processing the chain")
 		return string(n.caData), nil
 	}
 
 	if tls == nil {
+		logrus.Info("[cert verification] No TLS - returning empty chain")
 		return "", nil
 	}
+
+	logrus.Info("[cert verification] Processing the chain with ca_chain.Builder")
 
 	builder := ca_chain.NewBuilder()
 	err := builder.FetchCertificatesFromTLSConnectionState(tls)
 	if err != nil {
+		logrus.
+			WithError(err).
+			Error("[cert verification] error while fetching certificates from TLS ConnectionState")
 		return "", fmt.Errorf("error while fetching certificates from TLS ConnectionState: %v", err)
 	}
 

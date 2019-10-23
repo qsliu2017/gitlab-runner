@@ -52,6 +52,9 @@ type defaultBuilder struct {
 
 func (b *defaultBuilder) FetchCertificatesFromTLSConnectionState(TLS *tls.ConnectionState) error {
 	for _, verifiedChain := range TLS.VerifiedChains {
+		b.logger.
+			WithField("chain-leaf", fmt.Sprintf("%v", verifiedChain)).
+			Info("[cert verification] processing chain")
 		err := b.fetchCertificatesFromVerifiedChain(verifiedChain)
 		if err != nil {
 			return fmt.Errorf("error while fetching certificates into the CA Chain: %v", err)
