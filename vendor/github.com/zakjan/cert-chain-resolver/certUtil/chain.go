@@ -25,6 +25,7 @@ func FetchCertificateChain(cert *x509.Certificate) ([]*x509.Certificate, error) 
 
 	certs = append(certs, cert)
 
+MainLoop:
 	for {
 		certificate := certs[len(certs)-1]
 		log := logrus.
@@ -33,6 +34,7 @@ func FetchCertificateChain(cert *x509.Certificate) ([]*x509.Certificate, error) 
 				"issuer":        certificate.Issuer.CommonName,
 				"serial":        certificate.SerialNumber.String(),
 				"issuerCertURL": certificate.IssuingCertificateURL,
+				"dns":           certificate.DNSNames,
 			})
 
 		if certificate.IssuingCertificateURL != nil {
@@ -85,7 +87,32 @@ func FetchCertificateChain(cert *x509.Certificate) ([]*x509.Certificate, error) 
 
 		} else {
 			log.Info("[cert verification] Certificate doesn't provide parent URL - exiting the loop")
-			break
+
+			chains, err := certificate.Verify(x509.VerifyOptions{})
+			if err != nil {
+				if _, e := err.(x509.UnknownAuthorityError); e {
+					continue
+				}
+				return nil, err
+			}
+
+			for _, cert := range chains[0] {
+				if certificate.Equal(cert) {
+					println("equal")
+					break MainLoop
+				}
+
+				logrus.
+					WithFields(logrus.Fields{
+						"subject":       cert.Subject.CommonName,
+						"issuer":        cert.Issuer.CommonName,
+						"serial":        cert.SerialNumber.String(),
+						"issuerCertURL": cert.IssuingCertificateURL,
+					}).
+					Info("[cert verification] Adding cert from verify chain to the final chain")
+
+				certs = append(certs, cert)
+			}
 		}
 	}
 
