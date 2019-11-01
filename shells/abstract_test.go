@@ -2,6 +2,7 @@ package shells
 
 import (
 	"fmt"
+	"strconv"
 	"testing"
 
 	"github.com/stretchr/testify/mock"
@@ -262,6 +263,101 @@ func TestWriteWritingArtifactsCompressionLevels(t *testing.T) {
 		err := shell.writeScript(mockWriter, common.BuildStageUploadOnSuccessArtifacts, info)
 		require.NoError(t, err)
 		mockWriter.AssertExpectations(t)
+	}
+}
+
+func TestWriteArchiveCacheCompressionLevel(t *testing.T) {
+	baseArgs := []interface{}{"gitlab-runner-helper", "cache-archiver",
+		"--file", "../cache/some-key/cache.zip",
+		"--timeout", strconv.FormatInt(common.DefaultCacheRequestTimeout, 10),
+	}
+
+	testCases := []struct {
+		compressionLevel string
+		expectedCmd      []interface{}
+	}{
+		{
+			compressionLevel: "",
+			expectedCmd:      append(baseArgs, []interface{}{"--path", "a-path"}...),
+		},
+		{
+			compressionLevel: "0",
+			expectedCmd:      append(baseArgs, []interface{}{"--compression-level", "0", "--path", "a-path"}...),
+		},
+		{
+			compressionLevel: "1",
+			expectedCmd:      append(baseArgs, []interface{}{"--compression-level", "1", "--path", "a-path"}...),
+		},
+		{
+			compressionLevel: "9",
+			expectedCmd:      append(baseArgs, []interface{}{"--compression-level", "9", "--path", "a-path"}...),
+		},
+		{
+			compressionLevel: "-1",
+			expectedCmd:      append(baseArgs, []interface{}{"--path", "a-path"}...),
+		},
+		{
+			compressionLevel: "12341234",
+			expectedCmd:      append(baseArgs, []interface{}{"--path", "a-path"}...),
+		},
+		{
+			compressionLevel: "invalid",
+			expectedCmd:      append(baseArgs, []interface{}{"--path", "a-path"}...),
+		},
+	}
+
+	for _, testCase := range testCases {
+		t.Run(testCase.compressionLevel, func(t *testing.T) {
+			gitlabURL := "https://example.com:3443"
+			mockWriter := new(MockShellWriter)
+			defer mockWriter.AssertExpectations(t)
+
+			build := &common.Build{
+				JobResponse: common.JobResponse{
+					ID:    1000,
+					Token: "token",
+					Cache: common.Caches{
+						common.Cache{
+							Key:    "some-key",
+							Policy: common.CachePolicyPush,
+							Paths:  []string{"a-path"},
+						},
+					},
+				},
+				Runner: &common.RunnerConfig{
+					RunnerCredentials: common.RunnerCredentials{
+						URL: gitlabURL,
+					},
+				},
+				CacheDir: "/cache",
+				BuildDir: "/build",
+			}
+
+			info := common.ShellScriptInfo{
+				RunnerCommand: "gitlab-runner-helper",
+				Build:         build,
+			}
+
+			if testCase.compressionLevel != "" {
+				build.JobResponse.Variables = common.JobVariables{
+					common.JobVariable{Key: "CACHE_COMPRESSION_LEVEL", Value: testCase.compressionLevel},
+				}
+			}
+
+			mockWriter.On("Variable", mock.Anything)
+			mockWriter.On("Cd", mock.Anything)
+			mockWriter.On("IfCmd", "gitlab-runner-helper", "--version")
+			mockWriter.On("Notice", mock.Anything)
+			mockWriter.On("Notice", mock.Anything, mock.Anything)
+			mockWriter.On("IfCmdWithOutput", testCase.expectedCmd...)
+			mockWriter.On("Else")
+			mockWriter.On("Warning", mock.Anything, mock.Anything, mock.Anything)
+			mockWriter.On("EndIf")
+
+			shell := AbstractShell{}
+			err := shell.writeScript(mockWriter, common.BuildStageArchiveCache, info)
+			require.NoError(t, err)
+		})
 	}
 }
 
