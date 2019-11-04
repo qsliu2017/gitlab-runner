@@ -239,7 +239,7 @@ func (mr *RunCommand) createMetricsQueryer(provider common.ExecutorProvider, bui
 			// create the metrics queryer from config
 			metricsQueryer, err := network.NewPrometheusQueryer(*mr.config.MetricsQueryer, metricsLabelName, mr.network)
 			if err != nil {
-				mr.log().WithError(err).Fatal("Failed to create metrics queryer")
+				mr.log().WithError(err).Error("Failed to create metrics queryer")
 			} else {
 				build.MetricsQueryer = metricsQueryer
 			}
