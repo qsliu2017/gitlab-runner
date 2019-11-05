@@ -282,8 +282,14 @@ type CacheConfig struct {
 	GCS *CacheGCSConfig `toml:"gcs,omitempty" json:"gcs" namespace:"gcs"`
 }
 
-type MetricsConfig struct {
-	PrometheusAddress string `toml:"prometheus_address,omitempty" json:"prometheus_address" description:"A host:port to a prometheus metrics server"`
+type MetricsRefereeConfig struct {
+	PrometheusAddress string   `toml:"prometheus_address,omitempty" json:"prometheus_address" description:"A host:port to a prometheus metrics server"`
+	QueryInterval     string   `toml:"query_interval,omitempty" json:"query_interval" description:"Query interval"`
+	MetricQueries     []string `toml:"metric_queries" json:"metric_queries" description:"A list of metrics to query"`
+}
+
+type RefereesConfig struct {
+	Metrics *MetricsRefereeConfig `toml:"metrics,omitempty" json:"metrics" namespace:"metrics"`
 }
 
 type RunnerSettings struct {
@@ -310,7 +316,7 @@ type RunnerSettings struct {
 	Machine        *DockerMachine    `toml:"machine,omitempty" json:"machine" group:"docker machine provider" namespace:"machine"`
 	Kubernetes     *KubernetesConfig `toml:"kubernetes,omitempty" json:"kubernetes" group:"kubernetes executor" namespace:"kubernetes"`
 	Custom         *CustomConfig     `toml:"custom,omitempty" json:"custom" group:"custom executor" namespace:"custom"`
-	Metrics        *MetricsConfig    `toml:"metrics,omitempty" json:"metrics" group:"metrics configuration" namespace:"metrics"`
+	Referees       *RefereesConfig   `toml:"referees,omitempty" json:"referees" group:"referees configuration" namespace:"referees"`
 }
 
 type RunnerConfig struct {
@@ -329,15 +335,9 @@ type SessionServer struct {
 	SessionTimeout   int    `toml:"session_timeout,omitempty" json:"session_timeout" description:"How long a terminal session can be active after a build completes, in seconds"`
 }
 
-type MetricsQueryerConfig struct {
-	QueryInterval string   `toml:"query_interval,omitempty" json:"query_interval" description:"Query interval"`
-	MetricQueries []string `toml:"metric_queries" json:"metric_queries" description:"A list of metrics to query"`
-}
-
 type Config struct {
-	ListenAddress  string                `toml:"listen_address,omitempty" json:"listen_address"`
-	SessionServer  SessionServer         `toml:"session_server,omitempty" json:"session_server"`
-	MetricsQueryer *MetricsQueryerConfig `toml:"metrics_queryer,omitempty" json:"metrics_queryer"`
+	ListenAddress string        `toml:"listen_address,omitempty" json:"listen_address"`
+	SessionServer SessionServer `toml:"session_server,omitempty" json:"session_server"`
 
 	Concurrent    int             `toml:"concurrent" json:"concurrent"`
 	CheckInterval int             `toml:"check_interval" json:"check_interval" description:"Define active checking interval of jobs"`

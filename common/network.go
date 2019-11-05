@@ -4,10 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"time"
 
-	prometheusV1 "github.com/prometheus/client_golang/api/prometheus/v1"
-	"github.com/prometheus/common/model"
 	url_helpers "gitlab.com/gitlab-org/gitlab-runner/helpers/url"
 )
 
@@ -283,7 +280,6 @@ type Dependencies []Dependency
 
 type GitlabFeatures struct {
 	TraceSections bool `json:"trace_sections"`
-	QueryMetrics  bool `json:"query_metrics"`
 }
 
 type JobResponse struct {
@@ -385,18 +381,4 @@ type Network interface {
 	DownloadArtifacts(config JobCredentials, artifactsFile string) DownloadState
 	UploadRawArtifacts(config JobCredentials, reader io.Reader, options ArtifactsOptions) UploadState
 	ProcessJob(config RunnerConfig, buildCredentials *JobCredentials) (JobTrace, error)
-}
-
-type MetricsQueryer interface {
-	Query(
-		ctx context.Context,
-		prometheusAPI prometheusV1.API,
-		lavelValue string,
-		startTime time.Time,
-		endTime time.Time,
-	) (map[string][]model.SamplePair, error)
-	Upload(
-		metrics map[string][]model.SamplePair,
-		jobCredentials *JobCredentials,
-	) error
 }

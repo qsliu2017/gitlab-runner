@@ -12,12 +12,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/prometheus/client_golang/api"
-	prometheusV1 "github.com/prometheus/client_golang/api/prometheus/v1"
 	"github.com/sirupsen/logrus"
+
 	"gitlab.com/gitlab-org/gitlab-runner/helpers"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers/featureflags"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers/tls"
+	"gitlab.com/gitlab-org/gitlab-runner/referees"
 	"gitlab.com/gitlab-org/gitlab-runner/session"
 	"gitlab.com/gitlab-org/gitlab-runner/session/proxy"
 	"gitlab.com/gitlab-org/gitlab-runner/session/terminal"
@@ -82,7 +82,8 @@ type Build struct {
 	Runner           *RunnerConfig  `json:"runner"`
 	ExecutorData     ExecutorData
 	ExecutorFeatures FeaturesInfo `json:"-" yaml:"-"`
-	MetricsQueryer   MetricsQueryer
+	MetricsReferee   *referees.MetricsReferee
+	Network          Network
 
 	// Unique ID for all running builds on this runner
 	RunnerID int `json:"runner_id"`
@@ -254,7 +255,7 @@ func (b *Build) executeUploadArtifacts(ctx context.Context, state error, executo
 }
 
 func (b *Build) executeScript(ctx context.Context, executor Executor) error {
-	startTime := time.Now()
+	startTime := time.Now().UTC()
 	// Prepare stage
 	err := b.executeStage(ctx, BuildStagePrepare, executor)
 
@@ -287,19 +288,14 @@ func (b *Build) executeScript(ctx context.Context, executor Executor) error {
 	artifactUploadError := b.executeUploadArtifacts(ctx, err, executor)
 
 	// end metrics tracking
-	endTime := time.Now()
+	endTime := time.Now().UTC()
 
 	// query and upload runner prometheus metrics as artifacts
-	metricsUploadError := b.queryUploadMetrics(ctx, executor, startTime, endTime)
+	b.executeReferees(ctx, executor, startTime, endTime)
 
 	// Use job's error as most important
 	if err != nil {
 		return err
-	}
-
-	// metrics upload is second most important
-	if metricsUploadError != nil {
-		return metricsUploadError
 	}
 
 	// Otherwise, use uploadError
@@ -318,54 +314,39 @@ func (b *Build) attemptExecuteStage(ctx context.Context, buildStage BuildStage, 
 	return
 }
 
-func (b *Build) queryUploadMetrics(ctx context.Context, executor Executor, startTime time.Time, endTime time.Time) error {
-
-	// make sure this feature is enabled
-	if !b.JobResponse.Features.QueryMetrics {
-		return nil
-	}
-
-	if b.MetricsQueryer == nil {
-		b.Log().Info("this executor does not support metrics querying (yet)")
-		return nil
-	}
-
-	if b.Runner.Metrics == nil || b.Runner.Metrics.PrometheusAddress == "" {
-		b.Log().Info("[runner.metrics] not defined or prometheus server not specified")
-		return nil
-	}
-
-	// create prometheus client from server address in config
-	clientConfig := api.Config{Address: b.Runner.Metrics.PrometheusAddress}
-	prometheusClient, err := api.NewClient(clientConfig)
-	if err != nil {
-		return err
-	}
-
-	// create a prometheus api from the client config
-	prometheusAPI := prometheusV1.NewAPI(prometheusClient)
-	// query metrics
-	metrics, err := b.MetricsQueryer.Query(
-		ctx,
-		prometheusAPI,
-		executor.GetMetricsLabelValue(),
-		startTime,
-		endTime,
-	)
-	if err != nil {
-		return err
-	}
-
-	jobCredentials := &JobCredentials{
+func (b *Build) executeReferees(ctx context.Context, executor Executor, startTime time.Time, endTime time.Time) error {
+	// setup job credentials
+	jobCredentials := JobCredentials{
 		ID:    b.JobResponse.ID,
 		Token: b.JobResponse.Token,
 		URL:   b.Runner.RunnerCredentials.URL,
 	}
 
-	// upload metrics
-	err = b.MetricsQueryer.Upload(metrics, jobCredentials)
-	if err != nil {
-		return err
+	// check for metrics referee
+	if b.MetricsReferee != nil {
+		// test exceutor for referee support
+		refereed, ok := executor.(referees.MetricsRefereeExecutor)
+		if ok {
+			// gather metrics
+			reader, err := b.MetricsReferee.Execute(
+				ctx,
+				refereed.GetMetricsLabelValue(),
+				startTime,
+				endTime,
+			)
+			if err != nil {
+				return err
+			}
+
+			// upload metrics
+			b.Network.UploadRawArtifacts(jobCredentials, reader, ArtifactsOptions{
+				BaseName: "metrics.txt",
+				ExpireIn: "1000000",
+				Format:   "gzip",
+				Type:     "metrics",
+			})
+		}
+
 	}
 
 	return nil

@@ -26,6 +26,7 @@ import (
 	service_helpers "gitlab.com/gitlab-org/gitlab-runner/helpers/service"
 	"gitlab.com/gitlab-org/gitlab-runner/log"
 	"gitlab.com/gitlab-org/gitlab-runner/network"
+	"gitlab.com/gitlab-org/gitlab-runner/referees"
 	"gitlab.com/gitlab-org/gitlab-runner/session"
 )
 
@@ -57,8 +58,9 @@ type RunCommand struct {
 	User             string `short:"u" long:"user" description:"Use specific user to execute shell scripts"`
 	Syslog           bool   `long:"syslog" description:"Log to system service logger" env:"LOG_SYSLOG"`
 
-	sentryLogHook                   sentry.LogHook
-	prometheusLogHook               prometheus_helper.LogHook
+	sentryLogHook     sentry.LogHook
+	prometheusLogHook prometheus_helper.LogHook
+
 	failuresCollector               *prometheus_helper.FailuresCollector
 	networkRequestStatusesCollector prometheus.Collector
 
@@ -214,9 +216,10 @@ func (mr *RunCommand) processRunner(id int, runner *common.RunnerConfig, runners
 		return
 	}
 	build.Session = buildSession
+	build.Network = mr.network
 
-	// setup build metrics queryer
-	mr.createMetricsQueryer(provider, build)
+	// setup jon referees
+	mr.createReferees(provider, runner, build)
 
 	// Add build to list of builds to assign numbers
 	mr.buildsHelper.addBuild(build)
@@ -230,19 +233,35 @@ func (mr *RunCommand) processRunner(id int, runner *common.RunnerConfig, runners
 	return build.Run(mr.config, trace)
 }
 
-func (mr *RunCommand) createMetricsQueryer(provider common.ExecutorProvider, build *common.Build) {
-	metricsLabelName := provider.GetMetricsLabelName()
-	// set the build's metric queryer if the provider has a metric label name set for prometheus
-	if metricsLabelName != "" {
-		// this provider supports metrics querying, check for config
-		if mr.config.MetricsQueryer != nil {
-			// create the metrics queryer from config
-			metricsQueryer, err := network.NewPrometheusQueryer(*mr.config.MetricsQueryer, metricsLabelName, mr.network)
-			if err != nil {
-				mr.log().WithError(err).Error("Failed to create metrics queryer")
-			} else {
-				build.MetricsQueryer = metricsQueryer
-			}
+func (mr *RunCommand) createReferees(provider common.ExecutorProvider, runnerConfig *common.RunnerConfig, build *common.Build) {
+	runnerSettings := runnerConfig.RunnerSettings
+	// first see if referees configured
+	if runnerSettings.Referees == nil {
+		return
+	}
+
+	refereesConfig := runnerSettings.Referees
+	// see if provider supports metrics referee
+	refereed, ok := provider.(referees.MetricsRefereeExecutorProvider)
+	if ok && refereesConfig.Metrics != nil {
+		metricsConfig := refereesConfig.Metrics
+		// create prometheus API
+		prometheusAPI, err := referees.NewPrometheusAPI(metricsConfig.PrometheusAddress)
+		if err != nil {
+			mr.log().WithError(err).Error("Failed to create prometheus API for metrics referee")
+		}
+		// create and save metrics referee
+		referee, err := referees.NewMetricsReferee(
+			prometheusAPI,
+			metricsConfig.QueryInterval,
+			metricsConfig.MetricQueries,
+			refereed.GetMetricsLabelName(),
+			mr.log(),
+		)
+		if err != nil {
+			mr.log().WithError(err).Error("Failed to create metrics referee")
+		} else {
+			build.MetricsReferee = referee
 		}
 	}
 }
