@@ -42,10 +42,3 @@ func (e DefaultExecutorProvider) GetFeatures(features *common.FeaturesInfo) erro
 func (e DefaultExecutorProvider) GetDefaultShell() string {
 	return e.DefaultShellName
 }
-
-func (e DefaultExecutorProvider) GetMetricsLabelName() string {
-	if e.MetricsLabelName != nil {
-		return e.MetricsLabelName()
-	}
-	return ""
-}

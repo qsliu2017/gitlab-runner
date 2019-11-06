@@ -135,10 +135,6 @@ func (e *machineExecutor) SetCurrentStage(stage common.ExecutorStage) {
 	e.executor.SetCurrentStage(stage)
 }
 
-func (e *machineExecutor) GetMetricsLabelValue() string {
-	return ""
-}
-
 func init() {
 	common.RegisterExecutor("docker+machine", newMachineProvider("docker+machine", "docker"))
 	common.RegisterExecutor("docker-ssh+machine", newMachineProvider("docker-ssh+machine", "docker-ssh"))

@@ -60,7 +60,6 @@ func (e *machineCredentialsUsageFakeExecutor) Run(cmd common.ExecutorCommand) er
 func (e *machineCredentialsUsageFakeExecutor) Finish(err error)                           {}
 func (e *machineCredentialsUsageFakeExecutor) Cleanup()                                   {}
 func (e *machineCredentialsUsageFakeExecutor) SetCurrentStage(stage common.ExecutorStage) {}
-func (e *machineCredentialsUsageFakeExecutor) GetMetricsLabelValue() string               { return "" }
 func (e *machineCredentialsUsageFakeExecutor) GetCurrentStage() common.ExecutorStage {
 	return common.ExecutorStageCreated
 }

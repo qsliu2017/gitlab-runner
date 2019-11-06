@@ -103,7 +103,7 @@ External Prometheus instances that have been pre-configured to collect metrics f
 
 #### Executors that support the metrics referee
 
-* `docker-machine`
+- `docker-machine`
 
 #### Configuration of the metrics referee for a runner
 

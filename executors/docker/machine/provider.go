@@ -419,7 +419,7 @@ func (m *machineProvider) Create() common.Executor {
 }
 
 func (m *machineProvider) GetMetricsLabelName() string {
-	return m.provider.GetMetricsLabelName()
+	return "instance"
 }
 
 func newMachineProvider(name, executor string) *machineProvider {
