@@ -1,6 +1,6 @@
 /*
- * Minio Go Library for Amazon S3 Compatible Cloud Storage
- * Copyright 2017 Minio, Inc.
+ * MinIO Go Library for Amazon S3 Compatible Cloud Storage
+ * Copyright 2017 MinIO, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,6 +22,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
@@ -53,19 +54,9 @@ type IAM struct {
 const (
 	defaultIAMRoleEndpoint      = "http://169.254.169.254"
 	defaultECSRoleEndpoint      = "http://169.254.170.2"
-	defaultIAMSecurityCredsPath = "/latest/meta-data/iam/security-credentials"
+	defaultSTSRoleEndpoint      = "https://sts.amazonaws.com"
+	defaultIAMSecurityCredsPath = "/latest/meta-data/iam/security-credentials/"
 )
-
-// https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task-iam-roles.html
-func getEndpoint(endpoint string) (string, bool) {
-	if endpoint != "" {
-		return endpoint, os.Getenv("AWS_CONTAINER_CREDENTIALS_RELATIVE_URI") != ""
-	}
-	if ecsURI := os.Getenv("AWS_CONTAINER_CREDENTIALS_RELATIVE_URI"); ecsURI != "" {
-		return fmt.Sprintf("%s%s", defaultECSRoleEndpoint, ecsURI), true
-	}
-	return defaultIAMRoleEndpoint, false
-}
 
 // NewIAM returns a pointer to a new Credentials object wrapping the IAM.
 func NewIAM(endpoint string) *Credentials {
@@ -82,14 +73,49 @@ func NewIAM(endpoint string) *Credentials {
 // Error will be returned if the request fails, or unable to extract
 // the desired
 func (m *IAM) Retrieve() (Value, error) {
-	endpoint, isEcsTask := getEndpoint(m.endpoint)
 	var roleCreds ec2RoleCredRespBody
 	var err error
-	if isEcsTask {
+
+	endpoint := m.endpoint
+	switch {
+	case len(os.Getenv("AWS_WEB_IDENTITY_TOKEN_FILE")) > 0:
+		if len(endpoint) == 0 {
+			if len(os.Getenv("AWS_REGION")) > 0 {
+				endpoint = "sts." + os.Getenv("AWS_REGION") + ".amazonaws.com"
+			} else {
+				endpoint = defaultSTSRoleEndpoint
+			}
+		}
+
+		creds := &STSWebIdentity{
+			Client:          m.Client,
+			stsEndpoint:     endpoint,
+			roleARN:         os.Getenv("AWS_ROLE_ARN"),
+			roleSessionName: os.Getenv("AWS_ROLE_SESSION_NAME"),
+			getWebIDTokenExpiry: func() (*WebIdentityToken, error) {
+				token, err := ioutil.ReadFile(os.Getenv("AWS_WEB_IDENTITY_TOKEN_FILE"))
+				if err != nil {
+					return nil, err
+				}
+
+				return &WebIdentityToken{Token: string(token)}, nil
+			},
+		}
+
+		return creds.Retrieve()
+
+	case len(os.Getenv("AWS_CONTAINER_CREDENTIALS_RELATIVE_URI")) > 0:
+		if len(endpoint) == 0 {
+			endpoint = fmt.Sprintf("%s%s", defaultECSRoleEndpoint,
+				os.Getenv("AWS_CONTAINER_CREDENTIALS_RELATIVE_URI"))
+		}
+
 		roleCreds, err = getEcsTaskCredentials(m.Client, endpoint)
-	} else {
+
+	default:
 		roleCreds, err = getCredentials(m.Client, endpoint)
 	}
+
 	if err != nil {
 		return Value{}, err
 	}
