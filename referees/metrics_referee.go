@@ -67,7 +67,7 @@ func (mr *MetricsReferee) Execute(
 		name := components[0]
 		query := components[1]
 		selector := fmt.Sprintf("%s=\"%s\"", mr.labelName, labelValue)
-		interval := fmt.Sprintf("%fs", mr.queryInterval.Seconds())
+		interval := fmt.Sprintf("%.0fs", mr.queryInterval.Seconds())
 		query = strings.Replace(query, "{selector}", selector, -1)
 		query = strings.Replace(query, "{interval}", interval, -1)
 

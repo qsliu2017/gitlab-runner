@@ -104,7 +104,7 @@ func (s *commandExecutor) Run(cmd common.ExecutorCommand) error {
 }
 
 func (s *commandExecutor) GetMetricsLabelValue() string {
-	return s.Config.Docker.Hostname
+	return s.buildContainer.Config.Hostname
 }
 
 func init() {
