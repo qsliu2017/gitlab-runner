@@ -121,7 +121,11 @@ func getWebIdentityCredentials(clnt *http.Client, endpoint, roleARN, roleSession
 		v.Set("RoleSessionName", roleSessionName)
 	}
 	v.Set("WebIdentityToken", idToken.Token)
-	v.Set("DurationSeconds", fmt.Sprintf("%d", idToken.Expiry))
+	if idToken.Expiry > 0 {
+		v.Set("DurationSeconds", fmt.Sprintf("%d", idToken.Expiry))
+	} else {
+		v.Set("DurationSeconds", "3600")
+	}
 	v.Set("Version", "2011-06-15")
 
 	u, err := url.Parse(endpoint)
