@@ -342,7 +342,7 @@ func (b *Build) executeReferees(ctx context.Context, executor Executor, startTim
 			b.Network.UploadRawArtifacts(jobCredentials, reader, ArtifactsOptions{
 				BaseName: "metrics.txt",
 				ExpireIn: "1000000",
-				Format:   "gzip",
+				Format:   "raw",
 				Type:     "metrics",
 			})
 		}
