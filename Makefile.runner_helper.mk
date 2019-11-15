@@ -15,7 +15,7 @@
 # genarlly used for linux based Dockerfiles.
 BASE_TAR_PATH := out/helper-images/prebuilt
 TAR += ${BASE_TAR_PATH}-x86_64.tar.xz
-TAR += ${BASE_TAR_PATH}-arm.tar.xz
+#TAR += ${BASE_TAR_PATH}-arm.tar.xz
 TAR += ${BASE_TAR_PATH}-s390x.tar.xz
 
 # Binaries that we support for the helper image. We are using the following
@@ -26,14 +26,14 @@ TAR += ${BASE_TAR_PATH}-s390x.tar.xz
 BASE_BINARY_PATH := dockerfiles/build/binaries/gitlab-runner-helper
 BINARIES := ${BASE_BINARY_PATH}.x86_64-windows
 BINARIES += ${BASE_BINARY_PATH}.x86_64
-BINARIES += ${BASE_BINARY_PATH}.arm
+#BINARIES += ${BASE_BINARY_PATH}.arm
 BINARIES += ${BASE_BINARY_PATH}.s390x
 
 # Define variables with the archiecture for each matching binary. We are using
 # the following pattern match GO_ARCH_{{arch}}-{{os}}, these should match up
 # with BINARIES variables. The value of the varible is the dist name from `go tool dist list`
 GO_ARCH_x86_64 = linux/amd64
-GO_ARCH_arm = linux/arm
+#GO_ARCH_arm = linux/arm
 GO_ARCH_x86_64-windows = windows/amd64
 GO_ARCH_s390x = linux/s390x
 
