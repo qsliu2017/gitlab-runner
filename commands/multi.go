@@ -258,7 +258,7 @@ func (mr *RunCommand) createReferees(provider common.ExecutorProvider, runnerCon
 		if err != nil {
 			mr.log().WithError(err).Error("Failed to create metrics referee")
 		} else {
-			build.MetricsReferee = referee
+			build.Referees = append(build.Referees, referee)
 		}
 	}
 }

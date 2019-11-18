@@ -19,6 +19,7 @@ type MetricsReferee struct {
 	metricQueries []string
 	queryInterval time.Duration
 	labelName     string
+	labelValue    string
 	log           *logrus.Entry
 }
 
@@ -42,9 +43,18 @@ func (mr *MetricsReferee) ArtifactFormat() string {
 	return "gzip"
 }
 
+func (mr *MetricsReferee) Prepare(executor interface{}) bool {
+	// test exceutor for referee support
+	refereed, ok := executor.(MetricsRefereeExecutor)
+	if !ok {
+		return false
+	}
+	mr.labelValue = refereed.GetMetricsLabelValue()
+	return true
+}
+
 func (mr *MetricsReferee) Execute(
 	ctx context.Context,
-	labelValue string,
 	startTime time.Time,
 	endTime time.Time,
 ) (*bytes.Reader, error) {
@@ -66,7 +76,7 @@ func (mr *MetricsReferee) Execute(
 
 		name := components[0]
 		query := components[1]
-		selector := fmt.Sprintf("%s=\"%s\"", mr.labelName, labelValue)
+		selector := fmt.Sprintf("%s=\"%s\"", mr.labelName, mr.labelValue)
 		interval := fmt.Sprintf("%.0fs", mr.queryInterval.Seconds())
 		query = strings.Replace(query, "{selector}", selector, -1)
 		query = strings.Replace(query, "{interval}", interval, -1)

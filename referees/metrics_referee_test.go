@@ -23,7 +23,10 @@ func TestMetricsRefereeParseError(t *testing.T) {
 	mr, err := NewMetricsReferee(mockPrometheusAPI, queryInterval, metricQueries, "instance", log)
 	require.NoError(t, err)
 
-	_, err = mr.Execute(ctx, "test", time.Now(), time.Now())
+	mockExecutor := new(MockExecutor)
+	mr.Prepare(mockExecutor)
+
+	_, err = mr.Execute(ctx, time.Now(), time.Now())
 	require.Error(t, err)
 	cancel()
 }
@@ -36,10 +39,13 @@ func TestMetricsRefereeExecute(t *testing.T) {
 	metricQueries := []string{"name1:metric1{{selector}}", "name2:metric2{{selector}}"}
 	log := logrus.WithField("builds", 1)
 
-	m, err := NewMetricsReferee(mockPrometheusAPI, queryInterval, metricQueries, "instance", log)
+	mr, err := NewMetricsReferee(mockPrometheusAPI, queryInterval, metricQueries, "instance", log)
 	require.NoError(t, err)
 
-	reader, err := m.Execute(ctx, "test", time.Now(), time.Now())
+	mockExecutor := new(MockExecutor)
+	mr.Prepare(mockExecutor)
+
+	reader, err := mr.Execute(ctx, time.Now(), time.Now())
 	require.NoError(t, err)
 
 	// convert reader result to golang maps

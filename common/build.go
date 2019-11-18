@@ -82,7 +82,7 @@ type Build struct {
 	Runner           *RunnerConfig  `json:"runner"`
 	ExecutorData     ExecutorData
 	ExecutorFeatures FeaturesInfo `json:"-" yaml:"-"`
-	MetricsReferee   *referees.MetricsReferee
+	Referees         []referees.Referee
 	Network          Network
 
 	// Unique ID for all running builds on this runner
@@ -321,30 +321,20 @@ func (b *Build) executeReferees(ctx context.Context, executor Executor, startTim
 		URL:   b.Runner.RunnerCredentials.URL,
 	}
 
-	// check for metrics referee
-	if b.MetricsReferee != nil {
-		// test exceutor for referee support
-		refereed, ok := executor.(referees.MetricsRefereeExecutor)
-		if ok {
-			// gather metrics
-			reader, err := b.MetricsReferee.Execute(
-				ctx,
-				refereed.GetMetricsLabelValue(),
-				startTime,
-				endTime,
-			)
+	// prepare, execute, and upload the results of each referee
+	for _, referee := range b.Referees {
+		if referee.Prepare(executor) {
+			reader, err := referee.Execute(ctx, startTime, endTime)
 			if err != nil {
 				return err
 			}
 
-			// upload metrics
 			b.Network.UploadRawArtifacts(jobCredentials, reader, ArtifactsOptions{
-				BaseName: b.MetricsReferee.ArtifactBaseName(),
-				Type:     b.MetricsReferee.ArtifactType(),
-				Format:   ArtifactFormat(b.MetricsReferee.ArtifactFormat()),
+				BaseName: referee.ArtifactBaseName(),
+				Type:     referee.ArtifactType(),
+				Format:   ArtifactFormat(referee.ArtifactFormat()),
 			})
 		}
-
 	}
 
 	return nil
