@@ -290,7 +290,6 @@ func (b *Build) executeScript(ctx context.Context, executor Executor) error {
 	// end metrics tracking
 	endTime := time.Now().UTC()
 
-	// query and upload runner prometheus metrics as artifacts
 	b.executeReferees(ctx, executor, startTime, endTime)
 
 	// Use job's error as most important
