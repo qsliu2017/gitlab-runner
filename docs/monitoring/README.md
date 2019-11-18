@@ -115,7 +115,6 @@ Define `[runner.referees]` and `[runner.referees.metrics]` in your `config.toml`
 | `query_interval`     | how often the Prometheus instance associated with a job is queried for time series data                                            |
 | `metric_queries`     | an array of [PromQL](https://prometheus.io/docs/prometheus/latest/querying/basics) queries that will be exectued for each interval |
 
-
 Here is a complete configuration example for `node_exporter` metrics.
 
 ```

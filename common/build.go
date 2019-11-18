@@ -296,7 +296,9 @@ func (b *Build) executeScript(ctx context.Context, executor Executor) error {
 
 	endTime := time.Now().UTC()
 	// Prepare, execute, and upload referees
-	b.ExecuteReferees(ctx, b, executor, startTime, endTime)
+	if b.ExecuteReferees != nil {
+		b.ExecuteReferees(ctx, b, executor, startTime, endTime)
+	}
 
 	// Use job's error as most important
 	if err != nil {
