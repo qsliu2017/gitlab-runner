@@ -30,16 +30,16 @@ type MetricsRefereeExecutorProvider interface {
 	GetMetricsLabelName() string
 }
 
-func (mr *MetricsReferee) FileName() string {
-	return "metrics.txt"
+func (mr *MetricsReferee) ArtifactBaseName() string {
+	return "metrics_referee.json"
 }
 
-func (mr *MetricsReferee) FileType() string {
-	return "metrics"
+func (mr *MetricsReferee) ArtifactType() string {
+	return "metrics_referee"
 }
 
-func (mr *MetricsReferee) Set() string {
-	return "metrics"
+func (mr *MetricsReferee) ArtifactFormat() string {
+	return "gzip"
 }
 
 func (mr *MetricsReferee) Execute(
@@ -61,7 +61,7 @@ func (mr *MetricsReferee) Execute(
 		// break up query into name:query
 		components := strings.Split(metricQuery, ":")
 		if len(components) != 2 {
-			return nil, fmt.Errorf("Prometheus_queryer: %s not in name:query format", metricQuery)
+			return nil, fmt.Errorf("prometheus_queryer: %s not in name:query format", metricQuery)
 		}
 
 		name := components[0]
@@ -89,7 +89,7 @@ func (mr *MetricsReferee) Execute(
 	// convert metrics sample pairs to JSON
 	output, err := json.Marshal(metrics)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to marshall metrics into json for artifact upload: %v", err)
+		return nil, fmt.Errorf("failed to marshall metrics into json for artifact upload: %v", err)
 	}
 
 	return bytes.NewReader(output), nil
@@ -116,7 +116,7 @@ func NewMetricsReferee(
 ) (*MetricsReferee, error) {
 	queryIntervalDuration, err := time.ParseDuration(queryInterval)
 	if err != nil {
-		return nil, fmt.Errorf("Unable to parse query interval from config: %v", err)
+		return nil, fmt.Errorf("unable to parse query interval from config: %v", err)
 	}
 
 	return &MetricsReferee{

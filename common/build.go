@@ -340,10 +340,9 @@ func (b *Build) executeReferees(ctx context.Context, executor Executor, startTim
 
 			// upload metrics
 			b.Network.UploadRawArtifacts(jobCredentials, reader, ArtifactsOptions{
-				BaseName: "metrics_referee.json",
-				ExpireIn: "1000000",
-				Format:   "gzip",
-				Type:     "metrics_referee",
+				BaseName: b.MetricsReferee.ArtifactBaseName(),
+				Type:     b.MetricsReferee.ArtifactType(),
+				Format:   ArtifactFormat(b.MetricsReferee.ArtifactFormat()),
 			})
 		}
 

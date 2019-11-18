@@ -218,7 +218,6 @@ func (mr *RunCommand) processRunner(id int, runner *common.RunnerConfig, runners
 	build.Session = buildSession
 	build.Network = mr.network
 
-	// setup jon referees
 	mr.createReferees(provider, runner, build)
 
 	// Add build to list of builds to assign numbers
@@ -234,27 +233,25 @@ func (mr *RunCommand) processRunner(id int, runner *common.RunnerConfig, runners
 }
 
 func (mr *RunCommand) createReferees(provider common.ExecutorProvider, runnerConfig *common.RunnerConfig, build *common.Build) {
-	runnerSettings := runnerConfig.RunnerSettings
 	// first see if referees configured
-	if runnerSettings.Referees == nil {
+	if runnerConfig.RunnerSettings.Referees == nil {
 		return
 	}
 
-	refereesConfig := runnerSettings.Referees
+	refereesConfig := runnerConfig.RunnerSettings.Referees
 	// see if provider supports metrics referee
 	refereed, ok := provider.(referees.MetricsRefereeExecutorProvider)
 	if ok && refereesConfig.Metrics != nil {
-		metricsConfig := refereesConfig.Metrics
 		// create prometheus API
-		prometheusAPI, err := referees.NewPrometheusAPI(metricsConfig.PrometheusAddress)
+		prometheusAPI, err := referees.NewPrometheusAPI(refereesConfig.Metrics.PrometheusAddress)
 		if err != nil {
 			mr.log().WithError(err).Error("Failed to create prometheus API for metrics referee")
 		}
 		// create and save metrics referee
 		referee, err := referees.NewMetricsReferee(
 			prometheusAPI,
-			metricsConfig.QueryInterval,
-			metricsConfig.MetricQueries,
+			refereesConfig.Metrics.QueryInterval,
+			refereesConfig.Metrics.MetricQueries,
 			refereed.GetMetricsLabelName(),
 			mr.log(),
 		)
@@ -778,8 +775,8 @@ func init() {
 	requestStatusesCollector := network.NewAPIRequestStatusesMap()
 
 	common.RegisterCommand2("run", "run multi runner service", &RunCommand{
-		ServiceName: defaultServiceName,
-		network:     network.NewGitLabClientWithRequestStatusesMap(requestStatusesCollector),
+		ServiceName:                     defaultServiceName,
+		network:                         network.NewGitLabClientWithRequestStatusesMap(requestStatusesCollector),
 		networkRequestStatusesCollector: requestStatusesCollector,
 		prometheusLogHook:               prometheus_helper.NewLogHook(),
 		failuresCollector:               prometheus_helper.NewFailuresCollector(),
