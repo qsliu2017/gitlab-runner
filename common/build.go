@@ -82,8 +82,6 @@ type Build struct {
 	Runner           *RunnerConfig  `json:"runner"`
 	ExecutorData     ExecutorData
 	ExecutorFeatures FeaturesInfo `json:"-" yaml:"-"`
-	Referees         []referees.Referee
-	Network          Network
 
 	// Unique ID for all running builds on this runner
 	RunnerID int `json:"runner_id"`
@@ -101,6 +99,15 @@ type Build struct {
 	allVariables          JobVariables
 
 	createdAt time.Time
+
+	Referees        []referees.Referee
+	ExecuteReferees func(
+		ctx context.Context,
+		build *Build,
+		executor Executor,
+		startTime time.Time,
+		endTime time.Time,
+	) error
 }
 
 func (b *Build) Log() *logrus.Entry {
@@ -287,10 +294,9 @@ func (b *Build) executeScript(ctx context.Context, executor Executor) error {
 
 	artifactUploadError := b.executeUploadArtifacts(ctx, err, executor)
 
-	// end metrics tracking
 	endTime := time.Now().UTC()
-
-	b.executeReferees(ctx, executor, startTime, endTime)
+	// Prepare, execute, and upload referees
+	b.ExecuteReferees(ctx, b, executor, startTime, endTime)
 
 	// Use job's error as most important
 	if err != nil {
@@ -311,33 +317,6 @@ func (b *Build) attemptExecuteStage(ctx context.Context, buildStage BuildStage, 
 		}
 	}
 	return
-}
-
-func (b *Build) executeReferees(ctx context.Context, executor Executor, startTime time.Time, endTime time.Time) error {
-	// setup job credentials
-	jobCredentials := JobCredentials{
-		ID:    b.JobResponse.ID,
-		Token: b.JobResponse.Token,
-		URL:   b.Runner.RunnerCredentials.URL,
-	}
-
-	// prepare, execute, and upload the results of each referee
-	for _, referee := range b.Referees {
-		if referee.Prepare(executor) {
-			reader, err := referee.Execute(ctx, startTime, endTime)
-			if err != nil {
-				return err
-			}
-
-			b.Network.UploadRawArtifacts(jobCredentials, reader, ArtifactsOptions{
-				BaseName: referee.ArtifactBaseName(),
-				Type:     referee.ArtifactType(),
-				Format:   ArtifactFormat(referee.ArtifactFormat()),
-			})
-		}
-	}
-
-	return nil
 }
 
 func (b *Build) GetBuildTimeout() time.Duration {

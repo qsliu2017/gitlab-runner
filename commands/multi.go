@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net"
@@ -216,9 +217,10 @@ func (mr *RunCommand) processRunner(id int, runner *common.RunnerConfig, runners
 		return
 	}
 	build.Session = buildSession
-	build.Network = mr.network
 
 	mr.createReferees(provider, runner, build)
+	// set referee executor
+	build.ExecuteReferees = mr.executeReferees
 
 	// Add build to list of builds to assign numbers
 	mr.buildsHelper.addBuild(build)
@@ -261,6 +263,33 @@ func (mr *RunCommand) createReferees(provider common.ExecutorProvider, runnerCon
 			build.Referees = append(build.Referees, referee)
 		}
 	}
+}
+
+func (mr *RunCommand) executeReferees(ctx context.Context, build *common.Build, executor common.Executor, startTime time.Time, endTime time.Time) error {
+	// setup job credentials
+	jobCredentials := common.JobCredentials{
+		ID:    build.JobResponse.ID,
+		Token: build.JobResponse.Token,
+		URL:   build.Runner.RunnerCredentials.URL,
+	}
+
+	// prepare, execute, and upload the results of each referee
+	for _, referee := range build.Referees {
+		if referee.Prepare(executor) {
+			reader, err := referee.Execute(ctx, startTime, endTime)
+			if err != nil {
+				return err
+			}
+
+			mr.network.UploadRawArtifacts(jobCredentials, reader, common.ArtifactsOptions{
+				BaseName: referee.ArtifactBaseName(),
+				Type:     referee.ArtifactType(),
+				Format:   common.ArtifactFormat(referee.ArtifactFormat()),
+			})
+		}
+	}
+
+	return nil
 }
 
 func (mr *RunCommand) createSession(provider common.ExecutorProvider) (*session.Session, *common.SessionInfo, error) {
