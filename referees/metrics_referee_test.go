@@ -12,6 +12,32 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestNewPrometheusAPI(t *testing.T) {
+	prometheusAPI, err := NewPrometheusAPI("http://localhost:9000")
+	require.NotNil(t, prometheusAPI)
+	require.NoError(t, err)
+}
+
+func TestNewMetricsReferee(t *testing.T) {
+	mockPrometheusAPI := new(MockPrometheusAPI)
+	queryInterval := "10s"
+	metricQueries := []string{"name1:metric1{{selector}}", "name2:metric2{{selector}}"}
+	log := logrus.WithField("builds", 1)
+	mr, err := NewMetricsReferee(mockPrometheusAPI, queryInterval, metricQueries, "instance", log)
+	require.NotNil(t, mr)
+	require.NoError(t, err)
+}
+
+func TestNewMetricsRefereeParseError(t *testing.T) {
+	mockPrometheusAPI := new(MockPrometheusAPI)
+	queryInterval := "10"
+	metricQueries := []string{"name1:metric1{{selector}}", "name2:metric2{{selector}}"}
+	log := logrus.WithField("builds", 1)
+	mr, err := NewMetricsReferee(mockPrometheusAPI, queryInterval, metricQueries, "instance", log)
+	require.Nil(t, mr)
+	require.Error(t, err)
+}
+
 func TestMetricsRefereeParseError(t *testing.T) {
 	mockPrometheusAPI := new(MockPrometheusAPI)
 	ctx, cancel := context.WithCancel(context.Background())
