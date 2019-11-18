@@ -111,7 +111,6 @@ func CallerInfo() []string {
 	callers := []string{}
 	for i := 0; ; i++ {
 		pc, file, line, ok = runtime.Caller(i)
-		fmt.Sprintf("HERE")
 		if !ok {
 			// The breaks below failed to terminate the loop, and we ran off the
 			// end of the call stack.
