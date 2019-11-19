@@ -44,7 +44,7 @@ func (mr *MetricsReferee) ArtifactFormat() string {
 }
 
 func (mr *MetricsReferee) Prepare(executor interface{}) bool {
-	// test exceutor for referee support
+	// test executor for referee support
 	refereed, ok := executor.(MetricsRefereeExecutor)
 	if !ok {
 		return false
