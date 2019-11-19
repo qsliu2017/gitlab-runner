@@ -219,7 +219,6 @@ func (mr *RunCommand) processRunner(id int, runner *common.RunnerConfig, runners
 	build.Session = buildSession
 
 	mr.createReferees(provider, runner, build)
-	// set referee executor
 	build.ExecuteReferees = mr.executeReferees
 
 	// Add build to list of builds to assign numbers
@@ -266,7 +265,6 @@ func (mr *RunCommand) createReferees(provider common.ExecutorProvider, runnerCon
 }
 
 func (mr *RunCommand) executeReferees(ctx context.Context, build *common.Build, executor common.Executor, startTime time.Time, endTime time.Time) error {
-	// setup job credentials
 	jobCredentials := common.JobCredentials{
 		ID:    build.JobResponse.ID,
 		Token: build.JobResponse.Token,
