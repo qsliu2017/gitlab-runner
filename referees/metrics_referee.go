@@ -60,8 +60,8 @@ func (mr *MetricsReferee) Execute(
 ) (*bytes.Reader, error) {
 	// specify the range used for the PromQL query
 	queryRange := prometheusV1.Range{
-		Start: startTime,
-		End:   endTime,
+		Start: startTime.UTC(),
+		End:   endTime.UTC(),
 		Step:  mr.queryInterval,
 	}
 

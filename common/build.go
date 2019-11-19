@@ -262,7 +262,7 @@ func (b *Build) executeUploadArtifacts(ctx context.Context, state error, executo
 }
 
 func (b *Build) executeScript(ctx context.Context, executor Executor) error {
-	startTime := time.Now().UTC()
+	startTime := time.Now()
 	// Prepare stage
 	err := b.executeStage(ctx, BuildStagePrepare, executor)
 
@@ -294,7 +294,7 @@ func (b *Build) executeScript(ctx context.Context, executor Executor) error {
 
 	artifactUploadError := b.executeUploadArtifacts(ctx, err, executor)
 
-	endTime := time.Now().UTC()
+	endTime := time.Now()
 	// Prepare, execute, and upload referees
 	if b.ExecuteReferees != nil {
 		b.ExecuteReferees(ctx, b, executor, startTime, endTime)
