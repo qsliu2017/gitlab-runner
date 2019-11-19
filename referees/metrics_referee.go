@@ -14,6 +14,14 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+type MetricsRefereeExecutor interface {
+	GetMetricsLabelValue() string
+}
+
+type MetricsRefereeExecutorProvider interface {
+	GetMetricsLabelName() string
+}
+
 type MetricsReferee struct {
 	prometheusAPI prometheusV1.API
 	metricQueries []string
@@ -21,14 +29,6 @@ type MetricsReferee struct {
 	labelName     string
 	labelValue    string
 	log           *logrus.Entry
-}
-
-type MetricsRefereeExecutor interface {
-	GetMetricsLabelValue() string
-}
-
-type MetricsRefereeExecutorProvider interface {
-	GetMetricsLabelName() string
 }
 
 func (mr *MetricsReferee) ArtifactBaseName() string {
