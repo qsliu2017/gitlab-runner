@@ -14,8 +14,8 @@ import (
 
 func TestNewPrometheusAPI(t *testing.T) {
 	prometheusAPI, err := NewPrometheusAPI("http://localhost:9000")
-	require.NotNil(t, prometheusAPI)
-	require.NoError(t, err)
+	assert.NotNil(t, prometheusAPI)
+	assert.NoError(t, err)
 }
 
 func TestNewMetricsReferee(t *testing.T) {
@@ -23,25 +23,25 @@ func TestNewMetricsReferee(t *testing.T) {
 	queryInterval := "10s"
 	metricQueries := []string{"name1:metric1{{selector}}", "name2:metric2{{selector}}"}
 	log := logrus.WithField("builds", 1)
+
 	mr, err := NewMetricsReferee(mockPrometheusAPI, queryInterval, metricQueries, "instance", log)
 	require.NotNil(t, mr)
 	require.NoError(t, err)
 }
 
-func TestNewMetricsRefereeParseError(t *testing.T) {
+func TestNewMetricsRefereeInvalidQueryInterval(t *testing.T) {
 	mockPrometheusAPI := new(MockPrometheusAPI)
 	queryInterval := "10"
 	metricQueries := []string{"name1:metric1{{selector}}", "name2:metric2{{selector}}"}
 	log := logrus.WithField("builds", 1)
+
 	mr, err := NewMetricsReferee(mockPrometheusAPI, queryInterval, metricQueries, "instance", log)
-	require.Nil(t, mr)
-	require.Error(t, err)
+	assert.Nil(t, mr)
+	assert.Error(t, err)
 }
 
-func TestMetricsRefereeParseError(t *testing.T) {
+func TestMetricsRefereeInvalidQueryFormat(t *testing.T) {
 	mockPrometheusAPI := new(MockPrometheusAPI)
-	ctx, cancel := context.WithCancel(context.Background())
-
 	queryInterval := "10s"
 	metricQueries := []string{"name1=metric1{{selector}}", "name2=metric2{{selector}}"}
 	log := logrus.WithField("builds", 1)
@@ -52,15 +52,12 @@ func TestMetricsRefereeParseError(t *testing.T) {
 	mockExecutor := new(MockExecutor)
 	mr.Prepare(mockExecutor)
 
-	_, err = mr.Execute(ctx, time.Now(), time.Now())
-	require.Error(t, err)
-	cancel()
+	_, err = mr.Execute(context.Background(), time.Now(), time.Now())
+	assert.Error(t, err)
 }
 
 func TestMetricsRefereeExecute(t *testing.T) {
 	mockPrometheusAPI := new(MockPrometheusAPI)
-	ctx, cancel := context.WithCancel(context.Background())
-
 	queryInterval := "10s"
 	metricQueries := []string{"name1:metric1{{selector}}", "name2:metric2{{selector}}"}
 	log := logrus.WithField("builds", 1)
@@ -71,7 +68,7 @@ func TestMetricsRefereeExecute(t *testing.T) {
 	mockExecutor := new(MockExecutor)
 	mr.Prepare(mockExecutor)
 
-	reader, err := mr.Execute(ctx, time.Now(), time.Now())
+	reader, err := mr.Execute(context.Background(), time.Now(), time.Now())
 	require.NoError(t, err)
 
 	// convert reader result to golang maps
@@ -83,5 +80,4 @@ func TestMetricsRefereeExecute(t *testing.T) {
 
 	// confirm length of elements
 	assert.Len(t, metrics, len(metricQueries))
-	cancel()
 }
