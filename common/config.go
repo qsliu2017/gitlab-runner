@@ -294,7 +294,7 @@ type MetricsRefereeConfig struct {
 }
 
 type RefereesConfig struct {
-	Metrics *MetricsRefereeConfig `toml:"metrics,omitempty" json:"metrics" namespace:"metrics"`
+	Metrics MetricsRefereeConfig `toml:"metrics,omitempty" json:"metrics" namespace:"metrics"`
 }
 
 type RunnerSettings struct {

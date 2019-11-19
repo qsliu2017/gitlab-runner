@@ -14,12 +14,14 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-type MetricsRefereeExecutor interface {
-	GetMetricsLabelValue() string
+type Metrics interface {
+	MetricLabel() string
 }
 
-type MetricsRefereeExecutorProvider interface {
-	GetMetricsLabelName() string
+type MetricsRefereeConfig struct {
+	PrometheusAddress string
+	QueryInterval     string
+	MetricQueries     []string
 }
 
 type MetricsReferee struct {
@@ -41,16 +43,6 @@ func (mr *MetricsReferee) ArtifactType() string {
 
 func (mr *MetricsReferee) ArtifactFormat() string {
 	return "gzip"
-}
-
-func (mr *MetricsReferee) Prepare(executor interface{}) bool {
-	// test executor for referee support
-	refereed, ok := executor.(MetricsRefereeExecutor)
-	if !ok {
-		return false
-	}
-	mr.labelValue = refereed.GetMetricsLabelValue()
-	return true
 }
 
 func (mr *MetricsReferee) Execute(
@@ -117,22 +109,21 @@ func NewPrometheusAPI(prometheusAddress string) (prometheusV1.API, error) {
 	return prometheusV1.NewAPI(prometheusClient), nil
 }
 
-func NewMetricsReferee(
-	prometheusAPI prometheusV1.API,
-	queryInterval string,
-	metricQueries []string,
-	labelName string,
-	log *logrus.Entry,
-) (*MetricsReferee, error) {
-	queryIntervalDuration, err := time.ParseDuration(queryInterval)
+func NewMetricsReferee(log *logrus.Entry, labelName string, config MetricsRefereeConfig) (*MetricsReferee, error) {
+	queryIntervalDuration, err := time.ParseDuration(config.QueryInterval)
 	if err != nil {
 		return nil, fmt.Errorf("unable to parse query interval from config: %v", err)
+	}
+
+	prometheusAPI, err := NewPrometheusAPI(config.PrometheusAddress)
+	if err != nil {
+		return nil, fmt.Errorf("setting prometheus API: %v", err)
 	}
 
 	return &MetricsReferee{
 		prometheusAPI: prometheusAPI,
 		queryInterval: queryIntervalDuration,
-		metricQueries: metricQueries,
+		metricQueries: config.MetricQueries,
 		labelName:     labelName,
 		log:           log,
 	}, nil

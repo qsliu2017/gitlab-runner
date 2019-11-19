@@ -7,7 +7,6 @@ import (
 )
 
 type Referee interface {
-	Prepare(executor interface{}) bool
 	Execute(
 		ctx context.Context,
 		startTime time.Time,

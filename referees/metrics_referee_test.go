@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 	"time"
 
@@ -19,65 +21,72 @@ func TestNewPrometheusAPI(t *testing.T) {
 }
 
 func TestNewMetricsReferee(t *testing.T) {
-	mockPrometheusAPI := new(MockPrometheusAPI)
-	queryInterval := "10s"
-	metricQueries := []string{"name1:metric1{{selector}}", "name2:metric2{{selector}}"}
 	log := logrus.WithField("builds", 1)
+	cfg := MetricsRefereeConfig{
+		PrometheusAddress: "http://127.0.0.1:9000",
+		QueryInterval:     "10s",
+		MetricQueries:     []string{"name1:metric1{{selector}}", "name2:metric2{{selector}}"},
+	}
 
-	mr, err := NewMetricsReferee(mockPrometheusAPI, queryInterval, metricQueries, "instance", log)
+	mr, err := NewMetricsReferee(log, "instance", cfg)
 	require.NotNil(t, mr)
 	require.NoError(t, err)
 }
 
 func TestNewMetricsRefereeInvalidQueryInterval(t *testing.T) {
-	mockPrometheusAPI := new(MockPrometheusAPI)
-	queryInterval := "10"
-	metricQueries := []string{"name1:metric1{{selector}}", "name2:metric2{{selector}}"}
 	log := logrus.WithField("builds", 1)
+	cfg := MetricsRefereeConfig{
+		PrometheusAddress: "http://127.0.0.1:9000",
+		QueryInterval:     "10",
+		MetricQueries:     []string{"name1:metric1{{selector}}", "name2:metric2{{selector}}"},
+	}
 
-	mr, err := NewMetricsReferee(mockPrometheusAPI, queryInterval, metricQueries, "instance", log)
+	mr, err := NewMetricsReferee(log, "instance", cfg)
 	assert.Nil(t, mr)
 	assert.Error(t, err)
 }
 
 func TestMetricsRefereeInvalidQueryFormat(t *testing.T) {
-	mockPrometheusAPI := new(MockPrometheusAPI)
-	queryInterval := "10s"
-	metricQueries := []string{"name1=metric1{{selector}}", "name2=metric2{{selector}}"}
 	log := logrus.WithField("builds", 1)
+	cfg := MetricsRefereeConfig{
+		PrometheusAddress: "http://127.0.0.1:9000",
+		QueryInterval:     "10s",
+		MetricQueries:     []string{"name1=metric1{{selector}}", "name2=metric2{{selector}}"},
+	}
 
-	mr, err := NewMetricsReferee(mockPrometheusAPI, queryInterval, metricQueries, "instance", log)
+	mr, err := NewMetricsReferee(log, "instance", cfg)
 	require.NoError(t, err)
-
-	mockExecutor := new(MockExecutor)
-	mr.Prepare(mockExecutor)
 
 	_, err = mr.Execute(context.Background(), time.Now(), time.Now())
 	assert.Error(t, err)
 }
 
+// FIXME
 func TestMetricsRefereeExecute(t *testing.T) {
-	mockPrometheusAPI := new(MockPrometheusAPI)
-	queryInterval := "10s"
-	metricQueries := []string{"name1:metric1{{selector}}", "name2:metric2{{selector}}"}
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Assert that the query was parsed correctly
+	}))
+
 	log := logrus.WithField("builds", 1)
+	cfg := MetricsRefereeConfig{
+		PrometheusAddress: ts.URL,
+		QueryInterval:     "10s",
+		MetricQueries:     []string{"name1:metric1{{selector}}", "name2:metric2{{selector}}"},
+	}
 
-	mr, err := NewMetricsReferee(mockPrometheusAPI, queryInterval, metricQueries, "instance", log)
+	mr, err := NewMetricsReferee(log, "instance", cfg)
 	require.NoError(t, err)
-
-	mockExecutor := new(MockExecutor)
-	mr.Prepare(mockExecutor)
 
 	reader, err := mr.Execute(context.Background(), time.Now(), time.Now())
 	require.NoError(t, err)
 
-	// convert reader result to golang maps
 	buf := new(bytes.Buffer)
 	buf.ReadFrom(reader)
+
 	var metrics interface{}
 	err = json.Unmarshal(buf.Bytes(), &metrics)
 	require.NoError(t, err)
 
 	// confirm length of elements
-	assert.Len(t, metrics, len(metricQueries))
+	assert.Len(t, metrics, len(cfg.MetricQueries))
 }

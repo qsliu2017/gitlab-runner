@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"net/url"
 	"os"
 	"path"
@@ -99,15 +100,11 @@ type Build struct {
 	allVariables          JobVariables
 
 	createdAt time.Time
+	startedAt time.Time
+	endedAt   time.Time
 
-	Referees        []referees.Referee
-	ExecuteReferees func(
-		ctx context.Context,
-		build *Build,
-		executor Executor,
-		startTime time.Time,
-		endTime time.Time,
-	) error
+	Referees         []referees.Referee
+	ArtifactUploader func(config JobCredentials, reader io.Reader, options ArtifactsOptions) UploadState
 }
 
 func (b *Build) Log() *logrus.Entry {
@@ -262,7 +259,7 @@ func (b *Build) executeUploadArtifacts(ctx context.Context, state error, executo
 }
 
 func (b *Build) executeScript(ctx context.Context, executor Executor) error {
-	startTime := time.Now()
+	b.startedAt = time.Now()
 	// Prepare stage
 	err := b.executeStage(ctx, BuildStagePrepare, executor)
 
@@ -294,11 +291,7 @@ func (b *Build) executeScript(ctx context.Context, executor Executor) error {
 
 	artifactUploadError := b.executeUploadArtifacts(ctx, err, executor)
 
-	endTime := time.Now()
-	// Prepare, execute, and upload referees
-	if b.ExecuteReferees != nil {
-		b.ExecuteReferees(ctx, b, executor, startTime, endTime)
-	}
+	b.endedAt = time.Now()
 
 	// Use job's error as most important
 	if err != nil {
@@ -592,7 +585,46 @@ func (b *Build) Run(globalConfig *Config, trace JobTrace) (err error) {
 		executor.Finish(err)
 	}
 
+	b.runReferees(ctx, executor)
+
 	return err
+}
+
+func (b *Build) runReferees(ctx context.Context, executor Executor) {
+	if metrics, ok := executor.(referees.Metrics); b.Runner.Referees != nil && ok {
+		cfg := referees.MetricsRefereeConfig{
+			PrometheusAddress: b.Runner.Referees.Metrics.PrometheusAddress,
+			QueryInterval:     b.Runner.Referees.Metrics.QueryInterval,
+			MetricQueries:     b.Runner.Referees.Metrics.MetricQueries,
+		}
+		metricsReferee, err := referees.NewMetricsReferee(b.Log(), metrics.MetricLabel(), cfg)
+		if err != nil {
+			b.Log().WithError(err).Error("Failed to set up Metrics referee")
+			return
+		}
+
+		b.Referees = append(b.Referees, metricsReferee)
+	}
+
+	// Execute all Referees
+	for _, referee := range b.Referees {
+		reader, err := referee.Execute(ctx, b.startedAt, b.endedAt)
+		if err != nil {
+			b.Log().WithError(err).Errorf("Failed to execute referee, %T", err)
+		}
+
+		// Upload
+		jobCredentials := JobCredentials{
+			ID:    b.JobResponse.ID,
+			Token: b.JobResponse.Token,
+			URL:   b.Runner.RunnerCredentials.URL,
+		}
+		b.ArtifactUploader(jobCredentials, reader, ArtifactsOptions{
+			BaseName: referee.ArtifactBaseName(),
+			Type:     referee.ArtifactType(),
+			Format:   ArtifactFormat(referee.ArtifactFormat()),
+		})
+	}
 }
 
 func (b *Build) String() string {

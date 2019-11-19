@@ -1,7 +1,6 @@
 package commands
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"net"
@@ -27,7 +26,6 @@ import (
 	service_helpers "gitlab.com/gitlab-org/gitlab-runner/helpers/service"
 	"gitlab.com/gitlab-org/gitlab-runner/log"
 	"gitlab.com/gitlab-org/gitlab-runner/network"
-	"gitlab.com/gitlab-org/gitlab-runner/referees"
 	"gitlab.com/gitlab-org/gitlab-runner/session"
 )
 
@@ -217,9 +215,7 @@ func (mr *RunCommand) processRunner(id int, runner *common.RunnerConfig, runners
 		return
 	}
 	build.Session = buildSession
-
-	mr.createReferees(provider, runner, build)
-	build.ExecuteReferees = mr.executeReferees
+	build.ArtifactUploader = mr.network.UploadRawArtifacts
 
 	// Add build to list of builds to assign numbers
 	mr.buildsHelper.addBuild(build)
@@ -231,63 +227,6 @@ func (mr *RunCommand) processRunner(id int, runner *common.RunnerConfig, runners
 
 	// Process a build
 	return build.Run(mr.config, trace)
-}
-
-func (mr *RunCommand) createReferees(provider common.ExecutorProvider, runnerConfig *common.RunnerConfig, build *common.Build) {
-	// first see if referees configured
-	if runnerConfig.RunnerSettings.Referees == nil {
-		return
-	}
-
-	refereesConfig := runnerConfig.RunnerSettings.Referees
-	// see if provider supports metrics referee
-	refereed, ok := provider.(referees.MetricsRefereeExecutorProvider)
-	if ok && refereesConfig.Metrics != nil {
-		// create prometheus API
-		prometheusAPI, err := referees.NewPrometheusAPI(refereesConfig.Metrics.PrometheusAddress)
-		if err != nil {
-			mr.log().WithError(err).Error("Failed to create prometheus API for metrics referee")
-		}
-		// create and save metrics referee
-		referee, err := referees.NewMetricsReferee(
-			prometheusAPI,
-			refereesConfig.Metrics.QueryInterval,
-			refereesConfig.Metrics.MetricQueries,
-			refereed.GetMetricsLabelName(),
-			mr.log(),
-		)
-		if err != nil {
-			mr.log().WithError(err).Error("Failed to create metrics referee")
-		} else {
-			build.Referees = append(build.Referees, referee)
-		}
-	}
-}
-
-func (mr *RunCommand) executeReferees(ctx context.Context, build *common.Build, executor common.Executor, startTime time.Time, endTime time.Time) error {
-	jobCredentials := common.JobCredentials{
-		ID:    build.JobResponse.ID,
-		Token: build.JobResponse.Token,
-		URL:   build.Runner.RunnerCredentials.URL,
-	}
-
-	// prepare, execute, and upload the results of each referee
-	for _, referee := range build.Referees {
-		if referee.Prepare(executor) {
-			reader, err := referee.Execute(ctx, startTime, endTime)
-			if err != nil {
-				return err
-			}
-
-			mr.network.UploadRawArtifacts(jobCredentials, reader, common.ArtifactsOptions{
-				BaseName: referee.ArtifactBaseName(),
-				Type:     referee.ArtifactType(),
-				Format:   common.ArtifactFormat(referee.ArtifactFormat()),
-			})
-		}
-	}
-
-	return nil
 }
 
 func (mr *RunCommand) createSession(provider common.ExecutorProvider) (*session.Session, *common.SessionInfo, error) {
