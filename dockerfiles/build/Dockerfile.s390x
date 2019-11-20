@@ -5,10 +5,9 @@ ENV PATH="${PATH:-/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin}"
 
 RUN uname -a
 
-RUN apk add --no-cache bash 
-RUN apk add --no-cache ca-certificates 
-RUN apk add --no-cache git
-RUN apk add --no-cache miniperl && ln -s miniperl /usr/bin/perl
+RUN apk add --no-cache bash ca-certificates git git-lfs miniperl \
+	&& ln -s miniperl /usr/bin/perl
+
 
 RUN git lfs install --skip-repo
 
