@@ -32,9 +32,9 @@ BINARIES += ${BASE_BINARY_PATH}.s390x
 # Define variables with the archiecture for each matching binary. We are using
 # the following pattern match GO_ARCH_{{arch}}-{{os}}, these should match up
 # with BINARIES variables. The value of the varible is the dist name from `go tool dist list`
-#GO_ARCH_x86_64 = linux/amd64
-#GO_ARCH_arm = linux/arm
-#GO_ARCH_x86_64-windows = windows/amd64
+GO_ARCH_x86_64 = linux/amd64
+GO_ARCH_arm = linux/arm
+GO_ARCH_x86_64-windows = windows/amd64
 GO_ARCH_s390x = linux/s390x
 
 # Go files that are used to create the helper binary.
