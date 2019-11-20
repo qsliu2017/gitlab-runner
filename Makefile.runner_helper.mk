@@ -14,8 +14,8 @@
 # Tar files that we want to generate from the Docker file system, this is
 # genarlly used for linux based Dockerfiles.
 BASE_TAR_PATH := out/helper-images/prebuilt
-#TAR += ${BASE_TAR_PATH}-x86_64.tar.xz
-#TAR += ${BASE_TAR_PATH}-arm.tar.xz
+TAR += ${BASE_TAR_PATH}-x86_64.tar.xz
+TAR += ${BASE_TAR_PATH}-arm.tar.xz
 TAR += ${BASE_TAR_PATH}-s390x.tar.xz
 
 # Binaries that we support for the helper image. We are using the following
@@ -24,9 +24,9 @@ TAR += ${BASE_TAR_PATH}-s390x.tar.xz
 # match up with GO_ARCH_* variables names. Note that Linux is implied by
 # default.
 BASE_BINARY_PATH := dockerfiles/build/binaries/gitlab-runner-helper
-#BINARIES := ${BASE_BINARY_PATH}.x86_64-windows
-#BINARIES += ${BASE_BINARY_PATH}.x86_64
-#BINARIES += ${BASE_BINARY_PATH}.arm
+BINARIES := ${BASE_BINARY_PATH}.x86_64-windows
+BINARIES += ${BASE_BINARY_PATH}.x86_64
+BINARIES += ${BASE_BINARY_PATH}.arm
 BINARIES += ${BASE_BINARY_PATH}.s390x
 
 # Define variables with the archiecture for each matching binary. We are using
