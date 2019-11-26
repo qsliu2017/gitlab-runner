@@ -32,9 +32,10 @@ var apiRequestStatuses = prometheus.NewDesc(
 type APIEndpoint string
 
 const (
-	APIEndpointRequestJob APIEndpoint = "request_job"
-	APIEndpointUpdateJob  APIEndpoint = "update_job"
-	APIEndpointPatchTrace APIEndpoint = "patch_trace"
+	APIEndpointRequestJob    APIEndpoint = "request_job"
+	APIEndpointUpdateJob     APIEndpoint = "update_job"
+	APIEndpointPatchTrace    APIEndpoint = "patch_trace"
+	APIEndpointCreateRelease APIEndpoint = "create_release"
 )
 
 type apiRequestStatusPermutation struct {
@@ -547,6 +548,38 @@ func (n *GitLabClient) DownloadArtifacts(config common.JobCredentials, artifacts
 	default:
 		log.WithField("status", res.Status).Warningln("Downloading artifacts from coordinator...", "failed")
 		return common.DownloadFailed
+	}
+}
+
+func (n *GitLabClient) CreateRelease(config common.JobCredentials, options common.ReleaseOptions) common.UploadState {
+	fmt.Printf("gitlab.go: CreateRelease: Start\n")
+	request := common.CreateReleaseRequest{
+		TagName:     options.Tag,
+		Description: options.Description,
+	}
+
+	result, statusText, response := n.doJSON(&config.RunnerCredentials, "POST", fmt.Sprintf("projects/%d/releases", jobInfo.ProjectID), http.StatusOK, &request, nil)
+	n.requestsStatusesMap.Append(config.RunnerCredentials.ShortDescription(), APIEndpointCreateRelease, result)
+
+	fmt.Printf("gitlab.go: CreateRelease: result: %+v\n", result)
+	fmt.Printf("gitlab.go: CreateRelease: response: %+v\n", response)
+
+	switch {
+	case result == http.StatusOK:
+		log.Debugln("Creating a release...", "ok")
+		return common.UpdateSucceeded
+	case result == http.StatusNotFound:
+		log.Warningln("Creating a release...", "aborted")
+		return common.UpdateAbort
+	case result == http.StatusForbidden:
+		log.WithField("status", statusText).Errorln("Creating a release...", "forbidden")
+		return common.UpdateAbort
+	case result == clientError:
+		log.WithField("status", statusText).Errorln("Creating a release...", "error")
+		return common.UpdateAbort
+	default:
+		log.WithField("status", statusText).Warningln("Creating a release...", "failed")
+		return common.UpdateFailed
 	}
 }
 

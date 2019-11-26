@@ -270,6 +270,7 @@ func (b *CmdShell) GenerateScript(buildStage common.BuildStage, info common.Shel
 
 	err = b.writeScript(w, buildStage, info)
 	script = w.Finish(info.Build.IsDebugTraceEnabled())
+	fmt.Printf("cmd.go: GenerateScript: script: %+v\n", script)
 	return
 }
 
