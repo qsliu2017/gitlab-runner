@@ -332,6 +332,11 @@ type UpdateJobRequest struct {
 	FailureReason JobFailureReason `json:"failure_reason,omitempty"`
 }
 
+type CreateReleaseRequest struct {
+	TagName     string `json:"tag_name,omitempty"`
+	Description string `json:"description,omitempty"`
+}
+
 type JobCredentials struct {
 	ID          int    `long:"id" env:"CI_JOB_ID" description:"The build ID to upload artifacts for"`
 	Token       string `long:"token" env:"CI_JOB_TOKEN" required:"true" description:"Build token"`
@@ -372,6 +377,11 @@ type ArtifactsOptions struct {
 	ExpireIn string
 	Format   ArtifactFormat
 	Type     string
+}
+
+type ReleaseOptions struct {
+	Tag         string
+	Description string
 }
 
 type FailuresCollector interface {
