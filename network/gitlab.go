@@ -271,6 +271,8 @@ func addTLSData(response *common.JobResponse, tlsData ResponseTLSData) {
 }
 
 func (n *GitLabClient) RequestJob(config common.RunnerConfig, sessionInfo *common.SessionInfo) (*common.JobResponse, bool) {
+	fmt.Printf("gitlab.go: RequestJob\n")
+
 	request := common.JobRequest{
 		Info:       n.getRunnerVersion(config),
 		Token:      config.Token,
@@ -296,6 +298,8 @@ func (n *GitLabClient) RequestJob(config common.RunnerConfig, sessionInfo *commo
 				WithError(err).Errorln("Error on fetching TLS Data from API response...", "error")
 		}
 		addTLSData(&response, tlsData)
+
+		fmt.Printf("gitlab.go: RequestJob: response: %+v\n", response)
 
 		return &response, true
 	case http.StatusForbidden:

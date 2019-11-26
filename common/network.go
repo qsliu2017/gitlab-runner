@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"io"
 
-	"gitlab.com/gitlab-org/gitlab-runner/helpers/url"
+	url_helpers "gitlab.com/gitlab-org/gitlab-runner/helpers/url"
 )
 
 type UpdateState int
@@ -237,6 +237,22 @@ type Artifact struct {
 
 type Artifacts []Artifact
 
+type ReleaseAssetLink struct {
+	Name string `json:"name"`
+	Url  string `json:"url"`
+}
+
+type ReleaseAssets struct {
+	Links []ReleaseAssetLink `json:links`
+}
+
+type Release struct {
+	Tag         string        `json:"tag"`
+	Name        string        `json:"name"`
+	Description string        `json:"description"`
+	Assets      ReleaseAssets `json:"assets"`
+}
+
 type Cache struct {
 	Key       string        `json:"key"`
 	Untracked bool          `json:"untracked"`
@@ -294,6 +310,7 @@ type JobResponse struct {
 	Image         Image          `json:"image"`
 	Services      Services       `json:"services"`
 	Artifacts     Artifacts      `json:"artifacts"`
+	Release       Release        `json:"release"`
 	Cache         Caches         `json:"cache"`
 	Credentials   []Credentials  `json:"credentials"`
 	Dependencies  Dependencies   `json:"dependencies"`

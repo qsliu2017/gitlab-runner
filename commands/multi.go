@@ -134,6 +134,7 @@ func (mr *RunCommand) requeueRunner(runner *common.RunnerConfig, runners chan *c
 // requestJob will check if the runner can send another concurrent request to
 // GitLab, if not the return value is nil.
 func (mr *RunCommand) requestJob(runner *common.RunnerConfig, sessionInfo *common.SessionInfo) (common.JobTrace, *common.JobResponse, error) {
+	fmt.Printf("multi.go: requestJob\n")
 	if !mr.buildsHelper.acquireRequest(runner) {
 		mr.log().WithField("runner", runner.ShortDescription()).
 			Debugln("Failed to request job: runner requestConcurrency meet")

@@ -119,6 +119,7 @@ func (c *ArtifactsUploaderCommand) createAndUpload() error {
 }
 
 func (c *ArtifactsUploaderCommand) Execute(*cli.Context) {
+	fmt.Printf("artifacts_uploader.go: Execute:")
 	log.SetRunnerFormatter()
 
 	if len(c.URL) == 0 || len(c.Token) == 0 {

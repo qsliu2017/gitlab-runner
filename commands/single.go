@@ -5,6 +5,7 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
+	"fmt"
 
 	"github.com/sirupsen/logrus"
 	"github.com/tevino/abool"
@@ -68,6 +69,7 @@ func (r *RunSingleCommand) postBuild() {
 }
 
 func (r *RunSingleCommand) processBuild(data common.ExecutorData, abortSignal chan os.Signal) (err error) {
+	fmt.Printf("single.go: requestJob\n")
 	jobData, healthy := r.network.RequestJob(r.RunnerConfig, nil)
 	if !healthy {
 		logrus.Println("Runner is not healthy!")

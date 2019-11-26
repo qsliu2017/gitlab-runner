@@ -525,6 +525,7 @@ func (b *AbstractShell) cacheArchiver(w ShellWriter, info common.ShellScriptInfo
 }
 
 func (b *AbstractShell) writeUploadArtifact(w ShellWriter, info common.ShellScriptInfo, artifact common.Artifact) {
+	fmt.Printf("shells/abstract.go: writeUploadArtifact:\n")
 	args := []string{
 		"artifacts-uploader",
 		"--url",
