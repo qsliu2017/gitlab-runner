@@ -1,6 +1,7 @@
 package network
 
 import (
+	"context"
 	"crypto/rsa"
 	"crypto/tls"
 	"crypto/x509"
@@ -123,7 +124,7 @@ func TestClientDo(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, c)
 
-	statusCode, statusText, _ := c.doJSON("test/auth", http.MethodGet, http.StatusOK, nil, nil)
+	statusCode, statusText, _ := c.doJSON(context.Background(), "test/auth", http.MethodGet, http.StatusOK, nil, nil)
 	assert.Equal(t, http.StatusForbidden, statusCode, statusText)
 
 	req := struct {
@@ -136,16 +137,16 @@ func TestClientDo(t *testing.T) {
 		Key string `json:"key"`
 	}{}
 
-	statusCode, statusText, _ = c.doJSON("test/json", http.MethodGet, http.StatusOK, nil, &res)
+	statusCode, statusText, _ = c.doJSON(context.Background(), "test/json", http.MethodGet, http.StatusOK, nil, &res)
 	assert.Equal(t, http.StatusBadRequest, statusCode, statusText)
 
-	statusCode, statusText, _ = c.doJSON("test/json", http.MethodGet, http.StatusOK, &req, nil)
+	statusCode, statusText, _ = c.doJSON(context.Background(), "test/json", http.MethodGet, http.StatusOK, &req, nil)
 	assert.Equal(t, http.StatusNotAcceptable, statusCode, statusText)
 
-	statusCode, statusText, _ = c.doJSON("test/json", http.MethodGet, http.StatusOK, nil, nil)
+	statusCode, statusText, _ = c.doJSON(context.Background(), "test/json", http.MethodGet, http.StatusOK, nil, nil)
 	assert.Equal(t, http.StatusBadRequest, statusCode, statusText)
 
-	statusCode, statusText, _ = c.doJSON("test/json", http.MethodGet, http.StatusOK, &req, &res)
+	statusCode, statusText, _ = c.doJSON(context.Background(), "test/json", http.MethodGet, http.StatusOK, &req, &res)
 	assert.Equal(t, http.StatusOK, statusCode, statusText)
 	assert.Equal(t, "value", res.Key, statusText)
 }
@@ -157,7 +158,7 @@ func TestClientInvalidSSL(t *testing.T) {
 	c, _ := newClient(&RunnerCredentials{
 		URL: s.URL,
 	})
-	statusCode, statusText, _ := c.doJSON("test/ok", http.MethodGet, http.StatusOK, nil, nil)
+	statusCode, statusText, _ := c.doJSON(context.Background(), "test/ok", http.MethodGet, http.StatusOK, nil, nil)
 	assert.Equal(t, -1, statusCode, statusText)
 	assert.Contains(t, statusText, "certificate signed by unknown authority")
 }
@@ -178,7 +179,7 @@ func TestClientTLSCAFile(t *testing.T) {
 		URL:       s.URL,
 		TLSCAFile: file.Name(),
 	})
-	statusCode, statusText, resp := c.doJSON("test/ok", http.MethodGet, http.StatusOK, nil, nil)
+	statusCode, statusText, resp := c.doJSON(context.Background(), "test/ok", http.MethodGet, http.StatusOK, nil, nil)
 	assert.Equal(t, http.StatusOK, statusCode, statusText)
 
 	tlsData, err := c.getResponseTLSData(resp.TLS)
@@ -206,7 +207,7 @@ func TestClientCertificateInPredefinedDirectory(t *testing.T) {
 	c, _ := newClient(&RunnerCredentials{
 		URL: s.URL,
 	})
-	statusCode, statusText, resp := c.doJSON("test/ok", http.MethodGet, http.StatusOK, nil, nil)
+	statusCode, statusText, resp := c.doJSON(context.Background(), "test/ok", http.MethodGet, http.StatusOK, nil, nil)
 	assert.Equal(t, http.StatusOK, statusCode, statusText)
 
 	tlsData, err := c.getResponseTLSData(resp.TLS)
@@ -233,7 +234,7 @@ func TestClientInvalidTLSAuth(t *testing.T) {
 		URL:       s.URL,
 		TLSCAFile: ca.Name(),
 	})
-	statusCode, statusText, _ := c.doJSON("test/ok", http.MethodGet, http.StatusOK, nil, nil)
+	statusCode, statusText, _ := c.doJSON(context.Background(), "test/ok", http.MethodGet, http.StatusOK, nil, nil)
 	assert.Equal(t, -1, statusCode, statusText)
 	assert.Contains(t, statusText, "tls: bad certificate")
 }
@@ -273,7 +274,7 @@ func TestClientTLSAuth(t *testing.T) {
 		TLSKeyFile:  key.Name(),
 	})
 
-	statusCode, statusText, resp := c.doJSON("test/ok", http.MethodGet, http.StatusOK, nil, nil)
+	statusCode, statusText, resp := c.doJSON(context.Background(), "test/ok", http.MethodGet, http.StatusOK, nil, nil)
 	assert.Equal(t, http.StatusOK, statusCode, statusText)
 
 	tlsData, err := c.getResponseTLSData(resp.TLS)
@@ -313,7 +314,7 @@ func TestClientTLSAuthCertificatesInPredefinedDirectory(t *testing.T) {
 	c, _ := newClient(&RunnerCredentials{
 		URL: s.URL,
 	})
-	statusCode, statusText, resp := c.doJSON("test/ok", http.MethodGet, http.StatusOK, nil, nil)
+	statusCode, statusText, resp := c.doJSON(context.Background(), "test/ok", http.MethodGet, http.StatusOK, nil, nil)
 	assert.Equal(t, http.StatusOK, statusCode, statusText)
 
 	tlsData, err := c.getResponseTLSData(resp.TLS)
@@ -371,16 +372,44 @@ func TestClientHandleCharsetInContentType(t *testing.T) {
 		Key string `json:"key"`
 	}{}
 
-	statusCode, statusText, _ := c.doJSON("with-charset", http.MethodGet, http.StatusOK, nil, &res)
+	statusCode, statusText, _ := c.doJSON(
+		context.Background(),
+		"with-charset",
+		http.MethodGet,
+		http.StatusOK,
+		nil,
+		&res,
+	)
 	assert.Equal(t, http.StatusOK, statusCode, statusText)
 
-	statusCode, statusText, _ = c.doJSON("without-charset", http.MethodGet, http.StatusOK, nil, &res)
+	statusCode, statusText, _ = c.doJSON(
+		context.Background(),
+		"without-charset",
+		http.MethodGet,
+		http.StatusOK,
+		nil,
+		&res,
+	)
 	assert.Equal(t, http.StatusOK, statusCode, statusText)
 
-	statusCode, statusText, _ = c.doJSON("without-json", http.MethodGet, http.StatusOK, nil, &res)
+	statusCode, statusText, _ = c.doJSON(
+		context.Background(),
+		"without-json",
+		http.MethodGet,
+		http.StatusOK,
+		nil,
+		&res,
+	)
 	assert.Equal(t, -1, statusCode, statusText)
 
-	statusCode, statusText, _ = c.doJSON("invalid-header", http.MethodGet, http.StatusOK, nil, &res)
+	statusCode, statusText, _ = c.doJSON(
+		context.Background(),
+		"invalid-header",
+		http.MethodGet,
+		http.StatusOK,
+		nil,
+		&res,
+	)
 	assert.Equal(t, -1, statusCode, statusText)
 }
 
@@ -431,7 +460,7 @@ func TestRequestsBackOff(t *testing.T) {
 			headers := make(http.Header)
 			headers.Add("responseStatus", strconv.Itoa(testCase.responseStatus))
 
-			res, err := c.do("/", http.MethodPost, body, "application/json", headers)
+			res, err := c.do(context.Background(), "/", http.MethodPost, body, "application/json", headers)
 
 			assert.NoError(t, err)
 			assert.Equal(t, testCase.responseStatus, res.StatusCode)
@@ -461,6 +490,6 @@ func TestRequesterCalled(t *testing.T) {
 	})).Return(resReturn, nil)
 	c.requester = rl
 
-	res, _ := c.do("http://mockURL", http.MethodGet, nil, "", nil)
+	res, _ := c.do(context.Background(), "http://mockURL", http.MethodGet, nil, "", nil)
 	assert.Equal(t, resReturn, res)
 }
