@@ -268,8 +268,6 @@ update_feature_flags_docs: $(GOPATH_SETUP)
 
 development_setup:
 	test -d tmp/gitlab-test || git clone https://gitlab.com/gitlab-org/ci-cd/tests/gitlab-test.git tmp/gitlab-test
-	if prlctl --version ; then $(MAKE) -C tests/ubuntu parallels ; fi
-	if vboxmanage --version ; then $(MAKE) -C tests/ubuntu virtualbox ; fi
 
 dep_check: $(DEP)
 	@cd $(PKG_BUILD_DIR) && $(DEP) check
