@@ -165,19 +165,25 @@ func getFlags() []cli.Flag {
 	}
 }
 
+func getConfigFlags() []cli.Flag {
+	return []cli.Flag{
+		cli.StringFlag{
+			Name:  "config, c",
+			Value: getDefaultConfigFile(),
+			Usage: "Specify custom config file",
+		},
+	}
+}
+
 func getInstallFlags() []cli.Flag {
 	installFlags := getFlags()
+	installFlags = append(installFlags, getConfigFlags()...)
 	installFlags = append(
 		installFlags,
 		cli.StringFlag{
 			Name:  "working-directory, d",
 			Value: helpers.GetCurrentWorkingDirectory(),
 			Usage: "Specify custom root directory where all data are stored",
-		},
-		cli.StringFlag{
-			Name:  "config, c",
-			Value: getDefaultConfigFile(),
-			Usage: "Specify custom config file",
 		},
 		cli.BoolFlag{
 			Name:  "syslog",
