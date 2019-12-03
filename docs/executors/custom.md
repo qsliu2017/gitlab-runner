@@ -59,8 +59,7 @@ configuration keys:
 ```
 
 For field definitions and which ones are required, see
-[`[runners.custom]`
-section](../configuration/advanced-configuration.md#the-runnerscustom-section)
+[`[runners.custom]` section](../configuration/advanced-configuration.md#the-runnerscustom-section)
 configuration.
 
 In addition both `builds_dir` and `cache_dir` inside of the
@@ -93,10 +92,8 @@ exposed to the executable, which can be used to get information about
 the specific Job that is running. All stages will have the following
 environment variables available to them:
 
-- Standard CI/CD [environment
-  variables](https://docs.gitlab.com/ee/ci/variables/), including
-  [predefined
-  variables](https://docs.gitlab.com/ee/ci/variables/predefined_variables.html).
+- Standard CI/CD [environment variables](https://docs.gitlab.com/ee/ci/variables/), including
+  [predefined variables](https://docs.gitlab.com/ee/ci/variables/predefined_variables.html).
 - All environment variables provided by the Custom Runner host system.
 
 Both CI/CD environment variables and predefined variables are prefixed
