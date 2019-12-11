@@ -321,6 +321,7 @@ func (b *AbstractShell) writeRefspecFetchCmd(w ShellWriter, build *common.Build,
 	if depth > 0 {
 		fetchArgs = append(fetchArgs, "--depth", strconv.Itoa(depth))
 	}
+	fetchArgs = append(fetchArgs, build.GetGitFetchFlags()...)
 
 	w.Command("git", fetchArgs...)
 }
