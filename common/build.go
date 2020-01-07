@@ -1,7 +1,9 @@
 package common
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -629,6 +631,18 @@ func (b *Build) Run(globalConfig *Config, trace JobTrace) (err error) {
 
 func (b *Build) String() string {
 	return helpers.ToYAML(b)
+}
+
+func (b *Build) ToJSON() (string, error) {
+	jobResponseJSON := new(bytes.Buffer)
+
+	jsonEncoder := json.NewEncoder(jobResponseJSON)
+	err := jsonEncoder.Encode(b.JobResponse)
+	if err != nil {
+		return "", err
+	}
+
+	return jobResponseJSON.String(), nil
 }
 
 func (b *Build) GetDefaultVariables() JobVariables {

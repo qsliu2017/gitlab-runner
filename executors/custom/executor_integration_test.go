@@ -538,3 +538,18 @@ func TestBuildOnCustomDirectory(t *testing.T) {
 		}
 	})
 }
+
+func TestBuildPayloadAccess(t *testing.T) {
+	shellstest.OnEachShell(t, func(t *testing.T, shell string) {
+		successfulBuild, err := common.GetSuccessfulBuild()
+		require.NoError(t, err)
+		successfulBuild.JobInfo.ProjectID = 123456
+
+		build, cleanup := newBuild(t, successfulBuild, shell)
+		defer cleanup()
+
+		out, err := runBuildReturningOutput(t, build)
+		assert.NoError(t, err)
+		assert.Contains(t, out, `common.JobInfo{Name:"", Stage:"", ProjectID:123456, ProjectName:""}`)
+	})
+}

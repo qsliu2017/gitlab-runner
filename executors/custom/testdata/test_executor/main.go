@@ -17,6 +17,7 @@ const (
 	isSystemError    = "CUSTOM_ENV_IS_SYSTEM_ERROR"
 	isUnknownError   = "CUSTOM_ENV_IS_UNKNOWN_ERROR"
 	isRunOnCustomDir = "CUSTOM_ENV_IS_RUN_ON_CUSTOM_DIR"
+	jobPayloadEnv    = "CUSTOM_ENV_CI_JOB_PAYLOAD"
 )
 
 const (
@@ -118,6 +119,21 @@ func config(shell string, args []string) {
 func prepare(shell string, args []string) {
 	fmt.Println("PREPARE doesn't accept any arguments. It just does its job")
 	fmt.Println()
+
+	decodeJobPayload()
+}
+
+func decodeJobPayload() {
+	var jobPayload api.JobPayload
+
+	jsonEncodedJobPayload := os.Getenv(jobPayloadEnv)
+	jsonDecoder := json.NewDecoder(bytes.NewBufferString(jsonEncodedJobPayload))
+	err := jsonDecoder.Decode(&jobPayload)
+	if err != nil {
+		panic("Error while decoding JSON encoded job payload")
+	}
+
+	fmt.Printf("job info from job payload: %#v\n", jobPayload.JobInfo)
 }
 
 func run(shell string, args []string) {

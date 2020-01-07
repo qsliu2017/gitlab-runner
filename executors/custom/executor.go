@@ -17,7 +17,12 @@ import (
 	"gitlab.com/gitlab-org/gitlab-runner/executors/custom/command"
 )
 
-const ciJobImageEnv = "CUSTOM_ENV_CI_JOB_IMAGE"
+const (
+	executorVariableEnvPrefix = "CUSTOM_ENV"
+
+	ciJobImageEnv   = "CUSTOM_ENV_CI_JOB_IMAGE"
+	ciJobPayloadEnv = "CUSTOM_ENV_CI_JOB_PAYLOAD"
+)
 
 type commandOutputs struct {
 	stdout io.Writer
@@ -102,7 +107,12 @@ func (e *executor) Prepare(options common.ExecutorPrepareOptions) error {
 		out:        e.defaultCommandOutputs(),
 	}
 
-	return e.prepareCommand(ctx, opts).Run()
+	cmd, err := e.prepareCommand(ctx, opts)
+	if err != nil {
+		return err
+	}
+
+	return cmd.Run()
 }
 
 func (e *executor) prepareConfig() error {
@@ -141,7 +151,12 @@ func (e *executor) dynamicConfig() error {
 		out:        outputs,
 	}
 
-	err := e.prepareCommand(ctx, opts).Run()
+	cmd, err := e.prepareCommand(ctx, opts)
+	if err != nil {
+		return err
+	}
+
+	err = cmd.Run()
 	if err != nil {
 		return err
 	}
@@ -189,10 +204,10 @@ func (e *executor) defaultCommandOutputs() commandOutputs {
 
 var commandFactory = command.New
 
-func (e *executor) prepareCommand(ctx context.Context, opts prepareCommandOpts) command.Command {
+func (e *executor) prepareCommand(ctx context.Context, opts prepareCommandOpts) (command.Command, error) {
 	cmdOpts := command.CreateOptions{
 		Dir:                 e.tempDir,
-		Env:                 make([]string, 0),
+		Env: make([]string, 0),
 		Stdout:              opts.out.stdout,
 		Stderr:              opts.out.stderr,
 		Logger:              e.BuildLogger,
@@ -200,16 +215,34 @@ func (e *executor) prepareCommand(ctx context.Context, opts prepareCommandOpts) 
 		ForceKillTimeout:    e.config.GetForceKillTimeout(),
 	}
 
-	for _, variable := range e.Build.GetAllVariables() {
-		cmdOpts.Env = append(cmdOpts.Env, fmt.Sprintf("CUSTOM_ENV_%s=%s", variable.Key, variable.Value))
+	var err error
+	cmdOpts.Env, err = e.prepareVariables(cmdOpts.Env)
+	if err != nil {
+		return nil, err
 	}
+
+	return commandFactory(ctx, opts.executable, opts.args, cmdOpts), nil
+}
+
+func (e *executor) prepareVariables(variables []string) ([]string, error) {
+	for _, variable := range e.Build.GetAllVariables() {
+		variables = append(variables, fmt.Sprintf("%s_%s=%s", executorVariableEnvPrefix, variable.Key, variable.Value))
+	}
+
 	// since the variable is unique to the custom executor
 	// at the moment, we add it separately from the other build variables
 	// if we decide to export only the postfix in the build, this code can be removed
 	imageName := e.Build.GetAllVariables().ExpandValue(e.Build.Image.Name)
-	cmdOpts.Env = append(cmdOpts.Env, fmt.Sprintf("%s=%s", ciJobImageEnv, imageName))
+	variables = append(variables, fmt.Sprintf("%s=%s", ciJobImageEnv, imageName))
 
-	return commandFactory(ctx, opts.executable, opts.args, cmdOpts)
+	jobResponseJSON, err := e.Build.ToJSON()
+	if err != nil {
+		return []string{}, err
+	}
+
+	variables = append(variables, fmt.Sprintf("%s=%s", ciJobPayloadEnv, jobResponseJSON))
+
+	return variables, nil
 }
 
 func (e *executor) Run(cmd common.ExecutorCommand) error {
@@ -232,7 +265,12 @@ func (e *executor) Run(cmd common.ExecutorCommand) error {
 		out:        e.defaultCommandOutputs(),
 	}
 
-	return e.prepareCommand(cmd.Context, opts).Run()
+	execCmd, err := e.prepareCommand(cmd.Context, opts)
+	if err != nil {
+		return err
+	}
+
+	return execCmd.Run()
 }
 
 func (e *executor) Cleanup() {
@@ -268,7 +306,12 @@ func (e *executor) Cleanup() {
 		out:        outputs,
 	}
 
-	err = e.prepareCommand(ctx, opts).Run()
+	cmd, err := e.prepareCommand(ctx, opts)
+	if err != nil {
+		e.Warningln("Cleanup script command preparation failed:", err)
+	}
+
+	err = cmd.Run()
 	if err != nil {
 		e.Warningln("Cleanup script failed:", err)
 	}

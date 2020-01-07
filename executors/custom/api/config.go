@@ -1,5 +1,9 @@
 package api
 
+import (
+	"gitlab.com/gitlab-org/gitlab-runner/common"
+)
+
 // ConfigExecOutput defines the output structure of the config_exec call.
 //
 // This should be used to pass the configuration values from Custom Executor
@@ -20,3 +24,5 @@ type DriverInfo struct {
 	Name    *string `json:"name,omitempty"`
 	Version *string `json:"version,omitempty"`
 }
+
+type JobPayload common.JobResponse
