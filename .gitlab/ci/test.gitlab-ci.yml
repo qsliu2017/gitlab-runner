@@ -115,8 +115,6 @@ unit test with race:
     when: always
     expire_in: 7d
   allow_failure: true
-  only:
-  - /.*/@gitlab-org/gitlab-runner
 
 windows 1803 tests:
   extends:

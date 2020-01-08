@@ -43,6 +43,7 @@ race conditions detector:
 .check windows test failures:
   extends:
   - .except_docs
+  - .no_fork
   stage: coverage
   script:
   - ./scripts/check_windows_failures

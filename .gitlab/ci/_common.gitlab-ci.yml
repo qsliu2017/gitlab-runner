@@ -33,6 +33,10 @@ before_script:
   - .no_cache
   - .no_dependencies
 
+.no_fork:
+  only:
+    - /.*/@gitlab-org/gitlab-runner
+
 .gitlab_org_runners:
   tags:
   - gitlab-org
@@ -53,6 +57,8 @@ before_script:
   - docker
 
 .windows_base:
+  extends:
+    - .no_fork
   variables:
     PKG_NAMESPACE: gitlab.com\gitlab-org
     PKG_NAME: gitlab-runner
