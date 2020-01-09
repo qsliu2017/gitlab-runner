@@ -11,7 +11,7 @@ import (
 
 	"gitlab.com/gitlab-org/gitlab-runner/common"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers/archives"
-	"gitlab.com/gitlab-org/gitlab-runner/helpers/url"
+	url_helpers "gitlab.com/gitlab-org/gitlab-runner/helpers/url"
 	"gitlab.com/gitlab-org/gitlab-runner/log"
 )
 
@@ -68,13 +68,15 @@ func (c *CacheArchiverCommand) Execute(*cli.Context) {
 	log.SetRunnerFormatter()
 
 	if c.File == "" {
-		logrus.Fatalln("Missing --file")
+		logrus.Warning("Missing --file")
+		os.Exit(1)
 	}
 
 	// Enumerate files
 	err := c.enumerate()
 	if err != nil {
-		logrus.Fatalln(err)
+		logrus.Warningf("Error enumerating cache files: %s", err)
+		os.Exit(1)
 	}
 
 	// Check if list of files changed
@@ -87,14 +89,16 @@ func (c *CacheArchiverCommand) Execute(*cli.Context) {
 	// Create archive
 	err = archives.CreateZipFile(c.File, c.sortedFiles())
 	if err != nil {
-		logrus.Fatalln(err)
+		logrus.Warningf("Error creating cache archive: %s", err)
+		os.Exit(1)
 	}
 
 	// Upload archive if needed
 	if c.URL != "" {
 		err := c.doRetry(c.upload)
 		if err != nil {
-			logrus.Fatalln(err)
+			logrus.Warningf("Error uploading cache: %s", err)
+			os.Exit(1)
 		}
 	} else {
 		logrus.Infoln("No URL provided, cache will be not uploaded to shared cache server. Cache will be stored only locally.")
