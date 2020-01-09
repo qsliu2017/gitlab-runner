@@ -107,7 +107,7 @@ func (c *CacheExtractorCommand) Execute(context *cli.Context) {
 	log.SetRunnerFormatter()
 
 	if len(c.File) == 0 {
-		logrus.Fatalln("Missing cache file")
+		logrus.Warnln("Missing cache file")
 	}
 
 	if c.URL != "" {
