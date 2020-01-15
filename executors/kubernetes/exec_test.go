@@ -43,6 +43,7 @@ func (f *fakeRemoteExecutor) Execute(method string, url *url.URL, config *restcl
 }
 
 func TestExec(t *testing.T) {
+	t.FailNow()
 	version, codec := testVersionAndCodec()
 	tests := []struct {
 		name, version, podPath, execPath string
