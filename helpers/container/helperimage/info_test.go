@@ -5,6 +5,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"gitlab.com/gitlab-org/gitlab-runner/helpers/container/windows"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers/docker/errors"
 )
 
@@ -17,7 +18,7 @@ func TestGetInfo(t *testing.T) {
 		expectedError error
 	}{
 		{osType: OSTypeLinux, expectedError: nil},
-		{osType: OSTypeWindows, version: unsupportedVersion, expectedError: newUnsupportedWindowsVersionError(unsupportedVersion)},
+		{osType: OSTypeWindows, version: unsupportedVersion, expectedError: windows.NewUnsupportedWindowsVersionError(unsupportedVersion)},
 		{osType: "unsupported", expectedError: errors.NewErrOSNotSupported("unsupported")},
 	}
 
