@@ -500,6 +500,56 @@ func (e *invalidHostAliasDNSError) Is(err error) bool {
 	return ok
 }
 
+func (s *executor) setupBuildPod() error {
+	services := make([]api.Container, len(s.options.Services))
+
+	for i, service := range s.options.Services {
+		resolvedImage := s.Build.GetAllVariables().ExpandValue(service.Name)
+		services[i] = s.buildContainer(fmt.Sprintf("svc-%d", i), resolvedImage, service, s.serviceRequests, s.serviceLimits)
+	}
+
+	// We set a default label to the pod. This label will be used later
+	// by the services, to link each service to the pod
+	labels := map[string]string{"pod": s.projectUniqueName()}
+	for k, v := range s.Build.Runner.Kubernetes.PodLabels {
+		labels[k] = s.Build.Variables.ExpandValue(v)
+	}
+
+	annotations := make(map[string]string)
+	for key, val := range s.configurationOverwrites.podAnnotations {
+		annotations[key] = s.Build.Variables.ExpandValue(val)
+	}
+
+	var imagePullSecrets []api.LocalObjectReference
+	for _, imagePullSecret := range s.Config.Kubernetes.ImagePullSecrets {
+		imagePullSecrets = append(imagePullSecrets, api.LocalObjectReference{Name: imagePullSecret})
+	}
+
+	if s.credentials != nil {
+		imagePullSecrets = append(imagePullSecrets, api.LocalObjectReference{Name: s.credentials.Name})
+	}
+
+	hostAlias, err := s.prepareHostAlias()
+	if err != nil {
+		return err
+	}
+
+	podConfig := s.preparePodConfig(labels, annotations, services, imagePullSecrets, hostAlias)
+
+	pod, err := s.kubeClient.CoreV1().Pods(s.configurationOverwrites.namespace).Create(&podConfig)
+	if err != nil {
+		return err
+	}
+
+	s.pod = pod
+	s.services, err = s.makePodProxyServices()
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (s *executor) prepareHostAlias() (*api.HostAlias, error) {
 	supportsHostAliases, err := s.featureChecker.IsHostAliasSupported()
 	if errors.Is(err, &badVersionError{}) {
@@ -549,56 +599,6 @@ func (s *executor) createHostAlias() (*api.HostAlias, error) {
 	}
 
 	return &servicesHostAlias, nil
-}
-
-func (s *executor) setupBuildPod() error {
-	services := make([]api.Container, len(s.options.Services))
-
-	for i, service := range s.options.Services {
-		resolvedImage := s.Build.GetAllVariables().ExpandValue(service.Name)
-		services[i] = s.buildContainer(fmt.Sprintf("svc-%d", i), resolvedImage, service, s.serviceRequests, s.serviceLimits)
-	}
-
-	// We set a default label to the pod. This label will be used later
-	// by the services, to link each service to the pod
-	labels := map[string]string{"pod": s.projectUniqueName()}
-	for k, v := range s.Build.Runner.Kubernetes.PodLabels {
-		labels[k] = s.Build.Variables.ExpandValue(v)
-	}
-
-	annotations := make(map[string]string)
-	for key, val := range s.configurationOverwrites.podAnnotations {
-		annotations[key] = s.Build.Variables.ExpandValue(val)
-	}
-
-	var imagePullSecrets []api.LocalObjectReference
-	for _, imagePullSecret := range s.Config.Kubernetes.ImagePullSecrets {
-		imagePullSecrets = append(imagePullSecrets, api.LocalObjectReference{Name: imagePullSecret})
-	}
-
-	if s.credentials != nil {
-		imagePullSecrets = append(imagePullSecrets, api.LocalObjectReference{Name: s.credentials.Name})
-	}
-
-	hostAlias, err := s.prepareHostAlias()
-	if err != nil {
-		return err
-	}
-
-	podConfig := s.preparePodConfig(labels, annotations, services, imagePullSecrets, hostAlias)
-
-	pod, err := s.kubeClient.CoreV1().Pods(s.configurationOverwrites.namespace).Create(&podConfig)
-	if err != nil {
-		return err
-	}
-
-	s.pod = pod
-	s.services, err = s.makePodProxyServices()
-	if err != nil {
-		return err
-	}
-
-	return nil
 }
 
 func (s *executor) preparePodConfig(labels, annotations map[string]string, services []api.Container, imagePullSecrets []api.LocalObjectReference, hostAlias *api.HostAlias) api.Pod {
