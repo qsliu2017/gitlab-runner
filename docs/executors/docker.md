@@ -49,7 +49,7 @@ Docker executor:
 
 - Services do not fully work (see
   [#4186](https://gitlab.com/gitlab-org/gitlab-runner/issues/4186)).
-- Nanoserver cannot be used because it requires PowerShell 6 but GitLab
+- Nanoserver cannot be used (unless you are using bash shell (TODO link to bash doc)) because it requires PowerShell 6 but GitLab
   requires PowerShell 5 (see
   [#3291](https://gitlab.com/gitlab-org/gitlab-runner/issues/3291)). See
   also the list of [supported Windows
@@ -126,6 +126,36 @@ For other configuration options for the Docker executor, see the
 [advanced
 configuration](../configuration/advanced-configuration.md#the-runnersdocker-section)
 section.
+
+### Using bash as shell for a Windows Docker executor
+
+For a multi-platform CI, it can make sense to share CI job scripts between platforms, and thus to run CI jobs in bash.
+You will need to build your own docker image with bash available in the PATH
+
+```toml
+[[runners]]
+  name = "windows-docker-bash-2019"
+  url = "https://gitlab.com/"
+  token = "xxxxxxx"
+  executor = "docker-windows"
+  shell = "bash"
+  [runners.docker]
+    image = "mcr.microsoft.com/windows/servercore:1809_amd64"
+    volumes = ["c:\\cache"]
+```
+
+For super tiny windows test images, you could base on `stefanscherer/busybox-windows`, which is based on nanoserver and weights 256MB
+
+```yaml
+test:windows:
+  stage: test
+  tags:
+    - windows-docker-bash
+  image: stefanscherer/busybox-windows
+  script:
+    - echo I can count to 10
+    - seq 10
+```
 
 ## Workflow
 

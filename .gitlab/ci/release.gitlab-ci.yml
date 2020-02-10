@@ -25,8 +25,7 @@
   stage: release
   variables:
     PUSH_TO_DOCKER_HUB: "false"
-    GIT_256_CHECKSUM: "bd91db55bd95eaa80687df28877e2df8c8858a0266e9c67331cfddba2735f25c"
-    GIT_LFS_256_CHECKSUM: "5c12db9728b53cba23e5f58f4a53d88cb2132e82fa1de0f8a79ce9d112e4d396"
+    GIT_256_CHECKSUM: "c7792387ebd69b3e11b7cc7b92c743f75c180275fa0ce9c7f0c5c7e44e470f80"
   needs:
   - 'helper images'
   - 'binaries windows/386 windows/amd64'

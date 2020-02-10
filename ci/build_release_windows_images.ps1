@@ -15,10 +15,6 @@ $InformationPreference = "Continue"
 #   GIT_VERSION you specified.
 # - $Env:GIT_256_CHECKSUM - The checksum of the downloaded zip, usually found in
 #   the GitHub release page.
-# - $Env:GIT_LFS_VERSION - The Git LFS version needed to install on the
-#   Docker image.
-# - $Env:GIT_LFS_256_CHECKSUM - The checksum of the downloaded zip, usually
-#   found in the GitHub release page.
 # - $Env:IS_LATEST - When we want to tag current tag as the latest, this is usually
 #   used when we are tagging a release for the runner (which is not a patch
 #   release or RC)
@@ -71,8 +67,6 @@ function Build-Image($tag)
         '--build-arg', "GIT_VERSION=$Env:GIT_VERSION",
         '--build-arg', "GIT_VERSION_BUILD=$Env:GIT_VERSION_BUILD",
         '--build-arg', "GIT_256_CHECKSUM=$Env:GIT_256_CHECKSUM"
-        '--build-arg', "GIT_LFS_VERSION=$Env:GIT_LFS_VERSION"
-        '--build-arg', "GIT_LFS_256_CHECKSUM=$Env:GIT_LFS_256_CHECKSUM"
     )
 
     & 'docker' build -t "gitlab/gitlab-runner-helper:$tag" --force-rm --no-cache $buildArgs -f $dockerFile $context
