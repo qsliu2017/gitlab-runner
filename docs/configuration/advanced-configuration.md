@@ -274,6 +274,13 @@ This defines the Docker Container parameters.
 | `pull_policy`               | Specify the image pull policy: `never`, `if-not-present` or `always` (default); read more in the [pull policies documentation](../executors/docker.md#how-pull-policies-work) |
 | `sysctls`                   | specify the sysctl options |
 | `helper_image`              | (Advanced) [Override the default helper image](#helper-image) used to clone repos and upload artifacts. |
+| `service_limit`                | Specify maximum allowed services per job, `0` (default) to disable limitation |
+| `service_cpuset_cpus`          | String value containing the cgroups CpusetCpus to use for serice|
+| `service_cpu_shares`           | Number of CPU shares used to set relative service's cpu usage, default: 1024 |
+| `service_cpus`                 | String value of number of CPUs for service (available in docker 1.13 or later) |
+| `service_memory`               | String value containing the memory limit for service|
+| `service_memory_swap`          | String value containing the total memory limit for service|
+| `service_memory_reservation`   | String value containing the memory soft limit for service|
 
 ### The `[[runners.docker.services]]` section
 
@@ -302,6 +309,11 @@ Example:
   cpus = "2"
   dns = ["8.8.8.8"]
   dns_search = [""]
+  service_memory = "128m"
+  service_memory_swap = "256m"
+  service_memory_reservation = "64m"
+  service_cpuset_cpus = "0,1"
+  service_cpus = "2"
   privileged = false
   userns_mode = "host"
   cap_add = ["NET_ADMIN"]

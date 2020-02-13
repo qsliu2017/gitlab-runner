@@ -433,7 +433,11 @@ func (e *executor) createService(
 	}
 	config.Entrypoint = e.overwriteEntrypoint(&serviceDefinition)
 
-	hostConfig := e.createHostConfigForService()
+	hostConfig, err := e.createHostConfigForService()
+	if err != nil {
+		return nil, err
+	}
+
 	networkConfig := e.networkConfig(linkNames)
 
 	e.Debugln("Creating service container", containerName, "...")
@@ -452,8 +456,21 @@ func (e *executor) createService(
 	return fakeContainer(resp.ID, containerName), nil
 }
 
-func (e *executor) createHostConfigForService() *container.HostConfig {
+func (e *executor) createHostConfigForService() (*container.HostConfig, error) {
+	nanoCPUs, err := e.Config.Docker.GetServiceNanoCPUs()
+	if err != nil {
+		return nil, err
+	}
+
 	return &container.HostConfig{
+		Resources: container.Resources{
+			CpusetCpus:        e.Config.Docker.ServiceCPUSetCPUs,
+			CPUShares:         e.Config.Docker.ServiceCPUShares,
+			NanoCPUs:          nanoCPUs,
+			Memory:            e.Config.Docker.GetServiceMemory(),
+			MemorySwap:        e.Config.Docker.GetServiceMemorySwap(),
+			MemoryReservation: e.Config.Docker.GetServiceMemoryReservation(),
+		},
 		DNS:           e.Config.Docker.DNS,
 		DNSSearch:     e.Config.Docker.DNSSearch,
 		RestartPolicy: neverRestartPolicy,
@@ -637,6 +654,11 @@ func (e *executor) createServices() (err error) {
 
 	servicesDefinitions, err := e.getServicesDefinitions()
 	if err != nil {
+		return
+	}
+
+	if (e.Config.Docker.ServiceLimit>0) && (e.Config.Docker.ServiceLimit<len(servicesDefinitions)) {
+		err = fmt.Errorf("Too much service requested: %d (only %d allowed)", len(servicesDefinitions), e.Config.Docker.ServiceLimit)
 		return
 	}
 

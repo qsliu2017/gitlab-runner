@@ -105,6 +105,13 @@ type DockerConfig struct {
 	NetworkMode                string            `toml:"network_mode,omitempty" json:"network_mode" long:"network-mode" env:"DOCKER_NETWORK_MODE" description:"Add container to a custom network"`
 	Links                      []string          `toml:"links,omitempty" json:"links" long:"links" env:"DOCKER_LINKS" description:"Add link to another container"`
 	Services                   []Service         `toml:"services,omitempty" json:"services" description:"Add service that is started with container"`
+	ServiceLimit               int               `toml:"service_limit,omitzero" json:"service_limit" long:"service-limit" env:"DOCKER_SERVICE_LIMIT" description:"Service limit (maximum service)"`
+	ServiceMemory              string            `toml:"service_memory,omitempty" json:"service_memory" long:"service-memory" env:"DOCKER_SERVICE_MEMORY" description:"Service memory limit (format: <number>[<unit>]). Unit can be one of b, k, m, or g. Minimum is 4M."`
+	ServiceMemorySwap          string            `toml:"service_memory_swap,omitempty" json:"service_memory_swap" long:"service-memory-swap" env:"DOCKER_SERVICE_MEMORY_SWAP" description:"Service total memory limit (memory + swap, format: <number>[<unit>]). Unit can be one of b, k, m, or g."`
+	ServiceMemoryReservation   string            `toml:"service_memory_reservation,omitempty" json:"service_memory_reservation" long:"service-memory-reservation" env:"DOCKER_SERVICE_MEMORY_RESERVATION" description:"Service memory soft limit (format: <number>[<unit>]). Unit can be one of b, k, m, or g."`
+	ServiceCPUSetCPUs          string            `toml:"service_cpuset_cpus,omitempty" json:"service_cpuset_cpus" long:"service-cpuset-cpus" env:"DOCKER_SERVICE_CPUSET_CPUS" description:"String value containing the cgroups CpusetCpus to use for service"`
+	ServiceCPUS                string            `toml:"service_cpus,omitempty" json:"service_cpus" long:"service-cpus" env:"DOCKER_SERVICE_CPUS" description:"Number of CPUs for service"`
+	ServiceCPUShares           int64             `toml:"service_cpu_shares,omitzero" json:"service_cpu_shares" long:"service-cpu-shares" env:"DOCKER_SERVICE_CPU_SHARES" description:"Number of CPU shares for service"`
 	WaitForServicesTimeout     int               `toml:"wait_for_services_timeout,omitzero" json:"wait_for_services_timeout" long:"wait-for-services-timeout" env:"DOCKER_WAIT_FOR_SERVICES_TIMEOUT" description:"How long to wait for service startup"`
 	AllowedImages              []string          `toml:"allowed_images,omitempty" json:"allowed_images" long:"allowed-images" env:"DOCKER_ALLOWED_IMAGES" description:"Whitelist allowed images"`
 	AllowedServices            []string          `toml:"allowed_services,omitempty" json:"allowed_services" long:"allowed-services" env:"DOCKER_ALLOWED_SERVICES" description:"Whitelist allowed services"`
@@ -452,6 +459,21 @@ func (c *DockerConfig) GetNanoCPUs() (int64, error) {
 	return int64(nano), nil
 }
 
+func (c *DockerConfig) GetServiceNanoCPUs() (int64, error) {
+	if c.ServiceCPUS == "" {
+		return 0, nil
+	}
+
+	cpu, ok := new(big.Rat).SetString(c.ServiceCPUS)
+	if !ok {
+		return 0, fmt.Errorf("failed to parse %v as a rational number", c.ServiceCPUS)
+	}
+
+	nano, _ := cpu.Mul(cpu, big.NewRat(1e9, 1)).Float64()
+
+	return int64(nano), nil
+}
+
 func (c *DockerConfig) getMemoryBytes(size string, fieldName string) int64 {
 	if size == "" {
 		return 0
@@ -475,6 +497,18 @@ func (c *DockerConfig) GetMemorySwap() int64 {
 
 func (c *DockerConfig) GetMemoryReservation() int64 {
 	return c.getMemoryBytes(c.MemoryReservation, "memory_reservation")
+}
+
+func (c *DockerConfig) GetServiceMemory() int64 {
+	return c.getMemoryBytes(c.ServiceMemory, "service_memory")
+}
+
+func (c *DockerConfig) GetServiceMemorySwap() int64 {
+	return c.getMemoryBytes(c.ServiceMemorySwap, "service_memory_swap")
+}
+
+func (c *DockerConfig) GetServiceMemoryReservation() int64 {
+	return c.getMemoryBytes(c.MemoryReservation, "service_memory_reservation")
 }
 
 func (c *DockerConfig) GetOomKillDisable() *bool {
