@@ -23,7 +23,16 @@ The following contents has to be considered as an extension over [gitlab-ce cont
 
 ### Style Guide
 
-In general we follow the standard Go guidelines, however we have our own [style guide](STYLE.md) to cover cases where we deviate, extend, or miss out on some of these practices.
+In general we follow the standard Go guidelines, however below are some cases where we deviate, extend, or miss out on some of these practices.
+
+#### Areas Where We Can Improve
+
+These are areas where we know we're falling short of the typical Go guidelines and even our own currently expected and enforced style. If you're working on something, feel free to update the parts of the code you're working on to match the preferred guidelines.
+
+Otherwise, opening an MR to improve just the style is preferred to help keep MRs having a single context.
+
+* The [Go guidelines](https://github.com/golang/go/wiki/Errors) state that errors should typically start with a `lower case`, many of our errors start with an `uppercase`
+
 
 ### How we prioritize MRs from the wider community
 
