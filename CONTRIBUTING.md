@@ -21,6 +21,10 @@ _This notice should stay as the first item in the CONTRIBUTING.md file._
 
 The following contents has to be considered as an extension over [gitlab-ce contributing guidelines](https://docs.gitlab.com/ce/development/contributing/index.html).
 
+### Style Guide
+
+In general we follow the standard Go guidelines, however we have our own [style guide](STYLE.md) to cover cases where we deviate, extend, or miss out on some of these practices.
+
 ### How we prioritize MRs from the wider community
 
 Currently we use a system of [scoped labels](https://docs.gitlab.com/ee/user/project/labels.html#scoped-labels-premium) to help us prioritize which MRs our team will review.
