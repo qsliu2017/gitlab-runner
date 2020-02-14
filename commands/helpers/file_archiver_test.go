@@ -2,6 +2,7 @@ package helpers
 
 import (
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -15,6 +16,26 @@ const fileArchiverArchiveZipFile = "archive.zip"
 const fileArchiverNotExistingFile = "not_existing_file.txt"
 const fileArchiverAbsoluteFile = "/absolute.txt"
 const fileArchiverRelativeFile = "../../../relative.txt"
+const fileArchiverGlobPath = "foo/bar/baz"
+const fileArchiverGlobFile = "foo/bar/baz/glob.txt"
+const fileArchiverGlobbedFilePath = "**/*.txt"
+
+func TestGlobbedFilePaths(t *testing.T) {
+	err := os.MkdirAll(fileArchiverGlobPath, 0700)
+	defer os.RemoveAll(strings.Split(fileArchiverGlobPath, "/")[0])
+	require.NoError(t, err, "Creating directory path:", fileArchiverGlobPath)
+
+	writeTestFile(t, fileArchiverGlobFile)
+	defer os.Remove(fileArchiverGlobFile)
+
+	f := fileArchiver{
+		Paths: []string{fileArchiverGlobbedFilePath},
+	}
+	err = f.enumerate()
+	assert.NoError(t, err)
+	assert.NotEmpty(t, f.sortedFiles())
+	assert.Contains(t, f.sortedFiles(), fileArchiverGlobFile)
+}
 
 func TestCacheArchiverAddingUntrackedFiles(t *testing.T) {
 	writeTestFile(t, artifactsTestArchivedFile)
