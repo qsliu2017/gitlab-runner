@@ -444,14 +444,14 @@ func (c *SessionServer) GetSessionTimeout() time.Duration {
 	return DefaultSessionTimeout
 }
 
-func (c *DockerConfig) GetNanoCPUs() (int64, error) {
-	if c.CPUS == "" {
+func (c *DockerConfig) computeNanoCPUs(value string) (int64, error) {
+	if value == "" {
 		return 0, nil
 	}
 
-	cpu, ok := new(big.Rat).SetString(c.CPUS)
+	cpu, ok := new(big.Rat).SetString(value)
 	if !ok {
-		return 0, fmt.Errorf("failed to parse %v as a rational number", c.CPUS)
+		return 0, fmt.Errorf("failed to parse %v as a rational number", value)
 	}
 
 	nano, _ := cpu.Mul(cpu, big.NewRat(1e9, 1)).Float64()
@@ -459,19 +459,12 @@ func (c *DockerConfig) GetNanoCPUs() (int64, error) {
 	return int64(nano), nil
 }
 
+func (c *DockerConfig) GetNanoCPUs() (int64, error) {
+	return c.computeNanoCPUs(c.CPUS)
+}
+
 func (c *DockerConfig) GetServiceNanoCPUs() (int64, error) {
-	if c.ServiceCPUS == "" {
-		return 0, nil
-	}
-
-	cpu, ok := new(big.Rat).SetString(c.ServiceCPUS)
-	if !ok {
-		return 0, fmt.Errorf("failed to parse %v as a rational number", c.ServiceCPUS)
-	}
-
-	nano, _ := cpu.Mul(cpu, big.NewRat(1e9, 1)).Float64()
-
-	return int64(nano), nil
+	return c.computeNanoCPUs(c.ServiceCPUS)
 }
 
 func (c *DockerConfig) getMemoryBytes(size string, fieldName string) int64 {
