@@ -1,4 +1,5 @@
 stages:
+- scan
 - prepare
 - prebuild
 - test
@@ -9,6 +10,7 @@ stages:
 - docs
 
 include:
+- template: Dependency-Scanning.gitlab-ci.yml
 - local: /.gitlab/ci/_common.gitlab-ci.yml
 - local: /.gitlab/ci/prepare.gitlab-ci.yml
 - local: /.gitlab/ci/prebuild.gitlab-ci.yml
@@ -18,3 +20,7 @@ include:
 - local: /.gitlab/ci/package.gitlab-ci.yml
 - local: /.gitlab/ci/release.gitlab-ci.yml
 - local: /.gitlab/ci/docs.gitlab-ci.yml
+
+dependency_scanning:
+  stage: scan
+
