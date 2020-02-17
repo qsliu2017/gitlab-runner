@@ -658,7 +658,7 @@ func (e *executor) createServices() (err error) {
 	}
 
 	if e.Config.Docker.ServiceLimit > 0 && e.Config.Docker.ServiceLimit < len(servicesDefinitions) {
-		err = fmt.Errorf("Too much service requested: %d (only %d allowed)", len(servicesDefinitions), e.Config.Docker.ServiceLimit)
+		err = fmt.Errorf("too many services requested: %d (only %d allowed)", len(servicesDefinitions), e.Config.Docker.ServiceLimit)
 		return
 	}
 
