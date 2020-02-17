@@ -274,13 +274,13 @@ This defines the Docker Container parameters.
 | `pull_policy`               | Specify the image pull policy: `never`, `if-not-present` or `always` (default); read more in the [pull policies documentation](../executors/docker.md#how-pull-policies-work) |
 | `sysctls`                   | specify the sysctl options |
 | `helper_image`              | (Advanced) [Override the default helper image](#helper-image) used to clone repos and upload artifacts. |
-| `service_limit`                | Specify maximum allowed services per job, `0` (default) to disable limitation |
-| `service_cpuset_cpus`          | String value containing the cgroups CpusetCpus to use for service |
-| `service_cpu_shares`           | Number of CPU shares used to set relative service's cpu usage, default: 1024 |
-| `service_cpus`                 | String value of number of CPUs for service (available in docker 1.13 or later) |
-| `service_memory`               | String value containing the memory limit for service|
-| `service_memory_swap`          | String value containing the total memory limit for service|
-| `service_memory_reservation`   | String value containing the memory soft limit for service|
+| `service_limit`              | Set maximum allowed services per job. `0` (default) means there is no limit.     |
+| `service_cpuset_cpus`        | String value containing the `cgroups CpusetCpus` to use for service.             |
+| `service_cpu_shares`         | Number of CPU shares used to set service's relative cpu usage. (default: `1024`) |
+| `service_cpus`               | Number of CPUs for service. (string value, docker 1.13 or later only)            |
+| `service_memory`             | the service's memory limit. (string value)                                       |
+| `service_memory_swap`        | the service's total memory limit. (string value)                                 |
+| `service_memory_reservation` | the service's soft memory limit. (string value)                                  |
 
 ### The `[[runners.docker.services]]` section
 
