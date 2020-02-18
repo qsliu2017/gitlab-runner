@@ -501,7 +501,7 @@ func (c *DockerConfig) GetServiceMemorySwap() int64 {
 }
 
 func (c *DockerConfig) GetServiceMemoryReservation() int64 {
-	return c.getMemoryBytes(c.MemoryReservation, "service_memory_reservation")
+	return c.getMemoryBytes(c.ServiceMemoryReservation, "service_memory_reservation")
 }
 
 func (c *DockerConfig) GetOomKillDisable() *bool {
