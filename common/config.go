@@ -451,7 +451,7 @@ func (c *DockerConfig) computeNanoCPUs(value string) (int64, error) {
 
 	cpu, ok := new(big.Rat).SetString(value)
 	if !ok {
-		return 0, fmt.Errorf("failed to parse %v as a rational number", value)
+		return 0, fmt.Errorf("failed to parse %s as a rational number", value)
 	}
 
 	nano, _ := cpu.Mul(cpu, big.NewRat(1e9, 1)).Float64()
