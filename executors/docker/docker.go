@@ -464,12 +464,12 @@ func (e *executor) createHostConfigForService() (*container.HostConfig, error) {
 
 	return &container.HostConfig{
 		Resources: container.Resources{
-			CpusetCpus:        e.Config.Docker.ServiceCPUSetCPUs,
-			CPUShares:         e.Config.Docker.ServiceCPUShares,
-			NanoCPUs:          nanoCPUs,
 			Memory:            e.Config.Docker.GetServiceMemory(),
 			MemorySwap:        e.Config.Docker.GetServiceMemorySwap(),
 			MemoryReservation: e.Config.Docker.GetServiceMemoryReservation(),
+			CpusetCpus:        e.Config.Docker.ServiceCPUSetCPUs,
+			CPUShares:         e.Config.Docker.ServiceCPUShares,
+			NanoCPUs:          nanoCPUs,
 		},
 		DNS:           e.Config.Docker.DNS,
 		DNSSearch:     e.Config.Docker.DNSSearch,
