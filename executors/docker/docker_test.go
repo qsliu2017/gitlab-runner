@@ -1890,6 +1890,7 @@ func TestGetServiceDefinitions(t *testing.T) {
 
 	tests := map[string]struct {
 		services         []common.Service
+		servicesLimit    int
 		buildServices    []common.Image
 		allowedServices  []string
 		expectedServices common.Services
@@ -1979,12 +1980,38 @@ func TestGetServiceDefinitions(t *testing.T) {
 				},
 			},
 		},
+		"one service (max 1)": {
+			services: []*common.DockerService{
+				{
+					Service: common.Service{"name"},
+				},
+			},
+			servicesLimit:    1,
+			expectedServices: common.Services{
+				{
+					Name:  "name",
+				},
+			},
+		},
+		"two services (max 1)": {
+			services: []*common.DockerService{
+				{
+					Service: common.Service{"name"},
+				},
+				{
+					Service: common.Service{"name"},
+				},
+			},
+			servicesLimit: 1,
+			expectedErr:   "too many services requested: 2 (only 1 allowed)",
+		},
 	}
 
 	for tn, tt := range tests {
 		t.Run(tn, func(t *testing.T) {
 			e.Config.Docker.Services = tt.services
 			e.Config.Docker.AllowedServices = tt.allowedServices
+			e.Config.Docker.ServicesLimit = tt.servicesLimit
 			e.Build.Services = tt.buildServices
 
 			svcs, err := e.getServicesDefinitions()
