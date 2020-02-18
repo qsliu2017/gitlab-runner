@@ -164,6 +164,10 @@ func (b *BashWriter) Absolute(dir string) string {
 	return path.Join("$PWD", dir)
 }
 
+func (b *BashWriter) Join(elem ...string) string {
+	return path.Join(elem...)
+}
+
 func (b *BashWriter) Print(format string, arguments ...interface{}) {
 	coloredText := helpers.ANSI_RESET + fmt.Sprintf(format, arguments...)
 	b.Line("echo " + helpers.ShellEscape(coloredText))

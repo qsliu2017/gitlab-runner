@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -88,13 +89,14 @@ func (s *executor) Run(cmd common.ExecutorCommand) error {
 		if err != nil {
 			return err
 		}
-		defer os.RemoveAll(scriptDir)
+		// defer os.RemoveAll(scriptDir)
 
 		scriptFile := filepath.Join(scriptDir, "script."+s.BuildShell.Extension)
 		err = ioutil.WriteFile(scriptFile, []byte(cmd.Script), 0700)
 		if err != nil {
 			return err
 		}
+		log.Printf("scriptFile: %#+v, stage: %s", scriptFile, cmd.Stage)
 
 		c.Args = append(c.Args, scriptFile)
 	} else {

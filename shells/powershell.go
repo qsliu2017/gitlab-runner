@@ -234,6 +234,11 @@ func (b *PsWriter) Absolute(dir string) string {
 	return filepath.Join("$CurrentDirectory", dir)
 }
 
+func (b *PsWriter) Join(elem ...string) string {
+	newPath := path.Join(elem...)
+	return helpers.ToBackslash(newPath)
+}
+
 func (b *PsWriter) Finish(trace bool) string {
 	var buffer bytes.Buffer
 	w := bufio.NewWriter(&buffer)
@@ -257,7 +262,7 @@ func (b *PowerShell) GetName() string {
 
 func (b *PowerShell) GetConfiguration(info common.ShellScriptInfo) (script *common.ShellConfiguration, err error) {
 	script = &common.ShellConfiguration{
-		Command:       "powershell",
+		Command:       "pwsh",
 		Arguments:     []string{"-noprofile", "-noninteractive", "-executionpolicy", "Bypass", "-command"},
 		PassFile:      info.Build.Runner.Executor != dockerWindowsExecutor,
 		Extension:     "ps1",
