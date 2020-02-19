@@ -73,7 +73,7 @@ function Build-Image($tag)
     $dockerFile = "${imagesBasePath}_${windowsFlavor}"
     $context = "dockerfiles\build"
     $buildArgs = @(
-        '--build-arg', "BASE_IMAGE_TAG=mcr.microsoft.com/windows/${windowsFlavor}:${windowsVersion}-amd64",
+        '--build-arg', "BASE_IMAGE_TAG=mcr.microsoft.com/powershell:7.0.1-windows${windowsFlavor}-${windowsVersion}",
         '--build-arg', "GIT_VERSION=$Env:GIT_VERSION",
         '--build-arg', "GIT_VERSION_BUILD=$Env:GIT_VERSION_BUILD",
         '--build-arg', "GIT_256_CHECKSUM=$Env:GIT_256_CHECKSUM"
