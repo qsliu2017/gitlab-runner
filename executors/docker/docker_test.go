@@ -1986,10 +1986,10 @@ func TestGetServiceDefinitions(t *testing.T) {
 					Service: common.Service{"name"},
 				},
 			},
-			servicesLimit:    1,
+			servicesLimit: 1,
 			expectedServices: common.Services{
 				{
-					Name:  "name",
+					Name: "name",
 				},
 			},
 		},
