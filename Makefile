@@ -5,6 +5,7 @@ REVISION := $(shell git rev-parse --short=8 HEAD || echo unknown)
 BRANCH := $(shell git show-ref | grep "$(REVISION)" | grep -v HEAD | awk '{print $$2}' | sed 's|refs/remotes/origin/||' | sed 's|refs/heads/||' | sort | head -n 1)
 BUILT := $(shell date -u +%Y-%m-%dT%H:%M:%S%z)
 export TESTFLAGS ?= -cover
+export GOFLAGS ?= -mod=vendor
 
 LATEST_STABLE_TAG := $(shell git -c versionsort.prereleaseSuffix="-rc" -c versionsort.prereleaseSuffix="-RC" tag -l "v*.*.*" --sort=-v:refname | awk '!/rc/' | head -n 1)
 export IS_LATEST :=
@@ -36,7 +37,7 @@ TARGET_DIR := $(BUILD_DIR)/out
 
 # Packages in vendor/ are included in ./...
 # https://github.com/golang/go/issues/11659
-export OUR_PACKAGES ?= $(subst _$(BUILD_DIR),$(PKG),$(shell go list ./... | grep -v '/vendor/'))
+export OUR_PACKAGES ?= $(subst _$(BUILD_DIR),$(PKG),$(shell go list -mod=vendor ./... | grep -v '/vendor/'))
 
 GO_LDFLAGS ?= -X $(COMMON_PACKAGE_NAMESPACE).NAME=$(PACKAGE_NAME) -X $(COMMON_PACKAGE_NAMESPACE).VERSION=$(VERSION) \
               -X $(COMMON_PACKAGE_NAMESPACE).REVISION=$(REVISION) -X $(COMMON_PACKAGE_NAMESPACE).BUILT=$(BUILT) \
@@ -295,12 +296,15 @@ check_modules:
 	@diff -U0 /tmp/gosum-$${CI_JOB_ID}-before /tmp/gosum-$${CI_JOB_ID}-after
 
 # development tools
+$(GOX): GOFLAGS =
 $(GOX):
 	go get github.com/mitchellh/gox
 
+$(MOCKERY): GOFLAGS =
 $(MOCKERY):
 	go get github.com/vektra/mockery/cmd/mockery
 
+$(RELEASE_INDEX_GENERATOR): GOFLAGS =
 $(RELEASE_INDEX_GENERATOR):
 	go get gitlab.com/gitlab-org/ci-cd/runner-tools/release-index-generator/cmd/release-index-gen
 
