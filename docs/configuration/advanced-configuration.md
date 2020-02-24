@@ -276,7 +276,7 @@ This defines the Docker Container parameters.
 | `helper_image`              | (Advanced) [Override the default helper image](#helper-image) used to clone repos and upload artifacts. |
 | `services_limit`             | Set maximum allowed services per job. `0` (default) means there is no limit.     |
 | `service_cpuset_cpus`        | String value containing the `cgroups CpusetCpus` to use for a service.             |
-| `service_cpu_shares`         | Number of CPU shares used to set service's relative cpu usage. (default: `1024`) |
+| `service_cpu_shares`         | Number of CPU shares used to set a service's relative cpu usage. (default: `1024`) |
 | `service_cpus`               | String value of number of CPUs for service. (available in docker 1.13 or later)  |
 | `service_memory`             | String value containing the memory limit for service.                            |
 | `service_memory_swap`        | String value containing the total memory limit for service.                      |
