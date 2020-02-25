@@ -641,10 +641,13 @@ when used with private images, read the
 
 ### Using the `always` pull policy
 
-The `always` pull policy will ensure that the image is **always** pulled.
-When `always` is used, the Runner will try to pull the image even if a local
-copy is available. If the image is not found, then the build will
-fail with an error similar to:
+The `always` pull policy will ensure that the image is always pulled,
+bypassing the download if the image was previously pulled and is present
+in the local disk as cache. If there are any updates to the specified image
+(e.g. a different hash), it will still be pulled. This works exactly the same
+ as if you would run `docker pull` on your machine.
+
+If the image is not found, then the build will fail with an error similar to:
 
 ```plaintext
 Pulling docker image registry.tld/my/image:latest ...
@@ -660,7 +663,7 @@ fall back to local copy of an image and print a warning:
 > WARNING: Cannot pull the latest version of image registry.tld/my/image:latest : Error: image registry.tld/my/image:latest not found
 > WARNING: Locally found image will be used instead.
 > ```
->
+
 That is changed in version `v1.8`. To understand why we changed this and
 how incorrect usage of may be revealed please look into issue
 [#1905](https://gitlab.com/gitlab-org/gitlab-runner/issues/1905).
