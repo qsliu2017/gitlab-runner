@@ -1,6 +1,6 @@
 module gitlab.com/gitlab-org/gitlab-runner
 
-go 1.13
+go 1.14
 
 require (
 	cloud.google.com/go v0.49.0 // indirect
