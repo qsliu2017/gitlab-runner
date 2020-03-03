@@ -19,6 +19,7 @@ import (
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/go-connections/nat"
 	logrustest "github.com/sirupsen/logrus/hooks/test"
+	units "github.com/docker/go-units"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -1445,44 +1446,54 @@ func TestDockerCPUSetCPUsSetting(t *testing.T) {
 	testDockerConfigurationWithJobContainer(t, dockerConfig, cce)
 }
 
-func TestDockerServiceMemorySetting(t *testing.T) {
-	dockerConfig := &common.DockerConfig{
-		ServiceMemory: "42m",
+func TestDockerServiceSettings(t *testing.T) {
+	type test struct {
+		dockerConfig common.DockerConfig
+		verifyFn     func(t *testing.T, config *container.Config, hostConfig *container.HostConfig)
+	}
+	tests := map[string]test{
+		"memory": {
+			dockerConfig: common.DockerConfig{
+				ServiceMemory: "42m",
+			},
+			verifyFn: func(t *testing.T, config *container.Config, hostConfig *container.HostConfig) {
+				value, err := units.RAMInBytes("42m")
+				require.NoError(t, err)
+				assert.Equal(t, value, hostConfig.Memory)
+			},
+		},
+		"memoryreservation": {
+			dockerConfig: common.DockerConfig{
+				ServiceMemoryReservation: "64m",
+			},
+			verifyFn: func(t *testing.T, config *container.Config, hostConfig *container.HostConfig) {
+				value, err := units.RAMInBytes("64m")
+				require.NoError(t, err)
+				assert.Equal(t, value, hostConfig.MemoryReservation)
+			},
+		},
+		"swap": {
+			dockerConfig: common.DockerConfig{
+				ServiceMemorySwap: "2g",
+			},
+			verifyFn: func(t *testing.T, config *container.Config, hostConfig *container.HostConfig) {
+				value, err := units.RAMInBytes("2g")
+				require.NoError(t, err)
+				assert.Equal(t, value, hostConfig.MemorySwap)
+			},
+		},
+		"cpusetcpus": {
+			dockerConfig: common.DockerConfig{
+				ServiceCPUSetCPUs: "1-3,5",
+			},
+			verifyFn: func(t *testing.T, config *container.Config, hostConfig *container.HostConfig) {
+				assert.Equal(t, "1-3,5", hostConfig.CpusetCpus)
+			},
+		},
 	}
 
-	cce := func(t *testing.T, config *container.Config, hostConfig *container.HostConfig) {
-		assert.Equal(t, int64(44040192), hostConfig.Memory)
-	}
-
-	testDockerConfigurationWithServiceContainer(t, dockerConfig, cce)
-}
-
-func TestDockerServiceMemorySwapSetting(t *testing.T) {
-	dockerConfig := &common.DockerConfig{
-		ServiceMemorySwap: "2g",
-	}
-
-	cce := func(t *testing.T, config *container.Config, hostConfig *container.HostConfig) {
-		assert.Equal(t, int64(2147483648), hostConfig.MemorySwap)
-	}
-
-	testDockerConfigurationWithServiceContainer(t, dockerConfig, cce)
-}
-
-func TestDockerServiceMemoryReservationSetting(t *testing.T) {
-	dockerConfig := &common.DockerConfig{
-		ServiceMemoryReservation: "64m",
-	}
-
-	cce := func(t *testing.T, config *container.Config, hostConfig *container.HostConfig) {
-		assert.Equal(t, int64(67108864), hostConfig.MemoryReservation)
-	}
-
-	testDockerConfigurationWithServiceContainer(t, dockerConfig, cce)
-}
-
-func TestDockerServiceCPUSSetting(t *testing.T) {
-	examples := []struct {
+	// Add multiple cpus check
+	cpusSetting := []struct {
 		cpus     string
 		nanocpus int64
 	}{
@@ -1492,32 +1503,25 @@ func TestDockerServiceCPUSSetting(t *testing.T) {
 		{"1/8", 125000000},
 		{"0.0001", 100000},
 	}
+	for _, example := range cpusSetting {
+		// Make an explicit copy to be used inside verifyFn
+		// otherwise its value is last round of for loop
+		tmp:=example
+		tests["cpus_"+tmp.cpus] = test{
+			dockerConfig: common.DockerConfig{
+				ServiceCPUS: tmp.cpus,
+			},
+			verifyFn: func(t *testing.T, config *container.Config, hostConfig *container.HostConfig) {
+				assert.Equal(t, int64(tmp.nanocpus), hostConfig.NanoCPUs)
+			},
+		}
+	}
 
-	for _, example := range examples {
-		t.Run(example.cpus, func(t *testing.T) {
-			dockerConfig := &common.DockerConfig{
-				ServiceCPUS: example.cpus,
-			}
-
-			cce := func(t *testing.T, config *container.Config, hostConfig *container.HostConfig) {
-				assert.Equal(t, int64(example.nanocpus), hostConfig.NanoCPUs)
-			}
-
-			testDockerConfigurationWithServiceContainer(t, dockerConfig, cce)
+	for tn, tt := range tests {
+		t.Run(tn, func(t *testing.T) {
+			testDockerConfigurationWithServiceContainer(t, &tt.dockerConfig, tt.verifyFn)
 		})
 	}
-}
-
-func TestDockerServiceCPUSetCPUsSetting(t *testing.T) {
-	dockerConfig := &common.DockerConfig{
-		ServiceCPUSetCPUs: "1-3,5",
-	}
-
-	cce := func(t *testing.T, config *container.Config, hostConfig *container.HostConfig) {
-		assert.Equal(t, "1-3,5", hostConfig.CpusetCpus)
-	}
-
-	testDockerConfigurationWithServiceContainer(t, dockerConfig, cce)
 }
 
 func TestDockerServicesTmpfsSetting(t *testing.T) {
