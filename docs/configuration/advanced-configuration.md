@@ -274,7 +274,7 @@ This defines the Docker Container parameters.
 | `pull_policy`               | Specify the image pull policy: `never`, `if-not-present` or `always` (default); read more in the [pull policies documentation](../executors/docker.md#how-pull-policies-work) |
 | `sysctls`                   | specify the sysctl options |
 | `helper_image`              | (Advanced) [Override the default helper image](#helper-image) used to clone repos and upload artifacts. |
-| `services_limit`             | Set maximum allowed services per job. `0` (default) means there is no limit. |
+| `services_limit`             | Set maximum allowed services per job. `-1` (default) means there is no limit. |
 | `service_cpuset_cpus`        | String value containing the `cgroups CpusetCpus` to use for a service. |
 | `service_cpu_shares`         | Number of CPU shares used to set a service's relative cpu usage (default: `1024`). |
 | `service_cpus`               | String value containing the number of CPUs for a service (available in docker 1.13 or later). |

@@ -527,8 +527,10 @@ func (e *executor) getServicesDefinitions() (common.Services, error) {
 		serviceDefinitions = append(serviceDefinitions, service)
 	}
 
-	if e.Config.Docker.ServicesLimit > 0 && len(serviceDefinitions) > e.Config.Docker.ServicesLimit {
-		return nil, fmt.Errorf("too many services requested: %d (only %d allowed)", len(serviceDefinitions), e.Config.Docker.ServicesLimit)
+	if e.Config.Docker.ServicesLimit != nil &&
+		*e.Config.Docker.ServicesLimit >= 0 &&
+		len(serviceDefinitions) > *e.Config.Docker.ServicesLimit {
+		return nil, fmt.Errorf("too many services requested: %d (only %d allowed)", len(serviceDefinitions), *e.Config.Docker.ServicesLimit)
 	}
 
 	return serviceDefinitions, nil

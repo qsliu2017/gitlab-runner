@@ -1506,7 +1506,7 @@ func TestDockerServiceSettings(t *testing.T) {
 	for _, example := range cpusSetting {
 		// Make an explicit copy to be used inside verifyFn
 		// otherwise its value is last round of for loop
-		tmp:=example
+		tmp := example
 		tests["cpus_"+tmp.cpus] = test{
 			dockerConfig: common.DockerConfig{
 				ServiceCPUS: tmp.cpus,
@@ -1894,7 +1894,7 @@ func TestGetServiceDefinitions(t *testing.T) {
 
 	tests := map[string]struct {
 		services         []common.Service
-		servicesLimit    int
+		servicesLimit    *int
 		buildServices    []common.Image
 		allowedServices  []string
 		expectedServices common.Services
@@ -1984,13 +1984,22 @@ func TestGetServiceDefinitions(t *testing.T) {
 				},
 			},
 		},
+		"one service (max 0)": {
+			services: []*common.DockerService{
+				{
+					Service: common.Service{"name"},
+				},
+			},
+			servicesLimit: func(i int) *int { return &i }(0),
+			expectedErr:   "too many services requested: 1 (only 0 allowed)",
+		},
 		"one service (max 1)": {
 			services: []*common.DockerService{
 				{
 					Service: common.Service{"name"},
 				},
 			},
-			servicesLimit: 1,
+			servicesLimit: func(i int) *int { return &i }(1),
 			expectedServices: common.Services{
 				{
 					Name: "name",
@@ -2006,7 +2015,7 @@ func TestGetServiceDefinitions(t *testing.T) {
 					Service: common.Service{"name"},
 				},
 			},
-			servicesLimit: 1,
+			servicesLimit: func(i int) *int { return &i }(1),
 			expectedErr:   "too many services requested: 2 (only 1 allowed)",
 		},
 	}
