@@ -314,6 +314,7 @@ Example:
   service_memory_reservation = "64m"
   service_cpuset_cpus = "0,1"
   service_cpus = "2"
+  services_limit = 5
   privileged = false
   userns_mode = "host"
   cap_add = ["NET_ADMIN"]
