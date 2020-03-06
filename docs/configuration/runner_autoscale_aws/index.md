@@ -64,13 +64,31 @@ you can disable console login for that user. Keep the tab open or copy paste the
 security credentials in an editor as we'll use them later during the
 [Runner configuration](#the-runnersmachine-section).
 
-## Prepare the Runner Manager instance
+## Prepare the Runner Manager instance (Production Grade CI)
 
 The first step is to install GitLab Runner in an EC2 instance that will serve
-as the Runner Manager that spawns new machines. This doesn't have to be a powerful
-machine since it will not run any jobs itself, a `t2.micro` instance will do.
-This machine will be a dedicated host since we need it always up and running,
-thus it will be the only standard cost.
+as the Runner Manager that spawns new machines. This server role will be 
+always up and running as it is a dispatcher. This doesn't have to be a powerful
+machine since it will not run any jobs itself, however, it is a possible single point
+failure and choke point if made too small. Generally, for production grade CI, this 
+should not be a T2 class machine due to their bursty CPU, CPU credits and non EBS
+optimization on some sizes.
+
+### High Availability / Lower Cost of the Scaling Runner
+In order to avoid a single point of failure, this instance should be deployed at 
+least as a single instance ASG so that it will be automatically re-established
+upon failure. If HOT/HOT High Availability is desired, the ASG should have two 
+instances registered against the same runner tokens.
+
+By having an ASG you can also elect to use spot instances for the docker-machine
+instance - especially if you are running two or more instances.
+
+### Long Term Managability
+Over time changes will need to be made to your runners - runner tokens can be changed
+you will need to upgrade the runner version, you may need to change the runner 
+config.toml.  For all these reasons it is advised you use Infrastructure as Code 
+to build any runner infrastructure.  For AWS, CloudFormation and TerraForm are
+good choices.
 
 NOTE: **Note:**
 For the Runner Manager instance, choose a distribution that both Docker and GitLab
