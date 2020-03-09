@@ -79,7 +79,7 @@ optimization on some sizes.
 In order to avoid a single point of failure, this instance should be deployed at
 least as a single instance ASG so that it will be automatically re-established
 upon failure. If HOT/HOT High Availability is desired, the ASG should have two
-instances registered against the same runner tokens.
+instances registered against the same Runner Registration Tokens.
 
 By having an ASG you can also elect to use spot instances for the docker-machine
 instance - especially if you are running two or more instances.
