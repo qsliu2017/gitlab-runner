@@ -67,10 +67,10 @@ security credentials in an editor as we'll use them later during the
 ## Prepare the Runner Manager instance (Production Grade CI)
 
 The first step is to install GitLab Runner in an EC2 instance that will serve
-as the Runner Manager that spawns new machines. This server role will be 
+as the Runner Manager that spawns new machines. This server role will be
 always up and running as it is a dispatcher. This doesn't have to be a powerful
-machine since it will not run any jobs itself, however, it is a possible single point
-failure and choke point if made too small. Generally, for production grade CI, this 
+machine since it will not run any jobs itself, however, it is a possible single point of
+failure and choke point if made too small. Generally, for production grade CI, this
 should not be a T2 class machine due to their bursty CPU, CPU credits and non EBS
 optimization on some sizes.
 
