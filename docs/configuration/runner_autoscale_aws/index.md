@@ -75,9 +75,10 @@ should not be a T2 class machine due to their bursty CPU, CPU credits and non EB
 optimization on some sizes.
 
 ### High Availability / Lower Cost of the Scaling Runner
-In order to avoid a single point of failure, this instance should be deployed at 
+
+In order to avoid a single point of failure, this instance should be deployed at
 least as a single instance ASG so that it will be automatically re-established
-upon failure. If HOT/HOT High Availability is desired, the ASG should have two 
+upon failure. If HOT/HOT High Availability is desired, the ASG should have two
 instances registered against the same runner tokens.
 
 By having an ASG you can also elect to use spot instances for the docker-machine
