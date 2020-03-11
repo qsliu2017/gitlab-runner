@@ -87,12 +87,12 @@ func testMachineCredentialsUsage(t *testing.T, name string, runnerConfigSource f
 			},
 		}
 
-		machine := new(docker.MockMachine)
-		defer machine.AssertExpectations(t)
+		machineCommandMock := new(docker.MockMachine)
+		defer machineCommandMock.AssertExpectations(t)
 
-		machine.On("CanConnect", machineName, true).
+		machineCommandMock.On("CanConnect", machineName, true).
 			Return(true).Once()
-		machine.On("Credentials", machineName).
+		machineCommandMock.On("Credentials", machineName).
 			Return(machineCredentials, nil).Once()
 
 		executorProvider := &common.MockExecutorProvider{}
@@ -108,7 +108,7 @@ func testMachineCredentialsUsage(t *testing.T, name string, runnerConfigSource f
 
 		e := &machineExecutor{
 			machineProvider: &machineProvider{
-				machine:          machine,
+				machineCommand:   machineCommandMock,
 				executorProvider: executorProvider,
 				totalActions: prometheus.NewCounterVec(
 					prometheus.CounterOpts{
