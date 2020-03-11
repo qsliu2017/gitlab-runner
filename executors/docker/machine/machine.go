@@ -20,10 +20,14 @@ const (
 type machineExecutor struct {
 	machineProvider *machineProvider
 
-	executor common.Executor
-	build    *common.Build
-	data     common.ExecutorData
-	config   common.RunnerConfig
+	// executorProvider stores the provider for the executor that
+	// will be used to run the builds
+	executorProvider common.ExecutorProvider
+	executor         common.Executor
+
+	build  *common.Build
+	data   common.ExecutorData
+	config common.RunnerConfig
 
 	currentStage common.ExecutorStage
 }
@@ -117,7 +121,7 @@ func (e *machineExecutor) selectMachineForBuild(options *common.ExecutorPrepareO
 }
 
 func (e *machineExecutor) createInnerExecutor(options common.ExecutorPrepareOptions) error {
-	e.executor = e.machineProvider.createExecutor()
+	e.executor = e.executorProvider.Create()
 	if e.executor == nil {
 		return errors.New("failed to create an executor")
 	}

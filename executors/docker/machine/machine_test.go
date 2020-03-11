@@ -106,19 +106,19 @@ func testMachineCredentialsUsage(t *testing.T, name string, runnerConfigSource f
 		executorProvider.On("Create").
 			Return(fakeExecutor).Once()
 
-		e := &machineExecutor{
-			machineProvider: &machineProvider{
-				machineCommand:   machineCommandMock,
-				executorProvider: executorProvider,
-				totalActions: prometheus.NewCounterVec(
-					prometheus.CounterOpts{
-						Name: "actions_total",
-						Help: "actions_total",
-					},
-					[]string{"action"},
-				),
-			},
+		m := &machineProvider{
+			machineCommand:   machineCommandMock,
+			executorProvider: executorProvider,
+			totalActions: prometheus.NewCounterVec(
+				prometheus.CounterOpts{
+					Name: "actions_total",
+					Help: "actions_total",
+				},
+				[]string{"action"},
+			),
 		}
+		e := m.Create()
+
 		err := e.Prepare(options)
 		assert.NoError(t, err)
 	})
