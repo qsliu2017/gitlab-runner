@@ -58,7 +58,7 @@ func (m *manager) Create(ctx context.Context, networkMode string) (container.Net
 
 	networkName := fmt.Sprintf("%s-job-%d-network", m.build.ProjectUniqueName(), m.build.ID)
 
-	m.Log().WithField("network", networkName).Debugln("Creating build network")
+	m.Log().WithField("NetworkName", networkName).Debugln("Creating build network")
 
 	networkResponse, err := m.client.NetworkCreate(ctx, networkName, types.NetworkCreate{})
 	if err != nil {
