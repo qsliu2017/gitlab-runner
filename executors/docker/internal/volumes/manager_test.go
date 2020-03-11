@@ -5,6 +5,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -13,28 +14,19 @@ import (
 	"gitlab.com/gitlab-org/gitlab-runner/helpers/path"
 )
 
-func newDebugLoggerMock() *mockDebugLogger {
-	loggerMock := new(mockDebugLogger)
-	loggerMock.On("Debugln", mock.Anything)
-
-	return loggerMock
-}
-
 func TestErrVolumeAlreadyDefined(t *testing.T) {
 	err := NewErrVolumeAlreadyDefined("test-path")
 	assert.EqualError(t, err, `volume for container path "test-path" is already defined`)
 }
 
 func TestNewDefaultManager(t *testing.T) {
-	logger := newDebugLoggerMock()
-
-	m := NewManager(logger, nil, nil, ManagerConfig{})
+	m := NewManager(logrus.New(), nil, nil, ManagerConfig{})
 	assert.IsType(t, &manager{}, m)
 }
 
 func newDefaultManager(config ManagerConfig) *manager {
 	m := &manager{
-		logger:         newDebugLoggerMock(),
+		logger:         logrus.New(),
 		config:         config,
 		managedVolumes: make(map[string]bool, 0),
 	}

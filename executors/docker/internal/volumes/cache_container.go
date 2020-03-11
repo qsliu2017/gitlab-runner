@@ -7,6 +7,7 @@ import (
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
+	"github.com/sirupsen/logrus"
 
 	docker_helpers "gitlab.com/gitlab-org/gitlab-runner/helpers/docker"
 )
@@ -27,7 +28,7 @@ type CacheContainersManager interface {
 
 type cacheContainerManager struct {
 	ctx    context.Context
-	logger debugLogger
+	logger logrus.FieldLogger
 
 	containerClient containerClient
 
@@ -35,7 +36,7 @@ type cacheContainerManager struct {
 	failedContainerIDs []string
 }
 
-func NewCacheContainerManager(ctx context.Context, logger debugLogger, cClient containerClient, helperImage *types.ImageInspect) CacheContainersManager {
+func NewCacheContainerManager(ctx context.Context, logger logrus.FieldLogger, cClient containerClient, helperImage *types.ImageInspect) CacheContainersManager {
 	return &cacheContainerManager{
 		ctx:             ctx,
 		logger:          logger,
@@ -46,17 +47,18 @@ func NewCacheContainerManager(ctx context.Context, logger debugLogger, cClient c
 
 func (m *cacheContainerManager) FindOrCleanExisting(containerName string, containerPath string) string {
 	inspected, err := m.containerClient.ContainerInspect(m.ctx, containerName)
+	logger := m.logger.WithField("ContainerName", containerName)
 	if err != nil {
-		m.logger.Debugln(fmt.Sprintf("Error while inspecting %q container: %v", containerName, err))
+		logger.Debugln(fmt.Sprintf("Error while inspecting container: %v", err))
 		return ""
 	}
 
 	// check if we have valid cache, if not remove the broken container
 	_, ok := inspected.Config.Volumes[containerPath]
 	if !ok {
-		m.logger.Debugln(fmt.Sprintf("Removing broken cache container for %q path", containerPath))
+		logger.Debugln(fmt.Sprintf("Removing broken cache container for %q path", containerPath))
 		err = m.containerClient.RemoveContainer(m.ctx, inspected.ID)
-		m.logger.Debugln(fmt.Sprintf("Cache container for %q path removed with %v", containerPath, err))
+		logger.Debugln(fmt.Sprintf("Cache container for %q path removed with %v", containerPath, err))
 
 		return ""
 	}
@@ -107,7 +109,8 @@ func (m *cacheContainerManager) createCacheContainer(containerName string, conta
 }
 
 func (m *cacheContainerManager) startCacheContainer(containerID string) error {
-	m.logger.Debugln(fmt.Sprintf("Starting cache container %q...", containerID))
+	logger := m.logger.WithField("ContainerID", containerID)
+	logger.Debugln(fmt.Sprintf("Starting cache container..."))
 	err := m.containerClient.ContainerStart(m.ctx, containerID, types.ContainerStartOptions{})
 	if err != nil {
 		m.failedContainerIDs = append(m.failedContainerIDs, containerID)
@@ -115,7 +118,7 @@ func (m *cacheContainerManager) startCacheContainer(containerID string) error {
 		return err
 	}
 
-	m.logger.Debugln(fmt.Sprintf("Waiting for cache container %q...", containerID))
+	logger.Debugln(fmt.Sprintf("Waiting for cache container..."))
 	err = m.containerClient.WaitForContainer(containerID)
 	if err != nil {
 		m.failedContainerIDs = append(m.failedContainerIDs, containerID)
@@ -149,7 +152,8 @@ func (m *cacheContainerManager) remove(ctx context.Context, wg *sync.WaitGroup, 
 	go func() {
 		err := m.containerClient.RemoveContainer(ctx, id)
 		if err != nil {
-			m.logger.Debugln(fmt.Sprintf("Error while removing the container: %v", err))
+			m.logger.WithField("ContainerID", id).Debugln(
+				fmt.Sprintf("Error while removing the container: %v", err))
 		}
 		wg.Done()
 	}()

@@ -40,7 +40,7 @@ var createVolumesManager = func(e *executor) (volumes.Manager, error) {
 
 	ccManager := volumes.NewCacheContainerManager(
 		e.Context,
-		&e.BuildLogger,
+		e.Build.Log(),
 		adapter,
 		helperImage,
 	)
@@ -52,7 +52,7 @@ var createVolumesManager = func(e *executor) (volumes.Manager, error) {
 		DisableCache:      e.Config.Docker.DisableCache,
 	}
 
-	volumesManager := volumes.NewManager(&e.BuildLogger, e.volumeParser, ccManager, config)
+	volumesManager := volumes.NewManager(e.Build.Log(), e.volumeParser, ccManager, config)
 
 	return volumesManager, nil
 }

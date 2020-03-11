@@ -13,10 +13,6 @@ var (
 	errDirectoryIsRootPath  = errors.New("build directory needs to be a non-root path")
 )
 
-type debugLogger interface {
-	Debugln(args ...interface{})
-}
-
 func IsHostMountedVolume(volumeParser parser.Parser, dir string, volumes ...string) (bool, error) {
 	if !volumeParser.Path().IsAbs(dir) {
 		return false, errDirectoryNotAbsolute

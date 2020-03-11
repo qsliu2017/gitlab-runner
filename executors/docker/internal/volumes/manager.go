@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/sirupsen/logrus"
 	"gitlab.com/gitlab-org/gitlab-runner/executors/docker/internal/volumes/parser"
 )
 
@@ -27,7 +28,7 @@ type ManagerConfig struct {
 
 type manager struct {
 	config ManagerConfig
-	logger debugLogger
+	logger logrus.FieldLogger
 	parser parser.Parser
 
 	cacheContainersManager CacheContainersManager
@@ -39,7 +40,7 @@ type manager struct {
 	managedVolumes pathList
 }
 
-func NewManager(logger debugLogger, volumeParser parser.Parser, ccManager CacheContainersManager, config ManagerConfig) Manager {
+func NewManager(logger logrus.FieldLogger, volumeParser parser.Parser, ccManager CacheContainersManager, config ManagerConfig) Manager {
 	return &manager{
 		config:                 config,
 		logger:                 logger,
@@ -175,7 +176,8 @@ func (m *manager) createContainerBasedCacheVolume(containerPath string) (string,
 		}
 	}
 
-	m.logger.Debugln(fmt.Sprintf("Using container %q as cache %q...", containerID, containerPath))
+	m.logger.WithField("ContainerID", containerID).Debugln(
+		fmt.Sprintf("Using container as cache %q...", containerPath))
 	m.cacheContainerIDs = append(m.cacheContainerIDs, containerID)
 
 	return containerID, nil

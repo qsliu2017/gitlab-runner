@@ -8,15 +8,14 @@ import (
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
 
 func TestNewCacheContainerManager(t *testing.T) {
-	logger := newDebugLoggerMock()
-
-	m := NewCacheContainerManager(context.Background(), logger, nil, nil)
+	m := NewCacheContainerManager(context.Background(), logrus.New(), nil, nil)
 	assert.IsType(t, &cacheContainerManager{}, m)
 }
 
@@ -24,7 +23,7 @@ func getCacheContainerManager() (*cacheContainerManager, *mockContainerClient) {
 	cClient := new(mockContainerClient)
 
 	m := &cacheContainerManager{
-		logger:             newDebugLoggerMock(),
+		logger:             logrus.New(),
 		containerClient:    cClient,
 		failedContainerIDs: make([]string, 0),
 		helperImage:        &types.ImageInspect{ID: "helper-image"},
@@ -216,9 +215,6 @@ func TestCacheContainerManager_Cleanup(t *testing.T) {
 	containerClientMock := new(mockContainerClient)
 	defer containerClientMock.AssertExpectations(t)
 
-	loggerMock := new(mockDebugLogger)
-	defer loggerMock.AssertExpectations(t)
-
 	containerClientMock.On("RemoveContainer", ctx, "failed-container-1").
 		Return(nil).
 		Once()
@@ -229,12 +225,9 @@ func TestCacheContainerManager_Cleanup(t *testing.T) {
 		Return(nil).
 		Once()
 
-	loggerMock.On("Debugln", "Error while removing the container: test-error").
-		Once()
-
 	m := &cacheContainerManager{
 		containerClient:    containerClientMock,
-		logger:             loggerMock,
+		logger:             logrus.New(),
 		failedContainerIDs: []string{"failed-container-1", "container-1-with-remove-error"},
 	}
 
