@@ -14,14 +14,15 @@ import (
 )
 
 type machineProvider struct {
-	name        string
-	machine     docker.Machine
-	details     machinesDetails
-	lock        sync.RWMutex
-	acquireLock sync.Mutex
+	name    string
+	machine docker.Machine
+	details machinesDetails
+
 	// provider stores a real executor that is used to start run the builds
 	provider common.ExecutorProvider
 
+	lock            sync.RWMutex
+	acquireLock     sync.Mutex
 	stuckRemoveLock sync.Mutex
 
 	// metrics
@@ -449,6 +450,10 @@ func (m *machineProvider) Release(config *common.RunnerConfig, data common.Execu
 
 func (m *machineProvider) CanCreate() bool {
 	return m.provider.CanCreate()
+}
+
+func (m *machineProvider) createExecutor() common.Executor {
+	return m.provider.Create()
 }
 
 func (m *machineProvider) GetFeatures(features *common.FeaturesInfo) error {
