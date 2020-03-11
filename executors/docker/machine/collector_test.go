@@ -21,7 +21,7 @@ func TestMachineProviderDeadInterval(t *testing.T) {
 	provider := newMachineProvider("docker_machines", "docker")
 	assert.Equal(t, 0, provider.collectDetails().Idle)
 
-	details := provider.machineDetails("test", false)
+	details := provider.getMachineDetails("test")
 	assert.Equal(t, 1, provider.collectDetails().Idle)
 
 	details.LastSeen = time.Now().Add(-machineDeadInterval)

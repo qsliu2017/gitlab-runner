@@ -33,10 +33,23 @@ type machineProvider struct {
 	creationHistogram prometheus.Histogram
 }
 
-func (m *machineProvider) machineDetails(name string, acquire bool) *machineDetails {
+func (m *machineProvider) acquireMachineDetails(name string) *machineDetails {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 
+	details := m.machineDetailsThreadUnsafe(name)
+	if details.isUsed() {
+		return nil
+	}
+
+	details.acquire()
+
+	return details
+}
+
+// thread-unsafe
+// Usage must be guarded with m.lock.Lock()
+func (m *machineProvider) machineDetailsThreadUnsafe(name string) *machineDetails {
 	details, ok := m.machines[name]
 	if !ok {
 		now := time.Now()
@@ -51,19 +64,19 @@ func (m *machineProvider) machineDetails(name string, acquire bool) *machineDeta
 		m.machines[name] = details
 	}
 
-	if acquire {
-		if details.isUsed() {
-			return nil
-		}
-		details.State = machineStateAcquired
-	}
-
 	return details
+}
+
+func (m *machineProvider) getMachineDetails(name string) *machineDetails {
+	m.lock.Lock()
+	defer m.lock.Unlock()
+
+	return m.machineDetailsThreadUnsafe(name)
 }
 
 func (m *machineProvider) create(config *common.RunnerConfig, state machineState) (*machineDetails, chan error) {
 	name := newMachineName(config)
-	details := m.machineDetails(name, true)
+	details := m.acquireMachineDetails(name)
 	details.State = machineStateCreating
 	details.UsedCount = 0
 	details.RetryCount = 0
@@ -111,7 +124,7 @@ func (m *machineProvider) findFreeMachine(skipCache bool, machines ...string) (d
 	// Enumerate all machines in reverse order, to always take the newest machines first
 	for idx := range machines {
 		name := machines[len(machines)-idx-1]
-		details := m.machineDetails(name, true)
+		details := m.acquireMachineDetails(name)
 		if details == nil {
 			continue
 		}
@@ -268,7 +281,7 @@ func (m *machineProvider) updateMachines(
 	validMachines = make([]string, 0, len(machines))
 
 	for _, name := range machines {
-		details := m.machineDetails(name, false)
+		details := m.getMachineDetails(name)
 		details.LastSeen = time.Now()
 
 		err := m.updateMachine(config, &data, details)

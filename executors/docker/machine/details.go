@@ -21,6 +21,10 @@ type machineDetails struct {
 	LastSeen   time.Time
 }
 
+func (m *machineDetails) acquire() {
+	m.State = machineStateAcquired
+}
+
 func (m *machineDetails) isPersistedOnDisk() bool {
 	// Machines in creating phase might or might not be persisted on disk
 	// this is due to async nature of machine creation process

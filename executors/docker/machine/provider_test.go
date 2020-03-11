@@ -244,21 +244,21 @@ func testMachineProvider(machine ...string) (*machineProvider, *testMachineComma
 
 func TestMachineDetails(t *testing.T) {
 	p, _ := testMachineProvider()
-	m1 := p.machineDetails("test", false)
+	m1 := p.getMachineDetails("test")
 	assert.NotNil(t, m1, "returns a new machine")
 	assert.Equal(t, machineStateIdle, m1.State)
 	assert.Equal(t, 1, m1.UsedCount)
 
-	m2 := p.machineDetails("test", false)
+	m2 := p.getMachineDetails("test")
 	assert.Equal(t, m1, m2, "returns the same machine")
 
-	m3 := p.machineDetails("test", true)
+	m3 := p.acquireMachineDetails("test")
 	assert.Equal(t, machineStateAcquired, m3.State, "acquires machine")
 
-	m4 := p.machineDetails("test", true)
+	m4 := p.acquireMachineDetails("test")
 	assert.Nil(t, m4, "fails to return re-acquired machine")
 
-	m5 := p.machineDetails("test", false)
+	m5 := p.getMachineDetails("test")
 	assert.Equal(t, m1, m5, "returns acquired machine")
 	assert.Equal(t, machineStateAcquired, m5.State, "machine is acquired")
 }
