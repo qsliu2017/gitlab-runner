@@ -7,6 +7,7 @@ import (
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
+	"github.com/sirupsen/logrus"
 
 	"gitlab.com/gitlab-org/gitlab-runner/common"
 	docker_helpers "gitlab.com/gitlab-org/gitlab-runner/helpers/docker"
@@ -22,7 +23,7 @@ type Manager interface {
 }
 
 type manager struct {
-	logger debugLogger
+	logger logrus.FieldLogger
 	client docker_helpers.Client
 	build  *common.Build
 
@@ -31,7 +32,7 @@ type manager struct {
 	perBuild     bool
 }
 
-func NewManager(logger debugLogger, dockerClient docker_helpers.Client, build *common.Build) Manager {
+func NewManager(logger logrus.FieldLogger, dockerClient docker_helpers.Client, build *common.Build) Manager {
 	return &manager{
 		logger: logger,
 		client: dockerClient,
@@ -57,7 +58,7 @@ func (m *manager) Create(ctx context.Context, networkMode string) (container.Net
 
 	networkName := fmt.Sprintf("%s-job-%d-network", m.build.ProjectUniqueName(), m.build.ID)
 
-	m.logger.Debugln("Creating build network ", networkName)
+	m.Log().WithField("network", networkName).Debugln("Creating build network")
 
 	networkResponse, err := m.client.NetworkCreate(ctx, networkName, types.NetworkCreate{})
 	if err != nil {
@@ -81,7 +82,7 @@ func (m *manager) Inspect(ctx context.Context) (types.NetworkResource, error) {
 		return types.NetworkResource{}, nil
 	}
 
-	m.logger.Debugln("Inspect docker network: ", m.buildNetwork.ID)
+	m.Log().Debugln("Inspect docker network")
 
 	return m.client.NetworkInspect(ctx, m.buildNetwork.ID)
 }
@@ -95,7 +96,7 @@ func (m *manager) Cleanup(ctx context.Context) error {
 		return nil
 	}
 
-	m.logger.Debugln("Removing network: ", m.buildNetwork.ID)
+	m.Log().Debugln("Removing network")
 
 	err := m.client.NetworkRemove(ctx, m.buildNetwork.ID)
 	if err != nil {
@@ -103,4 +104,8 @@ func (m *manager) Cleanup(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+func (m *manager) Log() *logrus.Entry {
+	return m.logger.WithField("BuildNetworkID", m.buildNetwork.ID)
 }

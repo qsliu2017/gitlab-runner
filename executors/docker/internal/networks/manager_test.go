@@ -7,6 +7,7 @@ import (
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
@@ -15,23 +16,14 @@ import (
 	"gitlab.com/gitlab-org/gitlab-runner/helpers/featureflags"
 )
 
-func newDebugLoggerMock() *mockDebugLogger {
-	loggerMock := new(mockDebugLogger)
-	loggerMock.On("Debugln", mock.Anything, mock.Anything)
-
-	return loggerMock
-}
-
 func TestNewDefaultManager(t *testing.T) {
-	logger := newDebugLoggerMock()
-
-	m := NewManager(logger, nil, nil)
+	m := NewManager(logrus.New(), nil, nil)
 	assert.IsType(t, &manager{}, m)
 }
 
 func newDefaultManager() *manager {
 	m := &manager{
-		logger: newDebugLoggerMock(),
+		logger: logrus.New(),
 		build: &common.Build{
 			ProjectRunnerID: 0,
 			Runner:          &common.RunnerConfig{},
