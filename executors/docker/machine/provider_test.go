@@ -177,7 +177,7 @@ func countIdleMachines(p *machineProvider) (count int) {
 	p.lock.RLock()
 	defer p.lock.RUnlock()
 
-	for _, details := range p.details {
+	for _, details := range p.machines {
 		if details.State == machineStateIdle {
 			count++
 		}
@@ -205,7 +205,7 @@ func countTotalMachines(p *machineProvider) (count int) {
 	p.lock.RLock()
 	defer p.lock.RUnlock()
 
-	for _, details := range p.details {
+	for _, details := range p.machines {
 		if details.State != machineStateRemoving {
 			count++
 		}
@@ -292,7 +292,7 @@ func TestMachineCreationAndRemoval(t *testing.T) {
 	assert.NoError(t, <-errCh)
 	assert.Equal(t, machineStateUsed, d.State)
 	assert.Equal(t, 0, d.UsedCount)
-	assert.NotNil(t, p.details[d.Name])
+	assert.NotNil(t, p.machines[d.Name])
 
 	d2, errCh := p.create(machineProvisionFail, machineStateUsed)
 	assert.NotNil(t, d2)
@@ -537,7 +537,7 @@ func TestMachineCreationIfFailedToConnect(t *testing.T) {
 
 func TestIntermediateMachineList(t *testing.T) {
 	p, _ := testMachineProvider()
-	p.details = machinesDetails{
+	p.machines = machinesDetails{
 		"machine1": &machineDetails{
 			Name:  "machine1",
 			State: machineStateIdle,
