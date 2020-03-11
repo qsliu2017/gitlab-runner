@@ -18,7 +18,8 @@ const (
 )
 
 type machineExecutor struct {
-	provider *machineProvider
+	machineProvider *machineProvider
+
 	executor common.Executor
 	build    *common.Build
 	data     common.ExecutorData
@@ -83,7 +84,7 @@ func (e *machineExecutor) selectMachineForBuild(options *common.ExecutorPrepareO
 
 	// Use the machine
 	e.SetCurrentStage(DockerMachineExecutorStageUseMachine)
-	e.config, e.data, err = e.provider.Use(options.Config, options.Build.ExecutorData)
+	e.config, e.data, err = e.machineProvider.Use(options.Config, options.Build.ExecutorData)
 	if err != nil {
 		return fmt.Errorf("couldn't select machine: %w", err)
 	}
@@ -116,7 +117,7 @@ func (e *machineExecutor) selectMachineForBuild(options *common.ExecutorPrepareO
 }
 
 func (e *machineExecutor) createInnerExecutor(options common.ExecutorPrepareOptions) error {
-	e.executor = e.provider.createExecutor()
+	e.executor = e.machineProvider.createExecutor()
 	if e.executor == nil {
 		return errors.New("failed to create an executor")
 	}
@@ -163,7 +164,7 @@ func (e *machineExecutor) Cleanup() {
 
 	// Release allocated machine
 	e.SetCurrentStage(DockerMachineExecutorStageReleaseMachine)
-	e.provider.Release(&e.config, e.data)
+	e.machineProvider.Release(&e.config, e.data)
 	e.data = nil
 }
 

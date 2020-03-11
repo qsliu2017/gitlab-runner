@@ -18,8 +18,9 @@ type machineProvider struct {
 	machine docker.Machine
 	details machinesDetails
 
-	// provider stores a real executor that is used to start run the builds
-	provider common.ExecutorProvider
+	// executorProvider stores the provider for the executor that
+	// will be used to run the builds
+	executorProvider common.ExecutorProvider
 
 	lock            sync.RWMutex
 	acquireLock     sync.Mutex
@@ -449,38 +450,38 @@ func (m *machineProvider) Release(config *common.RunnerConfig, data common.Execu
 }
 
 func (m *machineProvider) CanCreate() bool {
-	return m.provider.CanCreate()
+	return m.executorProvider.CanCreate()
 }
 
 func (m *machineProvider) createExecutor() common.Executor {
-	return m.provider.Create()
+	return m.executorProvider.Create()
 }
 
 func (m *machineProvider) GetFeatures(features *common.FeaturesInfo) error {
-	return m.provider.GetFeatures(features)
+	return m.executorProvider.GetFeatures(features)
 }
 
 func (m *machineProvider) GetDefaultShell() string {
-	return m.provider.GetDefaultShell()
+	return m.executorProvider.GetDefaultShell()
 }
 
 func (m *machineProvider) Create() common.Executor {
 	return &machineExecutor{
-		provider: m,
+		machineProvider: m,
 	}
 }
 
 func newMachineProvider(name, executor string) *machineProvider {
-	provider := common.GetExecutorProvider(executor)
-	if provider == nil {
+	executorProvider := common.GetExecutorProvider(executor)
+	if executorProvider == nil {
 		logrus.Panicln("Missing", executor)
 	}
 
 	return &machineProvider{
-		name:     name,
-		details:  make(machinesDetails),
-		machine:  docker.NewMachineCommand(),
-		provider: provider,
+		name:             name,
+		details:          make(machinesDetails),
+		machine:          docker.NewMachineCommand(),
+		executorProvider: executorProvider,
 		totalActions: prometheus.NewCounterVec(
 			prometheus.CounterOpts{
 				Name: "gitlab_runner_autoscaling_actions_total",
