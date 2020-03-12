@@ -23,7 +23,6 @@ import (
 	"github.com/kardianos/osext"
 	"github.com/mattn/go-zglob"
 	"github.com/sirupsen/logrus"
-	"gitlab.com/gitlab-org/gitlab-runner/helpers/container/services"
 
 	"gitlab.com/gitlab-org/gitlab-runner/common"
 	"gitlab.com/gitlab-org/gitlab-runner/executors"
@@ -32,6 +31,7 @@ import (
 	"gitlab.com/gitlab-org/gitlab-runner/executors/docker/internal/volumes/parser"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers/container/helperimage"
+	"gitlab.com/gitlab-org/gitlab-runner/helpers/container/services"
 	docker_helpers "gitlab.com/gitlab-org/gitlab-runner/helpers/docker"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers/featureflags"
 )
@@ -1260,7 +1260,12 @@ func (e *executor) Cleanup() {
 			"error":   err,
 		})
 
-		networkLogger.Errorln("Removing network for build")
+		// `Cleanup` was called before `Prepare` had finished execution
+		if errors.Is(err, errNetworksManagerUndefined) {
+			networkLogger.Warningln("Couldn't remove build network, networksManager not created")
+		} else {
+			networkLogger.Errorln("Couldn't remove build network")
+		}
 	}
 
 	if e.client != nil {
