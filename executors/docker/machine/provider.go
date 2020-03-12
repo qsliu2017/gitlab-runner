@@ -35,55 +35,66 @@ type machineProvider struct {
 
 func (m *machineProvider) Acquire(config *common.RunnerConfig) (common.ExecutorData, error) {
 	if config.Machine == nil || config.Machine.MachineName == "" {
-		return nil, fmt.Errorf("missing Machine options")
+		return nil, errors.New("missing Machine options")
 	}
 
 	// Lock updating machines, because two Acquires can be run at the same time
 	m.acquireLock.Lock()
 	defer m.acquireLock.Unlock()
 
-	machines, err := m.loadMachines(config)
+	machineNames, err := m.loadMachineNames(config)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("couldn't load machine names: %w", err)
 	}
 
-	// Update a list of currently configured machines
-	machinesData, validMachines := m.updateMachines(machines, config)
+	// Schedule redundant machines for removal and get the list
+	// of valid machine names
+	machinesData, validMachineNames := m.removeRedundantMachines(machineNames, config)
 
 	// Pre-create machines
-	m.createMachines(config, &machinesData)
+	m.createMachines(config, machinesData)
 
-	logrus.WithFields(machinesData.Fields()).
-		WithField("runner", config.ShortDescription()).
+	machinesData.writeDebugInformation()
+	machinesData.Logger().
 		WithField("minIdleCount", config.Machine.GetIdleCount()).
 		WithField("maxMachines", config.Limit).
 		WithField("time", time.Now()).
 		Debugln("Docker Machine Details")
-	machinesData.writeDebugInformation()
 
 	// Try to find a free machine
-	details := m.findFreeMachine(false, validMachines...)
-	if details != nil {
-		return details, nil
+	machine := m.findFreeMachine(false, validMachineNames...)
+	if machine != nil {
+		return machine, nil
 	}
 
-	// If we have a free machines we can process a build
 	if config.Machine.GetIdleCount() != 0 && machinesData.Idle == 0 {
-		err = errors.New("no free machines that can process builds")
+		return nil, errors.New("no free idle machines that can process builds")
 	}
 
-	return nil, err
+	machinesData.Logger().
+		Debugln("No free machine acquired")
+
+	// Strange result, but fully valid. It means that a free machine was not acquired,
+	// byt also no error was found. For example - `IdleCout` is set to `0` and a new machine
+	// creation was scheduled.
+	// A nil common.ExecutorData is not a problem here. Runner will try to find a free Idle
+	// machine again, before using it for job execution. If still none will be available, it
+	// will schedule - but this time blocking - a creation of a new one. If creation will fail
+	// - the job will fail as well.
+
+	return nil, nil
 }
 
-func (m *machineProvider) loadMachines(config *common.RunnerConfig) (machines []string, err error) {
-	machines, err = m.machineCommand.List()
+func (m *machineProvider) loadMachineNames(config *common.RunnerConfig) ([]string, error) {
+	machines, err := m.machineCommand.List()
 	if err != nil {
 		return nil, err
 	}
 
 	machines = append(machines, m.intermediateMachineList(machines)...)
 	machines = filterMachineList(machines, machineFilter(config))
-	return
+
+	return machines, nil
 }
 
 // intermediateMachineList returns a list of machines that might not yet be
@@ -121,53 +132,57 @@ func (m *machineProvider) intermediateMachineList(excludedMachines []string) []s
 	return intermediateMachines
 }
 
-func (m *machineProvider) updateMachines(
-	machines []string,
+func (m *machineProvider) removeRedundantMachines(
+	machineNames []string,
 	config *common.RunnerConfig,
-) (data machinesData, validMachines []string) {
-	data.Runner = config.ShortDescription()
-	validMachines = make([]string, 0, len(machines))
-
-	for _, name := range machines {
-		details := m.getMachineDetails(name)
-		details.LastSeen = time.Now()
-
-		err := m.updateMachine(config, &data, details)
-		if err == nil {
-			validMachines = append(validMachines, name)
-		} else {
-			err = m.remove(details.Name, err)
-			details.logger().
-				WithError(err).
-				Warning("Machine removal failed")
-		}
-
-		data.Add(details)
+) (*machinesData, []string) {
+	data := &machinesData{
+		Runner: config.ShortDescription(),
 	}
 
-	return
+	validMachineNames := make([]string, 0, len(machineNames))
+	for _, name := range machineNames {
+		machine := m.getMachineDetails(name)
+		machine.LastSeen = time.Now()
+
+		err := m.isMachineRedundant(config, data, machine)
+		if err != nil {
+			err = m.scheduleMachineRemoval(machine.Name, err)
+			if err != nil {
+				machine.logger().
+					WithError(err).
+					Errorln("Machine removal failed")
+			}
+		} else {
+			validMachineNames = append(validMachineNames, name)
+		}
+
+		data.Count(machine)
+	}
+
+	return data, validMachineNames
 }
 
-func (m *machineProvider) updateMachine(
+func (m *machineProvider) isMachineRedundant(
 	config *common.RunnerConfig,
 	data *machinesData,
-	details *machineDetails,
+	machine *machineDetails,
 ) error {
-	if details.State != machineStateIdle {
+	if machine.State != machineStateIdle {
 		return nil
 	}
 
-	if config.Machine.MaxBuilds > 0 && details.UsedCount >= config.Machine.MaxBuilds {
+	if config.Machine.MaxBuilds > 0 && machine.UsedCount >= config.Machine.MaxBuilds {
 		// Limit number of builds
 		return errors.New("too many builds")
 	}
 
-	if data.Total() >= config.Limit && config.Limit > 0 {
+	if config.Limit > 0 && data.Total() >= config.Limit {
 		// Limit maximum number of machines
 		return errors.New("too many machines")
 	}
 
-	if time.Since(details.Used) > time.Second*time.Duration(config.Machine.GetIdleTime()) {
+	if time.Since(machine.Used) > time.Second*time.Duration(config.Machine.GetIdleTime()) {
 		if data.Idle >= config.Machine.GetIdleCount() {
 			// Remove machine that are way over the idle time
 			return errors.New("too many idle machines")
@@ -177,34 +192,30 @@ func (m *machineProvider) updateMachine(
 	return nil
 }
 
-func (m *machineProvider) remove(machineName string, reason ...interface{}) error {
+func (m *machineProvider) scheduleMachineRemoval(machineName string, reason ...interface{}) error {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 
-	details := m.machines[machineName]
-	if details == nil {
-		return errors.New("machine not found")
+	machine := m.machines[machineName]
+	if machine == nil {
+		return errors.New("couldn't remove machine: machine not found")
 	}
 
-	details.Reason = fmt.Sprint(reason...)
-	details.State = machineStateRemoving
-	details.RetryCount = 0
+	machine.remove(reason...)
 
-	details.logger().
+	machine.writeDebugInformation()
+	machine.logger().
 		WithField("now", time.Now()).
 		Warningln("Requesting machine removal")
 
-	details.Used = time.Now()
-	details.writeDebugInformation()
-
-	go m.finalizeRemoval(details)
+	go m.finalizeRemoval(machine)
 
 	return nil
 }
 
-func (m *machineProvider) finalizeRemoval(details *machineDetails) {
+func (m *machineProvider) finalizeRemoval(machine *machineDetails) {
 	for {
-		err := m.removeMachine(details)
+		err := m.removeMachine(machine)
 		if err == nil {
 			break
 		}
@@ -212,44 +223,47 @@ func (m *machineProvider) finalizeRemoval(details *machineDetails) {
 
 	m.lock.Lock()
 	defer m.lock.Unlock()
-	delete(m.machines, details.Name)
 
-	details.logger().
+	delete(m.machines, machine.Name)
+
+	machine.logger().
 		WithField("now", time.Now()).
-		WithField("retries", details.RetryCount).
 		Infoln("Machine removed")
 
 	m.totalActions.WithLabelValues("removed").Inc()
 }
 
-func (m *machineProvider) removeMachine(details *machineDetails) (err error) {
-	if !m.machineCommand.Exist(details.Name) {
-		details.logger().
+func (m *machineProvider) removeMachine(machine *machineDetails) error {
+	if !m.machineCommand.Exist(machine.Name) {
+		machine.logger().
 			Warningln("Skipping machine removal, because it doesn't exist")
 		return nil
 	}
 
 	// This code limits amount of removal of stuck machines to one machine per interval
-	if details.isStuckOnRemove() {
+	if machine.isStuckOnRemove() {
 		m.stuckRemoveLock.Lock()
 		defer m.stuckRemoveLock.Unlock()
 	}
 
-	details.logger().
+	machine.logger().
 		Warningln("Stopping machine")
-	err = m.machineCommand.Stop(details.Name, machineStopCommandTimeout)
+
+	err := m.machineCommand.Stop(machine.Name, machineStopCommandTimeout)
 	if err != nil {
-		details.logger().
+		machine.logger().
 			WithError(err).
 			Warningln("Error while stopping machine")
 	}
 
-	details.logger().
+	machine.logger().
 		Warningln("Removing machine")
-	err = m.machineCommand.Remove(details.Name)
+
+	err = m.machineCommand.Remove(machine.Name)
 	if err != nil {
-		details.RetryCount++
+		machine.RetryCount++
 		time.Sleep(removeRetryInterval)
+
 		return err
 	}
 
@@ -266,9 +280,9 @@ func (m *machineProvider) getMachineDetails(name string) *machineDetails {
 // thread-unsafe
 // Usage must be guarded with m.lock.Lock()
 func (m *machineProvider) machineDetailsThreadUnsafe(name string) *machineDetails {
-	details, ok := m.machines[name]
+	machine, ok := m.machines[name]
 	if !ok {
-		details = &machineDetails{
+		machine = &machineDetails{
 			Name:      name,
 			Created:   time.Now(),
 			Used:      time.Now(),
@@ -276,83 +290,87 @@ func (m *machineProvider) machineDetailsThreadUnsafe(name string) *machineDetail
 			UsedCount: 1, // any machine that we find we mark as already used
 			State:     machineStateIdle,
 		}
-		m.machines[name] = details
+		m.machines[name] = machine
 	}
 
-	return details
+	return machine
 }
 
 func (m *machineProvider) createMachines(config *common.RunnerConfig, data *machinesData) {
-	// Create a new machines and mark them as Idle
 	for {
 		if data.Available() >= config.Machine.GetIdleCount() {
 			// Limit maximum number of idle machines
 			break
 		}
-		if data.Total() >= config.Limit && config.Limit > 0 {
+
+		if config.Limit > 0 && data.Total() >= config.Limit {
 			// Limit maximum number of machines
 			break
 		}
-		m.create(config, machineStateIdle)
+
+		m.scheduleMachineCreation(config, machineStateIdle)
 		data.Creating++
 	}
 }
 
-func (m *machineProvider) create(config *common.RunnerConfig, state machineState) (*machineDetails, chan error) {
+func (m *machineProvider) scheduleMachineCreation(
+	config *common.RunnerConfig,
+	state machineState,
+) (*machineDetails, chan error) {
 	name := newMachineName(config)
 
-	details := m.acquireMachineDetails(name)
-	details.create()
+	machine := m.acquireMachineDetails(name)
+	machine.create()
 
 	errCh := make(chan error, 1)
-	go m.asynchronouslyCreateMachine(config.Machine, state, details, errCh)
+	go m.asynchronouslyCreateMachine(config.Machine, state, machine, errCh)
 
-	return details, errCh
+	return machine, errCh
 }
 
 func (m *machineProvider) acquireMachineDetails(name string) *machineDetails {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 
-	details := m.machineDetailsThreadUnsafe(name)
-	if details.isUsed() {
+	machine := m.machineDetailsThreadUnsafe(name)
+	if machine.isUsed() {
 		return nil
 	}
 
-	details.acquire()
+	machine.acquire()
 
-	return details
+	return machine
 }
 
 func (m *machineProvider) asynchronouslyCreateMachine(
 	config *common.DockerMachine,
 	state machineState,
-	details *machineDetails,
+	machine *machineDetails,
 	errCh chan error,
 ) {
 	started := time.Now()
 
-	err := m.machineCommand.Create(config.MachineDriver, details.Name, config.MachineOptions...)
+	err := m.machineCommand.Create(config.MachineDriver, machine.Name, config.MachineOptions...)
 	for i := 0; i < 3 && err != nil; i++ {
-		details.RetryCount++
-		details.logger().
+		machine.RetryCount++
+		machine.logger().
 			WithError(err).
 			Warningln("Machine creation failed, trying to provision")
 
 		time.Sleep(provisionRetryInterval)
 
-		err = m.machineCommand.Provision(details.Name)
+		err = m.machineCommand.Provision(machine.Name)
 	}
 
 	if err != nil {
-		details.logger().
+		machine.logger().
 			WithField("time", time.Since(started)).
 			WithError(err).
 			Errorln("Machine creation failed, trying to remove")
 
-		removeErr := m.remove(details.Name, "Failed to create")
+		removeErr := m.scheduleMachineRemoval(machine.Name, "Failed to create")
 		if removeErr != nil {
-			details.logger().
+			machine.logger().
 				WithError(removeErr).
 				Errorln("Machine removal failed")
 		}
@@ -362,14 +380,14 @@ func (m *machineProvider) asynchronouslyCreateMachine(
 		return
 	}
 
-	details.State = state
-	details.Used = time.Now()
+	machine.State = state
+	machine.Used = time.Now()
 
 	creationTime := time.Since(started)
 	m.creationHistogram.Observe(creationTime.Seconds())
 	m.totalActions.WithLabelValues("created").Inc()
 
-	details.logger().
+	machine.logger().
 		WithFields(logrus.Fields{
 			"duration": creationTime,
 			"now":      time.Now(),
@@ -379,25 +397,31 @@ func (m *machineProvider) asynchronouslyCreateMachine(
 	errCh <- nil
 }
 
-func (m *machineProvider) findFreeMachine(skipCache bool, machines ...string) (details *machineDetails) {
+func (m *machineProvider) findFreeMachine(skipCache bool, machineNames ...string) (details *machineDetails) {
+	numberOfMachines := len(machineNames)
+
 	// Enumerate all machines in reverse order, to always take the newest machines first
-	for idx := range machines {
-		name := machines[len(machines)-idx-1]
-		details := m.acquireMachineDetails(name)
-		if details == nil {
+	for idx := range machineNames {
+		name := machineNames[numberOfMachines-idx-1]
+		machine := m.acquireMachineDetails(name)
+		if machine == nil {
 			continue
 		}
 
 		// Check if node is running
 		canConnect := m.machineCommand.CanConnect(name, skipCache)
 		if !canConnect {
-			err := m.remove(name, "machine is unavailable")
-			details.logger().
-				WithError(err).
-				Warning("Machine removal failed")
+			err := m.scheduleMachineRemoval(name, "machine is unavailable")
+			if err != nil {
+				machine.logger().
+					WithError(err).
+					Errorln("Machine removal failed")
+			}
+
 			continue
 		}
-		return details
+
+		return machine
 	}
 
 	return nil
@@ -460,7 +484,7 @@ func (m *machineProvider) retryUseMachine(config *common.RunnerConfig) (details 
 }
 
 func (m *machineProvider) useMachine(config *common.RunnerConfig) (details *machineDetails, err error) {
-	machines, err := m.loadMachines(config)
+	machines, err := m.loadMachineNames(config)
 	if err != nil {
 		return
 	}
@@ -468,7 +492,7 @@ func (m *machineProvider) useMachine(config *common.RunnerConfig) (details *mach
 	details = m.findFreeMachine(true, machines...)
 	if details == nil {
 		var errCh chan error
-		details, errCh = m.create(config, machineStateAcquired)
+		details, errCh = m.scheduleMachineCreation(config, machineStateAcquired)
 		err = <-errCh
 	}
 
@@ -487,10 +511,14 @@ func (m *machineProvider) Release(config *common.RunnerConfig, data common.Execu
 		// Remove machine if we already used it
 		if config != nil && config.Machine != nil &&
 			config.Machine.MaxBuilds > 0 && details.UsedCount >= config.Machine.MaxBuilds {
-			err := m.remove(details.Name, "Too many builds")
+			err := m.scheduleMachineRemoval(details.Name, "Too many builds")
 			if err == nil {
 				return
 			}
+
+			details.logger().
+				WithError(err).
+				Errorln("Machine removal failed")
 		}
 		details.State = machineStateIdle
 	}

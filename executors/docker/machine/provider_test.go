@@ -287,24 +287,24 @@ func TestMachineCreationAndRemoval(t *testing.T) {
 	provisionRetryInterval = 0
 
 	p, _ := testMachineProvider()
-	d, errCh := p.create(machineDefaultConfig, machineStateUsed)
+	d, errCh := p.scheduleMachineCreation(machineDefaultConfig, machineStateUsed)
 	assert.NotNil(t, d)
 	assert.NoError(t, <-errCh)
 	assert.Equal(t, machineStateUsed, d.State)
 	assert.Equal(t, 0, d.UsedCount)
 	assert.NotNil(t, p.machines[d.Name])
 
-	d2, errCh := p.create(machineProvisionFail, machineStateUsed)
+	d2, errCh := p.scheduleMachineCreation(machineProvisionFail, machineStateUsed)
 	assert.NotNil(t, d2)
 	assert.Error(t, <-errCh, "Fails, because it fails to provision machine")
 	assert.Equal(t, machineStateRemoving, d2.State)
 
-	d3, errCh := p.create(machineCreateFail, machineStateUsed)
+	d3, errCh := p.scheduleMachineCreation(machineCreateFail, machineStateUsed)
 	assert.NotNil(t, d3)
 	assert.NoError(t, <-errCh)
 	assert.Equal(t, machineStateUsed, d3.State)
 
-	err := p.remove(d.Name)
+	err := p.scheduleMachineRemoval(d.Name)
 	assert.NoError(t, err)
 	assert.Equal(t, machineStateRemoving, d.State)
 }
@@ -470,7 +470,7 @@ func TestMachineIdleLimits(t *testing.T) {
 	p, _ := testMachineProvider()
 
 	config := createMachineConfig(t, 2, 1)
-	d, errCh := p.create(config, machineStateIdle)
+	d, errCh := p.scheduleMachineCreation(config, machineStateIdle)
 	assert.NoError(t, <-errCh, "machine creation should not fail")
 
 	d2, err := p.Acquire(config)

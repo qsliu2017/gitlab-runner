@@ -26,7 +26,7 @@ func (d *machinesData) Total() int {
 	return d.Acquired + d.Creating + d.Idle + d.Used + d.Removing + d.StuckOnRemoving
 }
 
-func (d *machinesData) Add(details *machineDetails) {
+func (d *machinesData) Count(details *machineDetails) {
 	switch details.State {
 	case machineStateIdle:
 		d.Idle++
@@ -49,15 +49,15 @@ func (d *machinesData) Add(details *machineDetails) {
 	}
 }
 
-func (d *machinesData) Fields() logrus.Fields {
-	return logrus.Fields{
+func (d *machinesData) Logger() logrus.FieldLogger {
+	return logrus.WithFields(logrus.Fields{
 		"runner":   d.Runner,
 		"used":     d.Used,
 		"idle":     d.Idle,
 		"total":    d.Total(),
 		"creating": d.Creating,
 		"removing": d.Removing,
-	}
+	})
 }
 
 func (d *machinesData) writeDebugInformation() {

@@ -32,6 +32,13 @@ func (m *machineDetails) create() {
 	m.LastSeen = time.Now()
 }
 
+func (m *machineDetails) remove(reason ...interface{}) {
+	m.State = machineStateRemoving
+	m.RetryCount = 0
+	m.Used = time.Now()
+	m.Reason = fmt.Sprint(reason...)
+}
+
 func (m *machineDetails) isPersistedOnDisk() bool {
 	// Machines in creating phase might or might not be persisted on disk
 	// this is due to async nature of machine creation process

@@ -10,7 +10,7 @@ func (m *machineProvider) collectDetails() (data machinesData) {
 
 	for _, details := range m.machines {
 		if !details.isDead() {
-			data.Add(details)
+			data.Count(details)
 		}
 	}
 	return
