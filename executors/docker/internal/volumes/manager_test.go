@@ -19,7 +19,7 @@ func TestErrVolumeAlreadyDefined(t *testing.T) {
 	assert.EqualError(t, err, `volume for container path "test-path" is already defined`)
 }
 
-func TestNewDefaultManager(t *testing.T) {
+func TestNewManager(t *testing.T) {
 	m := NewManager(logrus.New(), nil, nil, ManagerConfig{})
 	assert.IsType(t, &manager{}, m)
 }
