@@ -17,56 +17,56 @@ func (m *machineProvider) Collect(ch chan<- prometheus.Metric) {
 	m.totalActions.Collect(ch)
 	m.creationHistogram.Collect(ch)
 
-	data := m.collectDetails()
+	machinesCounter := m.collectDetails()
 
 	ch <- prometheus.MustNewConstMetric(
 		m.currentStatesDesc,
 		prometheus.GaugeValue,
-		float64(data.Acquired),
+		float64(machinesCounter.Acquired),
 		"acquired",
 	)
 	ch <- prometheus.MustNewConstMetric(
 		m.currentStatesDesc,
 		prometheus.GaugeValue,
-		float64(data.Creating),
+		float64(machinesCounter.Creating),
 		"creating",
 	)
 	ch <- prometheus.MustNewConstMetric(
 		m.currentStatesDesc,
 		prometheus.GaugeValue,
-		float64(data.Idle),
+		float64(machinesCounter.Idle),
 		"idle",
 	)
 	ch <- prometheus.MustNewConstMetric(
 		m.currentStatesDesc,
 		prometheus.GaugeValue,
-		float64(data.Used),
+		float64(machinesCounter.Used),
 		"used",
 	)
 	ch <- prometheus.MustNewConstMetric(
 		m.currentStatesDesc,
 		prometheus.GaugeValue,
-		float64(data.Removing),
+		float64(machinesCounter.Removing),
 		"removing",
 	)
 	ch <- prometheus.MustNewConstMetric(
 		m.currentStatesDesc,
 		prometheus.GaugeValue,
-		float64(data.StuckOnRemoving),
+		float64(machinesCounter.StuckOnRemoving),
 		"stuck-on-removing",
 	)
 }
 
-func (m *machineProvider) collectDetails() machinesData {
+func (m *machineProvider) collectDetails() *machinesCounter {
 	m.lock.RLock()
 	defer m.lock.RUnlock()
 
-	data := machinesData{}
+	machinesCounter := new(machinesCounter)
 	for _, machine := range m.machines {
 		if !machine.isDead() {
-			data.Count(machine)
+			machinesCounter.Count(machine)
 		}
 	}
 
-	return data
+	return machinesCounter
 }

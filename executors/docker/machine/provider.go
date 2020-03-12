@@ -50,14 +50,14 @@ func (m *machineProvider) Acquire(config *common.RunnerConfig) (common.ExecutorD
 
 	// Schedule redundant machines for removal and get the list
 	// of valid machine names
-	machinesData, validMachineNames := m.removeRedundantMachines(machineNames, config)
+	machinesCounter, validMachineNames := m.removeRedundantMachines(machineNames, config)
 
 	// Pre-create machines
-	m.createMachines(config, machinesData)
+	m.createMachines(config, machinesCounter)
 
-	machinesData.writeDebugInformation()
-	machinesData.Logger().
-		WithField("minIdleCount", config.Machine.GetIdleCount()).
+	machinesCounter.WriteDebugInformation()
+	machinesCounter.Logger().
+		WithField("maxIdleCount", config.Machine.GetIdleCount()).
 		WithField("maxMachines", config.Limit).
 		WithField("time", time.Now()).
 		Debugln("Docker Machine Details")
@@ -68,11 +68,11 @@ func (m *machineProvider) Acquire(config *common.RunnerConfig) (common.ExecutorD
 		return machine, nil
 	}
 
-	if config.Machine.GetIdleCount() != 0 && machinesData.Idle == 0 {
+	if config.Machine.GetIdleCount() != 0 && machinesCounter.Idle == 0 {
 		return nil, errors.New("no free idle machines that can process builds")
 	}
 
-	machinesData.Logger().
+	machinesCounter.Logger().
 		Debugln("No free machine acquired")
 
 	// Strange result, but fully valid. It means that a free machine was not acquired,
@@ -136,8 +136,8 @@ func (m *machineProvider) intermediateMachineList(excludedMachines []string) []s
 func (m *machineProvider) removeRedundantMachines(
 	machineNames []string,
 	config *common.RunnerConfig,
-) (*machinesData, []string) {
-	data := &machinesData{
+) (*machinesCounter, []string) {
+	machinesCounter := &machinesCounter{
 		Runner: config.ShortDescription(),
 	}
 
@@ -146,7 +146,7 @@ func (m *machineProvider) removeRedundantMachines(
 		machine := m.getMachineDetails(name)
 		machine.LastSeen = time.Now()
 
-		err := m.isMachineRedundant(config, data, machine)
+		err := m.isMachineRedundant(config, machinesCounter, machine)
 		if err != nil {
 			err = m.scheduleMachineRemoval(machine.Name, err)
 			if err != nil {
@@ -158,15 +158,15 @@ func (m *machineProvider) removeRedundantMachines(
 			validMachineNames = append(validMachineNames, name)
 		}
 
-		data.Count(machine)
+		machinesCounter.Count(machine)
 	}
 
-	return data, validMachineNames
+	return machinesCounter, validMachineNames
 }
 
 func (m *machineProvider) isMachineRedundant(
 	config *common.RunnerConfig,
-	data *machinesData,
+	machinesCounter *machinesCounter,
 	machine *machineDetails,
 ) error {
 	if machine.State != machineStateIdle {
@@ -178,13 +178,13 @@ func (m *machineProvider) isMachineRedundant(
 		return errors.New("too many builds")
 	}
 
-	if config.Limit > 0 && data.Total() >= config.Limit {
+	if config.Limit > 0 && machinesCounter.Total() >= config.Limit {
 		// Limit maximum number of machines
 		return errors.New("too many machines")
 	}
 
 	if time.Since(machine.Used) > time.Second*time.Duration(config.Machine.GetIdleTime()) {
-		if data.Idle >= config.Machine.GetIdleCount() {
+		if machinesCounter.Idle >= config.Machine.GetIdleCount() {
 			// Remove machine that are way over the idle time
 			return errors.New("too many idle machines")
 		}
@@ -297,20 +297,20 @@ func (m *machineProvider) machineDetailsThreadUnsafe(name string) *machineDetail
 	return machine
 }
 
-func (m *machineProvider) createMachines(config *common.RunnerConfig, data *machinesData) {
+func (m *machineProvider) createMachines(config *common.RunnerConfig, machinesCounter *machinesCounter) {
 	for {
-		if data.Available() >= config.Machine.GetIdleCount() {
+		if machinesCounter.Available() >= config.Machine.GetIdleCount() {
 			// Limit maximum number of idle machines
 			break
 		}
 
-		if config.Limit > 0 && data.Total() >= config.Limit {
+		if config.Limit > 0 && machinesCounter.Total() >= config.Limit {
 			// Limit maximum number of machines
 			break
 		}
 
 		m.scheduleMachineCreation(config, machineStateIdle)
-		data.Creating++
+		machinesCounter.Creating++
 	}
 }
 

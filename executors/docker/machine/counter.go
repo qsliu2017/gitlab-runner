@@ -8,8 +8,9 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-type machinesData struct {
-	Runner          string
+type machinesCounter struct {
+	Runner string
+
 	Acquired        int
 	Creating        int
 	Idle            int
@@ -18,16 +19,16 @@ type machinesData struct {
 	StuckOnRemoving int
 }
 
-func (d *machinesData) Available() int {
+func (d *machinesCounter) Available() int {
 	return d.Acquired + d.Creating + d.Idle
 }
 
-func (d *machinesData) Total() int {
+func (d *machinesCounter) Total() int {
 	return d.Acquired + d.Creating + d.Idle + d.Used + d.Removing + d.StuckOnRemoving
 }
 
-func (d *machinesData) Count(details *machineDetails) {
-	switch details.State {
+func (d *machinesCounter) Count(machine *machineDetails) {
+	switch machine.State {
 	case machineStateIdle:
 		d.Idle++
 
@@ -41,7 +42,7 @@ func (d *machinesData) Count(details *machineDetails) {
 		d.Used++
 
 	case machineStateRemoving:
-		if details.isStuckOnRemove() {
+		if machine.isStuckOnRemove() {
 			d.StuckOnRemoving++
 		} else {
 			d.Removing++
@@ -49,7 +50,7 @@ func (d *machinesData) Count(details *machineDetails) {
 	}
 }
 
-func (d *machinesData) Logger() logrus.FieldLogger {
+func (d *machinesCounter) Logger() logrus.FieldLogger {
 	return logrus.WithFields(logrus.Fields{
 		"runner":   d.Runner,
 		"used":     d.Used,
@@ -60,7 +61,7 @@ func (d *machinesData) Logger() logrus.FieldLogger {
 	})
 }
 
-func (d *machinesData) writeDebugInformation() {
+func (d *machinesCounter) WriteDebugInformation() {
 	if logrus.GetLevel() < logrus.DebugLevel {
 		return
 	}
@@ -70,6 +71,7 @@ func (d *machinesData) writeDebugInformation() {
 		return
 	}
 	defer func() { _ = file.Close() }()
+
 	_, _ = fmt.Fprintln(
 		file,
 		"time", time.Now(),
