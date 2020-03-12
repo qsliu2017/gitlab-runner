@@ -16,7 +16,7 @@ type machineDetails struct {
 	Created    time.Time `yaml:"-"`
 	Used       time.Time `yaml:"-"`
 	UsedCount  int
-	State      machineState
+	State      state
 	Reason     string
 	RetryCount int
 	LastSeen   time.Time

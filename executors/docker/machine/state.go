@@ -1,16 +1,16 @@
 package machine
 
-type machineState int
+type state int
 
 const (
-	machineStateIdle machineState = iota
+	machineStateIdle state = iota
 	machineStateAcquired
 	machineStateCreating
 	machineStateUsed
 	machineStateRemoving
 )
 
-func (t machineState) String() string {
+func (t state) String() string {
 	switch t {
 	case machineStateIdle:
 		return "Idle"
@@ -27,6 +27,6 @@ func (t machineState) String() string {
 	}
 }
 
-func (t machineState) MarshalText() ([]byte, error) {
+func (t state) MarshalText() ([]byte, error) {
 	return []byte(t.String()), nil
 }

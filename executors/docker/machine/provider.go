@@ -316,7 +316,7 @@ func (m *machineProvider) createMachines(config *common.RunnerConfig, machinesCo
 
 func (m *machineProvider) scheduleMachineCreation(
 	config *common.RunnerConfig,
-	state machineState,
+	state state,
 ) (*machineDetails, chan error) {
 	name := utils.NewMachineName(config)
 
@@ -345,7 +345,7 @@ func (m *machineProvider) acquireMachineDetails(name string) *machineDetails {
 
 func (m *machineProvider) asynchronouslyCreateMachine(
 	config *common.DockerMachine,
-	state machineState,
+	state state,
 	machine *machineDetails,
 	errCh chan error,
 ) {
