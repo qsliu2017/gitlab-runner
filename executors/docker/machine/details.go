@@ -25,6 +25,13 @@ func (m *machineDetails) acquire() {
 	m.State = machineStateAcquired
 }
 
+func (m *machineDetails) create() {
+	m.State = machineStateCreating
+	m.UsedCount = 0
+	m.RetryCount = 0
+	m.LastSeen = time.Now()
+}
+
 func (m *machineDetails) isPersistedOnDisk() bool {
 	// Machines in creating phase might or might not be persisted on disk
 	// this is due to async nature of machine creation process
@@ -77,11 +84,12 @@ func (m *machineDetails) writeDebugInformation() {
 
 func (m *machineDetails) logger() *logrus.Entry {
 	return logrus.WithFields(logrus.Fields{
-		"name":      m.Name,
-		"lifetime":  time.Since(m.Created),
-		"used":      time.Since(m.Used),
-		"usedCount": m.UsedCount,
-		"reason":    m.Reason,
+		"name":       m.Name,
+		"lifetime":   time.Since(m.Created),
+		"used":       time.Since(m.Used),
+		"usedCount":  m.UsedCount,
+		"reason":     m.Reason,
+		"retryCount": m.RetryCount,
 	})
 }
 
