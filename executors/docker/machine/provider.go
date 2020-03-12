@@ -509,28 +509,30 @@ func (m *machineProvider) findOrCreateMachineForUse(config *common.RunnerConfig)
 }
 
 func (m *machineProvider) Release(config *common.RunnerConfig, data common.ExecutorData) {
-	// Release machine
-	details, ok := data.(*machineDetails)
-	if ok {
-		// Mark last used time when is Used
-		if details.State == machineStateUsed {
-			details.Used = time.Now()
-		}
-
-		// Remove machine if we already used it
-		if config != nil && config.Machine != nil &&
-			config.Machine.MaxBuilds > 0 && details.UsedCount >= config.Machine.MaxBuilds {
-			err := m.scheduleMachineRemoval(details.Name, "Too many builds")
-			if err == nil {
-				return
-			}
-
-			details.logger().
-				WithError(err).
-				Errorln("Machine removal failed")
-		}
-		details.State = machineStateIdle
+	machine, ok := data.(*machineDetails)
+	if !ok {
+		return
 	}
+
+	// Mark last used time when is Used
+	if machine.State == machineStateUsed {
+		machine.Used = time.Now()
+	}
+
+	// Remove machine - only if MaxBuilds > and we used the machine more times
+	if config != nil && config.Machine != nil &&
+		config.Machine.MaxBuilds > 0 && machine.UsedCount >= config.Machine.MaxBuilds {
+		err := m.scheduleMachineRemoval(machine.Name, "Too many builds")
+		if err == nil {
+			return
+		}
+
+		machine.logger().
+			WithError(err).
+			Errorln("Machine removal failed")
+	}
+
+	machine.State = machineStateIdle
 }
 
 func (m *machineProvider) CanCreate() bool {
