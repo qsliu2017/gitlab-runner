@@ -88,7 +88,7 @@ func (m *machineProvider) Acquire(config *common.RunnerConfig) (common.ExecutorD
 func (m *machineProvider) loadMachineNames(config *common.RunnerConfig) ([]string, error) {
 	machines, err := m.machineCommand.List()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("couldn't list docker machines: %w", err)
 	}
 
 	machines = append(machines, m.intermediateMachineList(machines)...)
@@ -427,76 +427,85 @@ func (m *machineProvider) findFreeMachine(skipCache bool, machineNames ...string
 	return nil
 }
 
-//nolint:nakedret
 func (m *machineProvider) Use(
 	config *common.RunnerConfig,
 	data common.ExecutorData,
-) (newConfig common.RunnerConfig, newData common.ExecutorData, err error) {
+) (common.RunnerConfig, common.ExecutorData, error) {
+	var newData common.ExecutorData
+
 	// Find a new machine
-	details, _ := data.(*machineDetails)
-	if details == nil || !details.canBeUsed() || !m.machineCommand.CanConnect(details.Name, true) {
-		details, err = m.retryUseMachine(config)
+	machine, _ := data.(*machineDetails)
+	if machine == nil || !machine.canBeUsed() || !m.machineCommand.CanConnect(machine.Name, true) {
+		var err error
+		machine, err = m.retryFindOrCreateMachineForUse(config)
 		if err != nil {
-			return
+			return common.RunnerConfig{}, nil, fmt.Errorf("couldn't find free or create a new machine: %w", err)
 		}
 
 		// Return details only if this is a new instance
-		newData = details
+		newData = machine
 	}
 
 	// Get machine credentials
-	dc, err := m.machineCommand.Credentials(details.Name)
+	dockerCredentials, err := m.machineCommand.Credentials(machine.Name)
 	if err != nil {
 		if newData != nil {
 			m.Release(config, newData)
 		}
-		newData = nil
-		return
+
+		return common.RunnerConfig{}, nil, fmt.Errorf("couldn't get credentials for machine: %w", err)
 	}
 
-	// Create shallow copy of config and store in it docker credentials
-	newConfig = *config
+	// Create shallow copy of config and store docker credentials in it
+	newConfig := *config
 	newConfig.Docker = &common.DockerConfig{}
 	if config.Docker != nil {
 		*newConfig.Docker = *config.Docker
 	}
-	newConfig.Docker.Credentials = dc
+	newConfig.Docker.Credentials = dockerCredentials
 
-	// Mark machine as used
-	details.State = machineStateUsed
-	details.Used = time.Now()
-	details.UsedCount++
+	machine.use()
+
 	m.totalActions.WithLabelValues("used").Inc()
-	return
+
+	return newConfig, newData, nil
 }
 
-func (m *machineProvider) retryUseMachine(config *common.RunnerConfig) (details *machineDetails, err error) {
+func (m *machineProvider) retryFindOrCreateMachineForUse(config *common.RunnerConfig) (*machineDetails, error) {
+	var details *machineDetails
+	var err error
+
 	// Try to find a machine
 	for i := 0; i < 3; i++ {
-		details, err = m.useMachine(config)
+		details, err = m.findOrCreateMachineForUse(config)
 		if err == nil {
 			break
 		}
+
 		time.Sleep(provisionRetryInterval)
 	}
 
-	return
+	return details, err
 }
 
-func (m *machineProvider) useMachine(config *common.RunnerConfig) (details *machineDetails, err error) {
+func (m *machineProvider) findOrCreateMachineForUse(config *common.RunnerConfig) (*machineDetails, error) {
 	machines, err := m.loadMachineNames(config)
 	if err != nil {
-		return
+		return nil, fmt.Errorf("couldn't load available machine names: %w", err)
 	}
 
-	details = m.findFreeMachine(true, machines...)
-	if details == nil {
+	machine := m.findFreeMachine(true, machines...)
+	if machine == nil {
 		var errCh chan error
-		details, errCh = m.scheduleMachineCreation(config, machineStateAcquired)
+		machine, errCh = m.scheduleMachineCreation(config, machineStateAcquired)
+
 		err = <-errCh
+		if err != nil {
+			return nil, fmt.Errorf("couldn't create machine: %w", err)
+		}
 	}
 
-	return
+	return machine, nil
 }
 
 func (m *machineProvider) Release(config *common.RunnerConfig, data common.ExecutorData) {

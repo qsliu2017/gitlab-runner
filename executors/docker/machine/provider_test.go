@@ -314,19 +314,19 @@ func TestMachineUse(t *testing.T) {
 
 	p, _ := testMachineProvider("machine1")
 
-	d1, err := p.useMachine(machineDefaultConfig)
+	d1, err := p.findOrCreateMachineForUse(machineDefaultConfig)
 	assert.NotNil(t, d1)
 	assert.NoError(t, err)
 	assert.Equal(t, machineStateAcquired, d1.State)
 	assert.Equal(t, "machine1", d1.Name, "finds a free machine1")
 
-	d2, err := p.useMachine(machineDefaultConfig)
+	d2, err := p.findOrCreateMachineForUse(machineDefaultConfig)
 	assert.NotNil(t, d2)
 	assert.NoError(t, err)
 	assert.Equal(t, machineStateAcquired, d2.State)
 	assert.NotEqual(t, "machine1", d2.Name, "creates a new machine")
 
-	_, err = p.useMachine(machineProvisionFail)
+	_, err = p.findOrCreateMachineForUse(machineProvisionFail)
 	assert.Error(t, err, "fails to create a new machine")
 }
 
@@ -334,11 +334,11 @@ func TestMachineTestRetry(t *testing.T) {
 	provisionRetryInterval = 0
 
 	p, _ := testMachineProvider()
-	_, err := p.useMachine(machineSecondFail)
+	_, err := p.findOrCreateMachineForUse(machineSecondFail)
 	assert.Error(t, err, "fails to create a new machine")
 
 	p, _ = testMachineProvider()
-	d1, err := p.retryUseMachine(machineSecondFail)
+	d1, err := p.retryFindOrCreateMachineForUse(machineSecondFail)
 	assert.NoError(t, err, "after replying the same test scenario and using retry it succeeds")
 	assert.Equal(t, machineStateAcquired, d1.State)
 }
