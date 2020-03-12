@@ -16,7 +16,7 @@ import (
 	"gitlab.com/gitlab-org/gitlab-runner/helpers/featureflags"
 )
 
-func TestNewDefaultManager(t *testing.T) {
+func TestNewManager(t *testing.T) {
 	m := NewManager(logrus.New(), nil, nil)
 	assert.IsType(t, &manager{}, m)
 }

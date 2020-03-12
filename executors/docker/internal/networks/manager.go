@@ -58,7 +58,7 @@ func (m *manager) Create(ctx context.Context, networkMode string) (container.Net
 
 	networkName := fmt.Sprintf("%s-job-%d-network", m.build.ProjectUniqueName(), m.build.ID)
 
-	m.Log().WithField("NetworkName", networkName).Debugln("Creating build network")
+	m.logger.WithField("BuildNetworkName", networkName).Debugln("Creating build network")
 
 	networkResponse, err := m.client.NetworkCreate(ctx, networkName, types.NetworkCreate{})
 	if err != nil {
@@ -82,7 +82,7 @@ func (m *manager) Inspect(ctx context.Context) (types.NetworkResource, error) {
 		return types.NetworkResource{}, nil
 	}
 
-	m.Log().Debugln("Inspect docker network")
+	m.log().Debugln("Inspect docker network")
 
 	return m.client.NetworkInspect(ctx, m.buildNetwork.ID)
 }
@@ -96,7 +96,7 @@ func (m *manager) Cleanup(ctx context.Context) error {
 		return nil
 	}
 
-	m.Log().Debugln("Removing network")
+	m.log().Debugln("Removing network")
 
 	err := m.client.NetworkRemove(ctx, m.buildNetwork.ID)
 	if err != nil {
@@ -106,6 +106,9 @@ func (m *manager) Cleanup(ctx context.Context) error {
 	return nil
 }
 
-func (m *manager) Log() *logrus.Entry {
-	return m.logger.WithField("BuildNetworkID", m.buildNetwork.ID)
+func (m *manager) log() *logrus.Entry {
+	return m.logger.WithFields(logrus.Fields{
+		"BuildNetworkID":   m.buildNetwork.ID,
+		"BuildNetworkName": m.buildNetwork.Name,
+	})
 }
