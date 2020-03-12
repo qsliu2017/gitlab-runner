@@ -41,12 +41,7 @@ func (e *machineExecutor) log() (log *logrus.Entry) {
 	}
 
 	if machine != nil {
-		log = log.WithFields(logrus.Fields{
-			"name":      machine.Name,
-			"usedcount": machine.UsedCount,
-			"created":   machine.Created,
-			"now":       time.Now(),
-		})
+		log = machine.withFields(log).WithField("now", time.Now())
 	}
 
 	if e.config.Docker != nil {

@@ -95,8 +95,12 @@ func (m *machineDetails) writeDebugInformation() {
 	_ = ioutil.WriteFile("machines/"+details.Details.Name+".yml", []byte(data), 0600)
 }
 
-func (m *machineDetails) logger() *logrus.Entry {
-	return logrus.WithFields(logrus.Fields{
+func (m *machineDetails) logger() logrus.FieldLogger {
+	return m.withFields(logrus.StandardLogger())
+}
+
+func (m *machineDetails) withFields(log logrus.FieldLogger) logrus.FieldLogger {
+	return log.WithFields(logrus.Fields{
 		"name":       m.Name,
 		"lifetime":   time.Since(m.Created),
 		"used":       time.Since(m.Used),
