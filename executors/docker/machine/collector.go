@@ -4,28 +4,21 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-func (m *machineProvider) collectDetails() (data machinesData) {
-	m.lock.RLock()
-	defer m.lock.RUnlock()
-
-	for _, details := range m.machines {
-		if !details.isDead() {
-			data.Count(details)
-		}
-	}
-	return
-}
-
 // Describe implements prometheus.Collector.
 func (m *machineProvider) Describe(ch chan<- *prometheus.Desc) {
 	m.totalActions.Describe(ch)
 	m.creationHistogram.Describe(ch)
+
 	ch <- m.currentStatesDesc
 }
 
 // Collect implements prometheus.Collector.
 func (m *machineProvider) Collect(ch chan<- prometheus.Metric) {
+	m.totalActions.Collect(ch)
+	m.creationHistogram.Collect(ch)
+
 	data := m.collectDetails()
+
 	ch <- prometheus.MustNewConstMetric(
 		m.currentStatesDesc,
 		prometheus.GaugeValue,
@@ -62,7 +55,18 @@ func (m *machineProvider) Collect(ch chan<- prometheus.Metric) {
 		float64(data.StuckOnRemoving),
 		"stuck-on-removing",
 	)
+}
 
-	m.totalActions.Collect(ch)
-	m.creationHistogram.Collect(ch)
+func (m *machineProvider) collectDetails() machinesData {
+	m.lock.RLock()
+	defer m.lock.RUnlock()
+
+	data := machinesData{}
+	for _, machine := range m.machines {
+		if !machine.isDead() {
+			data.Count(machine)
+		}
+	}
+
+	return data
 }
