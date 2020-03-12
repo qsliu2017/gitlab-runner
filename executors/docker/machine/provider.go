@@ -10,6 +10,7 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"gitlab.com/gitlab-org/gitlab-runner/common"
+	"gitlab.com/gitlab-org/gitlab-runner/executors/docker/machine/utils"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers/docker"
 )
 
@@ -92,7 +93,7 @@ func (m *machineProvider) loadMachineNames(config *common.RunnerConfig) ([]strin
 	}
 
 	machines = append(machines, m.intermediateMachineList(machines)...)
-	machines = filterMachineList(machines, machineFilter(config))
+	machines = utils.FilterMachineListByNameTemplate(machines, utils.MachineNameTemplate(config))
 
 	return machines, nil
 }
@@ -317,7 +318,7 @@ func (m *machineProvider) scheduleMachineCreation(
 	config *common.RunnerConfig,
 	state machineState,
 ) (*machineDetails, chan error) {
-	name := newMachineName(config)
+	name := utils.NewMachineName(config)
 
 	machine := m.acquireMachineDetails(name)
 	machine.create()

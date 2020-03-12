@@ -1,4 +1,4 @@
-package machine
+package utils
 
 import (
 	"testing"
@@ -34,7 +34,7 @@ func TestNewMachineName(t *testing.T) {
 				},
 			}
 
-			name := newMachineName(config)
+			name := NewMachineName(config)
 			dns_test.AssertRFC1123Compatibility(t, name)
 		})
 	}
@@ -48,18 +48,21 @@ func TestNewMachineNameIsUnique(t *testing.T) {
 			},
 		},
 	}
-	a := newMachineName(config)
-	b := newMachineName(config)
+
+	a := NewMachineName(config)
+	b := NewMachineName(config)
+
 	assert.NotEqual(t, a, b)
 }
 
-func TestMachineFilter(t *testing.T) {
+func TestFilterMachineListByNameTemplate(t *testing.T) {
 	filter := "machine-template-%s"
 	machines := []string{
 		"test-machine",
 		"machine-template-10",
 	}
-	filtered := filterMachineList(machines, filter)
+
+	filtered := FilterMachineListByNameTemplate(machines, filter)
 
 	assert.NotContains(t, filtered, machines[0])
 	assert.Contains(t, filtered, machines[1])

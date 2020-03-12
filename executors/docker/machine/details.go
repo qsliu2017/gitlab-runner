@@ -7,6 +7,7 @@ import (
 
 	"github.com/sirupsen/logrus"
 
+	"gitlab.com/gitlab-org/gitlab-runner/executors/docker/machine/utils"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers"
 )
 
@@ -70,12 +71,8 @@ func (m *machineDetails) canBeUsed() bool {
 	return m.State == machineStateAcquired
 }
 
-func (m *machineDetails) match(machineFilter string) bool {
-	var query string
-	if n, _ := fmt.Sscanf(m.Name, machineFilter, &query); n != 1 {
-		return false
-	}
-	return true
+func (m *machineDetails) match(machineNameTemplate string) bool {
+	return utils.MatchesMachineNameTemplate(m.Name, machineNameTemplate)
 }
 
 func (m *machineDetails) writeDebugInformation() {

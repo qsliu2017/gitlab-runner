@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"gitlab.com/gitlab-org/gitlab-runner/common"
+	"gitlab.com/gitlab-org/gitlab-runner/executors/docker/machine/utils"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers/docker"
 )
 
@@ -449,7 +450,7 @@ func TestMachineMaxBuildsForExistingMachines(t *testing.T) {
 
 func TestMachineMaxBuilds(t *testing.T) {
 	config := createMachineConfig(t, 1, 5)
-	p, _ := testMachineProvider(newMachineName(config))
+	p, _ := testMachineProvider(utils.NewMachineName(config))
 	config.Machine.MaxBuilds = 2 // by default we set it to 1
 	d, err := p.Acquire(config)
 	assert.NoError(t, err)

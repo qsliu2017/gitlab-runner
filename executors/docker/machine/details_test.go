@@ -6,6 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"gitlab.com/gitlab-org/gitlab-runner/common"
+	"gitlab.com/gitlab-org/gitlab-runner/executors/docker/machine/utils"
 )
 
 func TestMachineDetailsUsed(t *testing.T) {
@@ -31,7 +32,7 @@ func TestMachineDetailsMatcher(t *testing.T) {
 		},
 	}
 
-	d := machineDetails{Name: newMachineName(config)}
+	d := machineDetails{Name: utils.NewMachineName(config)}
 	assert.True(t, d.match("test-machine-%s"))
 	assert.False(t, d.match("test-other-machine-%s"))
 }
