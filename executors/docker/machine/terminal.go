@@ -7,9 +7,10 @@ import (
 )
 
 func (e *machineExecutor) Connect() (terminal.Conn, error) {
-	if term, ok := e.executor.(terminal.InteractiveTerminal); ok {
-		return term.Connect()
+	term, ok := e.executor.(terminal.InteractiveTerminal)
+	if !ok {
+		return nil, errors.New("executor does not have terminal")
 	}
 
-	return nil, errors.New("executor does not have terminal")
+	return term.Connect()
 }

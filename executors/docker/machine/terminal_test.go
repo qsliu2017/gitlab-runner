@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
 	"gitlab.com/gitlab-org/gitlab-runner/common"
 	"gitlab.com/gitlab-org/gitlab-runner/session/terminal"
 )
@@ -12,6 +13,14 @@ func TestMachineExecutor_Connect_NoTerminal(t *testing.T) {
 	e := machineExecutor{
 		executor: &common.MockExecutor{},
 	}
+
+	conn, err := e.Connect()
+	assert.Error(t, err)
+	assert.Nil(t, conn)
+}
+
+func TestMachineExecutor_Connect_NoExecutor(t *testing.T) {
+	e := machineExecutor{}
 
 	conn, err := e.Connect()
 	assert.Error(t, err)
