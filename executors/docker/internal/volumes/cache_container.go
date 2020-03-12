@@ -110,7 +110,7 @@ func (m *cacheContainerManager) createCacheContainer(containerName string, conta
 
 func (m *cacheContainerManager) startCacheContainer(containerID string) error {
 	logger := m.logger.WithField("ContainerID", containerID)
-	logger.Debugln(fmt.Sprintf("Starting cache container..."))
+	logger.Debugln("Starting cache container...")
 	err := m.containerClient.ContainerStart(m.ctx, containerID, types.ContainerStartOptions{})
 	if err != nil {
 		m.failedContainerIDs = append(m.failedContainerIDs, containerID)
