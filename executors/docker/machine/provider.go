@@ -16,7 +16,7 @@ import (
 
 type machineProvider struct {
 	name     string
-	machines machinesDetails
+	machines machineDetailsMap
 
 	machineCommand docker.Machine
 
@@ -144,7 +144,7 @@ func (m *machineProvider) removeRedundantMachines(
 	validMachineNames := make([]string, 0, len(machineNames))
 	for _, name := range machineNames {
 		machine := m.getMachineDetails(name)
-		machine.LastSeen = time.Now()
+		machine.LastSeenAt = time.Now()
 
 		err := m.isMachineRedundant(config, machinesCounter, machine)
 		if err != nil {
@@ -183,7 +183,7 @@ func (m *machineProvider) isMachineRedundant(
 		return errors.New("too many machines")
 	}
 
-	if time.Since(machine.Used) > time.Second*time.Duration(config.Machine.GetIdleTime()) {
+	if machine.UnusedFor() > time.Second*time.Duration(config.Machine.GetIdleTime()) {
 		if machinesCounter.Idle >= config.Machine.GetIdleCount() {
 			// Remove machine that are way over the idle time
 			return errors.New("too many idle machines")
@@ -283,14 +283,7 @@ func (m *machineProvider) getMachineDetails(name string) *machineDetails {
 func (m *machineProvider) machineDetailsThreadUnsafe(name string) *machineDetails {
 	machine, ok := m.machines[name]
 	if !ok {
-		machine = &machineDetails{
-			Name:      name,
-			Created:   time.Now(),
-			Used:      time.Now(),
-			LastSeen:  time.Now(),
-			UsedCount: 1, // any machine that we find we mark as already used
-			State:     machineStateIdle,
-		}
+		machine = newMachineDetails(name)
 		m.machines[name] = machine
 	}
 
@@ -382,7 +375,7 @@ func (m *machineProvider) asynchronouslyCreateMachine(
 	}
 
 	machine.State = state
-	machine.Used = time.Now()
+	machine.UsedAt = time.Now()
 
 	creationTime := time.Since(started)
 	m.creationHistogram.Observe(creationTime.Seconds())
@@ -517,7 +510,7 @@ func (m *machineProvider) Release(config *common.RunnerConfig, data common.Execu
 
 	// Mark last used time when is Used
 	if machine.State == machineStateUsed {
-		machine.Used = time.Now()
+		machine.UsedAt = time.Now()
 	}
 
 	// Remove machine - only if MaxBuilds > and we used the machine more times
@@ -563,7 +556,7 @@ func newMachineProvider(name, executor string) *machineProvider {
 
 	return &machineProvider{
 		name:             name,
-		machines:         make(machinesDetails),
+		machines:         make(machineDetailsMap),
 		machineCommand:   docker.NewMachineCommand(),
 		executorProvider: executorProvider,
 		totalActions: prometheus.NewCounterVec(

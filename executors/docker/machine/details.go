@@ -11,15 +11,30 @@ import (
 	"gitlab.com/gitlab-org/gitlab-runner/helpers"
 )
 
+type machineDetailsMap map[string]*machineDetails
+
 type machineDetails struct {
-	Name       string
-	Created    time.Time `yaml:"-"`
-	Used       time.Time `yaml:"-"`
-	UsedCount  int
-	State      state
-	Reason     string
-	RetryCount int
-	LastSeen   time.Time
+	Name string
+
+	CreatedAt  time.Time `yaml:"-"`
+	UsedAt     time.Time `yaml:"-"`
+	LastSeenAt time.Time
+
+	UsedCount     int
+	State         state
+	RemovalReason string
+	RetryCount    int
+}
+
+func newMachineDetails(name string) *machineDetails {
+	return &machineDetails{
+		Name:       name,
+		CreatedAt:  time.Now(),
+		UsedAt:     time.Now(),
+		LastSeenAt: time.Now(),
+		UsedCount:  1, // any machine that we find we mark as already used
+		State:      machineStateIdle,
+	}
 }
 
 func (m *machineDetails) acquire() {
@@ -30,20 +45,20 @@ func (m *machineDetails) create() {
 	m.State = machineStateCreating
 	m.UsedCount = 0
 	m.RetryCount = 0
-	m.LastSeen = time.Now()
+	m.LastSeenAt = time.Now()
 }
 
 func (m *machineDetails) remove(reason ...interface{}) {
 	m.State = machineStateRemoving
 	m.RetryCount = 0
-	m.Used = time.Now()
-	m.Reason = fmt.Sprint(reason...)
+	m.UsedAt = time.Now()
+	m.RemovalReason = fmt.Sprint(reason...)
 }
 
 func (m *machineDetails) use() {
 	m.State = machineStateUsed
-	m.Used = time.Now()
 	m.UsedCount++
+	m.UsedAt = time.Now()
 }
 
 func (m *machineDetails) isPersistedOnDisk() bool {
@@ -64,7 +79,7 @@ func (m *machineDetails) isStuckOnRemove() bool {
 
 func (m *machineDetails) isDead() bool {
 	return m.State == machineStateIdle &&
-		time.Since(m.LastSeen) > machineDeadInterval
+		time.Since(m.LastSeenAt) > machineDeadInterval
 }
 
 func (m *machineDetails) canBeUsed() bool {
@@ -73,6 +88,29 @@ func (m *machineDetails) canBeUsed() bool {
 
 func (m *machineDetails) match(machineNameTemplate string) bool {
 	return utils.MatchesMachineNameTemplate(m.Name, machineNameTemplate)
+}
+
+func (m *machineDetails) logger() logrus.FieldLogger {
+	return m.withFields(logrus.StandardLogger())
+}
+
+func (m *machineDetails) withFields(log logrus.FieldLogger) logrus.FieldLogger {
+	return log.WithFields(logrus.Fields{
+		"name":       m.Name,
+		"lifetime":   m.Age(),
+		"used":       m.UnusedFor(),
+		"usedCount":  m.UsedCount,
+		"reason":     m.RemovalReason,
+		"retryCount": m.RetryCount,
+	})
+}
+
+func (m *machineDetails) Age() time.Duration {
+	return time.Since(m.CreatedAt)
+}
+
+func (m *machineDetails) UnusedFor() time.Duration {
+	return time.Since(m.UsedAt)
 }
 
 func (m *machineDetails) writeDebugInformation() {
@@ -85,26 +123,12 @@ func (m *machineDetails) writeDebugInformation() {
 		Time       string
 		CreatedAgo time.Duration
 	}
+
 	details.Details = *m
 	details.Time = time.Now().String()
-	details.CreatedAgo = time.Since(m.Created)
+	details.CreatedAgo = m.Age()
+
 	data := helpers.ToYAML(&details)
+
 	_ = ioutil.WriteFile("machines/"+details.Details.Name+".yml", []byte(data), 0600)
 }
-
-func (m *machineDetails) logger() logrus.FieldLogger {
-	return m.withFields(logrus.StandardLogger())
-}
-
-func (m *machineDetails) withFields(log logrus.FieldLogger) logrus.FieldLogger {
-	return log.WithFields(logrus.Fields{
-		"name":       m.Name,
-		"lifetime":   time.Since(m.Created),
-		"used":       time.Since(m.Used),
-		"usedCount":  m.UsedCount,
-		"reason":     m.Reason,
-		"retryCount": m.RetryCount,
-	})
-}
-
-type machinesDetails map[string]*machineDetails

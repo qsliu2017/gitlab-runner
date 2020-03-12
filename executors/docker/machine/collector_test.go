@@ -24,6 +24,6 @@ func TestMachineProviderDeadInterval(t *testing.T) {
 	details := provider.getMachineDetails("test")
 	assert.Equal(t, 1, provider.collectDetails().Idle)
 
-	details.LastSeen = time.Now().Add(-machineDeadInterval)
+	details.LastSeenAt = time.Now().Add(-machineDeadInterval)
 	assert.Equal(t, 0, provider.collectDetails().Idle)
 }

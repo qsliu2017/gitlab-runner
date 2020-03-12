@@ -464,7 +464,7 @@ func TestMachineMaxBuilds(t *testing.T) {
 
 	dd := d.(*machineDetails)
 	assert.Equal(t, machineStateRemoving, dd.State, "the machine should be removed due to too many builds")
-	assert.Equal(t, "Too many builds", dd.Reason, "the machine should be removed due to too many builds")
+	assert.Equal(t, "Too many builds", dd.RemovalReason, "the machine should be removed due to too many builds")
 }
 
 func TestMachineIdleLimits(t *testing.T) {
@@ -490,7 +490,7 @@ func TestMachineIdleLimits(t *testing.T) {
 	p.Release(config, d4)
 	assert.NoError(t, err)
 	assert.Equal(t, machineStateRemoving, d.State, "machine should be removed, because there are no idle")
-	assert.Equal(t, "too many idle machines", d.Reason)
+	assert.Equal(t, "too many idle machines", d.RemovalReason)
 }
 
 func TestMachineUseOnDemand(t *testing.T) {
@@ -538,7 +538,7 @@ func TestMachineCreationIfFailedToConnect(t *testing.T) {
 
 func TestIntermediateMachineList(t *testing.T) {
 	p, _ := testMachineProvider()
-	p.machines = machinesDetails{
+	p.machines = machineDetailsMap{
 		"machine1": &machineDetails{
 			Name:  "machine1",
 			State: machineStateIdle,
