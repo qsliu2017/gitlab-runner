@@ -44,8 +44,9 @@ To install the Runner:
    curl -L https://packages.gitlab.com/install/repositories/runner/gitlab-runner/script.rpm.sh | sudo bash
    ```
 
-   NOTE: **Note:**
-   Debian users should use [APT pinning](#apt-pinning).
+   NOTE: **Important:**
+   DEB package users should use [APT pinning](#apt-pinning), to make sure that packages from the repository
+   added above will be used instead of the packages available in system default repositoryes.
 
 1. Install the latest version of GitLab Runner, or skip to the next step to
    install a specific version:
@@ -80,9 +81,10 @@ some of the most common problems with GitLab Runner.
 
 ### APT pinning
 
-A native package called `gitlab-ci-multi-runner` is available in
-Debian Stretch. By default, when installing `gitlab-runner`, that package
-from the official repositories will have a higher priority.
+A native package called `gitlab-runner` is available in Debian and few
+other Debian based systems. By default, when installing `gitlab-runner`,
+that package from the official repositories may have a higher priority and
+may be installed.
 
 If you want to use our package, you should manually set the source of
 the package. The best way is to add the pinning configuration file.
