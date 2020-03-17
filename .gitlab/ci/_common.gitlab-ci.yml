@@ -55,6 +55,16 @@ before_script:
   tags:
   - gitlab-org
 
+.only_gitlab_runner_main_fork:
+  only:
+    variables:
+    - $CI_MERGE_REQUEST_SOURCE_PROJECT_ID == "250833"
+
+.except_gitlab_runner_main_fork:
+  only:
+    variables:
+    - $CI_MERGE_REQUEST_SOURCE_PROJECT_ID != "250833"
+
 .docker:
   extends:
   - .except_docs
@@ -69,6 +79,13 @@ before_script:
     DOCKER_CERT_PATH: "/certs/client"
   tags:
   - docker
+
+.docker_gitlab_org_runners:
+  extends:
+  - .docker
+  tags:
+  - docker
+  - gitlab-org
 
 .windows_base:
   variables:

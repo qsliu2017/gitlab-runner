@@ -5,12 +5,10 @@
   stage: coverage
   when: always
 
-test coverage report:
+.test_coverage_report:
   extends:
   - .coverage_job
   coverage: /regular total:\s+\(statements\)\s+\d+.\d+\%/
-  needs:
-  - unit test
   script:
   - source ci/touch_make_dependencies
   - make parallel_test_coverage_report
@@ -19,12 +17,24 @@ test coverage report:
     - out/coverage/*
     expire_in: 7d
 
-test junit report:
+test coverage report internal:
+  extends:
+  - .test_coverage_report
+  - .only_gitlab_runner_main_fork
+  needs:
+  - unit tests internal
+
+test coverage report:
+  extends:
+  - .test_coverage_report
+  - .except_gitlab_runner_main_fork
+  needs:
+  - unit tests
+
+.test_junit_report:
   extends:
   - .coverage_job
   image: $CI_IMAGE
-  needs:
-  - unit test
   script:
   - source ci/touch_make_dependencies
   - make parallel_test_junit_report
@@ -32,14 +42,40 @@ test junit report:
     reports:
       junit: out/junit/report.xml
 
-race conditions detector:
+test junit report internal:
+  extends:
+  - .test_junit_report
+  - .only_gitlab_runner_main_fork
+  needs:
+  - unit tests internal
+
+test junit report:
+  extends:
+  - .test_junit_report
+  - .except_gitlab_runner_main_fork
+  needs:
+  - unit tests
+
+.race_conditions_detector:
   extends:
   - .coverage_job
-  needs:
-  - unit test with race
   script:
   - source ci/touch_make_dependencies
   - make check_race_conditions
+
+race conditions detector internal:
+  extends:
+  - .race_conditions_detector
+  - .only_gitlab_runner_main_fork
+  needs:
+  - unit tests with race internal
+
+race conditions detector:
+  extends:
+  - .race_conditions_detector
+  - .except_gitlab_runner_main_fork
+  needs:
+  - unit tests with race
 
 .check windows test failures:
   extends:

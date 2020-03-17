@@ -50,7 +50,7 @@
   - .release
   needs:
   - 'helper images'
-  - 'test coverage report'
+  # - 'test coverage report' // TODO: re-enable when https://gitlab.com/gitlab-org/gitlab-runner/-/merge_requests/1944 will be reverted
   - 'binaries darwin/386 darwin/amd64'
   - 'binaries freebsd/386 freebsd/amd64 freebsd/arm'
   - 'binaries linux/386 linux/amd64 linux/arm linux/arm64'
