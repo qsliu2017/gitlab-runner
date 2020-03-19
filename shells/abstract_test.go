@@ -289,3 +289,99 @@ func TestAbstractShell_writeSubmoduleUpdateCmd(t *testing.T) {
 
 	shell.writeSubmoduleUpdateCmd(mockWriter, &common.Build{}, false)
 }
+
+func TestWriteUserScript(t *testing.T) {
+	tests := map[string]struct {
+		inputSteps        common.Steps
+		prebuildScript    string
+		postBuildScript   string
+		setupExpectations func(*MockShellWriter)
+		expectErr         bool
+	}{
+		"no build steps": {
+			common.Steps{},
+			"",
+			"",
+			func(*MockShellWriter) {},
+			false,
+		},
+		"single script step": {
+			common.Steps{
+				common.Step{
+					Name:   common.StepNameScript,
+					Script: common.StepScript{"echo hello"},
+				},
+			},
+			"",
+			"",
+			func(m *MockShellWriter) {
+				m.On("Variable", mock.Anything)
+				m.On("Cd", mock.AnythingOfType("string"))
+				m.On("Notice", "$ %s", "echo hello").Once()
+				m.On("Line", "echo hello").Once()
+				m.On("CheckForErrors").Once()
+			},
+			false,
+		},
+		"prebuild, multiple script steps, postBuild": {
+			common.Steps{
+				common.Step{
+					Name:   common.StepNameScript,
+					Script: common.StepScript{"echo script"},
+				},
+				common.Step{
+					Name:   "release",
+					Script: common.StepScript{"echo release"},
+				},
+				common.Step{
+					Name:   "a11y",
+					Script: common.StepScript{"echo a11y"},
+				},
+			},
+			"echo prebuild",
+			"echo postbuild",
+			func(m *MockShellWriter) {
+				m.On("Variable", mock.Anything)
+				m.On("Cd", mock.AnythingOfType("string"))
+				m.On("Notice", "$ %s", "echo prebuild").Once()
+				m.On("Notice", "$ %s", "echo script").Once()
+				m.On("Notice", "$ %s", "echo release").Once()
+				m.On("Notice", "$ %s", "echo a11y").Once()
+				m.On("Notice", "$ %s", "echo postbuild").Once()
+				m.On("Line", "echo prebuild").Once()
+				m.On("Line", "echo script").Once()
+				m.On("Line", "echo release").Once()
+				m.On("Line", "echo a11y").Once()
+				m.On("Line", "echo postbuild").Once()
+				m.On("CheckForErrors").Times(5)
+			},
+			false,
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			info := common.ShellScriptInfo{
+				PreBuildScript: tc.prebuildScript,
+				Build: &common.Build{
+					JobResponse: common.JobResponse{
+						Steps: tc.inputSteps,
+					},
+				},
+				PostBuildScript: tc.postBuildScript,
+			}
+			mockShellWriter := &MockShellWriter{}
+			defer mockShellWriter.AssertExpectations(t)
+
+			tc.setupExpectations(mockShellWriter)
+			shell := AbstractShell{}
+
+			err := shell.writeUserScript(mockShellWriter, info)
+			if tc.expectErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}

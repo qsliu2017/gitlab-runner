@@ -269,7 +269,7 @@ func getStageDescription(stage BuildStage) string {
 		BuildStageGetSources:               "Getting source from Git repository",
 		BuildStageRestoreCache:             "Restoring cache",
 		BuildStageDownloadArtifacts:        "Downloading artifacts",
-		BuildStageUserScript:               "Running before_script and script",
+		BuildStageUserScript:               "Running before_script and script steps",
 		BuildStageAfterScript:              "Running after_script",
 		BuildStageArchiveCache:             "Saving cache",
 		BuildStageUploadOnFailureArtifacts: "Uploading artifacts for failed job",

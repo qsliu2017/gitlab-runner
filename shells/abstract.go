@@ -439,15 +439,7 @@ func (b *AbstractShell) writeCommands(w ShellWriter, commands ...string) {
 }
 
 func (b *AbstractShell) writeUserScript(w ShellWriter, info common.ShellScriptInfo) (err error) {
-	var scriptStep *common.Step
-	for _, step := range info.Build.Steps {
-		if step.Name == common.StepNameScript {
-			scriptStep = &step
-			break
-		}
-	}
-
-	if scriptStep == nil {
+	if len(info.Build.Steps) == 0 {
 		return nil
 	}
 
@@ -458,7 +450,9 @@ func (b *AbstractShell) writeUserScript(w ShellWriter, info common.ShellScriptIn
 		b.writeCommands(w, info.PreBuildScript)
 	}
 
-	b.writeCommands(w, scriptStep.Script...)
+	for _, s := range info.Build.Steps {
+		b.writeCommands(w, s.Script...)
+	}
 
 	if info.PostBuildScript != "" {
 		b.writeCommands(w, info.PostBuildScript)
