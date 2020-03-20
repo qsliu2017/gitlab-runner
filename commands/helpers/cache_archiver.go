@@ -47,7 +47,7 @@ func (c *CacheArchiverCommand) upload() error {
 		return err
 	}
 
-	req, err := http.NewRequest("PUT", c.URL, file)
+	req, err := http.NewRequest(http.MethodPut, c.URL, file)
 	if err != nil {
 		return retryableErr{err: err}
 	}

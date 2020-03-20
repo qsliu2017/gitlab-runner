@@ -21,10 +21,14 @@ linters-settings:
     min-complexity: 10
   govet:
     check-shadowing: false
+  goconst:
+    min-len: 3
+    min-occurrences: 3
 
 linters:
   disable-all: true
   enable:
+    - goconst
     - gocyclo
     - goimports
     - golint
@@ -68,3 +72,12 @@ issues:
     - linters:
         - golint
       text: "don't use an underscore in package name"
+    - path: ".*_test.go"
+      linters:
+        - goconst
+    - path: "commands/register.go"
+      linters:
+        - goconst
+    - path: "commands/service.go"
+      linters:
+        - goconst
