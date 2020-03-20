@@ -29,6 +29,7 @@ linters:
     - goimports
     - golint
     - govet
+    - ineffassign
     - varcheck
   fast: false
 
