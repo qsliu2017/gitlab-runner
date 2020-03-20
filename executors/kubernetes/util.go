@@ -39,7 +39,7 @@ func getKubeClientConfig(config *common.KubernetesConfig, overwrites *overwrites
 
 	//apply overwrites
 	if len(overwrites.bearerToken) > 0 {
-		kubeConfig.BearerToken = string(overwrites.bearerToken)
+		kubeConfig.BearerToken = overwrites.bearerToken
 	}
 
 	kubeConfig.UserAgent = common.AppVersion.UserAgent()

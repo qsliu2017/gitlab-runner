@@ -1587,7 +1587,7 @@ func TestDockerCPUSSetting(t *testing.T) {
 			}
 
 			cce := func(t *testing.T, config *container.Config, hostConfig *container.HostConfig) {
-				assert.Equal(t, int64(example.nanocpus), hostConfig.NanoCPUs)
+				assert.Equal(t, example.nanocpus, hostConfig.NanoCPUs)
 			}
 
 			testDockerConfigurationWithJobContainer(t, dockerConfig, cce)

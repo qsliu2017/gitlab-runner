@@ -73,10 +73,10 @@ func Version() (string, error) {
 	}
 
 	versionRe := regexp.MustCompile(`prlctl version (\d+\.\d+.\d+)`)
-	matches := versionRe.FindStringSubmatch(string(out))
+	matches := versionRe.FindStringSubmatch(out)
 	if matches == nil {
 		return "", fmt.Errorf(
-			"could not find Parallels Desktop version in output:\n%s", string(out))
+			"could not find Parallels Desktop version in output:\n%s", out)
 	}
 
 	version := matches[1]
