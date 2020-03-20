@@ -91,3 +91,7 @@ issues:
     - path: ".*_test.go"
       linters:
         - bodyclose
+    - path: referees/prometheus_api.go
+      linters:
+        - deadcode
+        - megacheck
