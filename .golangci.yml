@@ -26,6 +26,7 @@ linters:
   disable-all: true
   enable:
     - gocyclo
+    - goimports
     - govet
     - varcheck
   fast: false
