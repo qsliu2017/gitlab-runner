@@ -27,6 +27,7 @@ linters:
   enable:
     - gocyclo
     - goimports
+    - golint
     - govet
     - varcheck
   fast: false
@@ -56,3 +57,9 @@ issues:
     - path: executors/virtualbox/
       linters:
         - gocyclo
+    - linters:
+        - golint
+      text: "don't use ALL_CAPS in Go names; use CamelCase"
+    - linters:
+        - golint
+      text: "don't use an underscore in package name"
