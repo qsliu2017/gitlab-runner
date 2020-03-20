@@ -30,6 +30,7 @@ linters:
     - golint
     - govet
     - ineffassign
+    - misspell
     - varcheck
   fast: false
 
