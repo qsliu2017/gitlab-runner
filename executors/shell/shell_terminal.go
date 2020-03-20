@@ -9,7 +9,7 @@ import (
 	"os/exec"
 
 	"github.com/kr/pty"
-	"gitlab.com/gitlab-org/gitlab-terminal"
+	terminal "gitlab.com/gitlab-org/gitlab-terminal"
 
 	terminalsession "gitlab.com/gitlab-org/gitlab-runner/session/terminal"
 )

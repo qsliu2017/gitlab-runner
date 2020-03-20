@@ -139,7 +139,16 @@ To execute the tests run:
 make test
 ```
 
-## 8. Contribute
+## 8. Install optional tools
+
+Install `golangci-lint`, used for the `make lint` target:
+
+```shell
+# Step from https://github.com/golangci/golangci-lint#install
+curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.24.0
+```
+
+## 9. Contribute
 
 You can start hacking GitLab-Runner code. If you are interested you can use Intellij IDEA Community Edition with [go-lang-idea-plugin](https://github.com/go-lang-plugin-org/go-lang-idea-plugin) to edit and debug code.
 
