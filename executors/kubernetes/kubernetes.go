@@ -108,7 +108,6 @@ type executor struct {
 	featureChecker featureChecker
 
 	remoteProcessTerminated chan shells.TrapCommandExitStatus
-	logProcessor            logProcessor
 }
 
 type serviceDeleteResponse struct {

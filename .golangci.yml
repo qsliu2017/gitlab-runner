@@ -31,6 +31,7 @@ linters:
     - govet
     - ineffassign
     - misspell
+    - structcheck
     - varcheck
   fast: false
 
