@@ -1,4 +1,4 @@
-package helpers_test
+package helpers
 
 import (
 	"bytes"
@@ -6,8 +6,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-
-	"gitlab.com/gitlab-org/gitlab-runner/helpers"
 )
 
 type testBuffer struct {
@@ -37,7 +35,7 @@ func TestBuildSection(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			logger := new(testBuffer)
 
-			section := helpers.BuildSection{
+			section := BuildSection{
 				Name:        tc.name,
 				SkipMetrics: tc.skipMetrics,
 				Run:         func() error { return tc.error },

@@ -5,23 +5,44 @@ import (
 	"time"
 )
 
-type RawLogger interface {
-	SendRawLog(args ...interface{})
-}
-
-type BuildSection struct {
-	Name        string
-	SkipMetrics bool
-	Run         func() error
-}
-
 const (
 	traceSectionStart = "section_start:%v:%s\r" + ANSI_CLEAR
 	traceSectionEnd   = "section_end:%v:%s\r" + ANSI_CLEAR
 )
 
-func nowUnixUTC() int64 {
-	return time.Now().UTC().Unix()
+// RawLogger is an interface which allows sending raw logs.
+type RawLogger interface {
+	SendRawLog(args ...interface{})
+}
+
+// BuildSection is a wrapper around a build executable which allows for logs
+// to be grouped and folded in the build output on Gitlab.
+type BuildSection struct {
+	Name        string
+	Header      string
+	SkipMetrics bool
+	Run         func() error
+}
+
+// Execute executes the Run function and outputs its logs in a foldable section in job output.
+func (s *BuildSection) Execute(logger RawLogger) error {
+	s.start(logger)
+	defer s.end(logger)
+
+	return s.Run()
+}
+
+func (s *BuildSection) start(logger RawLogger) {
+	s.timestamp(traceSectionStart, logger)
+	s.header(logger)
+}
+
+func (s *BuildSection) end(logger RawLogger) {
+	s.timestamp(traceSectionEnd, logger)
+}
+
+func (s *BuildSection) header(logger RawLogger) {
+	logger.SendRawLog(fmt.Sprintf("%s%s%s\n", ANSI_BOLD_CYAN, s.Header, ANSI_RESET))
 }
 
 func (s *BuildSection) timestamp(format string, logger RawLogger) {
@@ -33,17 +54,6 @@ func (s *BuildSection) timestamp(format string, logger RawLogger) {
 	logger.SendRawLog(sectionLine)
 }
 
-func (s *BuildSection) start(logger RawLogger) {
-	s.timestamp(traceSectionStart, logger)
-}
-
-func (s *BuildSection) end(logger RawLogger) {
-	s.timestamp(traceSectionEnd, logger)
-}
-
-func (s *BuildSection) Execute(logger RawLogger) error {
-	s.start(logger)
-	defer s.end(logger)
-
-	return s.Run()
+func nowUnixUTC() int64 {
+	return time.Now().UTC().Unix()
 }

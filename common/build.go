@@ -224,19 +224,35 @@ func (b *Build) executeStage(ctx context.Context, buildStage BuildStage, executo
 
 	b.Log().WithField("build_stage", buildStage).Debug("Executing build stage")
 
+	sections, err := b.generateBuildSections(ctx, buildStage, executor)
+	if err != nil {
+		return fmt.Errorf("error generating build sections: %w", err)
+	}
+
+	for _, section := range sections {
+		err = section.Execute(&b.logger)
+		if err != nil {
+			return fmt.Errorf("error executing build section: %w", err)
+		}
+	}
+
+	return nil
+}
+
+func (b *Build) generateBuildSections(ctx context.Context, buildStage BuildStage, executor Executor) ([]*helpers.BuildSection, error) {
 	shell := executor.Shell()
 	if shell == nil {
-		return errors.New("no shell defined")
+		return nil, errors.New("no shell defined")
 	}
 
 	script, err := GenerateShellScript(buildStage, *shell)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// Nothing to execute
 	if script == "" {
-		return nil
+		return nil, nil
 	}
 
 	cmd := ExecutorCommand{
@@ -252,15 +268,15 @@ func (b *Build) executeStage(ctx context.Context, buildStage BuildStage, executo
 		cmd.Predefined = true
 	}
 
-	section := helpers.BuildSection{
+	section := &helpers.BuildSection{
 		Name:        string(buildStage),
+		Header:      getStageDescription(buildStage),
 		SkipMetrics: !b.JobResponse.Features.TraceSections,
 		Run: func() error {
-			b.logger.Println(fmt.Sprintf("%s%s%s", helpers.ANSI_BOLD_CYAN, getStageDescription(buildStage), helpers.ANSI_RESET))
 			return executor.Run(cmd)
 		},
 	}
-	return section.Execute(&b.logger)
+	return []*helpers.BuildSection{section}, nil
 }
 
 func getStageDescription(stage BuildStage) string {
@@ -640,9 +656,9 @@ func (b *Build) Run(globalConfig *Config, trace JobTrace) (err error) {
 
 	section := helpers.BuildSection{
 		Name:        string(BuildStagePrepareExecutor),
+		Header:      fmt.Sprintf("Preparing the %q executor", b.Runner.Executor),
 		SkipMetrics: !b.JobResponse.Features.TraceSections,
 		Run: func() error {
-			b.logger.Println(fmt.Sprintf("%sPreparing the %q executor%s", helpers.ANSI_BOLD_CYAN, b.Runner.Executor, helpers.ANSI_RESET))
 			executor, err = b.retryCreateExecutor(options, provider, b.logger)
 			return err
 		},
