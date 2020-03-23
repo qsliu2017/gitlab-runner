@@ -401,23 +401,10 @@ func TestDockerCommandTwoServicesFromOneImage(t *testing.T) {
 		},
 	}
 
-	successfulBuild, err := common.GetRemoteSuccessfulBuild()
-	successfulBuild.Services = common.Services{
-		{Name: common.TestAlpineImage, Alias: "service-1"},
-		{Name: common.TestAlpineImage, Alias: "service-2"},
-	}
-	assert.NoError(t, err)
-	build := &common.Build{
-		JobResponse: successfulBuild,
-		Runner: &common.RunnerConfig{
-			RunnerSettings: common.RunnerSettings{
-				Executor: "docker",
-				Docker: &common.DockerConfig{
-					Image:      common.TestAlpineImage,
-					PullPolicy: common.PullPolicyIfNotPresent,
-				},
-			},
-		},
+	build := getBuildForOS(t, common.GetRemoteSuccessfulBuild)
+	build.JobResponse.Services = common.Services{
+		{Name: build.Runner.Docker.Image, Alias: "service-1"},
+		{Name: build.Runner.Docker.Image, Alias: "service-2"},
 	}
 
 	for name, tt := range tests {
@@ -425,7 +412,7 @@ func TestDockerCommandTwoServicesFromOneImage(t *testing.T) {
 			var buffer bytes.Buffer
 
 			build.Variables = tt.variables
-			err = build.Run(&common.Config{}, &common.Trace{Writer: &buffer})
+			err := build.Run(&common.Config{}, &common.Trace{Writer: &buffer})
 			assert.NoError(t, err)
 			str := buffer.String()
 
