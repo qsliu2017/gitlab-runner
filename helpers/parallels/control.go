@@ -86,10 +86,7 @@ func Version() (string, error) {
 
 func Exist(name string) bool {
 	err := Prlctl("list", name, "--no-header", "--output", "status")
-	if err != nil {
-		return false
-	}
-	return true
+	return err == nil
 }
 
 func CreateTemplate(vmName, templateName string) error {

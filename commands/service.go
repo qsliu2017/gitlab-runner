@@ -5,10 +5,9 @@ import (
 	"os"
 	"runtime"
 
-	"github.com/ayufan/golang-kardianos-service"
+	service "github.com/ayufan/golang-kardianos-service"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
-
 	"gitlab.com/gitlab-org/gitlab-runner/common"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers"
 	service_helpers "gitlab.com/gitlab-org/gitlab-runner/helpers/service"

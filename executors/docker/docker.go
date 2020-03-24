@@ -426,10 +426,7 @@ func (e *executor) wasImageUsed(imageName, imageID string) bool {
 	e.usedImagesLock.RLock()
 	defer e.usedImagesLock.RUnlock()
 
-	if e.usedImages[imageName] == imageID {
-		return true
-	}
-	return false
+	return e.usedImages[imageName] == imageID
 }
 
 func (e *executor) markImageAsUsed(imageName, imageID string) {
@@ -963,7 +960,6 @@ func (e *executor) disconnectNetwork(ctx context.Context, id string) {
 			}
 		}
 	}
-	return
 }
 
 func (e *executor) verifyAllowedImage(image, optionName string, allowedImages []string, internalImages []string) error {
