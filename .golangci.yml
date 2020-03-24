@@ -28,6 +28,7 @@ linters-settings:
 linters:
   disable-all: true
   enable:
+    - bodyclose
     - dogsled
     - goconst
     - gocyclo
@@ -87,3 +88,6 @@ issues:
     - path: "common/support.go"
       linters:
         - dogsled
+    - path: ".*_test.go"
+      linters:
+        - bodyclose

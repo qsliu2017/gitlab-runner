@@ -186,7 +186,10 @@ func (n *GitLabClient) RegisterRunner(runner common.RunnerCredentials, parameter
 	}
 
 	var response common.RegisterRunnerResponse
-	result, statusText, _ := n.doJSON(&runner, http.MethodPost, "runners", http.StatusCreated, &request, &response)
+	result, statusText, resp := n.doJSON(&runner, http.MethodPost, "runners", http.StatusCreated, &request, &response)
+	if resp != nil {
+		defer resp.Body.Close()
+	}
 
 	switch result {
 	case http.StatusCreated:
@@ -209,7 +212,10 @@ func (n *GitLabClient) VerifyRunner(runner common.RunnerCredentials) bool {
 		Token: runner.Token,
 	}
 
-	result, statusText, _ := n.doJSON(&runner, http.MethodPost, "runners/verify", http.StatusOK, &request, nil)
+	result, statusText, resp := n.doJSON(&runner, http.MethodPost, "runners/verify", http.StatusOK, &request, nil)
+	if resp != nil {
+		defer resp.Body.Close()
+	}
 
 	switch result {
 	case http.StatusOK:
@@ -233,7 +239,10 @@ func (n *GitLabClient) UnregisterRunner(runner common.RunnerCredentials) bool {
 		Token: runner.Token,
 	}
 
-	result, statusText, _ := n.doJSON(&runner, http.MethodDelete, "runners", http.StatusNoContent, &request, nil)
+	result, statusText, resp := n.doJSON(&runner, http.MethodDelete, "runners", http.StatusNoContent, &request, nil)
+	if resp != nil {
+		defer resp.Body.Close()
+	}
 
 	const baseLogText = "Unregistering runner from GitLab"
 	switch result {

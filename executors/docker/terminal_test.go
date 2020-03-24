@@ -263,6 +263,7 @@ func TestTerminalConn_FailToStart(t *testing.T) {
 
 			resp := w.Result()
 			assert.Equal(t, http.StatusInternalServerError, resp.StatusCode)
+			defer resp.Body.Close()
 		})
 	}
 }
@@ -376,6 +377,7 @@ func TestTerminalConn_Start(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, conn)
 	require.Equal(t, resp.StatusCode, http.StatusSwitchingProtocols)
+	defer resp.Body.Close()
 
 	defer conn.Close()
 
