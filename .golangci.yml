@@ -28,6 +28,7 @@ linters-settings:
 linters:
   disable-all: true
   enable:
+    - dogsled
     - goconst
     - gocyclo
     - goimports
@@ -83,3 +84,6 @@ issues:
     - path: "commands/service.go"
       linters:
         - goconst
+    - path: "common/support.go"
+      linters:
+        - dogsled
