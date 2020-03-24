@@ -690,18 +690,6 @@ func (e *executor) createServices() (err error) {
 	return
 }
 
-func (e *executor) getValidContainers(containers []string) []string {
-	var newContainers []string
-
-	for _, container := range containers {
-		if _, err := e.client.ContainerInspect(e.Context, container); err == nil {
-			newContainers = append(newContainers, container)
-		}
-	}
-
-	return newContainers
-}
-
 func (e *executor) createContainer(containerType string, imageDefinition common.Image, cmd []string, allowedInternalImages []string) (*types.ContainerJSON, error) {
 	if e.volumesManager == nil {
 		return nil, errVolumesManagerUndefined

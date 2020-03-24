@@ -95,3 +95,4 @@ issues:
       linters:
         - deadcode
         - megacheck
+        - unused
