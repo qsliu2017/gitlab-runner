@@ -1,4 +1,4 @@
-package helpers_test
+package helpers
 
 import (
 	"bytes"
@@ -6,8 +6,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-
-	"gitlab.com/gitlab-org/gitlab-runner/helpers"
 )
 
 type testBuffer struct {
@@ -25,20 +23,22 @@ func (b *testBuffer) SendRawLog(args ...interface{}) {
 
 func TestBuildSection(t *testing.T) {
 	for num, tc := range []struct {
-		name        string
-		skipMetrics bool
-		error       error
+		name          string
+		sectionHeader string
+		skipMetrics   bool
+		error         error
 	}{
-		{"Success", false, nil},
-		{"Failure", false, fmt.Errorf("Failing test")},
-		{"SkipMetricsSuccess", true, nil},
-		{"SkipMetricsFailure", true, fmt.Errorf("Failing test")},
+		{"Success", "Header", false, nil},
+		{"Failure", "Header", false, fmt.Errorf("Failing test")},
+		{"SkipMetricsSuccess", "Header", true, nil},
+		{"SkipMetricsFailure", "Header", true, fmt.Errorf("Failing test")},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			logger := new(testBuffer)
 
-			section := helpers.BuildSection{
+			section := BuildSection{
 				Name:        tc.name,
+				Header:      tc.sectionHeader,
 				SkipMetrics: tc.skipMetrics,
 				Run:         func() error { return tc.error },
 			}
@@ -50,6 +50,7 @@ func TestBuildSection(t *testing.T) {
 				if tc.skipMetrics {
 					assert.NotContains(t, output, str)
 				} else {
+					assert.Contains(t, output, tc.sectionHeader)
 					assert.Contains(t, output, str)
 				}
 			}

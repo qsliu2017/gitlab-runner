@@ -254,9 +254,9 @@ func (b *Build) executeStage(ctx context.Context, buildStage BuildStage, executo
 
 	section := helpers.BuildSection{
 		Name:        string(buildStage),
+		Header:      getStageDescription(buildStage),
 		SkipMetrics: !b.JobResponse.Features.TraceSections,
 		Run: func() error {
-			b.logger.Println(fmt.Sprintf("%s%s%s", helpers.ANSI_BOLD_CYAN, getStageDescription(buildStage), helpers.ANSI_RESET))
 			return executor.Run(cmd)
 		},
 	}
@@ -640,9 +640,9 @@ func (b *Build) Run(globalConfig *Config, trace JobTrace) (err error) {
 
 	section := helpers.BuildSection{
 		Name:        string(BuildStagePrepareExecutor),
+		Header:      fmt.Sprintf("Preparing the %q executor", b.Runner.Executor),
 		SkipMetrics: !b.JobResponse.Features.TraceSections,
 		Run: func() error {
-			b.logger.Println(fmt.Sprintf("%sPreparing the %q executor%s", helpers.ANSI_BOLD_CYAN, b.Runner.Executor, helpers.ANSI_RESET))
 			executor, err = b.retryCreateExecutor(options, provider, b.logger)
 			return err
 		},
