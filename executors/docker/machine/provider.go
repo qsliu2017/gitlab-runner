@@ -294,7 +294,7 @@ func (m *machineProvider) createMachines(config *common.RunnerConfig, data *mach
 // returned by `docker-machine ls -q`
 func (m *machineProvider) intermediateMachineList(excludedMachines []string) []string {
 	var excludedSet map[string]struct{}
-	var intermediateMachines []string
+	intermediateMachines := make([]string, 0, len(m.details))
 
 	m.lock.Lock()
 	defer m.lock.Unlock()

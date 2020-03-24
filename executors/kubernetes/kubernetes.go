@@ -539,9 +539,18 @@ func (s *executor) getVolumeMounts() []api.VolumeMount {
 }
 
 func (s *executor) getVolumeMountsForConfig() []api.VolumeMount {
-	var mounts []api.VolumeMount
+	volumes := s.Config.Kubernetes.Volumes
+	mounts := make(
+		[]api.VolumeMount,
+		0,
+		len(volumes.HostPaths)+
+			len(volumes.Secrets)+
+			len(volumes.PVCs)+
+			len(volumes.ConfigMaps)+
+			len(volumes.EmptyDirs),
+	)
 
-	for _, mount := range s.Config.Kubernetes.Volumes.HostPaths {
+	for _, mount := range volumes.HostPaths {
 		mounts = append(mounts, api.VolumeMount{
 			Name:      mount.Name,
 			MountPath: mount.MountPath,
@@ -549,7 +558,7 @@ func (s *executor) getVolumeMountsForConfig() []api.VolumeMount {
 		})
 	}
 
-	for _, mount := range s.Config.Kubernetes.Volumes.Secrets {
+	for _, mount := range volumes.Secrets {
 		mounts = append(mounts, api.VolumeMount{
 			Name:      mount.Name,
 			MountPath: mount.MountPath,
@@ -557,7 +566,7 @@ func (s *executor) getVolumeMountsForConfig() []api.VolumeMount {
 		})
 	}
 
-	for _, mount := range s.Config.Kubernetes.Volumes.PVCs {
+	for _, mount := range volumes.PVCs {
 		mounts = append(mounts, api.VolumeMount{
 			Name:      mount.Name,
 			MountPath: mount.MountPath,
@@ -565,7 +574,7 @@ func (s *executor) getVolumeMountsForConfig() []api.VolumeMount {
 		})
 	}
 
-	for _, mount := range s.Config.Kubernetes.Volumes.ConfigMaps {
+	for _, mount := range volumes.ConfigMaps {
 		mounts = append(mounts, api.VolumeMount{
 			Name:      mount.Name,
 			MountPath: mount.MountPath,
@@ -573,7 +582,7 @@ func (s *executor) getVolumeMountsForConfig() []api.VolumeMount {
 		})
 	}
 
-	for _, mount := range s.Config.Kubernetes.Volumes.EmptyDirs {
+	for _, mount := range volumes.EmptyDirs {
 		mounts = append(mounts, api.VolumeMount{
 			Name:      mount.Name,
 			MountPath: mount.MountPath,
@@ -616,16 +625,25 @@ func (s *executor) getVolumes() []api.Volume {
 }
 
 func (s *executor) getVolumesForConfig() []api.Volume {
-	var volumes []api.Volume
+	volumes := s.Config.Kubernetes.Volumes
+	volumesOut := make(
+		[]api.Volume,
+		0,
+		len(volumes.HostPaths)+
+			len(volumes.Secrets)+
+			len(volumes.PVCs)+
+			len(volumes.ConfigMaps)+
+			len(volumes.EmptyDirs),
+	)
 
-	for _, volume := range s.Config.Kubernetes.Volumes.HostPaths {
+	for _, volume := range volumes.HostPaths {
 		path := volume.HostPath
 		// Make backward compatible with syntax introduced in version 9.3.0
 		if path == "" {
 			path = volume.MountPath
 		}
 
-		volumes = append(volumes, api.Volume{
+		volumesOut = append(volumesOut, api.Volume{
 			Name: volume.Name,
 			VolumeSource: api.VolumeSource{
 				HostPath: &api.HostPathVolumeSource{
@@ -635,13 +653,13 @@ func (s *executor) getVolumesForConfig() []api.Volume {
 		})
 	}
 
-	for _, volume := range s.Config.Kubernetes.Volumes.Secrets {
-		items := []api.KeyToPath{}
+	for _, volume := range volumes.Secrets {
+		var items []api.KeyToPath
 		for key, path := range volume.Items {
 			items = append(items, api.KeyToPath{Key: key, Path: path})
 		}
 
-		volumes = append(volumes, api.Volume{
+		volumesOut = append(volumesOut, api.Volume{
 			Name: volume.Name,
 			VolumeSource: api.VolumeSource{
 				Secret: &api.SecretVolumeSource{
@@ -652,8 +670,8 @@ func (s *executor) getVolumesForConfig() []api.Volume {
 		})
 	}
 
-	for _, volume := range s.Config.Kubernetes.Volumes.PVCs {
-		volumes = append(volumes, api.Volume{
+	for _, volume := range volumes.PVCs {
+		volumesOut = append(volumesOut, api.Volume{
 			Name: volume.Name,
 			VolumeSource: api.VolumeSource{
 				PersistentVolumeClaim: &api.PersistentVolumeClaimVolumeSource{
@@ -664,13 +682,13 @@ func (s *executor) getVolumesForConfig() []api.Volume {
 		})
 	}
 
-	for _, volume := range s.Config.Kubernetes.Volumes.ConfigMaps {
-		items := []api.KeyToPath{}
+	for _, volume := range volumes.ConfigMaps {
+		var items []api.KeyToPath
 		for key, path := range volume.Items {
 			items = append(items, api.KeyToPath{Key: key, Path: path})
 		}
 
-		volumes = append(volumes, api.Volume{
+		volumesOut = append(volumesOut, api.Volume{
 			Name: volume.Name,
 			VolumeSource: api.VolumeSource{
 				ConfigMap: &api.ConfigMapVolumeSource{
@@ -683,8 +701,8 @@ func (s *executor) getVolumesForConfig() []api.Volume {
 		})
 	}
 
-	for _, volume := range s.Config.Kubernetes.Volumes.EmptyDirs {
-		volumes = append(volumes, api.Volume{
+	for _, volume := range volumes.EmptyDirs {
+		volumesOut = append(volumesOut, api.Volume{
 			Name: volume.Name,
 			VolumeSource: api.VolumeSource{
 				EmptyDir: &api.EmptyDirVolumeSource{
@@ -694,7 +712,7 @@ func (s *executor) getVolumesForConfig() []api.Volume {
 		})
 	}
 
-	return volumes
+	return volumesOut
 }
 
 type dockerConfigEntry struct {
@@ -832,7 +850,7 @@ func (s *executor) setupBuildPod() error {
 		annotations[key] = s.Build.Variables.ExpandValue(val)
 	}
 
-	var imagePullSecrets []api.LocalObjectReference
+	imagePullSecrets := make([]api.LocalObjectReference, 0, len(s.Config.Kubernetes.ImagePullSecrets))
 	for _, imagePullSecret := range s.Config.Kubernetes.ImagePullSecrets {
 		imagePullSecrets = append(imagePullSecrets, api.LocalObjectReference{Name: imagePullSecret})
 	}
@@ -930,7 +948,7 @@ func (s *executor) makePodProxyServices() ([]api.Service, error) {
 		close(ch)
 	}()
 
-	var services []api.Service
+	services := make([]api.Service, 0, len(s.ProxyPool))
 	for res := range ch {
 		if res.err != nil {
 			err := fmt.Errorf("error creating the proxy service %q: %w", res.service.Name, res.err)
