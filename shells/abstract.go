@@ -438,10 +438,11 @@ func (b *AbstractShell) writeCommands(w ShellWriter, commands ...string) {
 	}
 }
 
-func (b *AbstractShell) writeUserScript(w ShellWriter, info common.ShellScriptInfo) (err error) {
+func (b *AbstractShell) writeUserScript(w ShellWriter, info common.ShellScriptInfo, buildStage common.BuildStage) (err error) {
+	candidateStepName := common.StepName(buildStage)
 	var scriptStep *common.Step
 	for _, step := range info.Build.Steps {
-		if step.Name == common.StepNameScript {
+		if step.Name == candidateStepName {
 			scriptStep = &step
 			break
 		}
@@ -645,17 +646,15 @@ func (b *AbstractShell) writeScript(w ShellWriter, buildStage common.BuildStage,
 		common.BuildStageGetSources:               b.writeGetSourcesScript,
 		common.BuildStageRestoreCache:             b.writeRestoreCacheScript,
 		common.BuildStageDownloadArtifacts:        b.writeDownloadArtifactsScript,
-		common.BuildStageUserScript:               b.writeUserScript,
 		common.BuildStageAfterScript:              b.writeAfterScript,
 		common.BuildStageArchiveCache:             b.writeArchiveCacheScript,
 		common.BuildStageUploadOnSuccessArtifacts: b.writeUploadArtifactsOnSuccessScript,
 		common.BuildStageUploadOnFailureArtifacts: b.writeUploadArtifactsOnFailureScript,
 	}
 
-	fn := methods[buildStage]
-	if fn == nil {
-		return errors.New("Not supported script type: " + string(buildStage))
+	fn, ok := methods[buildStage]
+	if !ok {
+		return b.writeUserScript(w, info, buildStage)
 	}
-
 	return fn(w, info)
 }

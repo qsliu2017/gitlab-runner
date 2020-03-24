@@ -229,38 +229,62 @@ func (b *Build) executeStage(ctx context.Context, buildStage BuildStage, executo
 		return errors.New("no shell defined")
 	}
 
-	script, err := GenerateShellScript(buildStage, *shell)
-	if err != nil {
-		return err
+	var scripts []string
+
+	if buildStage == BuildStageUserScript {
+		for _, s := range b.Steps {
+			if s.Name == StepNameAfterScript {
+				continue
+			}
+			script, err := GenerateShellScript(BuildStage(s.Name), *shell)
+			if err != nil {
+				return err
+			}
+			if script == "" {
+				continue
+			}
+			scripts = append(scripts, script)
+		}
+	} else {
+		script, err := GenerateShellScript(buildStage, *shell)
+		if err != nil {
+			return err
+		}
+		if script == "" {
+			return nil
+		}
+
+		scripts = []string{script}
 	}
 
-	// Nothing to execute
-	if script == "" {
-		return nil
-	}
+	for _, s := range scripts {
+		cmd := ExecutorCommand{
+			Context: ctx,
+			Script:  s,
+			Stage:   buildStage,
+		}
 
-	cmd := ExecutorCommand{
-		Context: ctx,
-		Script:  script,
-		Stage:   buildStage,
-	}
+		switch buildStage {
+		case BuildStageUserScript, BuildStageAfterScript: // use custom build environment
+			cmd.Predefined = false
+		default: // use a predefined build environment
+			cmd.Predefined = true
+		}
 
-	switch buildStage {
-	case BuildStageUserScript, BuildStageAfterScript: // use custom build environment
-		cmd.Predefined = false
-	default: // all other stages use a predefined build environment
-		cmd.Predefined = true
+		section := helpers.BuildSection{
+			Name:        string(buildStage),
+			SkipMetrics: !b.JobResponse.Features.TraceSections,
+			Run: func() error {
+				b.logger.Println(fmt.Sprintf("%s%s%s", helpers.ANSI_BOLD_CYAN, getStageDescription(buildStage), helpers.ANSI_RESET))
+				return executor.Run(cmd)
+			},
+		}
+		err := section.Execute(&b.logger)
+		if err != nil {
+			return err
+		}
 	}
-
-	section := helpers.BuildSection{
-		Name:        string(buildStage),
-		SkipMetrics: !b.JobResponse.Features.TraceSections,
-		Run: func() error {
-			b.logger.Println(fmt.Sprintf("%s%s%s", helpers.ANSI_BOLD_CYAN, getStageDescription(buildStage), helpers.ANSI_RESET))
-			return executor.Run(cmd)
-		},
-	}
-	return section.Execute(&b.logger)
+	return nil
 }
 
 func getStageDescription(stage BuildStage) string {
