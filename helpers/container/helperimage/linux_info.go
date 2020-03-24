@@ -29,7 +29,6 @@ func (l *linuxInfo) Create(revision string, cfg Config) (Info, error) {
 		IsSupportingLocalImport: true,
 		Cmd:                     bashCmd,
 	}, nil
-
 }
 
 func (l *linuxInfo) architecture(arch string) string {

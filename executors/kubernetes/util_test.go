@@ -50,7 +50,6 @@ func TestGetKubeClientConfig(t *testing.T) {
 	aConfig := func() (*restclient.Config, error) {
 		config := *completeConfig
 		return &config, nil
-
 	}
 
 	tests := []struct {

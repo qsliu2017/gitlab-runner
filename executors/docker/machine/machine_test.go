@@ -46,7 +46,6 @@ func (e *machineCredentialsUsageFakeExecutor) assertRunnerConfiguration(runnerCo
 		assert.Equal(e.t, e.expectedRunnerConfig.Docker.Image, runnerConfig.Docker.Image)
 	}
 	assert.Equal(e.t, e.expectedMachineCredentials, runnerConfig.Docker.Credentials, "Credentials should be filled with machine's credentials")
-
 }
 
 func (e *machineCredentialsUsageFakeExecutor) Prepare(options common.ExecutorPrepareOptions) error {

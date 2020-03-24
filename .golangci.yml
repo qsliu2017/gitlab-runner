@@ -39,6 +39,7 @@ linters:
     - typecheck
     - unconvert
     - varcheck
+    - whitespace
   fast: false
 
 issues:

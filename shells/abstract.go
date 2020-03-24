@@ -69,9 +69,8 @@ func (b *AbstractShell) guardRunnerCommand(w ShellWriter, runnerCommand string, 
 
 func (b *AbstractShell) cacheExtractor(w ShellWriter, info common.ShellScriptInfo) error {
 	for _, cacheOptions := range info.Build.Cache {
-
 		// Create list of files to extract
-		archiverArgs := []string{}
+		var archiverArgs []string
 		for _, path := range cacheOptions.Paths {
 			archiverArgs = append(archiverArgs, "--path", path)
 		}

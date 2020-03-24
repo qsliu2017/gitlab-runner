@@ -323,7 +323,6 @@ func (b *buildsHelper) listJobsHandlerV1(w http.ResponseWriter, r *http.Request)
 			job.CurrentState, job.CurrentStage, job.CurrentExecutorStage(),
 		)
 	}
-
 }
 
 func (b *buildsHelper) listJobsHandlerV2(w http.ResponseWriter, r *http.Request) {

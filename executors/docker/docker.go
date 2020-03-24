@@ -148,7 +148,6 @@ func (e *executor) getHomeDirAuthConfiguration(indexName string) (string, *types
 		return "", nil
 	}
 	return sourceFile, docker.ResolveDockerAuthConfig(indexName, authConfigs)
-
 }
 
 type authConfigResolver func(indexName string) (string, *types.AuthConfig)

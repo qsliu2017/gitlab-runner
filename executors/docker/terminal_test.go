@@ -190,7 +190,6 @@ func TestCommandExecutor_Connect(t *testing.T) {
 			assert.Nil(t, conn)
 		})
 	}
-
 }
 
 func TestTerminalConn_FailToStart(t *testing.T) {

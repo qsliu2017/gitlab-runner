@@ -165,7 +165,6 @@ func (s *executor) Prepare(options common.ExecutorPrepareOptions) (err error) {
 
 	if err = s.setupResources(); err != nil {
 		return fmt.Errorf("couldn't setup Kubernetes resources: %w", err)
-
 	}
 
 	if s.pullPolicy, err = s.Config.Kubernetes.PullPolicy.Get(); err != nil {

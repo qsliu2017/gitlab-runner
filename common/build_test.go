@@ -1451,7 +1451,6 @@ func TestBuildFinishTimeout(t *testing.T) {
 			assert.NotNil(t, entry)
 		})
 	}
-
 }
 
 func TestProjectUniqueName(t *testing.T) {

@@ -266,7 +266,6 @@ func addTLSData(response *common.JobResponse, tlsData ResponseTLSData) {
 		if err == nil {
 			response.TLSAuthKey = string(data)
 		}
-
 	}
 }
 

@@ -1680,7 +1680,6 @@ func TestDockerUserNSSetting(t *testing.T) {
 	}
 
 	testDockerConfigurationWithJobContainer(t, dockerConfig, cce)
-
 }
 
 func TestDockerRuntimeSetting(t *testing.T) {
