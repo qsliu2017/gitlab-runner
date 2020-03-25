@@ -5,6 +5,7 @@ import (
 	"io"
 
 	"github.com/sirupsen/logrus"
+
 	"gitlab.com/gitlab-org/gitlab-runner/helpers"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers/url"
 )
@@ -16,6 +17,12 @@ type BuildLogger struct {
 
 func (e *BuildLogger) WithFields(fields logrus.Fields) BuildLogger {
 	return NewBuildLogger(e.log, e.entry.WithFields(fields))
+}
+
+func (e *BuildLogger) WithError(err error) *BuildLogger {
+	logger := NewBuildLogger(e.log, e.entry.WithError(err))
+
+	return &logger
 }
 
 func (e *BuildLogger) SendRawLog(args ...interface{}) {

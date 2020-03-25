@@ -3,6 +3,7 @@ package common
 import (
 	"bytes"
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/sirupsen/logrus"
@@ -72,5 +73,17 @@ func TestLogLineWithSecret(t *testing.T) {
 		l.Errorln("Get http://localhost/?id=123&X-Amz-Signature=abcd1234&private_token=abcd1234")
 		assert.Contains(t, jt.Read(), `Get http://localhost/?id=123&X-Amz-Signature=[FILTERED]&private_token=[FILTERED]`)
 		assert.Contains(t, output.String(), `Get http://localhost/?id=123&X-Amz-Signature=abcd1234&private_token=abcd1234`)
+	})
+}
+
+func TestLogWithError(t *testing.T) {
+	runOnHijackedLogrusOutput(t, func(t *testing.T, output *bytes.Buffer) {
+		jt := newFakeJobTrace()
+		testErr := errors.New("test-error")
+		l := newBuildLogger("log-with-error", jt)
+
+		l.WithError(testErr).Errorln("Something is wrong")
+		assert.NotContains(t, jt.Read(), "error=test-error")
+		assert.Contains(t, output.String(), "error=test-error")
 	})
 }

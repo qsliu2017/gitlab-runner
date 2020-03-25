@@ -1255,10 +1255,10 @@ func (e *executor) Cleanup() {
 
 	err := e.cleanupNetwork(ctx)
 	if err != nil {
-		networkLogger := e.WithFields(logrus.Fields{
-			"network": e.networkMode.NetworkName(),
-			"error":   err,
-		})
+		networkLogger := e.WithError(err).
+			WithFields(logrus.Fields{
+				"network": e.networkMode.NetworkName(),
+			})
 
 		// `Cleanup` was called before `Prepare` had finished execution
 		if errors.Is(err, errNetworksManagerUndefined) {
