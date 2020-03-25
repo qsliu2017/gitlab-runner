@@ -481,42 +481,51 @@ func TestRequestJob(t *testing.T) {
 
 	c := NewGitLabClient()
 
-	res, ok := c.RequestJob(validToken, nil)
-	if assert.NotNil(t, res) {
-		assert.NotEmpty(t, res.ID)
-	}
-	assert.True(t, ok)
+	t.Run("request with a job expected", func(t *testing.T) {
+		res, ok := c.RequestJob(validToken, nil)
+		if assert.NotNil(t, res) {
+			assert.NotEmpty(t, res.ID)
+		}
+		assert.True(t, ok)
 
-	assert.Equal(t, "ruby:2.6", res.Image.Name)
-	assert.Equal(t, []string{"/bin/sh"}, res.Image.Entrypoint)
-	require.Len(t, res.Services, 2)
-	assert.Equal(t, "postgresql:9.5", res.Services[0].Name)
-	assert.Equal(t, []string{"/bin/sh"}, res.Services[0].Entrypoint)
-	assert.Equal(t, []string{"sleep", "30"}, res.Services[0].Command)
-	assert.Equal(t, "db-pg", res.Services[0].Alias)
-	assert.Equal(t, "mysql:5.6", res.Services[1].Name)
-	assert.Equal(t, "db-mysql", res.Services[1].Alias)
+		assert.Equal(t, "ruby:2.6", res.Image.Name)
+		assert.Equal(t, []string{"/bin/sh"}, res.Image.Entrypoint)
+		require.Len(t, res.Services, 2)
+		assert.Equal(t, "postgresql:9.5", res.Services[0].Name)
+		assert.Equal(t, []string{"/bin/sh"}, res.Services[0].Entrypoint)
+		assert.Equal(t, []string{"sleep", "30"}, res.Services[0].Command)
+		assert.Equal(t, "db-pg", res.Services[0].Alias)
+		assert.Equal(t, "mysql:5.6", res.Services[1].Name)
+		assert.Equal(t, "db-mysql", res.Services[1].Alias)
 
-	require.Len(t, res.Variables, 1)
-	assert.Equal(t, "CI_REF_NAME", res.Variables[0].Key)
-	assert.Equal(t, "master", res.Variables[0].Value)
-	assert.True(t, res.Variables[0].Public)
-	assert.True(t, res.Variables[0].File)
-	assert.True(t, res.Variables[0].Raw)
+		require.Len(t, res.Variables, 1)
+		assert.Equal(t, "CI_REF_NAME", res.Variables[0].Key)
+		assert.Equal(t, "master", res.Variables[0].Value)
+		assert.True(t, res.Variables[0].Public)
+		assert.True(t, res.Variables[0].File)
+		assert.True(t, res.Variables[0].Raw)
 
-	assert.Empty(t, c.getLastUpdate(&noJobsToken.RunnerCredentials), "Last-Update should not be set")
-	res, ok = c.RequestJob(noJobsToken, nil)
-	assert.Nil(t, res)
-	assert.True(t, ok, "If no jobs, runner is healthy")
-	assert.Equal(t, "a nice timestamp", c.getLastUpdate(&noJobsToken.RunnerCredentials), "Last-Update should be set")
+		assert.Empty(t, c.getLastUpdate(&noJobsToken.RunnerCredentials), "Last-Update should not be set")
+	})
 
-	res, ok = c.RequestJob(invalidToken, nil)
-	assert.Nil(t, res)
-	assert.False(t, ok, "If token is invalid, the runner is unhealthy")
+	t.Run("request with no jobs expected", func(t *testing.T) {
+		res, ok := c.RequestJob(noJobsToken, nil)
+		assert.Nil(t, res)
+		assert.True(t, ok, "If no jobs, runner is healthy")
+		assert.Equal(t, "a nice timestamp", c.getLastUpdate(&noJobsToken.RunnerCredentials), "Last-Update should be set")
+	})
 
-	res, ok = c.RequestJob(brokenConfig, nil)
-	assert.Nil(t, res)
-	assert.False(t, ok)
+	t.Run("request with invalid token", func(t *testing.T) {
+		res, ok := c.RequestJob(invalidToken, nil)
+		assert.Nil(t, res)
+		assert.False(t, ok, "If token is invalid, the runner is unhealthy")
+	})
+
+	t.Run("request with invalid configuration", func(t *testing.T) {
+		res, ok := c.RequestJob(brokenConfig, nil)
+		assert.Nil(t, res)
+		assert.False(t, ok)
+	})
 }
 
 func setStateForUpdateJobHandlerResponse(w http.ResponseWriter, req map[string]interface{}) {
@@ -581,31 +590,45 @@ func TestUpdateJob(t *testing.T) {
 
 	c := NewGitLabClient()
 
-	var state UpdateState
+	t.Run("update running job", func(t *testing.T) {
+		state := c.UpdateJob(config, jobCredentials, UpdateJobInfo{ID: 10, State: "running", FailureReason: ""})
+		assert.Equal(t, UpdateSucceeded, state, "Update should continue when running")
+	})
 
-	state = c.UpdateJob(config, jobCredentials, UpdateJobInfo{ID: 10, State: "running", FailureReason: ""})
-	assert.Equal(t, UpdateSucceeded, state, "Update should continue when running")
+	t.Run("update forbidden job", func(t *testing.T) {
+		state := c.UpdateJob(config, jobCredentials, UpdateJobInfo{ID: 10, State: "forbidden", FailureReason: ""})
+		assert.Equal(t, UpdateAbort, state, "Update should be aborted if the state is forbidden")
+	})
 
-	state = c.UpdateJob(config, jobCredentials, UpdateJobInfo{ID: 10, State: "forbidden", FailureReason: ""})
-	assert.Equal(t, UpdateAbort, state, "Update should be aborted if the state is forbidden")
+	t.Run("update job request invalid", func(t *testing.T) {
+		state := c.UpdateJob(config, jobCredentials, UpdateJobInfo{ID: 10, State: "other", FailureReason: ""})
+		assert.Equal(t, UpdateFailed, state, "Update should fail for badly formatted request")
+	})
 
-	state = c.UpdateJob(config, jobCredentials, UpdateJobInfo{ID: 10, State: "other", FailureReason: ""})
-	assert.Equal(t, UpdateFailed, state, "Update should fail for badly formatted request")
+	t.Run("update unknown job", func(t *testing.T) {
+		state := c.UpdateJob(config, jobCredentials, UpdateJobInfo{ID: 4, State: "state", FailureReason: ""})
+		assert.Equal(t, UpdateAbort, state, "Update should abort for unknown job")
+	})
 
-	state = c.UpdateJob(config, jobCredentials, UpdateJobInfo{ID: 4, State: "state", FailureReason: ""})
-	assert.Equal(t, UpdateAbort, state, "Update should abort for unknown job")
+	t.Run("update job with invalid configuration of Runner", func(t *testing.T) {
+		state := c.UpdateJob(brokenConfig, jobCredentials, UpdateJobInfo{ID: 4, State: "state", FailureReason: ""})
+		assert.Equal(t, UpdateAbort, state)
+	})
 
-	state = c.UpdateJob(brokenConfig, jobCredentials, UpdateJobInfo{ID: 4, State: "state", FailureReason: ""})
-	assert.Equal(t, UpdateAbort, state)
+	t.Run("send failure", func(t *testing.T) {
+		state := c.UpdateJob(config, jobCredentials, UpdateJobInfo{ID: 10, State: "failed", FailureReason: "script_failure"})
+		assert.Equal(t, UpdateSucceeded, state, "Update should continue when running")
+	})
 
-	state = c.UpdateJob(config, jobCredentials, UpdateJobInfo{ID: 10, State: "failed", FailureReason: "script_failure"})
-	assert.Equal(t, UpdateSucceeded, state, "Update should continue when running")
+	t.Run("send invalid failure reason", func(t *testing.T) {
+		state := c.UpdateJob(config, jobCredentials, UpdateJobInfo{ID: 10, State: "failed", FailureReason: "unknown_failure_reason"})
+		assert.Equal(t, UpdateFailed, state, "Update should fail for badly formatted request")
+	})
 
-	state = c.UpdateJob(config, jobCredentials, UpdateJobInfo{ID: 10, State: "failed", FailureReason: "unknown_failure_reason"})
-	assert.Equal(t, UpdateFailed, state, "Update should fail for badly formatted request")
-
-	state = c.UpdateJob(config, jobCredentials, UpdateJobInfo{ID: 10, State: "failed", FailureReason: ""})
-	assert.Equal(t, UpdateFailed, state, "Update should fail for badly formatted request")
+	t.Run("not sending failure reason for failed job", func(t *testing.T) {
+		state := c.UpdateJob(config, jobCredentials, UpdateJobInfo{ID: 10, State: "failed", FailureReason: ""})
+		assert.Equal(t, UpdateFailed, state, "Update should fail for badly formatted request")
+	})
 }
 
 func testUpdateJobKeepAliveHandler(w http.ResponseWriter, r *http.Request, t *testing.T) {
