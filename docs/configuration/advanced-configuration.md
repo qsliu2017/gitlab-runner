@@ -102,6 +102,10 @@ Example:
   session_timeout = 1800
 ```
 
+NOTE: **Note:**
+If using the GitLab Runner docker image, you will also need to expose port 8093 by
+adding `-p 8093:8093` to your [`docker run` command](../install/docker.md).
+
 ## The `[[runners]]` section
 
 This defines one runner entry.
@@ -269,16 +273,16 @@ Example:
   volumes_from = ["storage_container:ro"]
   links = ["mysql_container:mysql"]
   allowed_images = ["ruby:*", "python:*", "php:*"]
-  allowed_services = ["postgres:9.4", "postgres:latest"]
+  allowed_services = ["postgres:9", "redis:*", "mysql:*"]
   [[runners.docker.services]]
-    name: "mysql"
-    alias: "db"
+    name = "mysql"
+    alias = "db"
   [[runners.docker.services]]
-    name: "redis:2.8"
-    alias: "cache"
+    name = "redis:2.8"
+    alias = "cache"
   [[runners.docker.services]]
-    name: "postgres:9"
-    alias: "postgres-db"
+    name = "postgres:9"
+    alias = "postgres-db"
   [runners.docker.sysctls]
     "net.ipv4.ip_forward" = "1"
 ```
@@ -469,7 +473,7 @@ This defines the SSH connection parameters.
 
 Example:
 
-```
+```toml
 [runners.ssh]
   host = "my-production-server"
   port = "22"
@@ -531,7 +535,7 @@ The `OffPeakPeriods` setting contains an array of string patterns of
 time periods represented in a cron-style format. The line contains
 following fields:
 
-```
+```plaintext
 [second] [minute] [hour] [day of month] [month] [day of week] [year]
 ```
 
