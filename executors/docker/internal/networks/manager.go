@@ -58,7 +58,7 @@ func (m *manager) Create(ctx context.Context, networkMode string) (container.Net
 
 	networkName := fmt.Sprintf("%s-job-%d-network", m.build.ProjectUniqueName(), m.build.ID)
 
-	m.logger.WithField("BuildNetworkName", networkName).Debugln("Creating build network")
+	m.logger.WithField("BuildNetworkName", networkName).Debug("Creating build network")
 
 	networkResponse, err := m.client.NetworkCreate(ctx, networkName, types.NetworkCreate{})
 	if err != nil {
@@ -82,7 +82,7 @@ func (m *manager) Inspect(ctx context.Context) (types.NetworkResource, error) {
 		return types.NetworkResource{}, nil
 	}
 
-	m.log().Debugln("Inspect docker network")
+	m.log().Debug("Inspect docker network")
 
 	return m.client.NetworkInspect(ctx, m.buildNetwork.ID)
 }
@@ -96,7 +96,7 @@ func (m *manager) Cleanup(ctx context.Context) error {
 		return nil
 	}
 
-	m.log().Debugln("Removing network")
+	m.log().Debug("Removing network")
 
 	err := m.client.NetworkRemove(ctx, m.buildNetwork.ID)
 	if err != nil {
