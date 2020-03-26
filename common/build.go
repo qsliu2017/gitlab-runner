@@ -221,7 +221,6 @@ func (b *Build) StartBuild(rootDir, cacheDir string, customBuildDirEnabled, shar
 
 func (b *Build) executeStage(ctx context.Context, buildStage BuildStage, executor Executor) error {
 	b.CurrentStage = buildStage
-
 	b.Log().WithField("build_stage", buildStage).Debug("Executing build stage")
 
 	shell := executor.Shell()
@@ -229,61 +228,63 @@ func (b *Build) executeStage(ctx context.Context, buildStage BuildStage, executo
 		return errors.New("no shell defined")
 	}
 
-	var scripts []string
-
+	var subStages []BuildStage
 	if buildStage == BuildStageUserScript {
 		for _, s := range b.Steps {
+			// after_script has a separate BuildStage. See common.BuildStageAfterScript
 			if s.Name == StepNameAfterScript {
 				continue
 			}
-			script, err := GenerateShellScript(BuildStage(s.Name), *shell)
-			if err != nil {
-				return err
-			}
-			if script == "" {
-				continue
-			}
-			scripts = append(scripts, script)
+			subStages = append(subStages, s.BuildStage())
 		}
 	} else {
-		script, err := GenerateShellScript(buildStage, *shell)
-		if err != nil {
-			return err
-		}
-		if script == "" {
-			return nil
-		}
-
-		scripts = []string{script}
+		subStages = append(subStages, buildStage)
 	}
 
-	for _, s := range scripts {
+	var sections []*helpers.BuildSection
+
+	for _, s := range subStages {
+		script, err := GenerateShellScript(s, *shell)
+		if err != nil {
+			return fmt.Errorf("could not generage shell script for stage %s: %w", s, err)
+		}
+		if script == "" {
+			continue
+		}
 		cmd := ExecutorCommand{
 			Context: ctx,
-			Script:  s,
-			Stage:   buildStage,
+			Script:  script,
+			Stage:   s,
 		}
-
 		switch buildStage {
 		case BuildStageUserScript, BuildStageAfterScript: // use custom build environment
 			cmd.Predefined = false
 		default: // use a predefined build environment
 			cmd.Predefined = true
 		}
-
-		section := helpers.BuildSection{
-			Name:        string(buildStage),
+		sections = append(sections, &helpers.BuildSection{
+			Name:        string(s),
 			SkipMetrics: !b.JobResponse.Features.TraceSections,
 			Run: func() error {
-				b.logger.Println(fmt.Sprintf("%s%s%s", helpers.ANSI_BOLD_CYAN, getStageDescription(buildStage), helpers.ANSI_RESET))
+				b.logger.Println(fmt.Sprintf("%s%s%s", helpers.ANSI_BOLD_CYAN, getStageDescription(s), helpers.ANSI_RESET))
 				return executor.Run(cmd)
 			},
-		}
-		err := section.Execute(&b.logger)
+		})
+	}
+
+	if len(sections) == 0 {
+		b.Log().WithField("build_stage", buildStage).Debug("Executing build stage")
+		return nil
+	}
+
+	for _, s := range sections {
+		b.Log().WithField("build_stage", s.Name).Debug("Executing build stage")
+		err := s.Execute(&b.logger)
 		if err != nil {
-			return err
+			return fmt.Errorf("could not execute build stage: %w", err)
 		}
 	}
+
 	return nil
 }
 

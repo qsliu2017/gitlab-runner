@@ -182,6 +182,11 @@ type Step struct {
 	AllowFailure bool       `json:"allow_failure"`
 }
 
+// BuildStage returns the BuildStage corresponding to this step in the job.
+func (s Step) BuildStage() BuildStage {
+	return BuildStage(fmt.Sprintf("Step%s", s.Name))
+}
+
 type Steps []Step
 
 type Image struct {

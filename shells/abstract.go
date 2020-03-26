@@ -439,17 +439,16 @@ func (b *AbstractShell) writeCommands(w ShellWriter, commands ...string) {
 }
 
 func (b *AbstractShell) writeUserScript(w ShellWriter, info common.ShellScriptInfo, buildStage common.BuildStage) (err error) {
-	candidateStepName := common.StepName(buildStage)
 	var scriptStep *common.Step
 	for _, step := range info.Build.Steps {
-		if step.Name == candidateStepName {
+		if step.BuildStage() == buildStage {
 			scriptStep = &step
 			break
 		}
 	}
 
 	if scriptStep == nil {
-		return nil
+		return fmt.Errorf("could not find step for stage: %s", buildStage)
 	}
 
 	b.writeExports(w, info)
