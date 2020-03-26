@@ -74,7 +74,7 @@ failure and choke point if made too small. Generally, for production grade CI, t
 should not be a T2 class machine due to their bursty CPU, CPU credits and non EBS
 optimization on some sizes.
 
-### High Availability / Lower Cost of the Scaling Runner
+### High Availability and Lower Cost Potential of an ASG Based Runner
 
 In order to avoid a single point of failure, this instance should be deployed at
 least as a single instance ASG so that it will be automatically re-established
