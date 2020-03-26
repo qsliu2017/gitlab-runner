@@ -85,9 +85,10 @@ By having an ASG you can also elect to use spot instances for the docker-machine
 instance - especially if you are running two or more instances.
 
 ### Long Term Managability
+
 Over time changes will need to be made to your runners - runner tokens can be changed
-you will need to upgrade the runner version, you may need to change the runner 
-config.toml.  For all these reasons it is advised you use Infrastructure as Code 
+you will need to upgrade the runner version, you may need to change the runner
+config.toml.  For all these reasons it is advised you use Infrastructure as Code
 to build any runner infrastructure.  For AWS, CloudFormation and TerraForm are
 good choices.
 
