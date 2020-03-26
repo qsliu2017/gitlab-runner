@@ -247,7 +247,7 @@ func (b *Build) executeStage(ctx context.Context, buildStage BuildStage, executo
 	for _, s := range subStages {
 		script, err := GenerateShellScript(s, *shell)
 		if err != nil {
-			return fmt.Errorf("could not generage shell script for stage %s: %w", s, err)
+			return fmt.Errorf("could not generate shell script for stage %s: %w", s, err)
 		}
 		if script == "" {
 			continue

@@ -19,7 +19,7 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	"gitlab.com/gitlab-org/gitlab-runner/helpers/docker"
+	docker_helpers "gitlab.com/gitlab-org/gitlab-runner/helpers/docker"
 	"gitlab.com/gitlab-org/gitlab-runner/session"
 	"gitlab.com/gitlab-org/gitlab-runner/session/terminal"
 )
@@ -29,52 +29,6 @@ func init() {
 	s.On("GetName").Return("script-shell")
 	s.On("GenerateScript", mock.Anything, mock.Anything).Return("script", nil)
 	RegisterShell(&s)
-}
-
-func TestBuildRun(t *testing.T) {
-	e := MockExecutor{}
-	defer e.AssertExpectations(t)
-
-	p := MockExecutorProvider{}
-	defer p.AssertExpectations(t)
-
-	// Create executor only once
-	p.On("CanCreate").Return(true).Once()
-	p.On("GetDefaultShell").Return("bash").Once()
-	p.On("GetFeatures", mock.Anything).Return(nil).Twice()
-
-	p.On("Create").Return(&e).Once()
-
-	// We run everything once
-	e.On("Prepare", mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
-	e.On("Finish", nil).Once()
-	e.On("Cleanup").Once()
-
-	// Run script successfully
-	e.On("Shell").Return(&ShellScriptInfo{Shell: "script-shell"})
-	e.On("Run", matchBuildStage(BuildStagePrepare)).Return(nil).Once()
-	e.On("Run", matchBuildStage(BuildStageGetSources)).Return(nil).Once()
-	e.On("Run", matchBuildStage(BuildStageRestoreCache)).Return(nil).Once()
-	e.On("Run", matchBuildStage(BuildStageDownloadArtifacts)).Return(nil).Once()
-	e.On("Run", matchBuildStage(BuildStageUserScript)).Return(nil).Once()
-	e.On("Run", matchBuildStage(BuildStageAfterScript)).Return(nil).Once()
-	e.On("Run", matchBuildStage(BuildStageArchiveCache)).Return(nil).Once()
-	e.On("Run", matchBuildStage(BuildStageUploadOnSuccessArtifacts)).Return(nil).Once()
-
-	RegisterExecutorProvider("build-run-test", &p)
-
-	successfulBuild, err := GetSuccessfulBuild()
-	assert.NoError(t, err)
-	build := &Build{
-		JobResponse: successfulBuild,
-		Runner: &RunnerConfig{
-			RunnerSettings: RunnerSettings{
-				Executor: "build-run-test",
-			},
-		},
-	}
-	err = build.Run(&Config{}, &Trace{Writer: os.Stdout})
-	assert.NoError(t, err)
 }
 
 func TestBuildPredefinedVariables(t *testing.T) {
@@ -88,6 +42,10 @@ func TestBuildPredefinedVariables(t *testing.T) {
 			assert.NotEmpty(t, projectDir, "should have CI_PROJECT_DIR")
 		})
 	}
+}
+
+func TestBuildRun(t *testing.T) {
+	runSuccessfulMockBuild(t, func(options ExecutorPrepareOptions) error { return nil })
 }
 
 func runSuccessfulMockBuild(t *testing.T, prepareFn func(options ExecutorPrepareOptions) error) *Build {
@@ -115,7 +73,7 @@ func runSuccessfulMockBuild(t *testing.T, prepareFn func(options ExecutorPrepare
 	e.On("Run", matchBuildStage(BuildStageGetSources)).Return(nil).Once()
 	e.On("Run", matchBuildStage(BuildStageRestoreCache)).Return(nil).Once()
 	e.On("Run", matchBuildStage(BuildStageDownloadArtifacts)).Return(nil).Once()
-	e.On("Run", matchBuildStage(BuildStageUserScript)).Return(nil).Once()
+	e.On("Run", matchBuildStage(BuildStage("Stepscript"))).Return(nil).Once()
 	e.On("Run", matchBuildStage(BuildStageAfterScript)).Return(nil).Once()
 	e.On("Run", matchBuildStage(BuildStageArchiveCache)).Return(nil).Once()
 	e.On("Run", matchBuildStage(BuildStageUploadOnSuccessArtifacts)).Return(nil).Once()
@@ -217,7 +175,7 @@ func TestBuildRunNoModifyConfig(t *testing.T) {
 	e.On("Run", matchBuildStage(BuildStageGetSources)).Return(nil).Once()
 	e.On("Run", matchBuildStage(BuildStageRestoreCache)).Return(nil).Once()
 	e.On("Run", matchBuildStage(BuildStageDownloadArtifacts)).Return(nil).Once()
-	e.On("Run", matchBuildStage(BuildStageUserScript)).Return(nil).Once()
+	e.On("Run", matchBuildStage(BuildStage("Stepscript"))).Return(nil).Once()
 	e.On("Run", matchBuildStage(BuildStageAfterScript)).Return(nil).Once()
 	e.On("Run", matchBuildStage(BuildStageArchiveCache)).Return(nil).Once()
 	e.On("Run", matchBuildStage(BuildStageUploadOnSuccessArtifacts)).Return(nil).Once()
@@ -431,7 +389,7 @@ func TestJobFailureOnExecutionTimeout(t *testing.T) {
 
 	// Succeed a build script
 	e.On("Shell").Return(&ShellScriptInfo{Shell: "script-shell"})
-	e.On("Run", matchBuildStage(BuildStageUserScript)).Run(func(arguments mock.Arguments) {
+	e.On("Run", matchBuildStage(BuildStage("Stepscript"))).Run(func(arguments mock.Arguments) {
 		time.Sleep(2 * time.Second)
 	}).Return(nil)
 	e.On("Run", mock.Anything).Return(nil)
@@ -497,7 +455,7 @@ func TestRunFailureRunsAfterScriptAndArtifactsOnFailure(t *testing.T) {
 	e.On("Run", matchBuildStage(BuildStageGetSources)).Return(nil).Once()
 	e.On("Run", matchBuildStage(BuildStageRestoreCache)).Return(nil).Once()
 	e.On("Run", matchBuildStage(BuildStageDownloadArtifacts)).Return(nil).Once()
-	e.On("Run", matchBuildStage(BuildStageUserScript)).Return(errors.New("build fail")).Once()
+	e.On("Run", matchBuildStage(BuildStage("Stepscript"))).Return(errors.New("build fail")).Once()
 	e.On("Run", matchBuildStage(BuildStageAfterScript)).Return(nil).Once()
 	e.On("Run", matchBuildStage(BuildStageUploadOnFailureArtifacts)).Return(nil).Once()
 	e.On("Finish", errors.New("build fail")).Once()
@@ -630,7 +588,7 @@ func TestArtifactUploadRunFailure(t *testing.T) {
 	e.On("Run", matchBuildStage(BuildStageGetSources)).Return(nil).Once()
 	e.On("Run", matchBuildStage(BuildStageRestoreCache)).Return(nil).Once()
 	e.On("Run", matchBuildStage(BuildStageDownloadArtifacts)).Return(nil).Once()
-	e.On("Run", matchBuildStage(BuildStageUserScript)).Return(nil).Once()
+	e.On("Run", matchBuildStage(BuildStage("Stepscript"))).Return(nil).Once()
 	e.On("Run", matchBuildStage(BuildStageAfterScript)).Return(nil).Once()
 	e.On("Run", matchBuildStage(BuildStageArchiveCache)).Return(nil).Once()
 	e.On("Run", matchBuildStage(BuildStageUploadOnSuccessArtifacts)).Return(errors.New("upload fail")).Once()

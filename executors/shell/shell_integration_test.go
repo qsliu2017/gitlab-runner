@@ -2,6 +2,7 @@ package shell_test
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -734,7 +735,7 @@ func TestBuildWithGitSubmoduleStrategyInvalid(t *testing.T) {
 		build.Variables = append(build.Variables, common.JobVariable{Key: "GIT_SUBMODULE_STRATEGY", Value: "invalid"})
 
 		out, err := runBuildReturningOutput(t, build)
-		assert.EqualError(t, err, "unknown GIT_SUBMODULE_STRATEGY")
+		assert.EqualError(t, errors.Unwrap(err), "unknown GIT_SUBMODULE_STRATEGY")
 		assert.NotContains(t, out, "Skipping Git submodules setup")
 		assert.NotContains(t, out, "Updating/initializing submodules...")
 		assert.NotContains(t, out, "Updating/initializing submodules recursively...")
