@@ -9,6 +9,7 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -224,14 +225,20 @@ func TestCacheContainerManager_Cleanup(t *testing.T) {
 	containerClientMock.On("RemoveContainer", ctx, "container-1").
 		Return(nil).
 		Once()
+	mockLogger, hook := test.NewNullLogger()
+	mockLogger.SetLevel(logrus.DebugLevel)
 
 	m := &cacheContainerManager{
 		containerClient:    containerClientMock,
-		logger:             logrus.New(),
+		logger:             mockLogger,
 		failedContainerIDs: []string{"failed-container-1", "container-1-with-remove-error"},
 	}
 
 	done := m.Cleanup(ctx, []string{"container-1"})
 
 	<-done
+
+	assert.Equal(t, 1, len(hook.Entries))
+	assert.Equal(t, logrus.DebugLevel.String(), hook.LastEntry().Level.String())
+	assert.Equal(t, "Error while removing the container: test-error", hook.LastEntry().Message)
 }
