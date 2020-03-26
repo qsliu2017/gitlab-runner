@@ -56,7 +56,7 @@ func (m *manager) Create(ctx context.Context, networkMode string) (container.Net
 		return "", errBuildNetworkExists
 	}
 
-	networkName := fmt.Sprintf("%s-job-%d-network", m.build.ProjectUniqueName(), m.build.ID
+	networkName := fmt.Sprintf("%s-job-%d-network", m.build.ProjectUniqueName(), m.build.ID)
 	m.logger = m.logger.WithField("BuildNetworkName", networkName)
 
 	m.logger.Debug("Creating build network")
