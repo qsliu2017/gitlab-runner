@@ -88,8 +88,8 @@ instance - especially if you are running two or more instances.
 
 Over time changes will need to be made to your runners - runner tokens can be changed
 you will need to upgrade the runner version, you may need to change the runner
-config.toml.  For all these reasons it is advised you use Infrastructure as Code
-to build any runner infrastructure.  For AWS, CloudFormation and TerraForm are
+config.toml. For all these reasons it is advised you use Infrastructure as Code
+to build any runner infrastructure. For AWS, CloudFormation and TerraForm are
 good choices.
 
 NOTE: **Note:**
