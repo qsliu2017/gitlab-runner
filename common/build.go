@@ -221,6 +221,7 @@ func (b *Build) StartBuild(rootDir, cacheDir string, customBuildDirEnabled, shar
 
 func (b *Build) executeStage(ctx context.Context, buildStage BuildStage, executor Executor) error {
 	b.CurrentStage = buildStage
+
 	b.Log().WithField("build_stage", buildStage).Debug("Executing build stage")
 
 	shell := executor.Shell()
@@ -273,7 +274,6 @@ func (b *Build) executeStage(ctx context.Context, buildStage BuildStage, executo
 	}
 
 	if len(sections) == 0 {
-		b.Log().WithField("build_stage", buildStage).Debug("Executing build stage")
 		return nil
 	}
 
