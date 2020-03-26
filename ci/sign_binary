@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+
+set -e
+
+binDir="$1"
+keyPath="$2"
+certPath="$3"
+if [ ! -d "$binDir" -o ! -f "$keyPath" -o ! -f "$certPath" ]; then
+  echo
+  echo "Usage: $0 <binfile_dir> <certificate_key_file> <certificate_cert_file> <certificate_password> <platform_1> [platform_n]"
+  echo
+  exit 1
+fi
+
+certPassword="$4"
+shift 4
+
+platforms=$@
+for platform in ${platforms[@]}; do
+  platformSafeName="${platform/\//-}"
+  files=$(find "${binDir}" -name "gitlab-runner-*${platformSafeName}*")
+  for file in ${files[@]}; do
+    echo "Signing '$file'..."
+
+    unsignedPath="$(dirname "${file}")/unsigned-$(basename "${file}")"
+    mv -f "${file}" "${unsignedPath}"
+    osslsigncode sign -certs "${certPath}" -key "${keyPath}" \
+      -pass "${certPassword}" -n "GitLab Runner" -i "https://gitlab.com" \
+      -t "http://timestamp.comodoca.com/authenticode" \
+      -in "${unsignedPath}" -out "${file}"
+    osslsigncode verify "${file}"
+  done
+done
