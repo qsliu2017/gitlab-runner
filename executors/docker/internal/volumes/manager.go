@@ -106,7 +106,7 @@ func (m *manager) getAbsoluteContainerPath(dir string) (string, error) {
 }
 
 func (m *manager) appendVolumeBind(volume *parser.Volume) {
-	m.logger.Debugln(fmt.Sprintf("Using host-based %q for %q...", volume.Source, volume.Destination))
+	m.logger.Debugf("Using host-based %q for %q...", volume.Source, volume.Destination)
 
 	m.volumeBindings = append(m.volumeBindings, volume.Definition())
 }
@@ -115,7 +115,7 @@ func (m *manager) addCacheVolume(volume *parser.Volume) error {
 	// disable cache for automatic container cache,
 	// but leave it for host volumes (they are shared on purpose)
 	if m.config.DisableCache {
-		m.logger.Debugln("Cache containers feature is disabled")
+		m.logger.Debug("Cache containers feature is disabled")
 
 		return ErrCacheVolumesDisabled
 	}
@@ -176,8 +176,7 @@ func (m *manager) createContainerBasedCacheVolume(containerPath string) (string,
 		}
 	}
 
-	m.logger.WithField("ContainerID", containerID).Debugln(
-		fmt.Sprintf("Using container as cache %q...", containerPath))
+	m.logger.WithField("ContainerID", containerID).Debugf("Using container as cache %q...", containerPath)
 	m.cacheContainerIDs = append(m.cacheContainerIDs, containerID)
 
 	return containerID, nil
