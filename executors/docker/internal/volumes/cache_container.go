@@ -49,7 +49,7 @@ func (m *cacheContainerManager) FindOrCleanExisting(containerName string, contai
 
 	inspected, err := m.containerClient.ContainerInspect(m.ctx, containerName)
 	if err != nil {
-		logger.Debugf("Error while inspecting container: %v", err)
+		logger.WithError(err).Debug("Error while inspecting container)
 		return ""
 	}
 
