@@ -225,6 +225,7 @@ func TestCacheContainerManager_Cleanup(t *testing.T) {
 	containerClientMock.On("RemoveContainer", ctx, "container-1").
 		Return(nil).
 		Once()
+
 	mockLogger, hook := test.NewNullLogger()
 	mockLogger.SetLevel(logrus.DebugLevel)
 
