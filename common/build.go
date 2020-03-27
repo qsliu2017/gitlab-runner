@@ -282,8 +282,6 @@ func (b *Build) executeSubStage(ctx context.Context, subStage BuildStage, execut
 		},
 	}
 
-	b.Log().WithField("build_stage", subStage).Debug("Executing build stage")
-
 	return section.Execute(&b.logger)
 }
 
