@@ -224,11 +224,6 @@ func (b *Build) executeStage(ctx context.Context, buildStage BuildStage, executo
 
 	b.Log().WithField("build_stage", buildStage).Debug("Executing build stage")
 
-	shell := executor.Shell()
-	if shell == nil {
-		return errors.New("no shell defined")
-	}
-
 	var subStages []BuildStage
 	if buildStage == BuildStageUserScript {
 		for _, s := range b.Steps {
@@ -242,47 +237,53 @@ func (b *Build) executeStage(ctx context.Context, buildStage BuildStage, executo
 		subStages = append(subStages, buildStage)
 	}
 
-	var sections []*helpers.BuildSection
-
 	for _, s := range subStages {
-		script, err := GenerateShellScript(s, *shell)
-		if err != nil {
-			return err
-		}
-		if script == "" {
-			continue
-		}
-		cmd := ExecutorCommand{
-			Context: ctx,
-			Script:  script,
-			Stage:   s,
-		}
-		switch buildStage {
-		case BuildStageUserScript, BuildStageAfterScript: // use custom build environment
-			cmd.Predefined = false
-		default: // use a predefined build environment
-			cmd.Predefined = true
-		}
-		sections = append(sections, &helpers.BuildSection{
-			Name:        string(s),
-			SkipMetrics: !b.JobResponse.Features.TraceSections,
-			Run: func() error {
-				b.logger.Println(fmt.Sprintf("%s%s%s", helpers.ANSI_BOLD_CYAN, getStageDescription(s), helpers.ANSI_RESET))
-				return executor.Run(cmd)
-			},
-		})
+		b.executeSubStage(ctx, s, executor)
 	}
 
-	if len(sections) == 0 {
+	return nil
+}
+
+func (b *Build) executeSubStage(ctx context.Context, subStage BuildStage, executor Executor) error {
+	shell := executor.Shell()
+	if shell == nil {
+		return errors.New("no shell defined")
+	}
+
+	script, err := GenerateShellScript(subStage, *shell)
+	if err != nil {
+		return err
+	}
+	if script == "" {
 		return nil
 	}
 
-	for _, s := range sections {
-		b.Log().WithField("build_stage", s.Name).Debug("Executing build stage")
-		err := s.Execute(&b.logger)
-		if err != nil {
-			return err
-		}
+	cmd := ExecutorCommand{
+		Context: ctx,
+		Script:  script,
+		Stage:   subStage,
+	}
+	switch subStage {
+	case BuildStageUserScript, BuildStageAfterScript: // use custom build environment
+		cmd.Predefined = false
+	default: // use a predefined build environment
+		cmd.Predefined = true
+	}
+
+	section := &helpers.BuildSection{
+		Name:        string(subStage),
+		SkipMetrics: !b.JobResponse.Features.TraceSections,
+		Run: func() error {
+			b.logger.Println(fmt.Sprintf("%s%s%s", helpers.ANSI_BOLD_CYAN, getStageDescription(s), helpers.ANSI_RESET))
+			return executor.Run(cmd)
+		},
+	}
+
+	b.Log().WithField("build_stage", subStage).Debug("Executing build stage")
+
+	err = section.Execute(&b.logger)
+	if err != nil {
+		return err
 	}
 
 	return nil
