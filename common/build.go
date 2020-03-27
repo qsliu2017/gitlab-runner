@@ -269,7 +269,7 @@ func (b *Build) executeSubStage(ctx context.Context, subStage BuildStage, execut
 	switch subStage {
 	case BuildStageUserScript, BuildStageAfterScript: // use custom build environment
 		cmd.Predefined = false
-	default: // use a predefined build environment
+	default: // all other stages use a predefined build environment
 		cmd.Predefined = true
 	}
 
@@ -284,12 +284,7 @@ func (b *Build) executeSubStage(ctx context.Context, subStage BuildStage, execut
 
 	b.Log().WithField("build_stage", subStage).Debug("Executing build stage")
 
-	err = section.Execute(&b.logger)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return section.Execute(&b.logger)
 }
 
 func getStageDescription(stage BuildStage) string {
