@@ -58,7 +58,7 @@ func (m *cacheContainerManager) FindOrCleanExisting(containerName string, contai
 	if !ok {
 		logger.Debugf("Removing broken cache container for %q path", containerPath)
 		err = m.containerClient.RemoveContainer(m.ctx, inspected.ID)
-		logger.Debugf("Cache container for %q path removed with %v", containerPath, err)
+		logger.WithError(err).Debugf("Cache container for %q path removed", containerPath)
 
 		return ""
 	}
