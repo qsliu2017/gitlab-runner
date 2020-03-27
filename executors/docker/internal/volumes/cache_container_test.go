@@ -241,5 +241,5 @@ func TestCacheContainerManager_Cleanup(t *testing.T) {
 
 	assert.Equal(t, 1, len(hook.Entries))
 	assert.Equal(t, logrus.DebugLevel.String(), hook.LastEntry().Level.String())
-	assert.Equal(t, "Error while removing the container: test-error", hook.LastEntry().Message)
+	assert.Equal(t, "Failed to remove container", hook.LastEntry().Message)
 }
