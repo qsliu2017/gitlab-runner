@@ -153,7 +153,9 @@ func (m *cacheContainerManager) remove(ctx context.Context, wg *sync.WaitGroup, 
 	go func() {
 		err := m.containerClient.RemoveContainer(ctx, id)
 		if err != nil {
-			m.logger.WithField("ContainerID", id).Debugf("Error while removing the container: %v", err)
+			m.logger.WithField("ContainerID", id).
+				WithError(err).
+				Debug("Failed to remove container")
 		}
 		wg.Done()
 	}()
