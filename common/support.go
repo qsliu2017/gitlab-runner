@@ -42,6 +42,8 @@ const (
 var (
 	gitLabComChain        string
 	gitLabComChainFetched *abool.AtomicBool
+	releaseScript         = []string{"echo release"}
+	afterScript           = []string{"echo after_script"}
 )
 
 func init() {
@@ -202,6 +204,18 @@ func getBuildResponse(repoURL string, commands []string) JobResponse {
 			Step{
 				Name:         StepNameScript,
 				Script:       commands,
+				When:         StepWhenAlways,
+				AllowFailure: false,
+			},
+			Step{
+				Name:         StepNameRelease,
+				Script:       releaseScript,
+				When:         StepWhenAlways,
+				AllowFailure: false,
+			},
+			Step{
+				Name:         StepNameAfterScript,
+				Script:       afterScript,
 				When:         StepWhenAlways,
 				AllowFailure: false,
 			},

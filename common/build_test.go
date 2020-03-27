@@ -74,6 +74,7 @@ func runSuccessfulMockBuild(t *testing.T, prepareFn func(options ExecutorPrepare
 	e.On("Run", matchBuildStage(BuildStageRestoreCache)).Return(nil).Once()
 	e.On("Run", matchBuildStage(BuildStageDownloadArtifacts)).Return(nil).Once()
 	e.On("Run", matchBuildStage(BuildStage("Stepscript"))).Return(nil).Once()
+	e.On("Run", matchBuildStage(BuildStage("Steprelease"))).Return(nil).Once()
 	e.On("Run", matchBuildStage(BuildStageAfterScript)).Return(nil).Once()
 	e.On("Run", matchBuildStage(BuildStageArchiveCache)).Return(nil).Once()
 	e.On("Run", matchBuildStage(BuildStageUploadOnSuccessArtifacts)).Return(nil).Once()
@@ -176,6 +177,7 @@ func TestBuildRunNoModifyConfig(t *testing.T) {
 	e.On("Run", matchBuildStage(BuildStageRestoreCache)).Return(nil).Once()
 	e.On("Run", matchBuildStage(BuildStageDownloadArtifacts)).Return(nil).Once()
 	e.On("Run", matchBuildStage(BuildStage("Stepscript"))).Return(nil).Once()
+	e.On("Run", matchBuildStage(BuildStage("Steprelease"))).Return(nil).Once()
 	e.On("Run", matchBuildStage(BuildStageAfterScript)).Return(nil).Once()
 	e.On("Run", matchBuildStage(BuildStageArchiveCache)).Return(nil).Once()
 	e.On("Run", matchBuildStage(BuildStageUploadOnSuccessArtifacts)).Return(nil).Once()
@@ -392,6 +394,7 @@ func TestJobFailureOnExecutionTimeout(t *testing.T) {
 	e.On("Run", matchBuildStage(BuildStage("Stepscript"))).Run(func(arguments mock.Arguments) {
 		time.Sleep(2 * time.Second)
 	}).Return(nil)
+	e.On("Run", matchBuildStage(BuildStage("Steprelease"))).Return(nil)
 	e.On("Run", mock.Anything).Return(nil)
 	e.On("Finish", mock.Anything).Once()
 
@@ -583,12 +586,13 @@ func TestArtifactUploadRunFailure(t *testing.T) {
 	e.On("Cleanup")
 
 	// Successful build script
-	e.On("Shell").Return(&ShellScriptInfo{Shell: "script-shell"}).Times(8)
+	e.On("Shell").Return(&ShellScriptInfo{Shell: "script-shell"}).Times(9)
 	e.On("Run", matchBuildStage(BuildStagePrepare)).Return(nil).Once()
 	e.On("Run", matchBuildStage(BuildStageGetSources)).Return(nil).Once()
 	e.On("Run", matchBuildStage(BuildStageRestoreCache)).Return(nil).Once()
 	e.On("Run", matchBuildStage(BuildStageDownloadArtifacts)).Return(nil).Once()
 	e.On("Run", matchBuildStage(BuildStage("Stepscript"))).Return(nil).Once()
+	e.On("Run", matchBuildStage(BuildStage("Steprelease"))).Return(nil).Once()
 	e.On("Run", matchBuildStage(BuildStageAfterScript)).Return(nil).Once()
 	e.On("Run", matchBuildStage(BuildStageArchiveCache)).Return(nil).Once()
 	e.On("Run", matchBuildStage(BuildStageUploadOnSuccessArtifacts)).Return(errors.New("upload fail")).Once()
