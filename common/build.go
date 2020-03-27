@@ -236,9 +236,16 @@ func (b *Build) executeStage(ctx context.Context, buildStage BuildStage, executo
 	} else {
 		subStages = append(subStages, buildStage)
 	}
+	var predefinedEnv bool
+	switch buildStage {
+	case BuildStageUserScript, BuildStageAfterScript: // use custom build environment
+		predefinedEnv = false
+	default: // all other stages use a predefined build environment
+		predefinedEnv = true
+	}
 
 	for _, s := range subStages {
-		err := b.executeSubStage(ctx, s, executor)
+		err := b.executeSubStage(ctx, s, executor, predefinedEnv)
 		if err != nil {
 			return err
 		}
@@ -247,7 +254,7 @@ func (b *Build) executeStage(ctx context.Context, buildStage BuildStage, executo
 	return nil
 }
 
-func (b *Build) executeSubStage(ctx context.Context, subStage BuildStage, executor Executor) error {
+func (b *Build) executeSubStage(ctx context.Context, subStage BuildStage, executor Executor, predefinedEnv bool) error {
 	shell := executor.Shell()
 	if shell == nil {
 		return errors.New("no shell defined")
@@ -257,20 +264,17 @@ func (b *Build) executeSubStage(ctx context.Context, subStage BuildStage, execut
 	if err != nil {
 		return err
 	}
+
+	// Nothing to execute
 	if script == "" {
 		return nil
 	}
 
 	cmd := ExecutorCommand{
-		Context: ctx,
-		Script:  script,
-		Stage:   subStage,
-	}
-	switch subStage {
-	case BuildStageUserScript, BuildStageAfterScript: // use custom build environment
-		cmd.Predefined = false
-	default: // all other stages use a predefined build environment
-		cmd.Predefined = true
+		Context:    ctx,
+		Script:     script,
+		Stage:      subStage,
+		Predefined: predefinedEnv,
 	}
 
 	section := &helpers.BuildSection{
