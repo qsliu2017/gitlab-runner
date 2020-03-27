@@ -277,7 +277,7 @@ func (b *Build) executeSubStage(ctx context.Context, subStage BuildStage, execut
 		Name:        string(subStage),
 		SkipMetrics: !b.JobResponse.Features.TraceSections,
 		Run: func() error {
-			b.logger.Println(fmt.Sprintf("%s%s%s", helpers.ANSI_BOLD_CYAN, getStageDescription(s), helpers.ANSI_RESET))
+			b.logger.Println(fmt.Sprintf("%s%s%s", helpers.ANSI_BOLD_CYAN, getStageDescription(subStage), helpers.ANSI_RESET))
 			return executor.Run(cmd)
 		},
 	}
