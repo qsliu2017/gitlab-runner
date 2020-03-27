@@ -33,42 +33,38 @@ variables:
 
 sign_helper images:
   extends:
-    - .merge_request_pipelines
-    - .docker
+  - .merge_request_pipelines
+  - .docker
   stage: package
   script:
-    - apt-get update
-    - apt-get install -y osslsigncode
-    - ci/sign_binary dockerfiles/build/binaries/
+  - ci/sign_binary dockerfiles/build/binaries/
       "${WINDOWS_CODE_SIGN_KEY_PATH}" "${WINDOWS_CODE_SIGN_CERT_PATH}"
       "${WINDOWS_CODE_SIGN_PASSWORD}"
       x86_64-windows
   needs:
-    - 'helper images'
+  - 'helper images'
   artifacts:
     paths:
-      - out/helper-images/
-      - dockerfiles/build/binaries/gitlab-runner-helper*
-      - .gopath/bin
-      - .gopath/.ok
+    - out/helper-images/
+    - dockerfiles/build/binaries/gitlab-runner-helper*
+    - .gopath/bin
+    - .gopath/.ok
     expire_in: 7d
 
 sign_binaries windows/386 windows/amd64:
   extends:
-    - .merge_request_pipelines # TODO: Change this before merging
-    - .except_docs
+  - .merge_request_pipelines
+  - .except_docs
   stage: package
   needs:
-    - 'binaries windows/386 windows/amd64'
+  - 'binaries windows/386 windows/amd64'
   script:
-    - apt-get update
-    - apt-get install -y osslsigncode
-    - export platforms=( $(echo $CI_JOB_NAME | sed 's|sign_binaries ||') )
-    - ci/sign_binary out/binaries
+  - export platforms=( $(echo $CI_JOB_NAME | sed 's|sign_binaries ||') )
+  - ci/sign_binary out/binaries
       "${WINDOWS_CODE_SIGN_KEY_PATH}" "${WINDOWS_CODE_SIGN_CERT_PATH}"
       "${WINDOWS_CODE_SIGN_PASSWORD}"
       ${platforms[@]}
   artifacts:
     paths:
-      - out/binaries/gitlab-runner*
+      - out/binaries/
     expire_in: 7d

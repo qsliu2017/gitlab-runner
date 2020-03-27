@@ -1,33 +1,44 @@
 #!/usr/bin/env bash
 
-set -e
+set -eo pipefail
 
+cmd="$0"
 binDir="$1"
 keyPath="$2"
 certPath="$3"
-if [ ! -d "$binDir" -o ! -f "$keyPath" -o ! -f "$certPath" ]; then
-  echo
-  echo "Usage: $0 <binfile_dir> <certificate_key_file> <certificate_cert_file> <certificate_password> <platform_1> [platform_n]"
-  echo
-  exit 1
-fi
-
 certPassword="$4"
 shift 4
+if [[ ! -d "$binDir" || ! -f "$keyPath" || ! -f "$certPath" ]]; then
+    echo
+    printf "Usage: %s <binfile_dir> <certificate_key_file> <certificate_cert_file> <certificate_password> <platform_1> [platform_n]\n" "${cmd}"
+    [ -d "${binDir}" ] || echo "Invalid binfile_dir ${binDir}"
+    [ -f "${keyPath}" ] || echo "Invalid certificate_key_file ${keyPath}"
+    [ -f "${certPath}" ] || echo "Invalid certificate_cert_file ${certPath}"
+    echo
+    exit 1
+fi
 
 platforms=$@
 for platform in ${platforms[@]}; do
-  platformSafeName="${platform/\//-}"
-  files=$(find "${binDir}" -name "gitlab-runner-*${platformSafeName}*")
-  for file in ${files[@]}; do
-    echo "Signing '$file'..."
+    platformSafeName="${platform/\//-}"
+    files=$(find "${binDir}" -name "gitlab-runner-*${platformSafeName}*")
+    for file in ${files[@]}; do
+        echo "Signing '$file'..."
 
-    unsignedPath="$(dirname "${file}")/unsigned-$(basename "${file}")"
-    mv -f "${file}" "${unsignedPath}"
-    osslsigncode sign -certs "${certPath}" -key "${keyPath}" \
-      -pass "${certPassword}" -n "GitLab Runner" -i "https://gitlab.com" \
-      -t "http://timestamp.comodoca.com/authenticode" \
-      -in "${unsignedPath}" -out "${file}"
-    osslsigncode verify "${file}"
-  done
+        # Rename unsigned file so that the signed file can take its place
+        unsignedPath="$(dirname "${file}")/unsigned-$(basename "${file}")"
+        mv -f "${file}" "${unsignedPath}"
+
+        # Sign binary
+        osslsigncode sign -certs "${certPath}" -key "${keyPath}" \
+            -pass "${certPassword}" -n "GitLab Runner" -i "https://gitlab.com" \
+            -t "http://timestamp.comodoca.com/authenticode" \
+            -in "${unsignedPath}" -out "${file}"
+
+        # Print signature details
+        osslsigncode verify "${file}"
+
+        # Discard unsigned binary
+        rm "${unsignedPath}"
+    done
 done
