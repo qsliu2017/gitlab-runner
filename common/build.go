@@ -238,7 +238,10 @@ func (b *Build) executeStage(ctx context.Context, buildStage BuildStage, executo
 	}
 
 	for _, s := range subStages {
-		b.executeSubStage(ctx, s, executor)
+		err := b.executeSubStage(ctx, s, executor)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
