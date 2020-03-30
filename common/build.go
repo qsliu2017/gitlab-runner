@@ -238,9 +238,9 @@ func (b *Build) executeStage(ctx context.Context, buildStage BuildStage, executo
 	}
 	var predefinedEnv bool
 	switch buildStage {
-	case BuildStageUserScript, BuildStageAfterScript: // use custom build environment
+	case BuildStageUserScript, BuildStageAfterScript:
 		predefinedEnv = false
-	default: // all other stages use a predefined build environment
+	default:
 		predefinedEnv = true
 	}
 
