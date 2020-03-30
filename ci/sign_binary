@@ -9,6 +9,11 @@ certPath="$3"
 certPassword="$4"
 shift 4
 if [[ ! -d "$binDir" || ! -f "$keyPath" || ! -f "$certPath" ]]; then
+    if [[ -d "$binDir" && -z "$certPath" ]]; then
+        echo "No certificate file provided. Ignoring."
+        exit 0
+    fi
+
     echo
     printf "Usage: %s <binfile_dir> <certificate_key_file> <certificate_cert_file> <certificate_password> <platform_1> [platform_n]\n" "${cmd}"
     [ -d "${binDir}" ] || echo "Invalid binfile_dir ${binDir}"
