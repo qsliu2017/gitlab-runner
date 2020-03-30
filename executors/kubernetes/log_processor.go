@@ -2,12 +2,16 @@ package kubernetes
 
 import (
 	"bufio"
+	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"strings"
 	"sync"
 	"time"
+	"unicode"
+	"unicode/utf8"
 
 	"github.com/jpillora/backoff"
 	api "k8s.io/api/core/v1"
@@ -16,6 +20,8 @@ import (
 
 	"gitlab.com/gitlab-org/gitlab-runner/common"
 )
+
+const maxLogLineBufferSize = 16 * 1024
 
 type logStreamProvider interface {
 	LogStream(since *time.Time) (io.ReadCloser, error)
@@ -200,8 +206,64 @@ func (l *kubernetesLogProcessor) readLogs(
 	}
 }
 
+func splitLinesStartingWithDateWithMaxBufferSize(maxBufferSize int, maxLineBufferSize int) bufio.SplitFunc {
+	var lineBuf bytes.Buffer
+	return func(data []byte, atEOF bool) (int, []byte, error) {
+		if len(data) <= maxBufferSize {
+			return bufio.ScanLines(data, atEOF)
+		}
+
+		offset := bufferDateOffset(data)
+		maxBufferSizeWithDateOffset := maxBufferSize + offset
+		if maxBufferSizeWithDateOffset > len(data) {
+			maxBufferSizeWithDateOffset = len(data)
+		}
+
+		advance, token, err := bufio.ScanLines(data[:maxBufferSizeWithDateOffset], atEOF)
+		if advance == 0 && token == nil && err == nil {
+			if lineBuf.Len() == 0 {
+				lineBuf.Write(data[:offset])
+			}
+
+			lineBuf.Write(data[offset:maxBufferSize])
+			return maxBufferSizeWithDateOffset, nil, nil
+		}
+
+		if lineBuf.Len() > 0 {
+			token = append(lineBuf.Bytes(), token[offset:]...)
+			lineBuf.Reset()
+		}
+
+		if len(token) > maxLineBufferSize {
+			return 0, nil, errors.New("exceeded log line limit")
+		}
+
+		return advance, token, err
+	}
+}
+
+func bufferDateOffset(buf []byte) int {
+	firstChar, _ := utf8.DecodeRune(buf)
+	if !unicode.IsDigit(firstChar) {
+		return 0
+	}
+
+	dateEndIndex := bytes.Index(buf, []byte(" "))
+	if dateEndIndex == -1 {
+		return 0
+	}
+
+	_, err := time.Parse(time.RFC3339Nano, string(buf[:dateEndIndex]))
+	if err != nil {
+		return 0
+	}
+
+	return dateEndIndex + 1
+}
+
 func (l *kubernetesLogProcessor) scan(ctx context.Context, logs io.Reader) (*bufio.Scanner, <-chan string) {
 	logsScanner := bufio.NewScanner(logs)
+	logsScanner.Split(splitLinesStartingWithDateWithMaxBufferSize(maxLogLineBufferSize, common.DefaultTracePatchLimit))
 
 	linesCh := make(chan string)
 	go func() {
