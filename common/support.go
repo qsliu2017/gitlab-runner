@@ -205,18 +205,6 @@ func getBuildResponse(repoURL string, commands []string) JobResponse {
 				When:         StepWhenAlways,
 				AllowFailure: false,
 			},
-			Step{
-				Name:         StepNameRelease,
-				Script:       []string{},
-				When:         StepWhenAlways,
-				AllowFailure: false,
-			},
-			Step{
-				Name:         StepNameAfterScript,
-				Script:       []string{},
-				When:         StepWhenAlways,
-				AllowFailure: false,
-			},
 		},
 	}
 }
