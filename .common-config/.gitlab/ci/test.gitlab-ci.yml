@@ -1,0 +1,29 @@
+.common.code_quality:
+  stage: test
+  image: golangci/golangci-lint:v${TOOL_VERSION}
+  variables:
+    TOOL_VERSION: 1.24.0
+    REPORT_FILE: gl-code-quality-report.json
+    LINT_FLAGS: "--color never --deadline 15m"
+    OUT_FORMAT: code-climate
+  script:
+  - make lint | tee ${REPORT_FILE}
+  timeout: 15 minutes
+  artifacts:
+    reports:
+      codequality: ${REPORT_FILE}
+    paths:
+    - ${REPORT_FILE}
+    expire_in: 7d
+  cache: {}
+
+.common.check_mocks:
+  stage: test
+  script:
+  - make check_mocks
+
+.common.check_modules:
+  stage: test
+  cache: {}
+  script:
+  - make check_modules

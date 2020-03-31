@@ -1,0 +1,55 @@
+run:
+  modules-download-mode: vendor
+  tests: true
+
+linters-settings:
+  goconst:
+    min-occurrences: 3
+
+linters:
+  disable-all: true
+  enable:
+    - bodyclose
+    - dogsled
+    - goconst
+    - gocyclo
+    - goimports
+    - golint
+    - govet
+    - ineffassign
+    - misspell
+    - prealloc
+    - structcheck
+    - typecheck
+    - unconvert
+    - varcheck
+    - whitespace
+
+issues:
+  # Excluding configuration per-path, per-linter, per-text and per-source
+  exclude-rules:
+    - path: helpers/shell_escape.go
+      linters:
+        - gocyclo
+    - path: helpers/shell/legacy_expand.go
+      linters:
+        - gocyclo
+    - path: executors/kubernetes/kubernetes_test.go
+      linters:
+        - gocyclo
+    - path: executors/kubernetes/util_test.go
+      linters:
+        - gocyclo
+    - path: executors/kubernetes/exec_test.go
+      linters:
+        - gocyclo
+    - path: executors/parallels/
+      linters:
+        - gocyclo
+    - path: executors/virtualbox/
+      linters:
+        - gocyclo
+    - path: referees/prometheus_api.go
+      linters:
+        - deadcode
+        - unused

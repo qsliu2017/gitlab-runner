@@ -1,9 +1,6 @@
 NAME ?= gitlab-runner
 export PACKAGE_NAME ?= $(NAME)
 export VERSION := $(shell ./ci/version)
-REVISION := $(shell git rev-parse --short=8 HEAD || echo unknown)
-BRANCH := $(shell git show-ref | grep "$(REVISION)" | grep -v HEAD | awk '{print $$2}' | sed 's|refs/remotes/origin/||' | sed 's|refs/heads/||' | sort | head -n 1)
-BUILT := $(shell date -u +%Y-%m-%dT%H:%M:%S%z)
 export TESTFLAGS ?= -cover
 
 LATEST_STABLE_TAG := $(shell git -c versionsort.prereleaseSuffix="-rc" -c versionsort.prereleaseSuffix="-RC" tag -l "v*.*.*" --sort=-v:refname | awk '!/rc/' | head -n 1)
@@ -45,24 +42,24 @@ GO_LDFLAGS ?= -X $(COMMON_PACKAGE_NAMESPACE).NAME=$(PACKAGE_NAME) -X $(COMMON_PA
 GO_FILES ?= $(shell find . -name '*.go')
 export CGO_ENABLED ?= 0
 
-
-# Development Tools
-GOX = gox
-MOCKERY = mockery
-DEVELOPMENT_TOOLS = $(GOX) $(MOCKERY)
-
 RELEASE_INDEX_GEN_VERSION ?= latest
-RELEASE_INDEX_GENERATOR ?= .tmp/release-index-gen-$(RELEASE_INDEX_GEN_VERSION)
+releaseIndexGen ?= .tmp/release-index-gen-$(RELEASE_INDEX_GEN_VERSION)
 GITLAB_CHANGELOG_VERSION ?= latest
-GITLAB_CHANGELOG = .tmp/gitlab-changelog-$(GITLAB_CHANGELOG_VERSION)
+gitlabChangelog = .tmp/gitlab-changelog-$(GITLAB_CHANGELOG_VERSION)
+GITLAB_COMMON_CONFIG_VERSION ?= latest
+gitlabCommonConfig = .tmp/runner-common-config-$(GITLAB_COMMON_CONFIG_VERSION)
 
 .PHONY: clean version mocks
 
-all: deps helper-docker build_all
-
+include .common-config/common.mk
 include Makefile.runner_helper.mk
 include Makefile.build.mk
 include Makefile.package.mk
+
+# Development Tools
+DEVELOPMENT_TOOLS = $(gox) $(mockery)
+
+all: deps helper-docker build_all
 
 help:
 	# Commands:
@@ -96,12 +93,15 @@ version:
 	@echo RPM platforms: $(RPM_PLATFORMS)
 	@echo IS_LATEST: $(IS_LATEST)
 
-deps: $(DEVELOPMENT_TOOLS)
+.PHONY: update-common-config
+update-common-config: TARGET_DIR = .common-config
+update-common-config:
+	@rm -rf $(TARGET_DIR) && \
+	git clone --depth 1 --single-branch git@gitlab.com:gitlab-org/ci-cd/runner-common-config.git $(TARGET_DIR) && \
+	rm -rf $(TARGET_DIR)/.git && \
+	$(TARGET_DIR)/generate.sh
 
-lint: OUT_FORMAT ?= colored-line-number
-lint: LINT_FLAGS ?=
-lint:
-	@golangci-lint run ./... --out-format $(OUT_FORMAT) $(LINT_FLAGS)
+deps: $(DEVELOPMENT_TOOLS)
 
 lint-docs:
 	@scripts/lint-docs
@@ -153,13 +153,7 @@ mocks: $(MOCKERY)
 	mockery -dir=./session -all -inpkg
 	mockery -dir=./shells -all -inpkg
 
-check_mocks:
-	# Checking if mocks are up-to-date
-	@$(MAKE) mocks
-	# Checking the differences
-	@git --no-pager diff --compact-summary --exit-code -- ./helpers/service/mocks \
-		$(shell git ls-files | grep 'mock_' | grep -v 'vendor/') && \
-		echo "Mocks up-to-date!"
+check_mocks: MOCK_TARGETS = "./helpers/service/mocks $(shell git ls-files | grep 'mock_' | grep -v 'vendor/')"
 
 test-docker:
 	$(MAKE) test-docker-image IMAGE=centos:6 TYPE=rpm
@@ -254,18 +248,9 @@ copy_helper_binaries:
 	@mkdir -p out/binaries/gitlab-runner-helper
 	@cp dockerfiles/build/binaries/gitlab-runner-helper* out/binaries/gitlab-runner-helper/
 
-prepare_index: export CI_COMMIT_REF_NAME ?= $(BRANCH)
-prepare_index: export CI_COMMIT_SHA ?= $(REVISION)
-prepare_index: $(RELEASE_INDEX_GENERATOR)
-	# Preparing index file
-	@$(RELEASE_INDEX_GENERATOR) -working-directory out/ \
-						      -project-version $(VERSION) \
-						      -project-git-ref $(CI_COMMIT_REF_NAME) \
-						      -project-git-revision $(CI_COMMIT_SHA) \
-						      -project-name "GitLab Runner" \
-						      -project-repo-url "https://gitlab.com/gitlab-org/gitlab-runner" \
-						      -gpg-key-env GPG_KEY \
-						      -gpg-password-env GPG_PASSPHRASE
+prepare_index: export WORKING_DIRECTORY ?= out/
+prepare_index: export PROJECT_NAME ?= "GitLab Runner"
+prepare_index: export PROJECT_REPO_URL ?= "https://gitlab.com/gitlab-org/gitlab-runner"
 
 release_docker_images: export RUNNER_BINARY := out/binaries/gitlab-runner-linux-amd64
 release_docker_images:
@@ -298,42 +283,6 @@ development_setup:
 	test -d tmp/gitlab-test || git clone https://gitlab.com/gitlab-org/ci-cd/tests/gitlab-test.git tmp/gitlab-test
 	if prlctl --version ; then $(MAKE) -C tests/ubuntu parallels ; fi
 	if vboxmanage --version ; then $(MAKE) -C tests/ubuntu virtualbox ; fi
-
-check_modules:
-	# Check if there is any difference in vendor/
-	@git status -sb vendor/ > /tmp/vendor-$${CI_JOB_ID}-before
-	@go mod vendor
-	@git status -sb vendor/ > /tmp/vendor-$${CI_JOB_ID}-after
-	@diff -U0 /tmp/vendor-$${CI_JOB_ID}-before /tmp/vendor-$${CI_JOB_ID}-after
-
-	# check go.sum
-	@git diff go.sum > /tmp/gosum-$${CI_JOB_ID}-before
-	@go mod tidy
-	@git diff go.sum > /tmp/gosum-$${CI_JOB_ID}-after
-	@diff -U0 /tmp/gosum-$${CI_JOB_ID}-before /tmp/gosum-$${CI_JOB_ID}-after
-
-# development tools
-$(GOX):
-	go get github.com/mitchellh/gox
-
-$(MOCKERY):
-	go get github.com/vektra/mockery/cmd/mockery
-
-$(RELEASE_INDEX_GENERATOR): OS_TYPE ?= $(shell uname -s | tr '[:upper:]' '[:lower:]')
-$(RELEASE_INDEX_GENERATOR): DOWNLOAD_URL = "https://storage.googleapis.com/gitlab-runner-tools/release-index-generator/$(RELEASE_INDEX_GEN_VERSION)/release-index-gen-$(OS_TYPE)-amd64"
-$(RELEASE_INDEX_GENERATOR):
-	# Installing $(DOWNLOAD_URL) as $(RELEASE_INDEX_GENERATOR)
-	@mkdir -p $(shell dirname $(RELEASE_INDEX_GENERATOR))
-	@curl -sL "$(DOWNLOAD_URL)" -o "$(RELEASE_INDEX_GENERATOR)"
-	@chmod +x "$(RELEASE_INDEX_GENERATOR)"
-
-$(GITLAB_CHANGELOG): OS_TYPE ?= $(shell uname -s | tr '[:upper:]' '[:lower:]')
-$(GITLAB_CHANGELOG): DOWNLOAD_URL = "https://storage.googleapis.com/gitlab-runner-tools/gitlab-changelog/$(GITLAB_CHANGELOG_VERSION)/gitlab-changelog-$(OS_TYPE)-amd64"
-$(GITLAB_CHANGELOG):
-	# Installing $(DOWNLOAD_URL) as $(GITLAB_CHANGELOG)
-	@mkdir -p $(shell dirname $(GITLAB_CHANGELOG))
-	@curl -sL "$(DOWNLOAD_URL)" -o "$(GITLAB_CHANGELOG)"
-	@chmod +x "$(GITLAB_CHANGELOG)"
 
 clean:
 	-$(RM) -rf $(TARGET_DIR)

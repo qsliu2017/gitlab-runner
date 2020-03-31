@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+
+set -eo pipefail
+
+if command -v golangci-lint > /dev/null; then
+    golangci-lint run ./... --out-format ${OUT_FORMAT} ${LINT_FLAGS}
+    version=$(golangci-lint --version)
+    if ! [[ "${version}" =~ "${TOOL_VERSION}" ]]; then
+        echo "WARNING: The installed version of golangci-lint is not the recommended version ${TOOL_VERSION}!" > /dev/stderr
+        echo "${version}"
+    fi
+else
+    echo "golangci-lint does not seem to be installed. Please install it at https://github.com/golangci/golangci-lint#install"
+fi

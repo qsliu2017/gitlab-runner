@@ -1,0 +1,8 @@
+variables:
+  DOCKER_VERSION: "19.03.5"
+  GO_VERSION: "1.13.8"
+  RELEASE_INDEX_GEN_VERSION: "latest"
+  GOPATH: $CI_PROJECT_DIR/.go
+
+include:
+- local: /.common-config/.gitlab/ci/test.gitlab-ci.yml

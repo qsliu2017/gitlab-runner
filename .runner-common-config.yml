@@ -1,0 +1,5 @@
+ToolDirectory: ".common-config"
+LintConfig:
+  BaseFilePath: ".golangci.yml"
+  TargetFilePath: ".golangci.yml"
+  OverrideFilePath: ".golangci.override.yml"
