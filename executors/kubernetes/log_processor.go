@@ -206,36 +206,96 @@ func (l *kubernetesLogProcessor) readLogs(
 	}
 }
 
+// splitLinesStartingWithDateWithMaxBufferSize splits docker logs at a specified buffer size.
+// As seen here https://github.com/moby/moby/issues/32923 the default log line limit for the docker daemon is
+// 16k. This limit is at the time of writing this unconfigurable and appears to continue being that way in the future.
+// This log line limit splits log lines at the 16k byte mark, so if we have a log line longer than 16k it will be split
+// into two lines. For now, this method relies that we know this limit to be 16k. If docker ever makes this configurable
+// we could make it as well.
+// In addition to the lines splitting there's another issue when using --timestamps with docker/kubectl logs.
+// It's explained here https://github.com/kubernetes/kubernetes/issues/77603. As an end result we have the following logs
+// (LOG-TIMESTAMP) THE-FIRST-16k-OF-THE-LOG-LINE(LOG-TIMESTAMP) THE-REST-OF-THE-LOG-LINE
+// Additionally the (LOG-TIMESTAMP) is the same for both lines. Usually docker gives us different timestamps for each line
+// but here we get the timestamp of the start of the line.
+// This function takes care to concatenate split log lines into a single line that correctly starts with a single timestamp
+// which is the expected behavior from docker/kubectl logs. The only limitation is that the line can't be larger than maxLineBufferSize.
+// If https://github.com/kubernetes/kubernetes/issues/77603 gets fixed this function will continue working correctly.
+// IMPORTANT: maxBufferSize must be smaller than the Scanner's buffer size, which by default is bufio.MaxScanTokenSize.
+// otherwise bufio.ErrTooLong will be hit.
 func splitLinesStartingWithDateWithMaxBufferSize(maxBufferSize int, maxLineBufferSize int) bufio.SplitFunc {
 	var lineBuf bytes.Buffer
 	return func(data []byte, atEOF bool) (int, []byte, error) {
-		if len(data) <= maxBufferSize {
-			return bufio.ScanLines(data, atEOF)
-		}
-
+		// Get the end of the timestamp the log line is in the format
+		// 2020-04-01T00:39:20.505277986Z log_line
+		// if the data doesn't start with a timestamp the offset will be 0.
+		// In that case, this means this is a continuation of the previous line.
 		offset := bufferDateOffset(data)
 		maxBufferSizeWithDateOffset := maxBufferSize + offset
 		if maxBufferSizeWithDateOffset > len(data) {
 			maxBufferSizeWithDateOffset = len(data)
 		}
 
-		advance, token, err := bufio.ScanLines(data[:maxBufferSizeWithDateOffset], atEOF)
-		if advance == 0 && token == nil && err == nil {
-			if lineBuf.Len() == 0 {
-				lineBuf.Write(data[:offset])
+		var advance int
+		var token []byte
+		var err error
+		// This is the general case. Most log lines will be smaller than 16k
+		// in that case we offload the scanning of the whole data to the default bufio.ScanLines
+		if len(data) <= maxBufferSize {
+			advance, token, err = bufio.ScanLines(data, atEOF)
+			// If we get no token back this means a new line wasn't found
+			// request more data from the Scanner
+			if len(token) == 0 || err != nil {
+				return 0, nil, err
+			}
+		} else {
+			// If the size of the log is larger than the limit we try to find a new line only
+			// within the allowed limits.
+			// The +1 with the offset is for a possible newline character, since it's not included in the
+			// 16k limit.
+			advance, token, err = bufio.ScanLines(data[:maxBufferSizeWithDateOffset+1], atEOF)
+			if err != nil {
+				return 0, nil, err
 			}
 
-			lineBuf.Write(data[offset:maxBufferSize])
-			return maxBufferSizeWithDateOffset, nil, nil
+			// If we didn't find a newline character we add the first 16k of the data buffer to the line buffer.
+			if len(token) == 0 {
+				// If the buffered line is empty, add the timestamp to the start of it. We rely on timestamps to dedupe lines
+				// when reattaching so it's important.
+				if lineBuf.Len() == 0 {
+					lineBuf.Write(data[:offset])
+				}
+
+				// Get the whole 16k part of the line from the buffer. The timestamp isn't included in these 16k since
+				// it's added as an afterthought by docker.
+				linePart := data[offset:maxBufferSizeWithDateOffset]
+				if lineBuf.Len()+len(linePart) > maxLineBufferSize {
+					return 0, nil, errors.New("exceeded log line limit")
+				}
+				lineBuf.Write(linePart)
+
+				// This allows us to tell the Scanner to advance the buffer without returning results.
+				// This way we request more bytes while discarding the old ones.
+				return maxBufferSizeWithDateOffset, nil, nil
+			}
 		}
 
+		// If we found a new line in the data buffer check if we have already buffered a part of the line
+		// if we did, we add this last part to the buffered part.
 		if lineBuf.Len() > 0 {
-			token = append(lineBuf.Bytes(), token[offset:]...)
-			lineBuf.Reset()
-		}
+			// Remove the timestamp from each buffer. We only care abut the first timestamp since all the others are the same
+			// and don't bring value to us, only break up the log.
+			// TODO: add check to only remove the timestamp if it's the same as the beginning of the buffered line
+			// this should avoid any potential edge cases where there's a timestamp on a place in the log which happens to be
+			// at the start of the buffer while it's being split into parts.
+			tokenWithoutDate := token[offset:]
+			if lineBuf.Len()+len(tokenWithoutDate) > maxLineBufferSize {
+				return 0, nil, errors.New("exceeded log line limit")
+			}
 
-		if len(token) > maxLineBufferSize {
-			return 0, nil, errors.New("exceeded log line limit")
+			line := make([]byte, lineBuf.Len())
+			copy(line, lineBuf.Bytes())
+			lineBuf.Reset()
+			token = append(line, tokenWithoutDate...)
 		}
 
 		return advance, token, err
@@ -263,7 +323,7 @@ func bufferDateOffset(buf []byte) int {
 
 func (l *kubernetesLogProcessor) scan(ctx context.Context, logs io.Reader) (*bufio.Scanner, <-chan string) {
 	logsScanner := bufio.NewScanner(logs)
-	logsScanner.Split(splitLinesStartingWithDateWithMaxBufferSize(maxLogLineBufferSize, common.DefaultTracePatchLimit))
+	logsScanner.Split(splitLinesStartingWithDateWithMaxBufferSize(maxLogLineBufferSize, common.DefaultTraceOutputLimit))
 
 	linesCh := make(chan string)
 	go func() {

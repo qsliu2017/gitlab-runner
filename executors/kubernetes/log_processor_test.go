@@ -1,6 +1,7 @@
 package kubernetes
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"errors"
@@ -9,6 +10,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strconv"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -613,4 +615,68 @@ func TestScanHandlesCancelledContext(t *testing.T) {
 	}()
 
 	wg.Wait()
+}
+
+func TestSplitLinesStartingWithDateWithMaxBufferSize(t *testing.T) {
+	date := "2020-04-01T00:39:20.505277986Z "
+
+	tests := map[string]struct {
+		inputLines    []string
+		expectedLines []string
+	}{
+		"lines without dates at buffer limit": {
+			inputLines: []string{
+				strings.Repeat(".", maxLogLineBufferSize),
+				strings.Repeat(".", 15),
+			},
+			expectedLines: []string{
+				strings.Repeat(".", maxLogLineBufferSize),
+				strings.Repeat(".", 15),
+			},
+		},
+		"lines without dates": {
+			inputLines: []string{
+				strings.Repeat(".", 17010),
+				strings.Repeat(".", 15),
+			},
+			expectedLines: []string{
+				strings.Repeat(".", 17010),
+				strings.Repeat(".", 15),
+			},
+		},
+		"lines with dates only at the start": {
+			inputLines: []string{
+				date + strings.Repeat(".", 17010),
+				date + strings.Repeat(".", 15),
+			},
+			expectedLines: []string{
+				date + strings.Repeat(".", 17010),
+				date + strings.Repeat(".", 15),
+			},
+		},
+		"lines with dates at the end of the logs buffer": {
+			inputLines: []string{
+				date + strings.Repeat(".", maxLogLineBufferSize) + date + strings.Repeat(".", 626),
+				date + strings.Repeat(".", 15),
+			},
+			expectedLines: []string{
+				date + strings.Repeat(".", 17010),
+				date + strings.Repeat(".", 15),
+			},
+		},
+	}
+
+	for tn, tt := range tests {
+		t.Run(tn, func(t *testing.T) {
+			scanner := bufio.NewScanner(strings.NewReader(strings.Join(tt.inputLines, "\n")))
+			scanner.Split(splitLinesStartingWithDateWithMaxBufferSize(maxLogLineBufferSize, common.DefaultTraceOutputLimit))
+
+			var readLines []string
+			for scanner.Scan() {
+				readLines = append(readLines, scanner.Text())
+			}
+
+			assert.Equal(t, tt.expectedLines, readLines)
+		})
+	}
 }
