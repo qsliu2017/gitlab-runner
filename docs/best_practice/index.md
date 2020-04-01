@@ -44,3 +44,25 @@ Directory_. GitLab Runner should have total control over it and does not
 provide stability in such cases. If you have dependencies that are
 required for your CI, we recommend installing them in some other
 place.
+
+## Graceful shutdown
+
+When the runner is installed on a host and runs local executors it will start additional processes for some operations.
+These include downloading/uploading artifacts, handling cache.
+These are all executed as `gitlab-runner` commands. A side effect of this is that using `pkill -QUIT gitlab-runner` or `killall QUIT gitlab-runner` can kill these helper processes as well and fail the operations they are responsible for.
+Here are two example options for preventing this:
+1. Register the runner as a local service e.g. systemd with `SIGQUIT` as the kill signal and use `gitlab-runner stop` or `systemctl stop gitlab-runner.service`.
+This is the default behavior when installing the `.deb` package:
+```conf
+; /etc/systemd/system/gitlab-runner.service.d/kill.conf
+[Service]
+KillSignal=SIGQUIT
+TimeoutStopSec=__REDACTED__
+
+```
+2. Manually kill the process with `kill -SIGQUIT [pid]`. You have to find the pid of the main gitlab-runner process.
+An easy way for this is by looking at logs. It's printed on startup:
+```log
+$ gitlab-runner run
+Runtime platform                                    arch=amd64 os=linux pid=87858 revision=8d21977e version=12.10.0~beta.82.g8d21977e
+```
