@@ -48,9 +48,9 @@ place.
 ## Graceful shutdown
 
 When the runner is installed on a host and runs local executors it will start additional processes for some operations.
-These include downloading/uploading artifacts, handling cache.
-These are all executed as `gitlab-runner` commands. A side effect of this is that using `pkill -QUIT gitlab-runner` or `killall QUIT gitlab-runner` can kill these helper processes as well and fail the operations they are responsible for.
-Here are two example options for preventing this:
+They include downloading/uploading artifacts, handling cache.
+All of them are executed as `gitlab-runner` commands. A side effect of this is that using `pkill -QUIT gitlab-runner` or `killall QUIT gitlab-runner` can kill these helper processes as well and fail the operations they are responsible for.
+Here are two ways to prevent this:
 
 * Register the runner as a local service e.g. systemd with `SIGQUIT` as the kill signal and use `gitlab-runner stop` or `systemctl stop gitlab-runner.service`. This is the default behavior when installing the `.deb` package:
 
