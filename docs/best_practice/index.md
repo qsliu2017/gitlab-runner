@@ -52,7 +52,7 @@ They include downloading/uploading artifacts, handling cache.
 All of them are executed as `gitlab-runner` commands. A side effect of this is that using `pkill -QUIT gitlab-runner` or `killall QUIT gitlab-runner` can kill these helper processes as well and fail the operations they are responsible for.
 Here are two ways to prevent this:
 
-* Register the runner as a local service e.g. systemd with `SIGQUIT` as the kill signal and use `gitlab-runner stop` or `systemctl stop gitlab-runner.service`. This is the default behavior when installing the `.deb` package:
+ - Register the runner as a local service e.g. systemd with `SIGQUIT` as the kill signal and use `gitlab-runner stop` or `systemctl stop gitlab-runner.service`. This is the default behavior when installing the `.deb` package:
 
 ```conf
 ; /etc/systemd/system/gitlab-runner.service.d/kill.conf
@@ -60,8 +60,7 @@ Here are two ways to prevent this:
 KillSignal=SIGQUIT
 TimeoutStopSec=__REDACTED__
 ```
-
-* Manually kill the process with `kill -SIGQUIT [pid]`. You have to find the pid of the main `gitlab-runner` process.
+ - Manually kill the process with `kill -SIGQUIT [pid]`. You have to find the pid of the main `gitlab-runner` process.
 An easy way for this is by looking at logs. It's printed on startup:
 
 ```log
