@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/mock"
 
 	"gitlab.com/gitlab-org/gitlab-runner/common"
-	docker_helpers "gitlab.com/gitlab-org/gitlab-runner/helpers/docker"
+	"gitlab.com/gitlab-org/gitlab-runner/helpers/docker"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers/featureflags"
 )
 
@@ -37,8 +37,8 @@ func newDefaultManager() *manager {
 	return m
 }
 
-func addClient(manager *manager) *docker_helpers.MockClient {
-	client := new(docker_helpers.MockClient)
+func addClient(manager *manager) *docker.MockClient {
+	client := new(docker.MockClient)
 
 	manager.client = client
 
@@ -52,7 +52,7 @@ func TestCreateNetwork(t *testing.T) {
 		buildNetwork        types.NetworkResource
 		expectedNetworkMode container.NetworkMode
 		expectedErr         error
-		clientAssertions    func(*docker_helpers.MockClient)
+		clientAssertions    func(*docker.MockClient)
 	}{
 		"network specified": {
 			networkMode:         "default",
@@ -72,7 +72,7 @@ func TestCreateNetwork(t *testing.T) {
 			networkMode:         "",
 			networkPerBuild:     "true",
 			expectedNetworkMode: container.NetworkMode("runner--project-0-concurrent-0-job-0-network"),
-			clientAssertions: func(mc *docker_helpers.MockClient) {
+			clientAssertions: func(mc *docker.MockClient) {
 				mc.On("NetworkCreate", mock.Anything, mock.AnythingOfType("string"), mock.AnythingOfType("types.NetworkCreate")).
 					Return(types.NetworkCreateResponse{ID: "test-network"}, nil).
 					Once()
@@ -90,7 +90,7 @@ func TestCreateNetwork(t *testing.T) {
 			networkPerBuild:     "true",
 			expectedNetworkMode: "",
 			expectedErr:         errors.New("test-network failed"),
-			clientAssertions: func(mc *docker_helpers.MockClient) {
+			clientAssertions: func(mc *docker.MockClient) {
 				mc.On("NetworkCreate", mock.Anything, mock.AnythingOfType("string"), mock.AnythingOfType("types.NetworkCreate")).
 					Return(types.NetworkCreateResponse{ID: "test-network"}, errors.New("test-network failed")).
 					Once()
@@ -102,7 +102,7 @@ func TestCreateNetwork(t *testing.T) {
 			networkPerBuild:     "true",
 			expectedNetworkMode: "",
 			expectedErr:         errors.New("network-inspect-failed"),
-			clientAssertions: func(mc *docker_helpers.MockClient) {
+			clientAssertions: func(mc *docker.MockClient) {
 				mc.On("NetworkCreate", mock.Anything, mock.AnythingOfType("string"), mock.AnythingOfType("types.NetworkCreate")).
 					Return(types.NetworkCreateResponse{ID: "test-network"}, nil).
 					Once()
@@ -155,7 +155,7 @@ func TestInspectNetwork(t *testing.T) {
 
 	testCases := map[string]struct {
 		perBuild         bool
-		clientAssertions func(client *docker_helpers.MockClient)
+		clientAssertions func(client *docker.MockClient)
 		expectedResponse types.NetworkResource
 		expectedErr      error
 	}{
@@ -166,7 +166,7 @@ func TestInspectNetwork(t *testing.T) {
 		},
 		"no network per build": {
 			perBuild: true,
-			clientAssertions: func(m *docker_helpers.MockClient) {
+			clientAssertions: func(m *docker.MockClient) {
 				m.On("NetworkInspect", mock.Anything, mock.AnythingOfType("string")).
 					Return(types.NetworkResource{
 						ID:   networkName,
@@ -182,7 +182,7 @@ func TestInspectNetwork(t *testing.T) {
 		},
 		"network inspect failed": {
 			perBuild: true,
-			clientAssertions: func(m *docker_helpers.MockClient) {
+			clientAssertions: func(m *docker.MockClient) {
 				m.On("NetworkInspect", mock.Anything, mock.AnythingOfType("string")).
 					Return(types.NetworkResource{}, testError)
 			},
@@ -216,7 +216,7 @@ func TestCleanupNetwork(t *testing.T) {
 	testCases := map[string]struct {
 		networkMode      string
 		networkPerBuild  string
-		clientAssertions func(*docker_helpers.MockClient)
+		clientAssertions func(*docker.MockClient)
 		expectErr        error
 	}{
 		"network per-build flag off": {
@@ -228,7 +228,7 @@ func TestCleanupNetwork(t *testing.T) {
 		},
 		"cleanup per-build network": {
 			networkPerBuild: "true",
-			clientAssertions: func(mc *docker_helpers.MockClient) {
+			clientAssertions: func(mc *docker.MockClient) {
 				mc.On("NetworkRemove", mock.Anything, mock.AnythingOfType("string")).
 					Return(nil).
 					Once()
@@ -236,7 +236,7 @@ func TestCleanupNetwork(t *testing.T) {
 		},
 		"cleanup per-build error": {
 			networkPerBuild: "true",
-			clientAssertions: func(mc *docker_helpers.MockClient) {
+			clientAssertions: func(mc *docker.MockClient) {
 				mc.On("NetworkRemove", mock.Anything, mock.AnythingOfType("string")).
 					Return(testErr).
 					Once()

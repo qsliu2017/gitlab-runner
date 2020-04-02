@@ -10,7 +10,7 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"gitlab.com/gitlab-org/gitlab-runner/common"
-	docker_helpers "gitlab.com/gitlab-org/gitlab-runner/helpers/docker"
+	"gitlab.com/gitlab-org/gitlab-runner/helpers/docker"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers/featureflags"
 )
 
@@ -24,7 +24,7 @@ type Manager interface {
 
 type manager struct {
 	logger logrus.FieldLogger
-	client docker_helpers.Client
+	client docker.Client
 	build  *common.Build
 
 	networkMode  container.NetworkMode
@@ -32,7 +32,7 @@ type manager struct {
 	perBuild     bool
 }
 
-func NewManager(logger logrus.FieldLogger, dockerClient docker_helpers.Client, build *common.Build) Manager {
+func NewManager(logger logrus.FieldLogger, dockerClient docker.Client, build *common.Build) Manager {
 	return &manager{
 		logger: logger,
 		client: dockerClient,
