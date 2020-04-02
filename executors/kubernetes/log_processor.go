@@ -244,7 +244,7 @@ func splitLinesStartingWithDateWithMaxBufferSize(maxBufferSize int, maxLineBuffe
 			advance, token, err = bufio.ScanLines(data, atEOF)
 			// If we get no token back this means a new line wasn't found
 			// request more data from the Scanner
-			if len(token) == 0 || err != nil {
+			if (advance == 0 && len(token) == 0) || err != nil {
 				return 0, nil, err
 			}
 		} else {
@@ -258,7 +258,7 @@ func splitLinesStartingWithDateWithMaxBufferSize(maxBufferSize int, maxLineBuffe
 			}
 
 			// If we didn't find a newline character we add the first 16k of the data buffer to the line buffer.
-			if len(token) == 0 {
+			if advance == 0 && len(token) == 0 {
 				// If the buffered line is empty, add the timestamp to the start of it. We rely on timestamps to dedupe lines
 				// when reattaching so it's important.
 				if lineBuf.Len() == 0 {
