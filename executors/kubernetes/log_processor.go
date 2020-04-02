@@ -259,19 +259,10 @@ func splitLinesStartingWithDateWithMaxBufferSize(maxBufferSize int, maxLineBuffe
 
 			// If we didn't find a newline character we add the first 16k of the data buffer to the line buffer.
 			if advance == 0 && len(token) == 0 {
-				// If the buffered line is empty, add the timestamp to the start of it. We rely on timestamps to dedupe lines
-				// when reattaching so it's important.
-				if lineBuf.Len() == 0 {
-					lineBuf.Write(data[:offset])
+				err = writeDataToLineBuffer(data, &lineBuf, offset, maxBufferSizeWithDateOffset, maxLineBufferSize)
+				if err != nil {
+					return 0, nil, err
 				}
-
-				// Get the whole 16k part of the line from the buffer. The timestamp isn't included in these 16k since
-				// it's added as an afterthought by docker.
-				linePart := data[offset:maxBufferSizeWithDateOffset]
-				if lineBuf.Len()+len(linePart) > maxLineBufferSize {
-					return 0, nil, errors.New("exceeded log line limit")
-				}
-				lineBuf.Write(linePart)
 
 				// This allows us to tell the Scanner to advance the buffer without returning results.
 				// This way we request more bytes while discarding the old ones.
@@ -282,20 +273,7 @@ func splitLinesStartingWithDateWithMaxBufferSize(maxBufferSize int, maxLineBuffe
 		// If we found a new line in the data buffer check if we have already buffered a part of the line
 		// if we did, we add this last part to the buffered part.
 		if lineBuf.Len() > 0 {
-			// Remove the timestamp from each buffer. We only care abut the first timestamp since all the others are the same
-			// and don't bring value to us, only break up the log.
-			// TODO: add check to only remove the timestamp if it's the same as the beginning of the buffered line
-			// this should avoid any potential edge cases where there's a timestamp on a place in the log which happens to be
-			// at the start of the buffer while it's being split into parts.
-			tokenWithoutDate := token[offset:]
-			if lineBuf.Len()+len(tokenWithoutDate) > maxLineBufferSize {
-				return 0, nil, errors.New("exceeded log line limit")
-			}
-
-			line := make([]byte, lineBuf.Len())
-			copy(line, lineBuf.Bytes())
-			lineBuf.Reset()
-			token = append(line, tokenWithoutDate...)
+			token, err = consumeLineBuffer(token, offset, lineBuf, maxLineBufferSize)
 		}
 
 		return advance, token, err
@@ -319,6 +297,43 @@ func bufferDateOffset(buf []byte) int {
 	}
 
 	return dateEndIndex + 1
+}
+
+func writeDataToLineBuffer(data []byte, lineBuf *bytes.Buffer, offset int, maxBufferSizeWithDateOffset int, maxLineBufferSize int) error {
+	// If the buffered line is empty, add the timestamp to the start of it. We rely on timestamps to dedupe lines
+	// when reattaching so it's important.
+	if lineBuf.Len() == 0 {
+		lineBuf.Write(data[:offset])
+	}
+
+	// Get the whole 16k part of the line from the buffer. The timestamp isn't included in these 16k since
+	// it's added as an afterthought by docker.
+	linePart := data[offset:maxBufferSizeWithDateOffset]
+	if lineBuf.Len()+len(linePart) > maxLineBufferSize {
+		return errors.New("exceeded log line limit")
+	}
+	lineBuf.Write(linePart)
+
+	return nil
+}
+
+func consumeLineBuffer(token []byte, offset int, lineBuf bytes.Buffer, maxLineBufferSize int) ([]byte, error) {
+	// Remove the timestamp from each buffer. We only care abut the first timestamp since all the others are the same
+	// and don't bring value to us, only break up the log.
+	// TODO: add check to only remove the timestamp if it's the same as the beginning of the buffered line
+	// this should avoid any potential edge cases where there's a timestamp on a place in the log which happens to be
+	// at the start of the buffer while it's being split into parts.
+	tokenWithoutDate := token[offset:]
+	if lineBuf.Len()+len(tokenWithoutDate) > maxLineBufferSize {
+		return nil, errors.New("exceeded log line limit")
+	}
+
+	line := make([]byte, lineBuf.Len())
+	copy(line, lineBuf.Bytes())
+	lineBuf.Reset()
+	token = append(line, tokenWithoutDate...)
+
+	return token, nil
 }
 
 func (l *kubernetesLogProcessor) scan(ctx context.Context, logs io.Reader) (*bufio.Scanner, <-chan string) {
