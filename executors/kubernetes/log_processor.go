@@ -273,7 +273,7 @@ func splitLinesStartingWithDateWithMaxBufferSize(maxBufferSize int, maxLineBuffe
 		// If we found a new line in the data buffer check if we have already buffered a part of the line
 		// if we did, we add this last part to the buffered part.
 		if lineBuf.Len() > 0 {
-			token, err = consumeLineBuffer(token, offset, lineBuf, maxLineBufferSize)
+			token, err = consumeLineBuffer(token, offset, &lineBuf, maxLineBufferSize)
 		}
 
 		return advance, token, err
@@ -317,7 +317,7 @@ func writeDataToLineBuffer(data []byte, lineBuf *bytes.Buffer, offset int, maxBu
 	return nil
 }
 
-func consumeLineBuffer(token []byte, offset int, lineBuf bytes.Buffer, maxLineBufferSize int) ([]byte, error) {
+func consumeLineBuffer(token []byte, offset int, lineBuf *bytes.Buffer, maxLineBufferSize int) ([]byte, error) {
 	// Remove the timestamp from each buffer. We only care abut the first timestamp since all the others are the same
 	// and don't bring value to us, only break up the log.
 	// TODO: add check to only remove the timestamp if it's the same as the beginning of the buffered line
