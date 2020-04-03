@@ -340,10 +340,10 @@ func tryConsumeLineBuffer(token []byte, offset int, lineBuf *bytes.Buffer, maxLi
 		return nil, errors.New("exceeded log line limit")
 	}
 
-	line := make([]byte, lineBuf.Len())
+	line := make([]byte, lineBuf.Len(), lineBuf.Len()+len(tokenWithoutDate))
 	copy(line, lineBuf.Bytes())
-	lineBuf.Reset()
 	token = append(line, tokenWithoutDate...)
+	lineBuf.Reset()
 
 	return token, nil
 }
