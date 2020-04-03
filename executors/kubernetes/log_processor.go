@@ -229,18 +229,14 @@ func splitLinesStartingWithDateWithMaxBufferSize(maxBufferSize int, maxLineBuffe
 		// 2020-04-01T00:39:20.505277986Z log_line
 		// if the data doesn't start with a timestamp the offset will be 0.
 		// In that case, this means this is a continuation of the previous line.
-		offset := bufferDateOffset(data)
-		maxBufferSizeWithDateOffset := maxBufferSize + offset
-		if maxBufferSizeWithDateOffset > len(data) {
-			maxBufferSizeWithDateOffset = len(data)
-		}
+		offset, maxBufferSizeWithDateOffset := bufferDateOffset(data, calcMaxBufferSize(data, maxBufferSize))
 
 		var advance int
 		var token []byte
-		var err error
 		// This is the general case. Most log lines will be smaller than 16k
 		// in that case we offload the scanning of the whole data to the default bufio.ScanLines
 		if len(data) <= maxBufferSize {
+			var err error
 			advance, token, err = bufio.ScanLines(data, atEOF)
 			// If we get no token back this means a new line wasn't found
 			// request more data from the Scanner
@@ -248,6 +244,7 @@ func splitLinesStartingWithDateWithMaxBufferSize(maxBufferSize int, maxLineBuffe
 				return 0, nil, err
 			}
 		} else {
+			var err error
 			// If the size of the log is larger than the limit we try to find a new line only
 			// within the allowed limits.
 			// The +1 with the offset is for a possible newline character, since it's not included in the
@@ -272,31 +269,42 @@ func splitLinesStartingWithDateWithMaxBufferSize(maxBufferSize int, maxLineBuffe
 
 		// If we found a new line in the data buffer check if we have already buffered a part of the line
 		// if we did, we add this last part to the buffered part.
-		if lineBuf.Len() > 0 {
-			token, err = consumeLineBuffer(token, offset, &lineBuf, maxLineBufferSize)
-		}
-
+		token, err := tryConsumeLineBuffer(token, offset, &lineBuf, maxLineBufferSize)
 		return advance, token, err
 	}
 }
 
-func bufferDateOffset(buf []byte) int {
-	firstChar, _ := utf8.DecodeRune(buf)
+func calcMaxBufferSize(data []byte, maxBufferSize int) int {
+	if maxBufferSize > len(data) {
+		return len(data)
+	}
+
+	return maxBufferSize
+}
+
+func bufferDateOffset(data []byte, maxBufferSize int) (int, int) {
+	firstChar, _ := utf8.DecodeRune(data)
 	if !unicode.IsDigit(firstChar) {
-		return 0
+		return 0, maxBufferSize
 	}
 
-	dateEndIndex := bytes.Index(buf, []byte(" "))
+	dateEndIndex := bytes.Index(data, []byte(" "))
 	if dateEndIndex == -1 {
-		return 0
+		return 0, maxBufferSize
 	}
 
-	_, err := time.Parse(time.RFC3339Nano, string(buf[:dateEndIndex]))
+	_, err := time.Parse(time.RFC3339Nano, string(data[:dateEndIndex]))
 	if err != nil {
-		return 0
+		return 0, maxBufferSize
 	}
 
-	return dateEndIndex + 1
+	offset := dateEndIndex + 1
+	maxBufferSizeWithDateOffset := maxBufferSize + offset
+	if maxBufferSizeWithDateOffset > len(data) {
+		maxBufferSizeWithDateOffset = len(data)
+	}
+
+	return offset, calcMaxBufferSize(data, maxBufferSizeWithDateOffset)
 }
 
 func writeDataToLineBuffer(data []byte, lineBuf *bytes.Buffer, offset int, maxBufferSizeWithDateOffset int, maxLineBufferSize int) error {
@@ -317,7 +325,11 @@ func writeDataToLineBuffer(data []byte, lineBuf *bytes.Buffer, offset int, maxBu
 	return nil
 }
 
-func consumeLineBuffer(token []byte, offset int, lineBuf *bytes.Buffer, maxLineBufferSize int) ([]byte, error) {
+func tryConsumeLineBuffer(token []byte, offset int, lineBuf *bytes.Buffer, maxLineBufferSize int) ([]byte, error) {
+	if lineBuf.Len() == 0 {
+		return token, nil
+	}
+
 	// Remove the timestamp from each buffer. We only care abut the first timestamp since all the others are the same
 	// and don't bring value to us, only break up the log.
 	// TODO: add check to only remove the timestamp if it's the same as the beginning of the buffered line
