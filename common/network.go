@@ -176,6 +176,7 @@ const (
 )
 
 type Step struct {
+	// MR Pseudocode: add an image option here. String.
 	Name         StepName   `json:"name"`
 	Script       StepScript `json:"script"`
 	Timeout      int        `json:"timeout"`

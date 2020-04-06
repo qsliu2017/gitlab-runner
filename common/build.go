@@ -236,6 +236,9 @@ func (b *Build) executeStage(ctx context.Context, buildStage BuildStage, executo
 	} else {
 		subStages = append(subStages, buildStage)
 	}
+	// MR Pseudocode: construct an environment struct here.
+	// create the custom image based on what's in the step.
+	// It should be possible for it to be nil.
 	var predefinedEnv bool
 	switch buildStage {
 	case BuildStageUserScript, BuildStageAfterScript:

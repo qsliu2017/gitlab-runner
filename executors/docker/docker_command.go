@@ -88,6 +88,7 @@ func (s *commandExecutor) requestBuildContainer() (*types.ContainerJSON, error) 
 func (s *commandExecutor) Run(cmd common.ExecutorCommand) error {
 	var runOn *types.ContainerJSON
 	var err error
+	// MR Pseudocode: request container based on what's coming in from cmd.
 	if cmd.Predefined {
 		runOn, err = s.requestNewPredefinedContainer()
 	} else {

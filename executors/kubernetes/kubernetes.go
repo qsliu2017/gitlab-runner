@@ -215,7 +215,7 @@ func (s *executor) runWithExecLegacy(cmd common.ExecutorCommand) error {
 			return err
 		}
 	}
-
+	// MR Pseudocode: same as in runWithAttach.
 	containerName := buildContainerName
 	containerCommand := s.BuildShell.DockerCommand
 	if cmd.Predefined {
@@ -261,6 +261,8 @@ func (s *executor) runWithAttach(cmd common.ExecutorCommand) error {
 	// This works unlike "gitlab-runner-build" since the detect shell passes arguments with "$@"
 	containerCommand := []string{"sh", s.scriptPath(detectShellScriptName), s.scriptPath(cmd.Stage)}
 	if cmd.Predefined {
+		// MR Pseudocode: figure out how to do it here.
+		// should follow the same direction as in the docker executor.
 		containerName = helperContainerName
 		// We use redirection here since the "gitlab-runner-build" helper doesn't pass input args
 		// to the shell it executes, so we technically pass the script to the stdin of the underlying shell

@@ -11,8 +11,15 @@ import (
 type ExecutorData interface{}
 
 type ExecutorCommand struct {
-	Script     string
-	Stage      BuildStage
+	Script string
+	Stage  BuildStage
+	// MR Pseudocode: abstract Predefined to a more flexible environment information. Maybe a new Environment struct?
+	// It could be something like:
+	// Environment struct {
+	// 	containerType string // one of BUILD, NEW_BUILD_IMAGE, CUSTOM
+	// 	customImage string
+	// }
+	// need to figure out how to make it sensible in non-container executors too.
 	Predefined bool
 	Context    context.Context
 }
