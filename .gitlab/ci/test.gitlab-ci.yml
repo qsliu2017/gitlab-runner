@@ -76,7 +76,7 @@ code_quality:
   image: golangci/golangci-lint:v1.24.0
   variables:
     REPORT_FILE: gl-code-quality-report.json
-    LINT_FLAGS: "--issues-exit-code 0 --color never --deadline 15m --concurrency 8"
+    LINT_FLAGS: "--issues-exit-code 0 --color never --deadline 15m"
     ADDITIONAL_LINTERS: "" # Turn off additional linters since they cause a hang
     OUT_FORMAT: code-climate
   script:

@@ -17,7 +17,6 @@ output:
 
 linters-settings:
   gocyclo:
-    # minimal code complexity to report, 30 by default (but we recommend 10-20)
     min-complexity: 10
   govet:
     check-shadowing: false
@@ -48,7 +47,6 @@ linters:
 issues:
   # Excluding configuration per-path, per-linter, per-text and per-source
   exclude-rules:
-    # Exclude some linters from running on tests files.
     - path: helpers/shell_escape.go
       linters:
         - gocyclo
