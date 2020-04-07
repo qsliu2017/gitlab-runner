@@ -463,7 +463,7 @@ func (e *executor) createService(serviceIndex int, service, version, image strin
 	containerName := fmt.Sprintf("%s-%s-%d", e.getProjectUniqRandomizedName(), serviceSlug, serviceIndex)
 
 	// this will fail potentially some builds if there's name collision
-	e.removeContainer(e.Context, containerName)
+	_ = e.removeContainer(e.Context, containerName)
 
 	config := &container.Config{
 		Image:  serviceImage.ID,
@@ -587,8 +587,8 @@ func (e *executor) buildServiceLinks(linksMap map[string]*types.Container) (link
 	return
 }
 
-func (e *executor) createFromServiceDefinition(serviceIndex int, serviceDefinition common.Image, linksMap map[string]*types.Container) (err error) {
-	var container *types.Container
+func (e *executor) createFromServiceDefinition(serviceIndex int, serviceDefinition common.Image, linksMap map[string]*types.Container) error {
+	var ctr *types.Container
 
 	serviceMeta := services.SplitNameAndVersion(serviceDefinition.Name)
 
@@ -603,19 +603,21 @@ func (e *executor) createFromServiceDefinition(serviceIndex int, serviceDefiniti
 		}
 
 		// Create service if not yet created
-		if container == nil {
-			container, err = e.createService(serviceIndex, serviceMeta.Service, serviceMeta.Version, serviceMeta.ImageName, serviceDefinition, serviceMeta.Aliases)
+		if ctr == nil {
+			var err error
+			ctr, err = e.createService(serviceIndex, serviceMeta.Service, serviceMeta.Version, serviceMeta.ImageName, serviceDefinition, serviceMeta.Aliases)
 			if err != nil {
-				return
+				return err
 			}
 
-			e.Debugln("Created service", serviceDefinition.Name, "as", container.ID)
-			e.services = append(e.services, container)
-			e.temporary = append(e.temporary, container.ID)
+			e.Debugln("Created service", serviceDefinition.Name, "as", ctr.ID)
+			e.services = append(e.services, ctr)
+			e.temporary = append(e.temporary, ctr.ID)
 		}
-		linksMap[linkName] = container
+		linksMap[linkName] = ctr
 	}
-	return
+
+	return nil
 }
 
 func (e *executor) createBuildNetwork() error {
@@ -767,7 +769,7 @@ func (e *executor) createContainer(containerType string, imageDefinition common.
 	networkConfig := e.networkConfig(aliases)
 
 	// this will fail potentially some builds if there's name collision
-	e.removeContainer(e.Context, containerName)
+	_ = e.removeContainer(e.Context, containerName)
 
 	e.Debugln("Creating container", containerName, "...")
 	resp, err := e.client.ContainerCreate(e.Context, config, hostConfig, networkConfig, containerName)
@@ -789,13 +791,17 @@ func (e *executor) createContainer(containerType string, imageDefinition common.
 	return &inspect, nil
 }
 
-func (e *executor) killContainer(id string, waitCh chan error) (err error) {
+func (e *executor) killContainer(id string, waitCh chan error) {
 	for {
 		e.disconnectNetwork(e.Context, id)
-		e.Debugln("Killing container", id, "...")
-		e.client.ContainerKill(e.Context, id, "SIGKILL")
 
-		// Wait for signal that container were killed
+		e.Debugln("Killing container", id, "...")
+		err := e.client.ContainerKill(e.Context, id, "SIGKILL")
+		if err != nil {
+			e.Warningln(fmt.Sprintf("Container kill exited with: %v", err))
+		}
+
+		// Wait for signal that container was killed
 		// or retry after some time
 		select {
 		case err = <-waitCh:
@@ -849,7 +855,7 @@ func (e *executor) watchContainer(ctx context.Context, id string, input io.Reade
 	// Write the input to the container and close its STDIN to get it to finish
 	go func() {
 		_, err := io.Copy(hijacked.Conn, input)
-		hijacked.CloseWrite()
+		_ = hijacked.CloseWrite()
 		if err != nil {
 			attachCh <- err
 		}
@@ -904,14 +910,14 @@ func (e *executor) disconnectNetwork(ctx context.Context, id string) {
 		return
 	}
 
-	for _, network := range netList {
-		for _, pluggedContainer := range network.Containers {
+	for _, net := range netList {
+		for _, pluggedContainer := range net.Containers {
 			if id == pluggedContainer.Name {
-				err = e.client.NetworkDisconnect(ctx, network.ID, id, true)
+				err = e.client.NetworkDisconnect(ctx, net.ID, id, true)
 				if err != nil {
-					e.Warningln("Can't disconnect possibly zombie container", pluggedContainer.Name, "from network", network.Name, "->", err)
+					e.Warningln("Can't disconnect possibly zombie container", pluggedContainer.Name, "from network", net.Name, "->", err)
 				} else {
-					e.Warningln("Possibly zombie container", pluggedContainer.Name, "is disconnected from network", network.Name)
+					e.Warningln("Possibly zombie container", pluggedContainer.Name, "is disconnected from network", net.Name)
 				}
 				break
 			}
@@ -1180,7 +1186,7 @@ func (e *executor) Cleanup() {
 	remove := func(id string) {
 		wg.Add(1)
 		go func() {
-			e.removeContainer(ctx, id)
+			_ = e.removeContainer(ctx, id)
 			wg.Done()
 		}()
 	}
@@ -1211,7 +1217,14 @@ func (e *executor) Cleanup() {
 	}
 
 	if e.client != nil {
-		e.client.Close()
+		err = e.client.Close()
+		if err != nil {
+			clientCloseLogger := e.WithFields(logrus.Fields{
+				"error": err,
+			})
+
+			clientCloseLogger.Debugln("Failed to close the client")
+		}
 	}
 
 	e.AbstractExecutor.Cleanup()
@@ -1279,6 +1292,7 @@ func (e *executor) runServiceHealthCheckContainer(service *types.Container, time
 	if err != nil {
 		return fmt.Errorf("create service container: %w", err)
 	}
+
 	defer e.removeContainer(e.Context, resp.ID)
 
 	e.Debugln(fmt.Sprintf("Starting service healthcheck container %s (%s)...", containerName, resp.ID))
@@ -1353,10 +1367,10 @@ func (e *executor) getContainerExposedPorts(container *types.Container) ([]int, 
 	return ports, nil
 }
 
-func (e *executor) waitForServiceContainer(service *types.Container, timeout time.Duration) error {
+func (e *executor) waitForServiceContainer(service *types.Container, timeout time.Duration) {
 	err := e.runServiceHealthCheckContainer(service, timeout)
 	if err == nil {
-		return nil
+		return
 	}
 
 	var buffer bytes.Buffer
@@ -1382,8 +1396,8 @@ func (e *executor) waitForServiceContainer(service *types.Container, timeout tim
 	buffer.WriteString("\n")
 	buffer.WriteString(helpers.ANSI_YELLOW + "*********" + helpers.ANSI_RESET + "\n")
 	buffer.WriteString("\n")
-	io.Copy(e.Trace, &buffer)
-	return err
+
+	_, _ = io.Copy(e.Trace, &buffer)
 }
 
 func (e *executor) readContainerLogs(containerID string) string {
@@ -1401,7 +1415,7 @@ func (e *executor) readContainerLogs(containerID string) string {
 	}
 	defer hijacked.Close()
 
-	stdcopy.StdCopy(&containerBuffer, &containerBuffer, hijacked)
+	_, _ = stdcopy.StdCopy(&containerBuffer, &containerBuffer, hijacked)
 	containerLog := containerBuffer.String()
 	return strings.TrimSpace(containerLog)
 }
