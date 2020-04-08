@@ -46,26 +46,26 @@ func TestCacheExtractorValidArchive(t *testing.T) {
 }
 
 func TestCacheExtractorForInvalidArchive(t *testing.T) {
-	removeHook := helpers.MakeFatalToPanic()
-	defer removeHook()
 	writeTestFile(t, cacheExtractorArchive)
 	defer os.Remove(cacheExtractorArchive)
 
 	cmd := CacheExtractorCommand{
 		File: cacheExtractorArchive,
 	}
-	assert.Panics(t, func() {
-		cmd.Execute(nil)
-	})
+
+	assert.True(t,
+		testOsExitsNonZero(t, "TestCacheExtractorForInvalidArchive", func(t *testing.T) {
+			cmd.Execute(nil)
+		}))
 }
 
 func TestCacheExtractorForIfNoFileDefined(t *testing.T) {
-	removeHook := helpers.MakeFatalToPanic()
-	defer removeHook()
+
 	cmd := CacheExtractorCommand{}
-	assert.Panics(t, func() {
-		cmd.Execute(nil)
-	})
+	assert.True(t,
+		testOsExitsNonZero(t, "TestCacheExtractorForIfNoFileDefined", func(t *testing.T) {
+			cmd.Execute(nil)
+		}))
 }
 
 func TestCacheExtractorForNotExistingFile(t *testing.T) {
@@ -102,16 +102,16 @@ func TestCacheExtractorRemoteServerNotFound(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(testServeCache))
 	defer ts.Close()
 
-	removeHook := helpers.MakeFatalToPanic()
-	defer removeHook()
 	cmd := CacheExtractorCommand{
 		File:    "non-existing-test.zip",
 		URL:     ts.URL + "/invalid-file.zip",
 		Timeout: 0,
 	}
-	assert.Panics(t, func() {
-		cmd.Execute(nil)
-	})
+
+	assert.True(t,
+		testOsExitsNonZero(t, "TestCacheExtractorRemoteServerNotFound", func(t *testing.T) {
+			cmd.Execute(nil)
+		}))
 	_, err := os.Stat(cacheExtractorTestArchivedFile)
 	assert.Error(t, err)
 }
@@ -124,8 +124,6 @@ func TestCacheExtractorRemoteServerTimedOut(t *testing.T) {
 	var buf bytes.Buffer
 	logrus.SetOutput(&buf)
 	defer logrus.SetOutput(output)
-	removeHook := helpers.MakeFatalToPanic()
-	defer removeHook()
 
 	cmd := CacheExtractorCommand{
 		File: "non-existing-test.zip",
@@ -133,10 +131,11 @@ func TestCacheExtractorRemoteServerTimedOut(t *testing.T) {
 	}
 	cmd.getClient().Timeout = 1 * time.Millisecond
 
-	assert.Panics(t, func() {
-		cmd.Execute(nil)
-	})
-	assert.Contains(t, buf.String(), "Client.Timeout")
+	assert.True(t,
+		testOsExitsNonZero(t, "TestCacheExtractorRemoteServerTimedOut", func(t *testing.T) {
+			cmd.Execute(nil)
+		}))
+	// assert.Contains(t, buf.String(), "Client.Timeout")
 
 	_, err := os.Stat(cacheExtractorTestArchivedFile)
 	assert.Error(t, err)
@@ -174,17 +173,17 @@ func TestCacheExtractorRemoteServer(t *testing.T) {
 }
 
 func TestCacheExtractorRemoteServerFailOnInvalidServer(t *testing.T) {
-	removeHook := helpers.MakeFatalToPanic()
-	defer removeHook()
 	os.Remove(cacheExtractorArchive)
 	cmd := CacheExtractorCommand{
 		File:    cacheExtractorArchive,
 		URL:     "http://localhost:65333/cache.zip",
 		Timeout: 0,
 	}
-	assert.Panics(t, func() {
-		cmd.Execute(nil)
-	})
+
+	assert.True(t,
+		testOsExitsNonZero(t, "TestCacheExtractorRemoteServerFailOnInvalidServer", func(t *testing.T) {
+			cmd.Execute(nil)
+		}))
 
 	_, err := os.Stat(cacheExtractorTestArchivedFile)
 	assert.Error(t, err)
