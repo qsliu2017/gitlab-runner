@@ -398,6 +398,25 @@ func (j *JobResponse) GetVault() *Vault {
 	return j.Vault
 }
 
+func (j *JobResponse) GetVaultVariables() JobVariables {
+	vault := j.GetVault()
+	if vault == nil {
+		return nil
+	}
+
+	variables := make(JobVariables, 0)
+	for _, serverDef := range *vault {
+		for name := range serverDef.Secrets {
+			variables = append(variables, JobVariable{
+				Key:       name,
+				Directory: true,
+			})
+		}
+	}
+
+	return variables
+}
+
 type UpdateJobRequest struct {
 	Info          VersionInfo      `json:"info,omitempty"`
 	Token         string           `json:"token,omitempty"`

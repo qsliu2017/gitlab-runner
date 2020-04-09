@@ -91,12 +91,17 @@ func (b *BashWriter) EnvVariableKey(name string) string {
 }
 
 func (b *BashWriter) Variable(variable common.JobVariable) {
-	if variable.File {
+	switch {
+	case variable.File:
 		variableFile := b.TmpFile(variable.Key)
-		b.Line(fmt.Sprintf("mkdir -p %q", helpers.ToSlash(b.TemporaryPath)))
+		b.Line(fmt.Sprintf("mkdir -p %q", helpers.ToSlash(b.Absolute(b.TemporaryPath))))
 		b.Line(fmt.Sprintf("echo -n %s > %q", helpers.ShellEscape(variable.Value), variableFile))
 		b.Line(fmt.Sprintf("export %s=%q", helpers.ShellEscape(variable.Key), variableFile))
-	} else {
+	case variable.Directory:
+		variableDirectory := b.TmpFile(variable.Key)
+		b.Line(fmt.Sprintf("mkdir -p %q", variableDirectory))
+		b.Line(fmt.Sprintf("export %s=%q", helpers.ShellEscape(variable.Key), variableDirectory))
+	default:
 		b.Line(fmt.Sprintf("export %s=%s", helpers.ShellEscape(variable.Key), helpers.ShellEscape(variable.Value)))
 	}
 }

@@ -9,13 +9,14 @@ import (
 )
 
 type JobVariable struct {
-	Key      string `json:"key"`
-	Value    string `json:"value"`
-	Public   bool   `json:"public"`
-	Internal bool   `json:"-"`
-	File     bool   `json:"file"`
-	Masked   bool   `json:"masked"`
-	Raw      bool   `json:"raw"`
+	Key       string `json:"key"`
+	Value     string `json:"value"`
+	Public    bool   `json:"public"`
+	Internal  bool   `json:"-"`
+	File      bool   `json:"file"`
+	Masked    bool   `json:"masked"`
+	Raw       bool   `json:"raw"`
+	Directory bool   `json:"directory"`
 }
 
 type JobVariables []JobVariable

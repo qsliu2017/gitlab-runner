@@ -87,3 +87,28 @@ func TestCMD_DelayedExpanstionFeatureFlag(t *testing.T) {
 		})
 	}
 }
+
+func TestCmdWriter_Variable(t *testing.T) {
+	variableTestCases := getVariableTestCases()
+
+	variableTestCases[fileVariableTestCase].assertOutput = func(t *testing.T, output string) {
+		assert.Contains(t, output, `md "%CD%\\builds\\test" 2>NUL 1>NUL`)
+		assert.Contains(t, output, `echo VALUE > %CD%\builds\test\KEY`)
+		assert.Contains(t, output, `SET KEY=%CD%\builds\test\KEY`)
+	}
+
+	variableTestCases[directoryVariableTestCase].assertOutput = func(t *testing.T, output string) {
+		assert.Contains(t, output, `md "%CD%\\builds\\test\\KEY" 2>NUL 1>NUL`)
+		assert.Contains(t, output, `SET KEY=%CD%\builds\test\KEY`)
+	}
+
+	variableTestCases[normalVariableTestCase].assertOutput = func(t *testing.T, output string) {
+		assert.Contains(t, output, `SET KEY=VALUE`)
+	}
+
+	testVariable(t, variableTestCases, func() ShellWriter {
+		return &CmdWriter{
+			TemporaryPath: `builds\test`,
+		}
+	})
+}

@@ -790,6 +790,7 @@ func (b *Build) GetAllVariables() JobVariables {
 	variables = append(variables, b.Variables...)
 	variables = append(variables, b.GetSharedEnvVariable())
 	variables = append(variables, AppVersion.Variables()...)
+	variables = append(variables, b.GetVaultVariables()...)
 
 	b.allVariables = variables.Expand()
 	return b.allVariables

@@ -122,12 +122,17 @@ func (b *CmdWriter) EnvVariableKey(name string) string {
 }
 
 func (b *CmdWriter) Variable(variable common.JobVariable) {
-	if variable.File {
+	switch {
+	case variable.File:
 		variableFile := b.TmpFile(variable.Key)
-		b.Line(fmt.Sprintf("md %q 2>NUL 1>NUL", batchEscape(helpers.ToBackslash(b.TemporaryPath))))
+		b.Line(fmt.Sprintf("md %q 2>NUL 1>NUL", batchEscape(helpers.ToBackslash(b.Absolute(b.TemporaryPath)))))
 		b.Line(fmt.Sprintf("echo %s > %s", batchEscapeVariable(variable.Value), batchEscape(variableFile)))
 		b.Line("SET " + batchEscapeVariable(variable.Key) + "=" + batchEscape(variableFile))
-	} else {
+	case variable.Directory:
+		variableDirectory := b.TmpFile(variable.Key)
+		b.Line(fmt.Sprintf("md %q 2>NUL 1>NUL", batchEscape(variableDirectory)))
+		b.Line("SET " + batchEscapeVariable(variable.Key) + "=" + batchEscape(variableDirectory))
+	default:
 		b.Line("SET " + batchEscapeVariable(variable.Key) + "=" + batchEscapeVariable(variable.Value))
 	}
 }

@@ -221,6 +221,49 @@ server_2:
 	}
 }
 
+func TestJobResponse_GetVaultVariables(t *testing.T) {
+	tests := map[string]struct {
+		vault           *Vault
+		assertVariables func(t *testing.T, variables JobVariables)
+	}{
+		"vault configuration not defined": {
+			assertVariables: func(t *testing.T, variables JobVariables) {},
+		},
+		"vault configuration defined": {
+			vault: &Vault{
+				"server-1": VaultServerDef{
+					Secrets: VaultSecrets{
+						"SECRET_1": VaultSecret{},
+						"SECRET_2": VaultSecret{},
+					},
+				},
+				"server-2": VaultServerDef{
+					Secrets: VaultSecrets{
+						"SECRET_2": VaultSecret{},
+						"SECRET_3": VaultSecret{},
+					},
+				},
+			},
+			assertVariables: func(t *testing.T, variables JobVariables) {
+				assert.Len(t, variables, 4, "SECRET_2 should be defined twice")
+				assert.Contains(t, variables, JobVariable{Key: "SECRET_1", Directory: true})
+				assert.Contains(t, variables, JobVariable{Key: "SECRET_2", Directory: true})
+				assert.Contains(t, variables, JobVariable{Key: "SECRET_3", Directory: true})
+			},
+		},
+	}
+
+	for tn, tt := range tests {
+		t.Run(tn, func(t *testing.T) {
+			j := JobResponse{
+				Vault: tt.vault,
+			}
+
+			tt.assertVariables(t, j.GetVaultVariables())
+		})
+	}
+}
+
 func TestVaultSecret_StrategyHandling(t *testing.T) {
 	tests := map[string]struct {
 		strategy     string

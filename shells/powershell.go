@@ -100,12 +100,17 @@ func (b *PsWriter) EnvVariableKey(name string) string {
 }
 
 func (b *PsWriter) Variable(variable common.JobVariable) {
-	if variable.File {
+	switch {
+	case variable.File:
 		variableFile := b.TmpFile(variable.Key)
-		b.Line(fmt.Sprintf("New-Item -ItemType directory -Force -Path %s | out-null", psQuote(helpers.ToBackslash(b.TemporaryPath))))
+		b.Line(fmt.Sprintf("New-Item -ItemType directory -Force -Path %s | out-null", psQuote(helpers.ToBackslash(b.Absolute(b.TemporaryPath)))))
 		b.Line(fmt.Sprintf("Set-Content %s -Value %s -Encoding UTF8 -Force", psQuote(variableFile), psQuoteVariable(variable.Value)))
 		b.Line("$" + variable.Key + "=" + psQuote(variableFile))
-	} else {
+	case variable.Directory:
+		variableDirectory := b.TmpFile(variable.Key)
+		b.Line(fmt.Sprintf("New-Item -ItemType directory -Force -Path %s | out-null", psQuote(variableDirectory)))
+		b.Line("$" + variable.Key + "=" + psQuote(variableDirectory))
+	default:
 		b.Line("$" + variable.Key + "=" + psQuoteVariable(variable.Value))
 	}
 
