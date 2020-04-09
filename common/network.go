@@ -4,7 +4,10 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"strings"
 	"time"
+
+	"gopkg.in/yaml.v2"
 
 	url_helpers "gitlab.com/gitlab-org/gitlab-runner/helpers/url"
 )
@@ -301,14 +304,98 @@ type JobResponse struct {
 	Credentials   []Credentials  `json:"credentials"`
 	Dependencies  Dependencies   `json:"dependencies"`
 	Features      GitlabFeatures `json:"features"`
+	Vault         *Vault         `json:"vault,omitempty"`
 
 	TLSCAChain  string `json:"-"`
 	TLSAuthCert string `json:"-"`
 	TLSAuthKey  string `json:"-"`
 }
 
+type Vault map[string]VaultServerDef
+
+type VaultServerDef struct {
+	Server  VaultServer  `json:"server"`
+	Secrets VaultSecrets `json:"secrets"`
+}
+
+type VaultServer struct {
+	URL  string    `json:"url"`
+	Auth VaultAuth `json:"auth"`
+}
+
+type VaultAuth struct {
+	Name string        `json:"name"`
+	Path string        `json:"jwt"`
+	Data VaultAuthData `json:"data"`
+}
+
+type VaultAuthData map[string]interface{}
+
+type VaultSecrets map[string]VaultSecret
+
+type VaultSecret struct {
+	Path     string      `json:"path"`
+	Engine   VaultEngine `json:"engine"`
+	Strategy string      `json:"strategy"`
+}
+
+type VaultEngine struct {
+	Name string `json:"name"`
+	Path string `json:"path"`
+}
+
+const (
+	VaultStrategySeparator = "|"
+	VaultStrategyRead      = "read"
+	VaultStrategyWrite     = "write"
+	VaultStrategyDelete    = "delete"
+)
+
+func (vs VaultSecret) ShouldRead() bool {
+	return vs.Strategy == "" || vs.checkStrategy(VaultStrategyRead)
+}
+
+func (vs VaultSecret) checkStrategy(strategy string) bool {
+	strategies := strings.Split(vs.Strategy, VaultStrategySeparator)
+	for _, s := range strategies {
+		if s == strategy {
+			return true
+		}
+	}
+
+	return false
+}
+
+func (vs VaultSecret) ShouldWrite() bool {
+	return vs.checkStrategy(VaultStrategyWrite)
+}
+
+func (vs VaultSecret) ShouldDelete() bool {
+	return vs.checkStrategy(VaultStrategyDelete)
+}
+
 func (j *JobResponse) RepoCleanURL() string {
 	return url_helpers.CleanURL(j.GitInfo.RepoURL)
+}
+
+const VaultDefinitionVariable = "VAULT_DEFINITION_ALPHA"
+
+func (j *JobResponse) GetVault() *Vault {
+	if j.Vault != nil {
+		return j.Vault
+	}
+
+	def := j.Variables.Get(VaultDefinitionVariable)
+	if len(def) < 1 {
+		return nil
+	}
+
+	v := new(Vault)
+	_ = yaml.Unmarshal([]byte(def), v)
+
+	j.Vault = v
+
+	return j.Vault
 }
 
 type UpdateJobRequest struct {
