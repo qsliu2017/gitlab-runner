@@ -224,31 +224,26 @@ func (b *Build) executeStage(ctx context.Context, buildStage BuildStage, executo
 
 	b.Log().WithField("build_stage", buildStage).Debug("Executing build stage")
 
-	var subStages []BuildStage
 	if buildStage == BuildStageUserScript {
 		for _, s := range b.Steps {
 			// after_script has a separate BuildStage. See common.BuildStageAfterScript
 			if s.Name == StepNameAfterScript {
 				continue
 			}
-			subStages = append(subStages, s.BuildStage())
+
+			env := ExecutorEnvironment{
+				Predefined: false,
+				Image:      s.Image,
+			}
+
+			err := b.executeSubStage(ctx, s.BuildStage(), executor, env)
+			if err != nil {
+				return err
+			}
 		}
 	} else {
-		subStages = append(subStages, buildStage)
-	}
-	// MR Pseudocode: construct an environment struct here.
-	// create the custom image based on what's in the step.
-	// It should be possible for it to be nil.
-	var predefinedEnv bool
-	switch buildStage {
-	case BuildStageUserScript, BuildStageAfterScript:
-		predefinedEnv = false
-	default:
-		predefinedEnv = true
-	}
-
-	for _, s := range subStages {
-		err := b.executeSubStage(ctx, s, executor, predefinedEnv)
+		env := ExecutorEnvironment{Predefined: buildStage != BuildStageAfterScript}
+		err := b.executeSubStage(ctx, buildStage, executor, env)
 		if err != nil {
 			return err
 		}
@@ -257,7 +252,7 @@ func (b *Build) executeStage(ctx context.Context, buildStage BuildStage, executo
 	return nil
 }
 
-func (b *Build) executeSubStage(ctx context.Context, subStage BuildStage, executor Executor, predefinedEnv bool) error {
+func (b *Build) executeSubStage(ctx context.Context, subStage BuildStage, executor Executor, env ExecutorEnvironment) error {
 	shell := executor.Shell()
 	if shell == nil {
 		return errors.New("no shell defined")
@@ -274,10 +269,10 @@ func (b *Build) executeSubStage(ctx context.Context, subStage BuildStage, execut
 	}
 
 	cmd := ExecutorCommand{
-		Context:    ctx,
-		Script:     script,
-		Stage:      subStage,
-		Predefined: predefinedEnv,
+		Context:     ctx,
+		Script:      script,
+		Stage:       subStage,
+		Environment: env,
 	}
 
 	section := &helpers.BuildSection{

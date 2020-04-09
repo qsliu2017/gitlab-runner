@@ -176,12 +176,12 @@ const (
 )
 
 type Step struct {
-	// MR Pseudocode: add an image option here. String.
 	Name         StepName   `json:"name"`
 	Script       StepScript `json:"script"`
 	Timeout      int        `json:"timeout"`
 	When         StepWhen   `json:"when"`
 	AllowFailure bool       `json:"allow_failure"`
+	Image        string     `json:"image"`
 }
 
 // BuildStage returns the BuildStage corresponding to this step in the job.
