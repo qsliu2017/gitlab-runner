@@ -153,7 +153,7 @@ func (s *executor) setupResources() error {
 
 func (s *executor) Prepare(options common.ExecutorPrepareOptions) (err error) {
 	if err = s.AbstractExecutor.Prepare(options); err != nil {
-		return fmt.Errorf("AbstractExecutor Prepare() failed with: %w", err)
+		return fmt.Errorf("prepare AbstractExecutor: %w", err)
 	}
 
 	if s.BuildShell.PassFile {
@@ -1046,7 +1046,9 @@ func (s *executor) runInContainer(name string, command []string) <-chan error {
 			Executor: &DefaultRemoteExecutor{},
 		}
 
-		if err := attach.Run(); err != nil {
+		retryable := retry.New(retry.WithBuildLog(&attach, &s.BuildLogger))
+		err = retryable.Run()
+		if err != nil {
 			errCh <- err
 		}
 
