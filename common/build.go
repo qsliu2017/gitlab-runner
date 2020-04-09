@@ -233,7 +233,7 @@ func (b *Build) executeStage(ctx context.Context, buildStage BuildStage, executo
 
 			env := ExecutorEnvironment{
 				Predefined: false,
-				Image:      s.Image,
+				ImageName:  s.Image,
 			}
 
 			err := b.executeSubStage(ctx, s.BuildStage(), executor, env)

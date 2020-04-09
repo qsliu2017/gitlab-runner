@@ -50,17 +50,26 @@ func (s *commandExecutor) Prepare(options common.ExecutorPrepareOptions) error {
 	return nil
 }
 
-func (s *commandExecutor) requestNewPredefinedContainer() (*types.ContainerJSON, error) {
-	prebuildImage, err := s.getPrebuiltImage()
-	if err != nil {
-		return nil, err
+func (s *commandExecutor) requestNewContainer(env common.ExecutorEnvironment) (*types.ContainerJSON, error) {
+	var image *types.ImageInspect
+	var err error
+	if env.ImageName == "" {
+		image, err = s.getPrebuiltImage()
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		image, err = s.getDockerImage(env.ImageName)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	buildImage := common.Image{
-		Name: prebuildImage.ID,
+		Name: image.ID,
 	}
 
-	containerJSON, err := s.createContainer("predefined", buildImage, s.helperImageInfo.Cmd, []string{prebuildImage.ID})
+	containerJSON, err := s.createContainer("predefined", buildImage, s.helperImageInfo.Cmd, []string{image.ID})
 	if err != nil {
 		return nil, err
 	}
@@ -88,9 +97,8 @@ func (s *commandExecutor) requestBuildContainer() (*types.ContainerJSON, error) 
 func (s *commandExecutor) Run(cmd common.ExecutorCommand) error {
 	var runOn *types.ContainerJSON
 	var err error
-	// MR Pseudocode: request container based on what's coming in from cmd.
 	if cmd.Environment.Predefined {
-		runOn, err = s.requestNewPredefinedContainer()
+		runOn, err = s.requestNewContainer(cmd.Environment)
 	} else {
 		runOn, err = s.requestBuildContainer()
 	}

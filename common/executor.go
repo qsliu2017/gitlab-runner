@@ -19,7 +19,7 @@ type ExecutorCommand struct {
 
 type ExecutorEnvironment struct {
 	Predefined bool
-	Image      string
+	ImageName  string
 }
 
 type ExecutorStage string
