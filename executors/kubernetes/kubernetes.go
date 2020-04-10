@@ -32,7 +32,6 @@ import (
 )
 
 const (
-	buildContainerName  = "build"
 	helperContainerName = "helper"
 
 	detectShellScriptName = "detect_shell_script"
@@ -93,6 +92,8 @@ type executor struct {
 	credentials *api.Secret
 	options     *kubernetesOptions
 	services    []api.Service
+
+	containerNamesPerStage map[common.BuildStage]string
 
 	configurationOverwrites *overwrites
 	buildLimits             api.ResourceList
@@ -185,6 +186,11 @@ func (s *executor) Prepare(options common.ExecutorPrepareOptions) (err error) {
 
 	s.featureChecker = &kubeClientFeatureChecker{kubeClient: s.kubeClient}
 
+	s.containerNamesPerStage = make(map[common.BuildStage]string)
+	for _, st := range s.Build.Steps {
+		s.containerNamesPerStage[st.BuildStage()] = string(st.BuildStage())
+	}
+
 	s.Println("Using Kubernetes executor with image", s.options.Image.Name, "...")
 	if !s.Build.IsFeatureFlagOn(featureflags.UseLegacyKubernetesExecutionStrategy) {
 		s.Println("Using attach strategy to execute scripts...")
@@ -215,8 +221,8 @@ func (s *executor) runWithExecLegacy(cmd common.ExecutorCommand) error {
 			return err
 		}
 	}
-	// MR Pseudocode: same as in runWithAttach.
-	containerName := buildContainerName
+
+	containerName := s.containerNamesPerStage[cmd.Stage]
 	containerCommand := s.BuildShell.DockerCommand
 	if cmd.Environment.Predefined {
 		containerName = helperContainerName
@@ -255,14 +261,12 @@ func (s *executor) runWithAttach(cmd common.ExecutorCommand) error {
 	ctx, cancel := context.WithCancel(cmd.Context)
 	defer cancel()
 
-	containerName := buildContainerName
+	containerName := s.containerNamesPerStage[cmd.Stage]
 	// Translates to roughly "sh /detect/shell/path.sh /stage/script/path.sh"
 	// which when the detect shell exits becomes something like "bash /stage/script/path.sh".
 	// This works unlike "gitlab-runner-build" since the detect shell passes arguments with "$@"
 	containerCommand := []string{"sh", s.scriptPath(detectShellScriptName), s.scriptPath(cmd.Stage)}
 	if cmd.Environment.Predefined {
-		// MR Pseudocode: figure out how to do it here.
-		// should follow the same direction as in the docker executor.
 		containerName = helperContainerName
 		// We use redirection here since the "gitlab-runner-build" helper doesn't pass input args
 		// to the shell it executes, so we technically pass the script to the stdin of the underlying shell
@@ -329,6 +333,11 @@ func (s *executor) ensurePodsConfigured(ctx context.Context) error {
 }
 
 func (s *executor) processLogs(ctx context.Context) {
+	containerNames := []string{helperContainerName}
+	for _, name := range s.containerNamesPerStage {
+		containerNames = append(containerNames, name)
+	}
+
 	processor := newLogProcessor(
 		s.kubeClient,
 		backoff.Backoff{Min: time.Second, Max: 30 * time.Second},
@@ -336,7 +345,7 @@ func (s *executor) processLogs(ctx context.Context) {
 		kubernetesLogProcessorPodConfig{
 			namespace:  s.pod.Namespace,
 			pod:        s.pod.Name,
-			containers: []string{helperContainerName, buildContainerName},
+			containers: containerNames,
 		},
 	)
 
@@ -466,7 +475,7 @@ func (s *executor) buildContainer(name, image string, imageDefinition common.Ima
 
 		if serviceName == "" {
 			serviceName = name
-			if name != buildContainerName {
+			if _, ok := s.containerNamesPerStage[common.BuildStage(name)]; !ok {
 				serviceName = fmt.Sprintf("proxy-%s", name)
 			}
 		}
@@ -872,8 +881,6 @@ func (s *executor) setupBuildPod() error {
 }
 
 func (s *executor) preparePodConfig(labels, annotations map[string]string, services []api.Container, imagePullSecrets []api.LocalObjectReference, hostAlias *api.HostAlias) api.Pod {
-	buildImage := s.Build.GetAllVariables().ExpandValue(s.options.Image.Name)
-
 	pod := api.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			GenerateName: s.projectUniqueName(),
@@ -882,17 +889,12 @@ func (s *executor) preparePodConfig(labels, annotations map[string]string, servi
 			Annotations:  annotations,
 		},
 		Spec: api.PodSpec{
-			Volumes:            s.getVolumes(),
-			ServiceAccountName: s.configurationOverwrites.serviceAccount,
-			RestartPolicy:      api.RestartPolicyNever,
-			NodeSelector:       s.Config.Kubernetes.NodeSelector,
-			Tolerations:        s.Config.Kubernetes.GetNodeTolerations(),
-			Containers: append([]api.Container{
-				// TODO use the build and helper template here
-				// MR Pseudocode: create additional containers for each step here.
-				s.buildContainer(buildContainerName, buildImage, s.options.Image, s.buildRequests, s.buildLimits, s.BuildShell.DockerCommand...),
-				s.buildContainer(helperContainerName, s.getHelperImage(), common.Image{}, s.helperRequests, s.helperLimits, s.BuildShell.DockerCommand...),
-			}, services...),
+			Volumes:                       s.getVolumes(),
+			ServiceAccountName:            s.configurationOverwrites.serviceAccount,
+			RestartPolicy:                 api.RestartPolicyNever,
+			NodeSelector:                  s.Config.Kubernetes.NodeSelector,
+			Tolerations:                   s.Config.Kubernetes.GetNodeTolerations(),
+			Containers:                    append(s.getBuildContainers(), services...),
 			TerminationGracePeriodSeconds: &s.Config.Kubernetes.TerminationGracePeriodSeconds,
 			ImagePullSecrets:              imagePullSecrets,
 			SecurityContext:               s.Config.Kubernetes.GetPodSecurityContext(),
@@ -904,6 +906,23 @@ func (s *executor) preparePodConfig(labels, annotations map[string]string, servi
 	}
 
 	return pod
+}
+
+func (s *executor) getBuildContainers() []api.Container {
+	buildImage := s.Build.GetAllVariables().ExpandValue(s.options.Image.Name)
+	containers := []api.Container{
+		s.buildContainer(helperContainerName, s.getHelperImage(), common.Image{}, s.helperRequests, s.helperLimits, s.BuildShell.DockerCommand...),
+	}
+	for _, st := range s.Build.Steps {
+		image := buildImage
+		if st.Image != "" {
+			image = st.Image
+		}
+		containerName := s.containerNamesPerStage[st.BuildStage()]
+		containers = append(containers, s.buildContainer(containerName, image, common.Image{}, s.buildRequests, s.buildLimits, s.BuildShell.DockerCommand...))
+	}
+
+	return containers
 }
 
 func (s *executor) getHelperImage() string {
