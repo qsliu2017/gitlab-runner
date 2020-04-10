@@ -763,11 +763,13 @@ func (b *AbstractShell) deleteVaultSecret(w ShellWriter, runnerCommand string, s
 func (b *AbstractShell) writeScript(w ShellWriter, buildStage common.BuildStage, info common.ShellScriptInfo) error {
 	methods := map[common.BuildStage]func(ShellWriter, common.ShellScriptInfo) error{
 		common.BuildStagePrepare:                  b.writePrepareScript,
+		common.BuildStageVaultGetSecrets:          b.writeVaultGetSecretsScript,
 		common.BuildStageGetSources:               b.writeGetSourcesScript,
 		common.BuildStageRestoreCache:             b.writeRestoreCacheScript,
 		common.BuildStageDownloadArtifacts:        b.writeDownloadArtifactsScript,
 		common.BuildStageUserScript:               b.writeUserScript,
 		common.BuildStageAfterScript:              b.writeAfterScript,
+		common.BuildStageVaultPutSecrets:          b.writeVaultPutSecretsScript,
 		common.BuildStageArchiveCache:             b.writeArchiveCacheScript,
 		common.BuildStageUploadOnSuccessArtifacts: b.writeUploadArtifactsOnSuccessScript,
 		common.BuildStageUploadOnFailureArtifacts: b.writeUploadArtifactsOnFailureScript,

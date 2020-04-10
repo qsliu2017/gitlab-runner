@@ -63,11 +63,13 @@ type BuildStage string
 const (
 	BuildStagePrepareExecutor          BuildStage = "prepare_executor"
 	BuildStagePrepare                  BuildStage = "prepare_script"
+	BuildStageVaultGetSecrets          BuildStage = "vault_get_secrets"
 	BuildStageGetSources               BuildStage = "get_sources"
 	BuildStageRestoreCache             BuildStage = "restore_cache"
 	BuildStageDownloadArtifacts        BuildStage = "download_artifacts"
 	BuildStageUserScript               BuildStage = "build_script"
 	BuildStageAfterScript              BuildStage = "after_script"
+	BuildStageVaultPutSecrets          BuildStage = "vault_Put_secrets"
 	BuildStageArchiveCache             BuildStage = "archive_cache"
 	BuildStageUploadOnSuccessArtifacts BuildStage = "upload_artifacts_on_success"
 	BuildStageUploadOnFailureArtifacts BuildStage = "upload_artifacts_on_failure"
@@ -75,11 +77,13 @@ const (
 
 var BuildStages = []BuildStage{
 	BuildStagePrepare,
+	BuildStageVaultGetSecrets,
 	BuildStageGetSources,
 	BuildStageRestoreCache,
 	BuildStageDownloadArtifacts,
 	BuildStageUserScript,
 	BuildStageAfterScript,
+	BuildStageVaultPutSecrets,
 	BuildStageArchiveCache,
 	BuildStageUploadOnSuccessArtifacts,
 	BuildStageUploadOnFailureArtifacts,
@@ -290,6 +294,7 @@ func (b *Build) executeStage(ctx context.Context, buildStage BuildStage, executo
 func getStageDescription(stage BuildStage) string {
 	descriptions := map[BuildStage]string{
 		BuildStagePrepare:                  "Preparing environment",
+		BuildStageVaultGetSecrets:          "Getting secrets from Vault",
 		BuildStageGetSources:               "Getting source from Git repository",
 		BuildStageRestoreCache:             "Restoring cache",
 		BuildStageDownloadArtifacts:        "Downloading artifacts",
@@ -298,6 +303,7 @@ func getStageDescription(stage BuildStage) string {
 		BuildStageArchiveCache:             "Saving cache",
 		BuildStageUploadOnFailureArtifacts: "Uploading artifacts for failed job",
 		BuildStageUploadOnSuccessArtifacts: "Uploading artifacts for successful job",
+		BuildStageVaultPutSecrets:          "Saving secrets in Vault",
 	}
 
 	description, ok := descriptions[stage]
@@ -325,6 +331,9 @@ func (b *Build) executeScript(ctx context.Context, executor Executor) error {
 	err := b.executeStage(ctx, BuildStagePrepare, executor)
 
 	if err == nil {
+		err = b.executeVaultStage(ctx, BuildStageVaultGetSecrets, executor)
+	}
+	if err == nil {
 		err = b.attemptExecuteStage(ctx, BuildStageGetSources, executor, b.GetGetSourcesAttempts())
 	}
 	if err == nil {
@@ -342,10 +351,13 @@ func (b *Build) executeScript(ctx context.Context, executor Executor) error {
 		timeoutContext, timeoutCancel := context.WithTimeout(ctx, AfterScriptTimeout)
 		defer timeoutCancel()
 
-		b.executeStage(timeoutContext, BuildStageAfterScript, executor)
+		_ = b.executeStage(timeoutContext, BuildStageAfterScript, executor)
 	}
 
 	// Execute post script (cache store, artifacts upload)
+	if err == nil {
+		err = b.executeVaultStage(ctx, BuildStageVaultPutSecrets, executor)
+	}
 	if err == nil {
 		err = b.executeStage(ctx, BuildStageArchiveCache, executor)
 	}
@@ -363,6 +375,14 @@ func (b *Build) executeScript(ctx context.Context, executor Executor) error {
 
 	// Otherwise, use uploadError
 	return artifactUploadError
+}
+
+func (b *Build) executeVaultStage(ctx context.Context, buildStage BuildStage, executor Executor) error {
+	if b.GetVault() == nil {
+		return nil
+	}
+
+	return b.executeStage(ctx, buildStage, executor)
 }
 
 func (b *Build) createReferees(executor Executor) {
