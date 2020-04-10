@@ -637,6 +637,129 @@ func (b *AbstractShell) writeUploadArtifactsOnFailureScript(w ShellWriter, info 
 	return
 }
 
+func (b *AbstractShell) writeVaultGetSecretsScript(w ShellWriter, info common.ShellScriptInfo) error {
+	var innerErr error
+	b.guardRunnerCommand(w, info.RunnerCommand, "Performing Vault operations", func() {
+		b.writeExports(w, info)
+
+		innerErr = b.handleVaultSecretOperation(w, b.getVaultSecret, info)
+	})
+
+	return innerErr
+}
+
+type vaultSecretHandler func(w ShellWriter, runnerCommand string, serverName string, server common.VaultServer, secretName string, secret common.VaultSecret) error
+
+func (b *AbstractShell) handleVaultSecretOperation(w ShellWriter, handler vaultSecretHandler, info common.ShellScriptInfo) error {
+	vault := info.Build.GetVault()
+	if vault == nil {
+		return nil
+	}
+
+	for server, serverDef := range *vault {
+		for secretName, secret := range serverDef.Secrets {
+			err := handler(w, info.RunnerCommand, server, serverDef.Server, secretName, secret)
+			if err != nil {
+				return fmt.Errorf("handling vault secret operation: %w", err)
+			}
+		}
+	}
+
+	return nil
+}
+
+func (b *AbstractShell) getVaultSecret(w ShellWriter, runnerCommand string, serverName string, server common.VaultServer, secretName string, secret common.VaultSecret) error {
+	if !secret.ShouldRead() {
+		return nil
+	}
+
+	args := vaultArgs(
+		serverName,
+		server,
+		secretName,
+		secret,
+		"--action", "get",
+		"--storage-dir",
+		w.EnvVariableKey(secretName),
+	)
+
+	w.Command(runnerCommand, args...)
+
+	return nil
+}
+
+func vaultArgs(serverName string, server common.VaultServer, secretName string, secret common.VaultSecret, args ...string) []string {
+	defaultArgs := []string{
+		"vault-secret",
+		"--server-name", serverName,
+		"--url", server.URL,
+		"--auth-name", server.Auth.Name,
+		"--auth-path", server.Auth.Path,
+		"--secret-engine-name", secret.Engine.Name,
+		"--secret-engine-path", secret.Engine.Path,
+		"--secret-path", secret.Path,
+		"--secret-name", secretName,
+	}
+
+	for key, value := range server.Auth.Data {
+		dataArgs := []string{
+			"--auth-data",
+			fmt.Sprintf("%s=%v", key, value),
+		}
+		defaultArgs = append(defaultArgs, dataArgs...)
+	}
+
+	return append(defaultArgs, args...)
+}
+
+func (b *AbstractShell) writeVaultPutSecretsScript(w ShellWriter, info common.ShellScriptInfo) error {
+	var innerErr error
+	b.guardRunnerCommand(w, info.RunnerCommand, "Performing Vault operations", func() {
+		b.writeExports(w, info)
+
+		err := b.handleVaultSecretOperation(w, b.putVaultSecret, info)
+		if err != nil {
+			innerErr = err
+			return
+		}
+
+		innerErr = b.handleVaultSecretOperation(w, b.deleteVaultSecret, info)
+	})
+
+	return innerErr
+}
+
+func (b *AbstractShell) putVaultSecret(w ShellWriter, runnerCommand string, serverName string, server common.VaultServer, secretName string, secret common.VaultSecret) error {
+	if !secret.ShouldWrite() {
+		return nil
+	}
+
+	args := vaultArgs(
+		serverName,
+		server,
+		secretName,
+		secret,
+		"--action", "put",
+		"--storage-dir",
+		w.EnvVariableKey(secretName),
+	)
+
+	w.Command(runnerCommand, args...)
+
+	return nil
+}
+
+func (b *AbstractShell) deleteVaultSecret(w ShellWriter, runnerCommand string, serverName string, server common.VaultServer, secretName string, secret common.VaultSecret) error {
+	if !secret.ShouldDelete() {
+		return nil
+	}
+
+	args := vaultArgs(serverName, server, secretName, secret, "--action", "delete")
+	w.Command(runnerCommand, args...)
+
+	return nil
+}
+
 func (b *AbstractShell) writeScript(w ShellWriter, buildStage common.BuildStage, info common.ShellScriptInfo) error {
 	methods := map[common.BuildStage]func(ShellWriter, common.ShellScriptInfo) error{
 		common.BuildStagePrepare:                  b.writePrepareScript,
