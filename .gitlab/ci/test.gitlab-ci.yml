@@ -6,9 +6,10 @@ code_quality:
     LINT_FLAGS: "--issues-exit-code 0 --color never --deadline 15m"
     ADDITIONAL_LINTERS: "" # Turn off additional linters since they cause a hang
     OUT_FORMAT: code-climate
+    GOGC: 100
   script:
   - make lint | tee ${REPORT_FILE}
-  timeout: 15 minutes
+  timeout: 20 minutes
   artifacts:
     reports:
       codequality: ${REPORT_FILE}
