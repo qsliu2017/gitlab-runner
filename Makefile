@@ -98,7 +98,6 @@ version:
 deps: $(DEVELOPMENT_TOOLS)
 
 # Enable some additional linters that are too memory-hungry to run on the CI server
-lint: ADDITIONAL_LINTERS ?= --enable deadcode --enable gosimple --enable unused
 lint: OUT_FORMAT ?= colored-line-number
 lint: LINT_FLAGS ?=
 lint:

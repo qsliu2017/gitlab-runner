@@ -42,6 +42,9 @@ linters:
     - unconvert
     - varcheck
     - whitespace
+    - deadcode
+    - gosimple
+    - unused
   fast: false
 
 issues:
