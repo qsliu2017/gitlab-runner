@@ -32,6 +32,7 @@ import (
 	"k8s.io/client-go/rest/fake"
 
 	"gitlab.com/gitlab-org/gitlab-runner/common"
+	"gitlab.com/gitlab-org/gitlab-runner/common/buildtest"
 	"gitlab.com/gitlab-org/gitlab-runner/executors"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers/container/helperimage"
@@ -61,6 +62,9 @@ func TestRunTestsWithFeatureFlag(t *testing.T) {
 		"testOverwriteNamespaceNotMatch":        testOverwriteNamespaceNotMatchFeatureFlag,
 		"testOverwriteServiceAccountNotMatch":   testOverwriteServiceAccountNotMatchFeatureFlag,
 		"testInteractiveTerminal":               testInteractiveTerminalFeatureFlag,
+		"testNoNewline":                         testNoNewlineFeatureFlag,
+		"testOnlyNewLine":                       testOnlyNewLineFeatureFlag,
+		"testPrintNothing":                      testPrintNothingFeatureFlag,
 	}
 
 	featureFlags := []string{
@@ -808,6 +812,75 @@ func testInteractiveTerminalFeatureFlag(t *testing.T, featureFlagName string, fe
 	t.Log(out)
 
 	assert.Contains(t, out, "Terminal is connected, will time out in 2s...")
+}
+
+func testNoNewlineFeatureFlag(t *testing.T, featureFlagName string, featureFlagValue bool) {
+	if helpers.SkipIntegrationTests(t, "kubectl", "cluster-info") {
+		return
+	}
+
+	successfulBuild, err := common.GetRemoteBuildResponse("echo -n no_newline")
+	require.NoError(t, err)
+	successfulBuild.Image.Name = common.TestDockerGitImage
+	build := &common.Build{
+		JobResponse: successfulBuild,
+		Runner: &common.RunnerConfig{
+			RunnerSettings: common.RunnerSettings{
+				Executor:   "kubernetes",
+				Kubernetes: &common.KubernetesConfig{},
+			},
+		},
+	}
+	setBuildFeatureFlag(build, featureFlagName, featureFlagValue)
+
+	err = buildtest.RunBuildWithTrace(t, build, &common.Trace{Writer: os.Stdout})
+	require.NoError(t, err)
+}
+
+func testOnlyNewLineFeatureFlag(t *testing.T, featureFlagName string, featureFlagValue bool) {
+	if helpers.SkipIntegrationTests(t, "kubectl", "cluster-info") {
+		return
+	}
+
+	successfulBuild, err := common.GetRemoteBuildResponse("echo")
+	require.NoError(t, err)
+	successfulBuild.Image.Name = common.TestDockerGitImage
+	build := &common.Build{
+		JobResponse: successfulBuild,
+		Runner: &common.RunnerConfig{
+			RunnerSettings: common.RunnerSettings{
+				Executor:   "kubernetes",
+				Kubernetes: &common.KubernetesConfig{},
+			},
+		},
+	}
+	setBuildFeatureFlag(build, featureFlagName, featureFlagValue)
+
+	err = buildtest.RunBuildWithTrace(t, build, &common.Trace{Writer: os.Stdout})
+	require.NoError(t, err)
+}
+
+func testPrintNothingFeatureFlag(t *testing.T, featureFlagName string, featureFlagValue bool) {
+	if helpers.SkipIntegrationTests(t, "kubectl", "cluster-info") {
+		return
+	}
+
+	successfulBuild, err := common.GetRemoteBuildResponse("echo -n")
+	require.NoError(t, err)
+	successfulBuild.Image.Name = common.TestDockerGitImage
+	build := &common.Build{
+		JobResponse: successfulBuild,
+		Runner: &common.RunnerConfig{
+			RunnerSettings: common.RunnerSettings{
+				Executor:   "kubernetes",
+				Kubernetes: &common.KubernetesConfig{},
+			},
+		},
+	}
+	setBuildFeatureFlag(build, featureFlagName, featureFlagValue)
+
+	err = buildtest.RunBuildWithTrace(t, build, &common.Trace{Writer: os.Stdout})
+	require.NoError(t, err)
 }
 
 func TestCleanup(t *testing.T) {

@@ -14,7 +14,7 @@ import (
 const BashTrapShellScript = `runner_script_trap() {
 	command_exit_code=$?
 	out_json='{"command_exit_code": %s, "script": "%s"}\n'
-	printf "$out_json" "$command_exit_code" "$0"
+	printf "\n$out_json" "$command_exit_code" "$0"
 	
 	exit 0
 }
