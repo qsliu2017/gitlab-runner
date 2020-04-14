@@ -1,7 +1,6 @@
 package network
 
 import (
-	"context"
 	"sync"
 	"time"
 
@@ -18,7 +17,7 @@ type clientJobTrace struct {
 	config         common.RunnerConfig
 	jobCredentials *common.JobCredentials
 	id             int
-	cancelFunc     context.CancelFunc
+	cancelFunc     common.BuildCancelFunc
 
 	buffer *trace.Buffer
 
@@ -68,7 +67,7 @@ func (c *clientJobTrace) SetMasked(masked []string) {
 	c.buffer.SetMasked(masked)
 }
 
-func (c *clientJobTrace) SetCancelFunc(cancelFunc context.CancelFunc) {
+func (c *clientJobTrace) SetCancelFunc(cancelFunc common.BuildCancelFunc) {
 	c.cancelFunc = cancelFunc
 }
 
@@ -119,6 +118,8 @@ func (c *clientJobTrace) finalStatusUpdate() {
 		case common.UpdateSucceeded:
 			return
 		case common.UpdateAbort:
+			return
+		case common.UpdateGracefulCancel:
 			return
 		case common.UpdateNotFound:
 			return
@@ -241,9 +242,14 @@ func (c *clientJobTrace) sendUpdate() common.UpdateState {
 	return status
 }
 
-func (c *clientJobTrace) abort() bool {
+func (c *clientJobTrace) abort(state common.UpdateState) bool {
 	if c.cancelFunc != nil {
-		c.cancelFunc()
+		switch state {
+		case common.UpdateAbort:
+			c.cancelFunc(common.CancellationTypeAbort)
+		case common.UpdateGracefulCancel:
+			c.cancelFunc(common.CancellationTypeGraceful)
+		}
 		c.cancelFunc = nil
 		return true
 	}
@@ -255,9 +261,14 @@ func (c *clientJobTrace) watch() {
 		select {
 		case <-time.After(c.getUpdateInterval()):
 			state := c.incrementalUpdate()
-			if state == common.UpdateAbort && c.abort() {
-				<-c.finished
-				return
+			if state == common.UpdateAbort || state == common.UpdateGracefulCancel {
+				if !c.abort(state) {
+					break
+				}
+				if state == common.UpdateAbort {
+					<-c.finished
+					return
+				}
 			}
 			break
 

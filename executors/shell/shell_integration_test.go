@@ -186,7 +186,7 @@ func TestBuildCancel(t *testing.T) {
 
 		cancelTimer := time.AfterFunc(time.Second, func() {
 			t.Log("Cancel")
-			trace.CancelFunc()
+			trace.CancelFunc(common.CancellationTypeAbort)
 		})
 		defer cancelTimer.Stop()
 

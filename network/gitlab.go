@@ -335,6 +335,9 @@ func (n *GitLabClient) UpdateJob(config common.RunnerConfig, jobCredentials *com
 	case remoteJobStateResponse.IsAborted():
 		log.Warningln("Submitting job to coordinator...", "aborted")
 		return common.UpdateAbort
+	case remoteJobStateResponse.IsGracefullyCanceled():
+		log.Warningln("Submitting job to coordinator...", "gracefully-canceled")
+		return common.UpdateGracefulCancel
 	case result == http.StatusOK:
 		log.Debugln("Submitting job to coordinator...", "ok")
 		return common.UpdateSucceeded
@@ -402,6 +405,12 @@ func (n *GitLabClient) PatchTrace(config common.RunnerConfig, jobCredentials *co
 	case tracePatchResponse.IsAborted():
 		log.Warningln("Appending trace to coordinator...", "aborted")
 		result.State = common.UpdateAbort
+
+		return result
+
+	case tracePatchResponse.IsGracefullyCanceled():
+		log.Warningln("Appending trace to coordinator...", "gracefully-canceled")
+		result.State = common.UpdateGracefulCancel
 
 		return result
 

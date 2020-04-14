@@ -1,7 +1,6 @@
 package common
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"time"
@@ -33,6 +32,7 @@ const (
 	UpdateSucceeded UpdateState = iota
 	UpdateNotFound
 	UpdateAbort
+	UpdateGracefulCancel
 	UpdateFailed
 	UpdateRangeMismatch
 )
@@ -368,7 +368,7 @@ type JobTrace interface {
 	io.Writer
 	Success()
 	Fail(err error, failureReason JobFailureReason)
-	SetCancelFunc(cancelFunc context.CancelFunc)
+	SetCancelFunc(cancelFunc BuildCancelFunc)
 	SetFailuresCollector(fc FailuresCollector)
 	SetMasked(values []string)
 	IsStdout() bool

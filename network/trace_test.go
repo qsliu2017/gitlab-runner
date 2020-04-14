@@ -59,33 +59,48 @@ func TestIgnoreStatusChange(t *testing.T) {
 	b.Fail(errors.New("test"), "script_failure")
 }
 
-func TestJobAbort(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+func TestJobCancel(t *testing.T) {
+	tests := map[string]struct {
+		updateState common.UpdateState
+		updateCount int
+		cancelType  common.CancellationType
+	}{
+		"cancel, stops trace":                 {common.UpdateAbort, 1, common.CancellationTypeAbort},
+		"graceful cancel, doesn't stop trace": {common.UpdateGracefulCancel, 2, common.CancellationTypeGraceful},
+	}
 
-	keepAliveUpdateMatcher := generateJobInfoMatcher(jobCredentials.ID, common.Running, common.NoneFailure)
-	updateMatcher := generateJobInfoMatcher(jobCredentials.ID, common.Success, common.NoneFailure)
+	for tn, tt := range tests {
+		t.Run(tn, func(t *testing.T) {
+			keepAliveUpdateMatcher := generateJobInfoMatcher(jobCredentials.ID, common.Running, common.NoneFailure)
+			updateMatcher := generateJobInfoMatcher(jobCredentials.ID, common.Success, common.NoneFailure)
 
-	mockNetwork := new(common.MockNetwork)
-	defer mockNetwork.AssertExpectations(t)
+			mockNetwork := new(common.MockNetwork)
+			defer mockNetwork.AssertExpectations(t)
 
-	// abort while running
-	mockNetwork.On("UpdateJob", jobConfig, jobCredentials, keepAliveUpdateMatcher).
-		Return(common.UpdateAbort).Once()
+			// abort while running
+			mockNetwork.On("UpdateJob", jobConfig, jobCredentials, keepAliveUpdateMatcher).
+				Return(tt.updateState).Times(tt.updateCount)
 
-	// try to send status at least once more
-	mockNetwork.On("UpdateJob", jobConfig, jobCredentials, updateMatcher).
-		Return(common.UpdateAbort).Once()
+			// try to send status at least once more
+			mockNetwork.On("UpdateJob", jobConfig, jobCredentials, updateMatcher).
+				Return(tt.updateState).Once()
 
-	b, err := newJobTrace(mockNetwork, jobConfig, jobCredentials)
-	require.NoError(t, err)
+			b, err := newJobTrace(mockNetwork, jobConfig, jobCredentials)
+			require.NoError(t, err)
 
-	b.updateInterval = 0
-	b.SetCancelFunc(cancel)
+			b.updateInterval = 0
+			ctx, cancel := context.WithCancel(context.Background())
+			b.SetCancelFunc(func(c common.CancellationType) {
+				assert.Equal(t, tt.cancelType, c)
+				cancel()
+			})
 
-	b.start()
-	assert.NotNil(t, <-ctx.Done(), "should abort the job")
-	b.Success()
+			b.start()
+			assert.NotNil(t, <-ctx.Done(), "should abort the job")
+			b.Success()
+		})
+	}
+
 }
 
 func TestJobOutputLimit(t *testing.T) {

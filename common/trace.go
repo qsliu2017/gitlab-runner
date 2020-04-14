@@ -1,7 +1,6 @@
 package common
 
 import (
-	"context"
 	"io"
 	"os"
 	"sync"
@@ -9,7 +8,7 @@ import (
 
 type Trace struct {
 	Writer     io.Writer
-	CancelFunc context.CancelFunc
+	CancelFunc BuildCancelFunc
 	mutex      sync.Mutex
 }
 
@@ -32,7 +31,7 @@ func (s *Trace) Success() {
 func (s *Trace) Fail(err error, failureReason JobFailureReason) {
 }
 
-func (s *Trace) SetCancelFunc(cancelFunc context.CancelFunc) {
+func (s *Trace) SetCancelFunc(cancelFunc BuildCancelFunc) {
 	s.CancelFunc = cancelFunc
 }
 

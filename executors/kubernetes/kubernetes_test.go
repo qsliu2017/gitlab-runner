@@ -225,7 +225,7 @@ func testKubernetesBuildCancelFeatureFlag(t *testing.T, featureFlagName string, 
 
 	abortTimer := time.AfterFunc(time.Second, func() {
 		t.Log("Interrupt")
-		trace.CancelFunc()
+		trace.CancelFunc(common.CancellationTypeAbort)
 	})
 	defer abortTimer.Stop()
 

@@ -38,6 +38,15 @@ const (
 	gitCleanFlagsNone    = "none"
 )
 
+type CancellationType int
+
+const (
+	CancellationTypeAbort CancellationType = iota
+	CancellationTypeGraceful
+)
+
+type BuildCancelFunc func(CancellationType)
+
 type SubmoduleStrategy int
 
 const (
@@ -50,12 +59,13 @@ const (
 type BuildRuntimeState string
 
 const (
-	BuildRunStatePending      BuildRuntimeState = "pending"
-	BuildRunRuntimeRunning    BuildRuntimeState = "running"
-	BuildRunRuntimeFinished   BuildRuntimeState = "finished"
-	BuildRunRuntimeCanceled   BuildRuntimeState = "canceled"
-	BuildRunRuntimeTerminated BuildRuntimeState = "terminated"
-	BuildRunRuntimeTimedout   BuildRuntimeState = "timedout"
+	BuildRunStatePending              BuildRuntimeState = "pending"
+	BuildRunRuntimeRunning            BuildRuntimeState = "running"
+	BuildRunRuntimeFinished           BuildRuntimeState = "finished"
+	BuildRunRuntimeAborted            BuildRuntimeState = "aborted"
+	BuildRunRuntimeGracefullyCanceled BuildRuntimeState = "gracefully-canceled"
+	BuildRunRuntimeTerminated         BuildRuntimeState = "terminated"
+	BuildRunRuntimeTimedout           BuildRuntimeState = "timedout"
 )
 
 type BuildStage string
@@ -316,30 +326,30 @@ func (b *Build) executeUploadArtifacts(ctx context.Context, state error, executo
 	return b.executeStage(ctx, BuildStageUploadOnFailureArtifacts, executor)
 }
 
-func (b *Build) executeScript(ctx context.Context, executor Executor) error {
+func (b *Build) executeScript(runCtx context.Context, afterCtx context.Context, executor Executor) error {
 	// track job start and create referees
 	startTime := time.Now()
 	b.createReferees(executor)
 
 	// Prepare stage
-	err := b.executeStage(ctx, BuildStagePrepare, executor)
+	err := b.executeStage(runCtx, BuildStagePrepare, executor)
 
 	if err == nil {
-		err = b.attemptExecuteStage(ctx, BuildStageGetSources, executor, b.GetGetSourcesAttempts())
+		err = b.attemptExecuteStage(runCtx, BuildStageGetSources, executor, b.GetGetSourcesAttempts())
 	}
 	if err == nil {
-		err = b.attemptExecuteStage(ctx, BuildStageRestoreCache, executor, b.GetRestoreCacheAttempts())
+		err = b.attemptExecuteStage(runCtx, BuildStageRestoreCache, executor, b.GetRestoreCacheAttempts())
 	}
 	if err == nil {
-		err = b.attemptExecuteStage(ctx, BuildStageDownloadArtifacts, executor, b.GetDownloadArtifactsAttempts())
+		err = b.attemptExecuteStage(runCtx, BuildStageDownloadArtifacts, executor, b.GetDownloadArtifactsAttempts())
 	}
 
 	if err == nil {
 		// Execute user build script (before_script + script)
-		err = b.executeStage(ctx, BuildStageUserScript, executor)
+		err = b.executeStage(runCtx, BuildStageUserScript, executor)
 
 		// Execute after script (after_script)
-		timeoutContext, timeoutCancel := context.WithTimeout(ctx, AfterScriptTimeout)
+		timeoutContext, timeoutCancel := context.WithTimeout(afterCtx, AfterScriptTimeout)
 		defer timeoutCancel()
 
 		b.executeStage(timeoutContext, BuildStageAfterScript, executor)
@@ -347,14 +357,14 @@ func (b *Build) executeScript(ctx context.Context, executor Executor) error {
 
 	// Execute post script (cache store, artifacts upload)
 	if err == nil {
-		err = b.executeStage(ctx, BuildStageArchiveCache, executor)
+		err = b.executeStage(afterCtx, BuildStageArchiveCache, executor)
 	}
 
-	artifactUploadError := b.executeUploadArtifacts(ctx, err, executor)
+	artifactUploadError := b.executeUploadArtifacts(afterCtx, err, executor)
 
 	// track job end and execute referees
 	endTime := time.Now()
-	b.executeUploadReferees(ctx, startTime, endTime)
+	b.executeUploadReferees(afterCtx, startTime, endTime)
 
 	// Use job's error as most important
 	if err != nil {
@@ -425,7 +435,6 @@ func (b *Build) GetBuildTimeout() time.Duration {
 func (b *Build) handleError(err error) error {
 	switch err {
 	case context.Canceled:
-		b.CurrentState = BuildRunRuntimeCanceled
 		return &BuildError{Inner: errors.New("canceled")}
 
 	case context.DeadlineExceeded:
@@ -446,9 +455,6 @@ func (b *Build) run(ctx context.Context, executor Executor) (err error) {
 
 	buildFinish := make(chan error, 1)
 
-	runContext, runCancel := context.WithCancel(context.Background())
-	defer runCancel()
-
 	if term, ok := executor.(terminal.InteractiveTerminal); b.Session != nil && ok {
 		b.Session.SetInteractiveTerminal(term)
 	}
@@ -457,9 +463,14 @@ func (b *Build) run(ctx context.Context, executor Executor) (err error) {
 		b.Session.SetProxyPool(proxyPooler)
 	}
 
+	runCtx, runCancel := context.WithCancel(context.Background())
+	defer runCancel()
+	afterCtx, afterCancel := context.WithCancel(context.Background())
+	defer afterCancel()
+
 	// Run build script
 	go func() {
-		buildFinish <- b.executeScript(runContext, executor)
+		buildFinish <- b.executeScript(runCtx, afterCtx, executor)
 	}()
 
 	// Wait for signals: cancel, timeout, abort or finish
@@ -479,8 +490,13 @@ func (b *Build) run(ctx context.Context, executor Executor) (err error) {
 
 	b.Log().WithError(err).Debugln("Waiting for build to finish...")
 
-	// Wait till we receive that build did finish
-	runCancel()
+	switch b.CurrentState {
+	case BuildRunRuntimeAborted:
+		afterCancel()
+		fallthrough
+	case BuildRunRuntimeGracefullyCanceled:
+		runCancel()
+	}
 	b.waitForBuildFinish(buildFinish, WaitForBuildFinishTimeout)
 
 	return err
@@ -644,7 +660,15 @@ func (b *Build) Run(globalConfig *Config, trace JobTrace) (err error) {
 	ctx, cancel := context.WithTimeout(context.Background(), b.GetBuildTimeout())
 	defer cancel()
 
-	trace.SetCancelFunc(cancel)
+	trace.SetCancelFunc(func(c CancellationType) {
+		cancel()
+		switch c {
+		case CancellationTypeAbort:
+			b.CurrentState = BuildRunRuntimeAborted
+		case CancellationTypeGraceful:
+			b.CurrentState = BuildRunRuntimeGracefullyCanceled
+		}
+	})
 	trace.SetMasked(b.GetAllVariables().Masked())
 
 	options := ExecutorPrepareOptions{

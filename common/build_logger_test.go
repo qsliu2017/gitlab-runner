@@ -2,7 +2,6 @@ package common
 
 import (
 	"bytes"
-	"context"
 	"testing"
 
 	"github.com/sirupsen/logrus"
@@ -15,7 +14,7 @@ type fakeJobTrace struct {
 
 func (fjt *fakeJobTrace) Success()                                       {}
 func (fjt *fakeJobTrace) Fail(err error, failureReason JobFailureReason) {}
-func (fjt *fakeJobTrace) SetCancelFunc(cancelFunc context.CancelFunc)    {}
+func (fjt *fakeJobTrace) SetCancelFunc(cancelFunc BuildCancelFunc)       {}
 func (fjt *fakeJobTrace) SetFailuresCollector(fc FailuresCollector)      {}
 func (fjt *fakeJobTrace) SetMasked(masked []string)                      {}
 func (fjt *fakeJobTrace) IsStdout() bool                                 { return false }

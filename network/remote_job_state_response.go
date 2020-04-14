@@ -7,8 +7,9 @@ import (
 const (
 	remoteStateHeader = "Job-Status"
 
-	statusCanceled = "canceled"
-	statusFailed   = "failed"
+	stateCanceled           = "canceled"
+	stateGracefullyCanceled = "gracefully-canceled"
+	stateFailed             = "failed"
 )
 
 type RemoteJobStateResponse struct {
@@ -17,7 +18,7 @@ type RemoteJobStateResponse struct {
 }
 
 func (r *RemoteJobStateResponse) IsAborted() bool {
-	if r.RemoteState == statusCanceled || r.RemoteState == statusFailed {
+	if r.RemoteState == stateCanceled || r.RemoteState == stateFailed {
 		return true
 	}
 
@@ -26,6 +27,10 @@ func (r *RemoteJobStateResponse) IsAborted() bool {
 	}
 
 	return false
+}
+
+func (r *RemoteJobStateResponse) IsGracefullyCanceled() bool {
+	return r.RemoteState == stateGracefullyCanceled
 }
 
 func NewRemoteJobStateResponse(response *http.Response) *RemoteJobStateResponse {
