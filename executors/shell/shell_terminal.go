@@ -9,8 +9,9 @@ import (
 	"os/exec"
 
 	"github.com/kr/pty"
-	terminalsession "gitlab.com/gitlab-org/gitlab-runner/session/terminal"
 	terminal "gitlab.com/gitlab-org/gitlab-terminal"
+
+	terminalsession "gitlab.com/gitlab-org/gitlab-runner/session/terminal"
 )
 
 type terminalConn struct {
