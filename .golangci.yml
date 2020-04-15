@@ -22,6 +22,8 @@ linters-settings:
   goconst:
     min-len: 3
     min-occurrences: 3
+  golint:
+      min-confidence: 0.1
 
 linters:
   disable-all: true
