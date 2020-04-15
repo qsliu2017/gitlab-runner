@@ -1435,7 +1435,7 @@ func TestDockerWatchOn_1_12_4(t *testing.T) {
 		t.Error("Container script not finished")
 	}
 
-	err = e.removeContainer(e.Context, container.ID)
+	err = e.stopContainer(e.Context, container.ID)
 	assert.NoError(t, err)
 	wg.Wait()
 }

@@ -1286,7 +1286,8 @@ func removeBuildContainer(t *testing.T) <-chan string {
 	}
 
 	for _, ctr := range list {
-		err := client.ContainerRemove(context.Background(), ctr.ID, types.ContainerRemoveOptions{Force: true})
+		timeout := 15 * time.Second
+		err := client.ContainerStop(context.Background(), ctr.ID, &timeout)
 		require.NoError(t, err)
 	}
 

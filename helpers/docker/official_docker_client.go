@@ -115,10 +115,10 @@ func (c *officialDockerClient) ContainerAttach(ctx context.Context, container st
 	return response, wrapError("ContainerAttach", err, started)
 }
 
-func (c *officialDockerClient) ContainerRemove(ctx context.Context, containerID string, options types.ContainerRemoveOptions) error {
+func (c *officialDockerClient) ContainerStop(ctx context.Context, containerID string, timeout *time.Duration) error {
 	started := time.Now()
-	err := c.client.ContainerRemove(ctx, containerID, options)
-	return wrapError("ContainerRemove", err, started)
+	err := c.client.ContainerStop(ctx, containerID, timeout)
+	return wrapError("ContainerStop", err, started)
 }
 
 func (c *officialDockerClient) ContainerLogs(ctx context.Context, container string, options types.ContainerLogsOptions) (io.ReadCloser, error) {

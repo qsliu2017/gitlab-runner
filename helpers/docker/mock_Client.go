@@ -13,6 +13,8 @@ import (
 
 	network "github.com/docker/docker/api/types/network"
 
+	time "time"
+
 	types "github.com/docker/docker/api/types"
 
 	volume "github.com/docker/docker/api/types/volume"
@@ -202,12 +204,12 @@ func (_m *MockClient) ContainerLogs(ctx context.Context, _a1 string, options typ
 	return r0, r1
 }
 
-// ContainerRemove provides a mock function with given fields: ctx, containerID, options
-func (_m *MockClient) ContainerRemove(ctx context.Context, containerID string, options types.ContainerRemoveOptions) error {
+// ContainerStart provides a mock function with given fields: ctx, containerID, options
+func (_m *MockClient) ContainerStart(ctx context.Context, containerID string, options types.ContainerStartOptions) error {
 	ret := _m.Called(ctx, containerID, options)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, types.ContainerRemoveOptions) error); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, string, types.ContainerStartOptions) error); ok {
 		r0 = rf(ctx, containerID, options)
 	} else {
 		r0 = ret.Error(0)
@@ -216,13 +218,13 @@ func (_m *MockClient) ContainerRemove(ctx context.Context, containerID string, o
 	return r0
 }
 
-// ContainerStart provides a mock function with given fields: ctx, containerID, options
-func (_m *MockClient) ContainerStart(ctx context.Context, containerID string, options types.ContainerStartOptions) error {
-	ret := _m.Called(ctx, containerID, options)
+// ContainerStop provides a mock function with given fields: ctx, containerID, timeout
+func (_m *MockClient) ContainerStop(ctx context.Context, containerID string, timeout *time.Duration) error {
+	ret := _m.Called(ctx, containerID, timeout)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, types.ContainerStartOptions) error); ok {
-		r0 = rf(ctx, containerID, options)
+	if rf, ok := ret.Get(0).(func(context.Context, string, *time.Duration) error); ok {
+		r0 = rf(ctx, containerID, timeout)
 	} else {
 		r0 = ret.Error(0)
 	}

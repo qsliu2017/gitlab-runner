@@ -52,6 +52,11 @@ const (
 	AuthConfigSourceNameJobPayload   = "job payload (GitLab Registry)"
 )
 
+const (
+	StopSignal      = "SIGTERM"
+	StopTimeout int = 60 * 10
+)
+
 // containerStatusCreated is one of the Docker states a container can be in.
 const containerStatusCreated = "created"
 
@@ -465,12 +470,14 @@ func (e *executor) createService(serviceIndex int, service, version, image strin
 	containerName := fmt.Sprintf("%s-%s-%d", e.getProjectUniqRandomizedName(), serviceSlug, serviceIndex)
 
 	// this will fail potentially some builds if there's name collision
-	e.removeContainer(e.Context, containerName)
+	e.stopContainer(e.Context, containerName)
 
 	config := &container.Config{
-		Image:  serviceImage.ID,
-		Labels: e.getLabels("service", "service="+service, "service.version="+version),
-		Env:    append(e.getServiceVariables(), e.BuildShell.Environment...),
+		Image:       serviceImage.ID,
+		Labels:      e.getLabels("service", "service="+service, "service.version="+version),
+		Env:         append(e.getServiceVariables(), e.BuildShell.Environment...),
+		StopSignal:  StopSignal,
+		StopTimeout: stopTimeout(),
 	}
 
 	if len(serviceDefinition.Command) > 0 {
@@ -509,6 +516,11 @@ func (e *executor) createService(serviceIndex int, service, version, image strin
 	}
 
 	return fakeContainer(resp.ID, containerName), nil
+}
+
+func stopTimeout() *int {
+	timeout := StopTimeout
+	return &timeout
 }
 
 func (e *executor) networkConfig(aliases []string) *network.NetworkingConfig {
@@ -652,7 +664,7 @@ func (e *executor) cleanupNetwork(ctx context.Context) error {
 
 	for id := range inspectResponse.Containers {
 		e.Debugln("Removing Container", id, "...")
-		err = e.removeContainer(ctx, id)
+		err = e.stopContainer(ctx, id)
 		if err != nil {
 			e.Errorln("remove container returned error ", err)
 		}
@@ -721,6 +733,8 @@ func (e *executor) createContainer(containerType string, imageDefinition common.
 		OpenStdin:    true,
 		StdinOnce:    true,
 		Env:          append(e.Build.GetAllVariables().StringList(), e.BuildShell.Environment...),
+		StopSignal:   StopSignal,
+		StopTimeout:  stopTimeout(),
 	}
 
 	config.Entrypoint = e.overwriteEntrypoint(&imageDefinition)
@@ -769,7 +783,7 @@ func (e *executor) createContainer(containerType string, imageDefinition common.
 	networkConfig := e.networkConfig(aliases)
 
 	// this will fail potentially some builds if there's name collision
-	e.removeContainer(e.Context, containerName)
+	e.stopContainer(e.Context, containerName)
 
 	e.Debugln("Creating container", containerName, "...")
 	resp, err := e.client.ContainerCreate(e.Context, config, hostConfig, networkConfig, containerName)
@@ -918,23 +932,18 @@ func (e *executor) watchContainer(ctx context.Context, id string, input io.Reade
 	return
 }
 
-func (e *executor) removeContainer(ctx context.Context, id string) error {
-	e.Debugln("Removing container", id)
+func (e *executor) stopContainer(ctx context.Context, id string) error {
+	e.Debugln("Stopping container", id)
 
 	e.disconnectNetwork(ctx, id)
 
-	options := types.ContainerRemoveOptions{
-		RemoveVolumes: true,
-		Force:         true,
-	}
-
-	err := e.client.ContainerRemove(ctx, id, options)
+	err := e.client.ContainerStop(ctx, id, nil)
 	if err != nil {
-		e.Debugln("Removing container", id, "finished with error", err)
+		e.Debugln("Stopping container", id, "finished with error", err)
 		return err
 	}
 
-	e.Debugln("Removed container", id)
+	e.Debugln("Stopped container", id)
 	return nil
 }
 
@@ -1243,7 +1252,7 @@ func (e *executor) Cleanup() {
 	remove := func(id string) {
 		wg.Add(1)
 		go func() {
-			e.removeContainer(ctx, id)
+			e.stopContainer(ctx, id)
 			wg.Done()
 		}()
 	}
@@ -1299,11 +1308,14 @@ func (e *executor) runServiceHealthCheckContainer(service *types.Container, time
 
 	cmd := []string{"gitlab-runner-helper", "health-check"}
 
+	stopTimeout := StopTimeout
 	config := &container.Config{
-		Cmd:    cmd,
-		Image:  waitImage.ID,
-		Labels: e.getLabels("wait", "wait="+service.ID),
-		Env:    environment,
+		Cmd:         cmd,
+		Image:       waitImage.ID,
+		Labels:      e.getLabels("wait", "wait="+service.ID),
+		Env:         environment,
+		StopSignal:  StopSignal,
+		StopTimeout: &stopTimeout,
 	}
 	hostConfig := &container.HostConfig{
 		RestartPolicy: neverRestartPolicy,
@@ -1320,7 +1332,7 @@ func (e *executor) runServiceHealthCheckContainer(service *types.Container, time
 		return fmt.Errorf("create service container: %w", err)
 	}
 
-	defer e.removeContainer(e.Context, resp.ID)
+	defer e.stopContainer(e.Context, resp.ID)
 
 	waitStarted := make(chan struct{})
 	waitResult := make(chan error, 1)
