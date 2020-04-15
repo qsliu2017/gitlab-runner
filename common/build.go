@@ -491,7 +491,7 @@ func (b *Build) run(ctx context.Context, executor Executor) (err error) {
 	b.Log().WithError(err).Debugln("Waiting for build to finish...")
 
 	switch b.CurrentState {
-	case BuildRunRuntimeAborted:
+	case BuildRunRuntimeAborted, BuildRunRuntimeTerminated:
 		afterCancel()
 		fallthrough
 	case BuildRunRuntimeGracefullyCanceled:
