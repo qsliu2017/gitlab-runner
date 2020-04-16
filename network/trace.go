@@ -247,7 +247,7 @@ func (c *clientJobTrace) abort(state common.UpdateState) bool {
 	if c.cancelFunc != nil {
 		switch state {
 		case common.UpdateAbort:
-			c.cancelFunc(common.CancellationTypeAbort)
+			c.cancelFunc(common.CancellationTypeHard)
 		case common.UpdateGracefulCancel:
 			c.cancelFunc(common.CancellationTypeGraceful)
 		}

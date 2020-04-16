@@ -41,7 +41,7 @@ const (
 type CancellationType int
 
 const (
-	CancellationTypeAbort CancellationType = iota
+	CancellationTypeHard CancellationType = iota
 	CancellationTypeGraceful
 )
 
@@ -62,7 +62,7 @@ const (
 	BuildRunStatePending              BuildRuntimeState = "pending"
 	BuildRunRuntimeRunning            BuildRuntimeState = "running"
 	BuildRunRuntimeFinished           BuildRuntimeState = "finished"
-	BuildRunRuntimeAborted            BuildRuntimeState = "aborted"
+	BuildRunRuntimeHardCanceled       BuildRuntimeState = "hard-canceled"
 	BuildRunRuntimeGracefullyCanceled BuildRuntimeState = "gracefully-canceled"
 	BuildRunRuntimeTerminated         BuildRuntimeState = "terminated"
 	BuildRunRuntimeTimedout           BuildRuntimeState = "timedout"
@@ -349,10 +349,10 @@ func (b *Build) executeScript(runCtx context.Context, afterCtx context.Context, 
 		err = b.executeStage(runCtx, BuildStageUserScript, executor)
 
 		// Execute after script (after_script)
-		timeoutContext, timeoutCancel := context.WithTimeout(afterCtx, AfterScriptTimeout)
+		afterScriptTimeoutContext, timeoutCancel := context.WithTimeout(afterCtx, AfterScriptTimeout)
 		defer timeoutCancel()
 
-		b.executeStage(timeoutContext, BuildStageAfterScript, executor)
+		b.executeStage(afterScriptTimeoutContext, BuildStageAfterScript, executor)
 	}
 
 	// Execute post script (cache store, artifacts upload)
@@ -491,7 +491,7 @@ func (b *Build) run(ctx context.Context, executor Executor) (err error) {
 	b.Log().WithError(err).Debugln("Waiting for build to finish...")
 
 	switch b.CurrentState {
-	case BuildRunRuntimeAborted:
+	case BuildRunRuntimeHardCanceled:
 		runCancel()
 		afterCancel()
 	case BuildRunRuntimeGracefullyCanceled, BuildRunRuntimeTerminated:
@@ -663,8 +663,8 @@ func (b *Build) Run(globalConfig *Config, trace JobTrace) (err error) {
 	trace.SetCancelFunc(func(c CancellationType) {
 		cancel()
 		switch c {
-		case CancellationTypeAbort:
-			b.CurrentState = BuildRunRuntimeAborted
+		case CancellationTypeHard:
+			b.CurrentState = BuildRunRuntimeHardCanceled
 		case CancellationTypeGraceful:
 			b.CurrentState = BuildRunRuntimeGracefullyCanceled
 		}

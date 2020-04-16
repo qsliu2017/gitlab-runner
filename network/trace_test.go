@@ -64,7 +64,7 @@ func TestJobCancel(t *testing.T) {
 		updateState common.UpdateState
 		cancelType  common.CancellationType
 	}{
-		"cancel":          {common.UpdateAbort, common.CancellationTypeAbort},
+		"cancel":          {common.UpdateAbort, common.CancellationTypeHard},
 		"graceful cancel": {common.UpdateGracefulCancel, common.CancellationTypeGraceful},
 	}
 
