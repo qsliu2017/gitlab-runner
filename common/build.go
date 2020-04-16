@@ -492,8 +492,8 @@ func (b *Build) run(ctx context.Context, executor Executor) (err error) {
 
 	switch b.CurrentState {
 	case BuildRunRuntimeAborted:
+		runCancel()
 		afterCancel()
-		fallthrough
 	case BuildRunRuntimeGracefullyCanceled, BuildRunRuntimeTerminated:
 		runCancel()
 	}
