@@ -1193,7 +1193,7 @@ func TestDockerCommandRunAttempts(t *testing.T) {
 	}
 
 	sleepCMD := "sleep 60"
-	executorStageAttempts := 2
+	expectedJobSectionAttempts := 2
 
 	build := getBuildForOS(t, common.GetRemoteSuccessfulBuild)
 	build.Runner.RunnerCredentials.Token = "misscont"
@@ -1210,50 +1210,68 @@ func TestDockerCommandRunAttempts(t *testing.T) {
 	}
 	build.JobResponse.Variables = append(build.JobResponse.Variables, common.JobVariable{
 		Key:    common.ExecutorJobSectionAttempts,
-		Value:  strconv.Itoa(executorStageAttempts),
+		Value:  strconv.Itoa(expectedJobSectionAttempts),
 		Public: true,
 	})
 
-	trace := newSafeBuffer()
-
-	runFinished := make(chan struct{})
-	go func() {
-		err := build.Run(&common.Config{}, &common.Trace{Writer: io.MultiWriter(trace, os.Stdout)})
-		// Only make sure that the build failed. Docker can return different
-		// kind of errors when a container is removed for example exit code 137,
-		// there is no guarantee on what failure is returned.
-		assert.Error(t, err)
-		close(runFinished)
-	}()
-
-	// Waiting until we reach the first sleep command in the build.
-	for {
-		if !strings.Contains(trace.String(), sleepCMD) {
-			time.Sleep(time.Second)
-			continue
+	testAttempts := 0
+	gotJobSectionAttempts := 0
+	for gotJobSectionAttempts < expectedJobSectionAttempts {
+		if testAttempts >= 3 {
+			require.FailNow(t, "Max test execution exceeded", "Test was retried %d times, and didn't succeed", 3)
 		}
 
-		break
-	}
+		// Restart job attempts in case we got 1 run from the previous failed
+		// job.
+		gotJobSectionAttempts = 0
 
-	attempts := 0
-	for i := 0; i < executorStageAttempts; i++ {
-		assertFailedToInspectContainer(t, trace, &attempts)
-	}
+		trace := newSafeBuffer()
+		runFinished := make(chan error)
+		go func() {
+			runFinished <- build.Run(&common.Config{}, &common.Trace{Writer: io.MultiWriter(trace, os.Stdout)})
+			close(runFinished)
+		}()
 
-	assert.Equal(t, executorStageAttempts, attempts, "The %s stage should be retried at least once", common.BuildStageUserScript)
-	<-runFinished
+		// Waiting until we reach the first sleep command in the build.
+		for {
+			if !strings.Contains(trace.String(), sleepCMD) {
+				time.Sleep(time.Second)
+				continue
+			}
+
+			break
+		}
+
+		for i := 0; i < expectedJobSectionAttempts; i++ {
+			assertFailedToInspectContainer(t, trace, &gotJobSectionAttempts)
+		}
+
+		err := <-runFinished
+		testAttempts++
+
+		if gotJobSectionAttempts == expectedJobSectionAttempts {
+			assert.Contains(t, trace.String(), "Execution attempts exceeded")
+			assert.True(t, docker.IsErrNotFound(err), "Expect job failure to be No such container related error")
+		}
+	}
 }
 
 func assertFailedToInspectContainer(t *testing.T, trace *safeBuffer, attempts *int) {
 	// If there is already an exit code, return early since a new container will
 	// never be scheduled.
-	if strings.Contains(trace.String(), "exit code") {
+	if strings.Contains(trace.String(), "exit code 137") {
 		return
 	}
 
 	containerID := <-removeBuildContainer(t)
 	for {
+		// It can be the case that removing the container resulted into getting
+		// the exit code, and not "container not found" scenario. In this case,
+		// stop trying and let the caller handle it appropriately.
+		if strings.Contains(trace.String(), "exit code 137") {
+			break
+		}
+
 		if !strings.Contains(trace.String(), fmt.Sprintf("Container %q not found or removed", containerID)) {
 			time.Sleep(time.Second)
 
