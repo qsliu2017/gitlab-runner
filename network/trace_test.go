@@ -62,11 +62,10 @@ func TestIgnoreStatusChange(t *testing.T) {
 func TestJobCancel(t *testing.T) {
 	tests := map[string]struct {
 		updateState common.UpdateState
-		updateCount int
 		cancelType  common.CancellationType
 	}{
-		"cancel, stops trace":                 {common.UpdateAbort, 1, common.CancellationTypeAbort},
-		"graceful cancel, doesn't stop trace": {common.UpdateGracefulCancel, 2, common.CancellationTypeGraceful},
+		"cancel":          {common.UpdateAbort, common.CancellationTypeAbort},
+		"graceful cancel": {common.UpdateGracefulCancel, common.CancellationTypeGraceful},
 	}
 
 	for tn, tt := range tests {
@@ -79,7 +78,7 @@ func TestJobCancel(t *testing.T) {
 
 			// abort while running
 			mockNetwork.On("UpdateJob", jobConfig, jobCredentials, keepAliveUpdateMatcher).
-				Return(tt.updateState).Times(tt.updateCount)
+				Return(tt.updateState)
 
 			// try to send status at least once more
 			mockNetwork.On("UpdateJob", jobConfig, jobCredentials, updateMatcher).

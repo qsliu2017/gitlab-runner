@@ -134,6 +134,7 @@ func (c *clientJobTrace) finalStatusUpdate() {
 func (c *clientJobTrace) finish() {
 	c.buffer.Finish()
 	c.finished <- true
+	close(c.finished)
 	c.finalTraceUpdate()
 	c.finalStatusUpdate()
 	c.buffer.Close()
