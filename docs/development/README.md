@@ -203,8 +203,10 @@ eval $(minikube docker-env)
 
 ## 8. Install optional tools
 
-- Install `shellcheck`, used for the `make lint` target.
-- Install `markdown-lint` and `vale`, used for the `make lint-docs` target.
+- Install [`shellcheck`](https://github.com/koalaman/shellcheck#installing), used for the `make lint` target.
+- Install [`hadolint`](https://github.com/hadolint/hadolint#install), used for the `make lint` target.
+- Install [`markdown-lint`](https://github.com/igorshubovych/markdownlint-cli#installation) and [`vale`](https://errata-ai.gitbook.io/vale/#installation),
+  used for the `make lint` and `make lint-docs` targets.
 
 Installation instructions will pop up when running a Makefile target
 if a tool is missing.
