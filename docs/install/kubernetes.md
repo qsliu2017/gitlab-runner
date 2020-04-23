@@ -5,8 +5,7 @@ This chart has been tested on Google Kubernetes Engine and Azure Container Servi
 Other Kubernetes installations may work as well, if not please
 [open an issue](https://gitlab.com/gitlab-org/charts/gitlab-runner/issues).
 
-The official way of deploying a GitLab Runner instance into your
-Kubernetes cluster is by using the `gitlab-runner` Helm chart.
+The GitLab Runner can be installed in a Kubernetes cluster by using either the 'gitlab-runner' Helm chart or as a GitLab Managed app. The charts based method described on this page allows for more fine-grained configuration and does not require GitLab to have access to the Kubernetes API for the cluster. For more information on the managed app install option, see: https://docs.gitlab.com/ee/user/clusters/applications.html#gitlab-runner
 
 This chart configures the Runner to:
 
