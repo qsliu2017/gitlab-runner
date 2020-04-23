@@ -1,6 +1,7 @@
 package network
 
 import (
+	"bytes"
 	"crypto/rsa"
 	"crypto/tls"
 	"crypto/x509"
@@ -118,8 +119,8 @@ func TestClientDo(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, c)
 
-	statusCode, statusText, _ := c.doJSON("test/auth", http.MethodGet, http.StatusOK, nil, nil)
-	assert.Equal(t, http.StatusForbidden, statusCode, statusText)
+	httpResponse := c.doJSON("test/auth", http.MethodGet, http.StatusOK, nil, nil)
+	assert.Equal(t, http.StatusForbidden, httpResponse.StatusCode(), httpResponse.Status())
 
 	req := struct {
 		Query bool `json:"query"`
@@ -131,18 +132,18 @@ func TestClientDo(t *testing.T) {
 		Key string `json:"key"`
 	}{}
 
-	statusCode, statusText, _ = c.doJSON("test/json", http.MethodGet, http.StatusOK, nil, &res)
-	assert.Equal(t, http.StatusBadRequest, statusCode, statusText)
+	httpResponse = c.doJSON("test/json", http.MethodGet, http.StatusOK, nil, &res)
+	assert.Equal(t, http.StatusBadRequest, httpResponse.StatusCode(), httpResponse.Status())
 
-	statusCode, statusText, _ = c.doJSON("test/json", http.MethodGet, http.StatusOK, &req, nil)
-	assert.Equal(t, http.StatusNotAcceptable, statusCode, statusText)
+	httpResponse = c.doJSON("test/json", http.MethodGet, http.StatusOK, &req, nil)
+	assert.Equal(t, http.StatusNotAcceptable, httpResponse.StatusCode(), httpResponse.Status())
 
-	statusCode, statusText, _ = c.doJSON("test/json", http.MethodGet, http.StatusOK, nil, nil)
-	assert.Equal(t, http.StatusBadRequest, statusCode, statusText)
+	httpResponse = c.doJSON("test/json", http.MethodGet, http.StatusOK, nil, nil)
+	assert.Equal(t, http.StatusBadRequest, httpResponse.StatusCode(), httpResponse.Status())
 
-	statusCode, statusText, _ = c.doJSON("test/json", http.MethodGet, http.StatusOK, &req, &res)
-	assert.Equal(t, http.StatusOK, statusCode, statusText)
-	assert.Equal(t, "value", res.Key, statusText)
+	httpResponse = c.doJSON("test/json", http.MethodGet, http.StatusOK, &req, &res)
+	assert.Equal(t, http.StatusOK, httpResponse.StatusCode(), httpResponse.Status())
+	assert.Equal(t, "value", res.Key, httpResponse.Status())
 }
 
 func TestClientInvalidSSL(t *testing.T) {
@@ -152,9 +153,10 @@ func TestClientInvalidSSL(t *testing.T) {
 	c, _ := newClient(&RunnerCredentials{
 		URL: s.URL,
 	})
-	statusCode, statusText, _ := c.doJSON("test/ok", http.MethodGet, http.StatusOK, nil, nil)
-	assert.Equal(t, -1, statusCode, statusText)
-	assert.Contains(t, statusText, "certificate signed by unknown authority")
+
+	httpResponse := c.doJSON("test/ok", http.MethodGet, http.StatusOK, nil, nil)
+	assert.Equal(t, -1, httpResponse.StatusCode(), httpResponse.Status())
+	assert.Contains(t, httpResponse.Status(), "certificate signed by unknown authority")
 }
 
 func TestClientTLSCAFile(t *testing.T) {
@@ -173,10 +175,11 @@ func TestClientTLSCAFile(t *testing.T) {
 		URL:       s.URL,
 		TLSCAFile: file.Name(),
 	})
-	statusCode, statusText, resp := c.doJSON("test/ok", http.MethodGet, http.StatusOK, nil, nil)
-	assert.Equal(t, http.StatusOK, statusCode, statusText)
 
-	tlsData, err := c.getResponseTLSData(resp.TLS)
+	httpResponse := c.doJSON("test/ok", http.MethodGet, http.StatusOK, nil, nil)
+	assert.Equal(t, http.StatusOK, httpResponse.StatusCode(), httpResponse.Status())
+
+	tlsData, err := c.getResponseTLSData(httpResponse.TLS())
 	assert.NoError(t, err)
 	assert.NotEmpty(t, tlsData.CAChain)
 }
@@ -201,10 +204,11 @@ func TestClientCertificateInPredefinedDirectory(t *testing.T) {
 	c, _ := newClient(&RunnerCredentials{
 		URL: s.URL,
 	})
-	statusCode, statusText, resp := c.doJSON("test/ok", http.MethodGet, http.StatusOK, nil, nil)
-	assert.Equal(t, http.StatusOK, statusCode, statusText)
 
-	tlsData, err := c.getResponseTLSData(resp.TLS)
+	httpResponse := c.doJSON("test/ok", http.MethodGet, http.StatusOK, nil, nil)
+	assert.Equal(t, http.StatusOK, httpResponse.StatusCode(), httpResponse.Status())
+
+	tlsData, err := c.getResponseTLSData(httpResponse.TLS())
 	assert.NoError(t, err)
 	assert.NotEmpty(t, tlsData.CAChain)
 }
@@ -228,9 +232,10 @@ func TestClientInvalidTLSAuth(t *testing.T) {
 		URL:       s.URL,
 		TLSCAFile: ca.Name(),
 	})
-	statusCode, statusText, _ := c.doJSON("test/ok", http.MethodGet, http.StatusOK, nil, nil)
-	assert.Equal(t, -1, statusCode, statusText)
-	assert.Contains(t, statusText, "tls: bad certificate")
+
+	httpResponse := c.doJSON("test/ok", http.MethodGet, http.StatusOK, nil, nil)
+	assert.Equal(t, -1, httpResponse.StatusCode(), httpResponse.Status())
+	assert.Contains(t, httpResponse.Status(), "tls: bad certificate")
 }
 
 func TestClientTLSAuth(t *testing.T) {
@@ -268,10 +273,10 @@ func TestClientTLSAuth(t *testing.T) {
 		TLSKeyFile:  key.Name(),
 	})
 
-	statusCode, statusText, resp := c.doJSON("test/ok", http.MethodGet, http.StatusOK, nil, nil)
-	assert.Equal(t, http.StatusOK, statusCode, statusText)
+	httpResponse := c.doJSON("test/ok", http.MethodGet, http.StatusOK, nil, nil)
+	assert.Equal(t, http.StatusOK, httpResponse.StatusCode(), httpResponse.Status())
 
-	tlsData, err := c.getResponseTLSData(resp.TLS)
+	tlsData, err := c.getResponseTLSData(httpResponse.TLS())
 	assert.NoError(t, err)
 	assert.NotEmpty(t, tlsData.CAChain)
 	assert.Equal(t, cert.Name(), tlsData.CertFile)
@@ -306,10 +311,11 @@ func TestClientTLSAuthCertificatesInPredefinedDirectory(t *testing.T) {
 	c, _ := newClient(&RunnerCredentials{
 		URL: s.URL,
 	})
-	statusCode, statusText, resp := c.doJSON("test/ok", http.MethodGet, http.StatusOK, nil, nil)
-	assert.Equal(t, http.StatusOK, statusCode, statusText)
 
-	tlsData, err := c.getResponseTLSData(resp.TLS)
+	httpResponse := c.doJSON("test/ok", http.MethodGet, http.StatusOK, nil, nil)
+	assert.Equal(t, http.StatusOK, httpResponse.StatusCode(), httpResponse.Status())
+
+	tlsData, err := c.getResponseTLSData(httpResponse.TLS())
 	assert.NoError(t, err)
 	assert.NotEmpty(t, tlsData.CAChain)
 	assert.NotEmpty(t, tlsData.CertFile)
@@ -364,17 +370,17 @@ func TestClientHandleCharsetInContentType(t *testing.T) {
 		Key string `json:"key"`
 	}{}
 
-	statusCode, statusText, _ := c.doJSON("with-charset", http.MethodGet, http.StatusOK, nil, &res)
-	assert.Equal(t, http.StatusOK, statusCode, statusText)
+	httpResponse := c.doJSON("with-charset", http.MethodGet, http.StatusOK, nil, &res)
+	assert.Equal(t, http.StatusOK, httpResponse.StatusCode(), httpResponse.Status())
 
-	statusCode, statusText, _ = c.doJSON("without-charset", http.MethodGet, http.StatusOK, nil, &res)
-	assert.Equal(t, http.StatusOK, statusCode, statusText)
+	httpResponse = c.doJSON("without-charset", http.MethodGet, http.StatusOK, nil, &res)
+	assert.Equal(t, http.StatusOK, httpResponse.StatusCode(), httpResponse.Status())
 
-	statusCode, statusText, _ = c.doJSON("without-json", http.MethodGet, http.StatusOK, nil, &res)
-	assert.Equal(t, -1, statusCode, statusText)
+	httpResponse = c.doJSON("without-json", http.MethodGet, http.StatusOK, nil, &res)
+	assert.Equal(t, -1, httpResponse.StatusCode(), httpResponse.Status())
 
-	statusCode, statusText, _ = c.doJSON("invalid-header", http.MethodGet, http.StatusOK, nil, &res)
-	assert.Equal(t, -1, statusCode, statusText)
+	httpResponse = c.doJSON("invalid-header", http.MethodGet, http.StatusOK, nil, &res)
+	assert.Equal(t, -1, httpResponse.StatusCode(), httpResponse.Status())
 }
 
 type backoffTestCase struct {
@@ -427,7 +433,7 @@ func TestRequestsBackOff(t *testing.T) {
 			res, err := c.do("/", http.MethodPost, body, "application/json", headers)
 
 			assert.NoError(t, err)
-			assert.Equal(t, testCase.responseStatus, res.StatusCode)
+			assert.Equal(t, testCase.responseStatus, res.StatusCode())
 
 			var expected float64
 			if testCase.mustBackoff {
@@ -443,17 +449,28 @@ func TestRequesterCalled(t *testing.T) {
 		URL: "http://localhost:1000/",
 	})
 
-	rl := &mockRequester{}
-	defer rl.AssertExpectations(t)
+	requesterMock := new(mockRequester)
+	defer requesterMock.AssertExpectations(t)
+	c.requester = requesterMock
 
 	resReturn := &http.Response{
 		StatusCode: http.StatusOK,
+		Body:       ioutil.NopCloser(bytes.NewBufferString("test")),
 	}
-	rl.On("Do", mock.MatchedBy(func(req *http.Request) bool {
+
+	requestMatcher := mock.MatchedBy(func(req *http.Request) bool {
 		return req.URL.String() == "http://mockURL" && req.Method == http.MethodGet
-	})).Return(resReturn, nil)
-	c.requester = rl
+	})
+
+	requesterMock.On("Do", requestMatcher).
+		Return(resReturn, nil).
+		Once()
 
 	res, _ := c.do("http://mockURL", http.MethodGet, nil, "", nil)
-	assert.Equal(t, resReturn, res)
+	assert.Equal(t, http.StatusOK, res.StatusCode())
+
+	buf := new(bytes.Buffer)
+	err := res.FlushBodyTo(buf)
+	require.NoError(t, err)
+	assert.Equal(t, "test", buf.String())
 }

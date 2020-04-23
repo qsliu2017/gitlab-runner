@@ -1,18 +1,29 @@
 package network
 
 import (
+	"bytes"
+	"io/ioutil"
 	"net/http"
 	"testing"
 	"time"
 
 	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/assert"
+
+	"gitlab.com/gitlab-org/gitlab-runner/network/internal/response"
 )
 
-func responseWithHeader(key string, value string) *http.Response {
+func newResponseWithHeader(key string, value string) *http.Response {
+	r := newResponse()
+	r.Header.Add(key, value)
+
+	return r
+}
+
+func newResponse() *http.Response {
 	r := new(http.Response)
 	r.Header = make(http.Header)
-	r.Header.Add(key, value)
+	r.Body = ioutil.NopCloser(new(bytes.Buffer))
 
 	return r
 }
@@ -27,19 +38,19 @@ func TestNewTracePatchResponse(t *testing.T) {
 			expectedRemoteTraceUpdateInterval: time.Duration(emptyRemoteTraceUpdateInterval),
 		},
 		"no remote trace period in header": {
-			response:                          new(http.Response),
+			response:                          newResponse(),
 			expectedRemoteTraceUpdateInterval: time.Duration(emptyRemoteTraceUpdateInterval),
 		},
 		"invalid remote trace period in header": {
-			response:                          responseWithHeader(traceUpdateIntervalHeader, "invalid"),
+			response:                          newResponseWithHeader(traceUpdateIntervalHeader, "invalid"),
 			expectedRemoteTraceUpdateInterval: time.Duration(emptyRemoteTraceUpdateInterval),
 		},
 		"negative remote trace period in header": {
-			response:                          responseWithHeader(traceUpdateIntervalHeader, "-10"),
+			response:                          newResponseWithHeader(traceUpdateIntervalHeader, "-10"),
 			expectedRemoteTraceUpdateInterval: time.Duration(-10) * time.Second,
 		},
 		"valid remote trace period in header": {
-			response:                          responseWithHeader(traceUpdateIntervalHeader, "10"),
+			response:                          newResponseWithHeader(traceUpdateIntervalHeader, "10"),
 			expectedRemoteTraceUpdateInterval: time.Duration(10) * time.Second,
 		},
 	}
@@ -47,7 +58,7 @@ func TestNewTracePatchResponse(t *testing.T) {
 	for tn, tc := range tracePatchTestCases {
 		t.Run(tn, func(t *testing.T) {
 			log, _ := test.NewNullLogger()
-			tpr := NewTracePatchResponse(tc.response, log)
+			tpr := NewTracePatchResponse(response.New(tc.response), log)
 
 			assert.NotNil(t, tpr)
 			assert.IsType(t, &TracePatchResponse{}, tpr)

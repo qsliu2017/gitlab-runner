@@ -1,12 +1,13 @@
 package network
 
 import (
-	"net/http"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/sirupsen/logrus"
+
+	"gitlab.com/gitlab-org/gitlab-runner/network/internal/response"
 )
 
 const (
@@ -31,7 +32,7 @@ func (p *TracePatchResponse) NewOffset() int {
 	return 0
 }
 
-func NewTracePatchResponse(response *http.Response, logger logrus.FieldLogger) *TracePatchResponse {
+func NewTracePatchResponse(response *response.Response, logger logrus.FieldLogger) *TracePatchResponse {
 	if response == nil {
 		return new(TracePatchResponse)
 	}
@@ -40,7 +41,7 @@ func NewTracePatchResponse(response *http.Response, logger logrus.FieldLogger) *
 		err                       error
 		remoteTraceUpdateInterval int
 	)
-	updateIntervalRaw := response.Header.Get(traceUpdateIntervalHeader)
+	updateIntervalRaw := response.Header().Get(traceUpdateIntervalHeader)
 	if updateIntervalRaw != "" {
 		remoteTraceUpdateInterval, err = strconv.Atoi(updateIntervalRaw)
 		if err != nil {
@@ -53,7 +54,7 @@ func NewTracePatchResponse(response *http.Response, logger logrus.FieldLogger) *
 
 	return &TracePatchResponse{
 		RemoteJobStateResponse:    NewRemoteJobStateResponse(response),
-		RemoteRange:               response.Header.Get(rangeHeader),
+		RemoteRange:               response.Header().Get(rangeHeader),
 		RemoteTraceUpdateInterval: time.Duration(remoteTraceUpdateInterval) * time.Second,
 	}
 }

@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"mime"
 	"net"
 	"net/http"
 	"net/url"
@@ -24,6 +23,7 @@ import (
 
 	"gitlab.com/gitlab-org/gitlab-runner/common"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers/tls/ca_chain"
+	"gitlab.com/gitlab-org/gitlab-runner/network/internal/response"
 )
 
 const jsonMimeType = "application/json"
@@ -205,16 +205,15 @@ func (n *client) checkBackoffRequest(req *http.Request, res *http.Response) {
 	}
 }
 
-func (n *client) do(uri, method string, request io.Reader, requestType string, headers http.Header) (res *http.Response, err error) {
+func (n *client) do(uri, method string, request io.Reader, requestType string, headers http.Header) (*response.Response, error) {
 	url, err := n.url.Parse(uri)
 	if err != nil {
-		return
+		return nil, err
 	}
 
 	req, err := http.NewRequest(method, url.String(), request)
 	if err != nil {
-		err = fmt.Errorf("failed to create NewRequest: %w", err)
-		return
+		return nil, fmt.Errorf("failed to create NewRequest: %w", err)
 	}
 
 	if headers != nil {
@@ -228,56 +227,55 @@ func (n *client) do(uri, method string, request io.Reader, requestType string, h
 
 	n.ensureTLSConfig()
 
-	res, err = n.requester.Do(req)
+	httpResponse, err := n.requester.Do(req)
 	if err != nil {
-		return
+		return nil, err
 	}
 
-	n.checkBackoffRequest(req, res)
-	return
+	n.checkBackoffRequest(req, httpResponse)
+
+	return response.New(httpResponse), nil
 }
 
-func (n *client) doJSON(uri, method string, statusCode int, request interface{}, response interface{}) (int, string, *http.Response) {
+func (n *client) doJSON(uri, method string, expectedStatusCode int, request interface{}, result interface{}) *response.Response {
 	var body io.Reader
 
 	if request != nil {
 		requestBody, err := json.Marshal(request)
 		if err != nil {
-			return -1, fmt.Sprintf("failed to marshal project object: %v", err), nil
+			return response.NewError(fmt.Errorf("failed to marshal project object: %w", err))
 		}
 		body = bytes.NewReader(requestBody)
 	}
 
 	headers := make(http.Header)
-	if response != nil {
+
+	if result != nil {
 		headers.Set("Accept", jsonMimeType)
 	}
 
-	res, err := n.do(uri, method, body, jsonMimeType, headers)
+	httpResponse, err := n.do(uri, method, body, jsonMimeType, headers)
 	if err != nil {
-		return -1, err.Error(), nil
+		return response.NewError(err)
 	}
-	defer res.Body.Close()
-	defer io.Copy(ioutil.Discard, res.Body)
 
-	if res.StatusCode == statusCode {
-		if response != nil {
-			isApplicationJSON, err := isResponseApplicationJSON(res)
-			if !isApplicationJSON {
-				return -1, err.Error(), nil
+	if httpResponse.StatusCode() == expectedStatusCode {
+		if result != nil {
+			err := httpResponse.IsApplicationJSON()
+			if err != nil {
+				return response.NewError(err)
 			}
 
-			d := json.NewDecoder(res.Body)
-			err = d.Decode(response)
+			err = httpResponse.DecodeJSONFromBody(result)
 			if err != nil {
-				return -1, fmt.Sprintf("Error decoding json payload %v", err), nil
+				return response.NewError(fmt.Errorf("decoding payload: %w", err))
 			}
 		}
 	}
 
-	n.setLastUpdate(res.Header)
+	n.setLastUpdate(httpResponse.Header())
 
-	return res.StatusCode, res.Status, res
+	return httpResponse
 }
 
 func (n *client) getResponseTLSData(TLS *tls.ConnectionState) (ResponseTLSData, error) {
@@ -312,21 +310,6 @@ func (n *client) buildCAChain(tls *tls.ConnectionState) (string, error) {
 	}
 
 	return builder.String(), nil
-}
-
-func isResponseApplicationJSON(res *http.Response) (result bool, err error) {
-	contentType := res.Header.Get("Content-Type")
-
-	mimeType, _, err := mime.ParseMediaType(contentType)
-	if err != nil {
-		return false, fmt.Errorf("parsing Content-Type: %w", err)
-	}
-
-	if mimeType != jsonMimeType {
-		return false, fmt.Errorf("server should return application/json. Got: %v", contentType)
-	}
-
-	return true, nil
 }
 
 func fixCIURL(url string) string {

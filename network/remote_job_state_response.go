@@ -2,6 +2,8 @@ package network
 
 import (
 	"net/http"
+
+	"gitlab.com/gitlab-org/gitlab-runner/network/internal/response"
 )
 
 const (
@@ -28,13 +30,13 @@ func (r *RemoteJobStateResponse) IsAborted() bool {
 	return false
 }
 
-func NewRemoteJobStateResponse(response *http.Response) *RemoteJobStateResponse {
+func NewRemoteJobStateResponse(response *response.Response) *RemoteJobStateResponse {
 	if response == nil {
 		return &RemoteJobStateResponse{}
 	}
 
 	return &RemoteJobStateResponse{
-		StatusCode:  response.StatusCode,
-		RemoteState: response.Header.Get(remoteStateHeader),
+		StatusCode:  response.StatusCode(),
+		RemoteState: response.Header().Get(remoteStateHeader),
 	}
 }
