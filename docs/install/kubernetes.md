@@ -5,7 +5,9 @@ This chart has been tested on Google Kubernetes Engine and Azure Container Servi
 Other Kubernetes installations may work as well, if not please
 [open an issue](https://gitlab.com/gitlab-org/charts/gitlab-runner/issues).
 
-The GitLab Runner can be installed in a Kubernetes cluster by using either the 'gitlab-runner' Helm chart or as a GitLab Managed app. The charts based method described on this page allows for more fine-grained configuration and does not require GitLab to have access to the Kubernetes API for the cluster. For more information on the managed app install option, see: https://docs.gitlab.com/ee/user/clusters/applications.html#gitlab-runner
+The GitLab Runner can be installed in a Kubernetes cluster by using either the 'gitlab-runner' Helm chart or as a GitLab managed app. 
+The Helm chart does not require the GitLab instance to have access to the Kubernetes API for the cluster (which is a requirement for the GitLab managed app install).
+Using the helm chart, access from the GitLab runner to port 443 on the GitLab instance is sufficient. For more information on the managed app install option, see: https://docs.gitlab.com/ee/user/clusters/applications.html#gitlab-runner
 
 This chart configures the Runner to:
 
