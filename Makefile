@@ -145,6 +145,7 @@ mocks: $(MOCKERY)
 	find . -type f ! -path '*vendor/*' -name 'mock_*' -delete
 	$(MOCKERY) -dir=./vendor/github.com/ayufan/golang-kardianos-service -output=./helpers/service/mocks -name='(Interface)'
 	$(MOCKERY) -dir=./network -name='requester' -inpkg
+	$(MOCKERY) -dir=./network/internal/response -all -inpkg
 	$(MOCKERY) -dir=./helpers -all -inpkg
 	$(MOCKERY) -dir=./executors/docker -all -inpkg
 	$(MOCKERY) -dir=./executors/kubernetes -all -inpkg
