@@ -181,6 +181,7 @@ type Step struct {
 	Script       StepScript `json:"script"`
 	Timeout      int        `json:"timeout"`
 	When         StepWhen   `json:"when"`
+	RunOnCancel  bool       `json:"run_on_cancel"`
 	AllowFailure bool       `json:"allow_failure"`
 }
 

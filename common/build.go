@@ -396,6 +396,8 @@ func (b *Build) executeScript(ctx context.Context, executor Executor) error {
 		err = b.attemptExecuteStage(ctx, BuildStageDownloadArtifacts, executor, b.GetDownloadArtifactsAttempts())
 	}
 
+	afterCtx := b.getAfterScriptCtx(ctx)
+
 	if err == nil {
 		for _, s := range b.Steps {
 			// after_script has a separate BuildStage. See common.BuildStageAfterScript
@@ -409,7 +411,7 @@ func (b *Build) executeScript(ctx context.Context, executor Executor) error {
 		}
 
 		// Execute after script (after_script)
-		timeoutCtx, timeoutCancel := context.WithTimeout(ctx, AfterScriptTimeout)
+		timeoutCtx, timeoutCancel := context.WithTimeout(afterCtx, AfterScriptTimeout)
 		defer timeoutCancel()
 
 		_ = b.executeStage(timeoutCtx, BuildStageAfterScript, executor)
@@ -417,14 +419,14 @@ func (b *Build) executeScript(ctx context.Context, executor Executor) error {
 
 	// Execute post script (cache store, artifacts upload)
 	if err == nil {
-		err = b.executeStage(ctx, BuildStageArchiveCache, executor)
+		err = b.executeStage(afterCtx, BuildStageArchiveCache, executor)
 	}
 
-	artifactUploadErr := b.executeUploadArtifacts(ctx, err, executor)
+	artifactUploadErr := b.executeUploadArtifacts(afterCtx, err, executor)
 
 	// track job end and execute referees
 	endTime := time.Now()
-	b.executeUploadReferees(ctx, startTime, endTime)
+	b.executeUploadReferees(afterCtx, startTime, endTime)
 
 	// Use job's error as most important
 	if err != nil {
@@ -438,6 +440,22 @@ func (b *Build) executeScript(ctx context.Context, executor Executor) error {
 // StepToBuildStage returns the BuildStage corresponding to a step.
 func StepToBuildStage(s Step) BuildStage {
 	return BuildStage(fmt.Sprintf("step_%s", strings.ToLower(string(s.Name))))
+}
+
+func (b *Build) getAfterScriptCtx(ctx context.Context) context.Context {
+	var afterScriptStep *Step
+	for _, s := range b.Steps {
+		if s.Name == StepNameAfterScript {
+			afterScriptStep = &s
+		}
+	}
+	if afterScriptStep == nil {
+		return ctx
+	}
+	if afterScriptStep.RunOnCancel {
+		return context.Background()
+	}
+	return ctx
 }
 
 func (b *Build) createReferees(executor Executor) {
