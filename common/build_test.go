@@ -55,6 +55,121 @@ func TestBuildRun(t *testing.T) {
 	runSuccessfulMockBuild(t, func(options ExecutorPrepareOptions) error { return nil })
 }
 
+type immediatelyCancellingTrace struct {
+	Trace
+}
+
+func (i *immediatelyCancellingTrace) SetCancelFunc(cancelFunc context.CancelFunc) {
+	cancelFunc()
+}
+
+func TestBuildCancel(t *testing.T) {
+	tests := map[string]struct {
+		afterStagesCanceled bool
+		steps               Steps
+	}{
+		"don't run after_script": {
+			true,
+			[]Step{
+				{
+					Name:        StepNameScript,
+					Script:      []string{"echo hello"},
+					RunOnCancel: false,
+				},
+				{
+					Name:        StepNameAfterScript,
+					Script:      []string{"echo hello"},
+					RunOnCancel: false,
+				},
+			},
+		},
+		"run after_script": {
+			false,
+			[]Step{
+				{
+					Name:        StepNameScript,
+					Script:      []string{"echo hello"},
+					RunOnCancel: false,
+				},
+				{
+					Name:        StepNameAfterScript,
+					Script:      []string{"echo hello"},
+					RunOnCancel: true,
+				},
+			},
+		},
+	}
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			e := MockExecutor{}
+			defer e.AssertExpectations(t)
+
+			p := MockExecutorProvider{}
+			defer p.AssertExpectations(t)
+
+			// Create executor only once
+			p.On("CanCreate").Return(true).Once()
+			p.On("GetDefaultShell").Return("bash").Once()
+			p.On("GetFeatures", mock.Anything).Return(nil).Twice()
+
+			p.On("Create").Return(&e).Once()
+
+			e.On("Prepare", mock.Anything, mock.Anything, mock.Anything).Once().Return(nil)
+			e.On("Finish", mock.MatchedBy(func(err error) bool {
+				buildErr, ok := err.(*BuildError)
+				if !ok {
+					return false
+				}
+				return buildErr.Inner.Error() == "canceled"
+			})).Once()
+			e.On("Cleanup").Once()
+
+			e.On("Shell").Return(&ShellScriptInfo{Shell: "script-shell"})
+			e.On("Run", matchContextCanceled(BuildStagePrepare, true)).Return(nil).Once()
+			e.On("Run", matchContextCanceled(BuildStageGetSources, true)).Return(nil).Once()
+			e.On("Run", matchContextCanceled(BuildStageRestoreCache, true)).Return(nil).Once()
+			e.On("Run", matchContextCanceled(BuildStageDownloadArtifacts, true)).Return(nil).Once()
+			e.On("Run", matchContextCanceled(BuildStageUserScript, true)).Return(errors.New("context canceled")).Once()
+			e.On("Run", matchContextCanceled(BuildStageAfterScript, tt.afterStagesCanceled)).Return(nil).Once()
+			e.On("Run", matchContextCanceled(BuildStageUploadOnFailureArtifacts, tt.afterStagesCanceled)).Return(nil).Once()
+
+			RegisterExecutorProvider(t.Name(), &p)
+
+			successfulBuild, err := GetSuccessfulBuild()
+			require.NoError(t, err)
+
+			successfulBuild.Steps = tt.steps
+			build := &Build{
+				JobResponse: successfulBuild,
+				Runner: &RunnerConfig{
+					RunnerSettings: RunnerSettings{
+						Executor: t.Name(),
+					},
+				},
+			}
+
+			trace := &immediatelyCancellingTrace{Trace{Writer: os.Stdout}}
+
+			err = build.Run(&Config{}, trace)
+			assert.IsType(t, err, &BuildError{})
+			assert.Contains(t, err.Error(), "canceled")
+		})
+	}
+}
+
+func matchContextCanceled(buildStage BuildStage, canceled bool) interface{} {
+	return mock.MatchedBy(func(cmd ExecutorCommand) bool {
+		var cancelMatches bool
+		if canceled {
+			cancelMatches = errors.Is(cmd.Context.Err(), context.Canceled)
+		} else {
+			cancelMatches = cmd.Context.Err() == nil
+		}
+
+		return cmd.Stage == buildStage && cancelMatches
+	})
+}
+
 func TestJobImageExposed(t *testing.T) {
 	tests := map[string]struct {
 		image           string
