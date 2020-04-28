@@ -65,11 +65,11 @@ func (i *immediatelyCancellingTrace) SetCancelFunc(cancelFunc context.CancelFunc
 
 func TestBuildCancel(t *testing.T) {
 	tests := map[string]struct {
-		afterStagesCanceled bool
-		steps               Steps
+		runAfterStagesOnCancel bool
+		steps                  Steps
 	}{
 		"don't run after_script and subsequent stages on canceled job": {
-			true,
+			false,
 			[]Step{
 				{
 					Name:        StepNameScript,
@@ -84,7 +84,7 @@ func TestBuildCancel(t *testing.T) {
 			},
 		},
 		"run after_script and subsequent stages on canceled job": {
-			false,
+			true,
 			[]Step{
 				{
 					Name:        StepNameScript,
@@ -95,6 +95,16 @@ func TestBuildCancel(t *testing.T) {
 					Name:        StepNameAfterScript,
 					Script:      []string{"echo hello"},
 					RunOnCancel: true,
+				},
+			},
+		},
+		"no after_script step": {
+			false,
+			[]Step{
+				{
+					Name:        StepNameScript,
+					Script:      []string{"echo hello"},
+					RunOnCancel: false,
 				},
 			},
 		},
@@ -129,8 +139,8 @@ func TestBuildCancel(t *testing.T) {
 			e.On("Run", matchContextCanceled(BuildStageRestoreCache, true)).Return(nil).Once()
 			e.On("Run", matchContextCanceled(BuildStageDownloadArtifacts, true)).Return(nil).Once()
 			e.On("Run", matchContextCanceled(BuildStageUserScript, true)).Return(errors.New("context canceled")).Once()
-			e.On("Run", matchContextCanceled(BuildStageAfterScript, tt.afterStagesCanceled)).Return(nil).Once()
-			e.On("Run", matchContextCanceled(BuildStageUploadOnFailureArtifacts, tt.afterStagesCanceled)).Return(nil).Once()
+			e.On("Run", matchContextCanceled(BuildStageAfterScript, !tt.runAfterStagesOnCancel)).Return(nil).Once()
+			e.On("Run", matchContextCanceled(BuildStageUploadOnFailureArtifacts, !tt.runAfterStagesOnCancel)).Return(nil).Once()
 
 			RegisterExecutorProvider(t.Name(), &p)
 
