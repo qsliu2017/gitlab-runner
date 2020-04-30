@@ -3,6 +3,7 @@ package docker
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"sync"
 
 	"github.com/docker/docker/api/types"
