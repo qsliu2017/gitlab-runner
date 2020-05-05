@@ -49,15 +49,14 @@ func TestValidateBadConfigs(t *testing.T) {
 	for _, badNetworkRefereeConfig := range badNetworkRefereeConfigs {
 		err := validateConfig(badNetworkRefereeConfig)
 		require.NotNil(t, err, badNetworkRefereeConfig)
-		var missingCfgErr missingConfigError
+		var missingCfgErr *missingConfigError
 		assert.True(t, errors.As(err, &missingCfgErr), "expected err to be type of missingConfigError")
 	}
 }
 
 func TestNewNetworkRefereeBadConfig(t *testing.T) {
-	mockExecutor := new(interface{})
-	log := logrus.WithField("test", 1)
-	networkReferee := newNetworkReferee(mockExecutor, &Config{Network: &NetworkRefereeConfig{}}, log)
+	logger := logrus.WithField("test", 1)
+	networkReferee := newNetworkReferee(&BaseReferee{hostname: "runner-1234", logger: logger}, &Config{Network: &NetworkRefereeConfig{}})
 	require.Nil(t, networkReferee)
 }
 
@@ -74,8 +73,8 @@ func TestNewNetworkReferee(t *testing.T) {
 }
 
 func newTestNetworkReferee(t *testing.T, executor interface{}, config *Config) *NetworkReferee {
-	log := logrus.WithField("test", 1)
-	networkReferee, ok := newNetworkReferee(executor, config, log).(*NetworkReferee)
+	logger := logrus.WithField("test", 1)
+	networkReferee, ok := newNetworkReferee(&BaseReferee{hostname: "runner-1234", logger: logger}, config).(*NetworkReferee)
 	require.True(t, ok, "Not dealing with network referee")
 	return networkReferee
 }
@@ -115,7 +114,7 @@ func TestNetworkRefereeExecute(t *testing.T) {
 		assert.NoError(t, err)
 		actual := buf.String()
 
-		assert.Contains(t, actual, `{"query":{"range":{"@timestamp":{"gte":"2014-07-16T20:55:46Z","lte":"2014-07-16T20:57:26Z"}}}}`)
+		assert.Contains(t, actual, `{"query":{"bool":{"must":[{"match":{"fields.hostname":"runner-1234"}},{"range":{"@timestamp":{"gte":"2014-07-16T20:55:46Z","lte":"2014-07-16T20:57:26Z"}}}]}}}`)
 
 		return &http.Response{
 			Status:     "200 OK",
@@ -156,4 +155,33 @@ func TestNetworkRefereeExecuteError(t *testing.T) {
 	result, err := networkReferee.Execute(context.Background(), startTime, endTime)
 	assert.True(t, errors.Is(err, testErr), "expected error from Perform")
 	assert.Nil(t, result)
+}
+
+func TestNetworkRefereeExecuteInvalidResponse(t *testing.T) {
+	mockExecutor := new(interface{})
+	networkReferee := newTestNetworkReferee(t, mockExecutor, newTestCloudNetworkRefereeConfig())
+
+	mockTransport := new(mockTransport)
+	defer mockTransport.AssertExpectations(t)
+	mockTransport.On("Perform", mock.Anything).Return(
+		&http.Response{
+			StatusCode: http.StatusInternalServerError,
+			Body:       ioutil.NopCloser(strings.NewReader("empty")),
+		},
+		nil,
+	)
+
+	// set mock client in network referee
+	mockClient := &elasticsearch.Client{Transport: mockTransport, API: esapi.New(mockTransport)}
+	networkReferee.client = mockClient
+
+	networkReferee.queryTimeout = time.Second
+
+	startTime := time.Unix(1405544146, 0)
+	endTime := time.Unix(1405544246, 0)
+	result, err := networkReferee.Execute(context.Background(), startTime, endTime)
+	var badResponseErr *badResponseError
+	assert.True(t, errors.As(err, &badResponseErr), "expected %T, got %T", badResponseErr, err)
+	assert.Nil(t, result)
+	assert.Equal(t, badResponseErr.status, "500 Internal Server Error")
 }

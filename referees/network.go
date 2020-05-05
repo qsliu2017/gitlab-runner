@@ -47,8 +47,16 @@ type missingConfigError struct {
 	key string
 }
 
-func (m missingConfigError) Error() string {
+type badResponseError struct {
+	status string
+}
+
+func (m *missingConfigError) Error() string {
 	return fmt.Sprintf("%q not provided", m.key)
+}
+
+func (b *badResponseError) Error() string {
+	return fmt.Sprintf("bad elasticsearch response: %s", b.status)
 }
 
 func (nr *NetworkReferee) Execute(
@@ -91,7 +99,6 @@ func (nr *NetworkReferee) Execute(
 		queryLogger.WithError(err).Error("Failed to encode the query for elasticsearch")
 		return nil, err
 	}
-
 	response, err := nr.client.Search(
 		nr.client.Search.WithIndex(nr.index),
 		nr.client.Search.WithBody(&queryBody),
@@ -107,7 +114,7 @@ func (nr *NetworkReferee) Execute(
 	defer response.Body.Close()
 
 	if response.IsError() {
-		err := fmt.Errorf("bad elasticsearch response: %s", response.Status())
+		err := &badResponseError{status: response.Status()}
 		queryLogger.WithError(err).Error("Elasticsearch response indicates failure")
 		return nil, err
 	}
@@ -157,17 +164,17 @@ func newNetworkReferee(base *BaseReferee, config *Config) Referee {
 
 func validateConfig(config *NetworkRefereeConfig) error {
 	if len(config.ElasticsearchAddresses) == 0 && config.ElasticsearchCloudID == "" {
-		return missingConfigError{key: "elasticsearch_addresses/elasticsearch_cloud_id"}
+		return &missingConfigError{key: "elasticsearch_addresses/elasticsearch_cloud_id"}
 	}
 
 	if config.ElasticsearchAPIKey == "" {
 		if config.ElasticsearchUsername == "" || config.ElasticsearchPassword == "" {
-			return missingConfigError{key: "elasticsearch_username/elasticsearch_password"}
+			return &missingConfigError{key: "elasticsearch_username/elasticsearch_password"}
 		}
 	}
 
 	if config.ElasticsearchIndex == "" {
-		return missingConfigError{key: "elasticsearch_index"}
+		return &missingConfigError{key: "elasticsearch_index"}
 	}
 
 	return nil

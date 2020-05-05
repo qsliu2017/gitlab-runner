@@ -9,15 +9,13 @@ import (
 )
 
 func Test_CreateReferees(t *testing.T) {
-	fakeMockMetricsExecutor := func(t *testing.T) (interface{}, func(t mock.TestingT) bool) {
+	fakeMockExecutor := func(t *testing.T) (interface{}, func(t mock.TestingT) bool) {
 		return struct{}{}, func(t mock.TestingT) bool { return false }
 	}
 
-	mockMetricsExecutor := func(t *testing.T) (interface{}, func(t mock.TestingT) bool) {
-		m := new(MockMetricsExecutor)
-
-		m.On("GetMetricsSelector").Return(`name="value"`).Maybe()
-
+	mockExecutor := func(t *testing.T) (interface{}, func(t mock.TestingT) bool) {
+		m := new(MockRefereeExecutor)
+		m.On("GetHostname").Return("runner-1234").Maybe()
 		return m, m.AssertExpectations
 	}
 
@@ -27,17 +25,17 @@ func Test_CreateReferees(t *testing.T) {
 		expectedReferees []Referee
 	}{
 		"Executor doesn't support any referee": {
-			mockExecutor:     fakeMockMetricsExecutor,
+			mockExecutor:     fakeMockExecutor,
 			config:           &Config{Metrics: &MetricsRefereeConfig{QueryInterval: 0}},
 			expectedReferees: nil,
 		},
 		"Executor supports metrics referee": {
-			mockExecutor:     mockMetricsExecutor,
+			mockExecutor:     mockExecutor,
 			config:           &Config{Metrics: &MetricsRefereeConfig{QueryInterval: 0}},
 			expectedReferees: []Referee{&MetricsReferee{}},
 		},
 		"No config provided": {
-			mockExecutor:     mockMetricsExecutor,
+			mockExecutor:     mockExecutor,
 			config:           nil,
 			expectedReferees: nil,
 		},
@@ -58,8 +56,10 @@ func Test_CreateReferees(t *testing.T) {
 			}
 
 			assert.Len(t, referees, len(test.expectedReferees))
-			for i, referee := range test.expectedReferees {
-				assert.IsType(t, referee, referees[i])
+			for i, expectedReferee := range test.expectedReferees {
+				referee := referees[i]
+				assert.IsType(t, expectedReferee, referees[i])
+				assert.Equal(t, "runner-1234", referee.(*MetricsReferee).hostname)
 			}
 		})
 	}
