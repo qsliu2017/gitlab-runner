@@ -150,6 +150,8 @@ buildx() {
     trap cleanup_docker_context_trap ERR SIGINT SIGTERM
     setup_docker_context
 
+    _docker_buildx inspect --bootstrap
+    
     if [[ "${PUBLISH_IMAGES}" == "true" ]] && [[ -n "${CI_REGISTRY_USER}" ]] && [[ -n "${CI_REGISTRY_PASSWORD}" ]]; then
         login "${CI_REGISTRY_USER}" "${CI_REGISTRY_PASSWORD}" "${CI_REGISTRY}"
     fi
