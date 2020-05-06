@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"go/parser"
 	"go/token"
+	"log"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 )
@@ -21,10 +23,15 @@ func (state *golistState) processGolistOverlay(response *responseDeduper) (modif
 	needPkgsSet := make(map[string]bool)
 	modifiedPkgsSet := make(map[string]bool)
 
+	pkgOfDir := make(map[string][]*Package)
 	for _, pkg := range response.dr.Packages {
 		// This is an approximation of import path to id. This can be
 		// wrong for tests, vendored packages, and a number of other cases.
 		havePkgs[pkg.PkgPath] = pkg.ID
+		x := commonDir(pkg.GoFiles)
+		if x != "" {
+			pkgOfDir[x] = append(pkgOfDir[x], pkg)
+		}
 	}
 
 	// If no new imports are added, it is safe to avoid loading any needPkgs.
@@ -34,7 +41,23 @@ func (state *golistState) processGolistOverlay(response *responseDeduper) (modif
 	// potentially modifying the transitive set of dependencies).
 	var overlayAddsImports bool
 
-	for opath, contents := range state.cfg.Overlay {
+	// If both a package and its test package are created by the overlay, we
+	// need the real package first. Process all non-test files before test
+	// files, and make the whole process deterministic while we're at it.
+	var overlayFiles []string
+	for opath := range state.cfg.Overlay {
+		overlayFiles = append(overlayFiles, opath)
+	}
+	sort.Slice(overlayFiles, func(i, j int) bool {
+		iTest := strings.HasSuffix(overlayFiles[i], "_test.go")
+		jTest := strings.HasSuffix(overlayFiles[j], "_test.go")
+		if iTest != jTest {
+			return !iTest // non-tests are before tests.
+		}
+		return overlayFiles[i] < overlayFiles[j]
+	})
+	for _, opath := range overlayFiles {
+		contents := state.cfg.Overlay[opath]
 		base := filepath.Base(opath)
 		dir := filepath.Dir(opath)
 		var pkg *Package           // if opath belongs to both a package and its test variant, this will be the test variant
@@ -47,6 +70,9 @@ func (state *golistState) processGolistOverlay(response *responseDeduper) (modif
 			// to the overlay.
 			continue
 		}
+		// if all the overlay files belong to a different package, change the package
+		// name to that package. Otherwise leave it alone; there will be an error message.
+		maybeFixPackageName(pkgName, pkgOfDir, dir)
 	nextPackage:
 		for _, p := range response.dr.Packages {
 			if pkgName != p.Name && p.ID != "command-line-arguments" {
@@ -64,14 +90,8 @@ func (state *golistState) processGolistOverlay(response *responseDeduper) (modif
 					testVariantOf = p
 					continue nextPackage
 				}
+				// We must have already seen the package of which this is a test variant.
 				if pkg != nil && p != pkg && pkg.PkgPath == p.PkgPath {
-					// If we've already seen the test variant,
-					// make sure to label which package it is a test variant of.
-					if hasTestFiles(pkg) {
-						testVariantOf = p
-						continue nextPackage
-					}
-					// If we have already seen the package of which this is a test variant.
 					if hasTestFiles(p) {
 						testVariantOf = pkg
 					}
@@ -271,7 +291,17 @@ func (state *golistState) determineRootDirs() (map[string]string, error) {
 }
 
 func (state *golistState) determineRootDirsModules() (map[string]string, error) {
-	out, err := state.invokeGo("list", "-m", "-json", "all")
+	// This will only return the root directory for the main module.
+	// For now we only support overlays in main modules.
+	// Editing files in the module cache isn't a great idea, so we don't
+	// plan to ever support that, but editing files in replaced modules
+	// is something we may want to support. To do that, we'll want to
+	// do a go list -m to determine the replaced module's module path and
+	// directory, and then a go list -m {{with .Replace}}{{.Dir}}{{end}} <replaced module's path>
+	// from the main module to determine if that module is actually a replacement.
+	// See bcmills's comment here: https://github.com/golang/go/issues/37629#issuecomment-594179751
+	// for more information.
+	out, err := state.invokeGo("list", "-m", "-json")
 	if err != nil {
 		return nil, err
 	}
@@ -362,4 +392,47 @@ func extractPackageName(filename string, contents []byte) (string, bool) {
 		return "", false
 	}
 	return f.Name.Name, true
+}
+
+func commonDir(a []string) string {
+	seen := make(map[string]bool)
+	x := append([]string{}, a...)
+	for _, f := range x {
+		seen[filepath.Dir(f)] = true
+	}
+	if len(seen) > 1 {
+		log.Fatalf("commonDir saw %v for %v", seen, x)
+	}
+	for k := range seen {
+		// len(seen) == 1
+		return k
+	}
+	return "" // no files
+}
+
+// It is possible that the files in the disk directory dir have a different package
+// name from newName, which is deduced from the overlays. If they all have a different
+// package name, and they all have the same package name, then that name becomes
+// the package name.
+// It returns true if it changes the package name, false otherwise.
+func maybeFixPackageName(newName string, pkgOfDir map[string][]*Package, dir string) bool {
+	names := make(map[string]int)
+	for _, p := range pkgOfDir[dir] {
+		names[p.Name]++
+	}
+	if len(names) != 1 {
+		// some files are in different packages
+		return false
+	}
+	oldName := ""
+	for k := range names {
+		oldName = k
+	}
+	if newName == oldName {
+		return false
+	}
+	for _, p := range pkgOfDir[dir] {
+		p.Name = newName
+	}
+	return true
 }
