@@ -21,21 +21,6 @@
   - docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
   - make release_docker_images
 
-.build_windows_docker_images:
-  extends:
-  - .except_docs
-  stage: release
-  variables:
-    PUSH_TO_DOCKER_HUB: "false"
-    GIT_256_CHECKSUM: "bd91db55bd95eaa80687df28877e2df8c8858a0266e9c67331cfddba2735f25c"
-    GIT_LFS_256_CHECKSUM: "5c12db9728b53cba23e5f58f4a53d88cb2132e82fa1de0f8a79ce9d112e4d396"
-  needs:
-  - 'helper images'
-  - 'binaries windows/386 windows/amd64'
-  before_script:
-  - if (Test-Path env:GPG_KEY) { Remove-Item Env:GPG_KEY }
-  script:
-  - .\ci\build_release_windows_images.ps1
 
 .release:
   extends:
@@ -45,29 +30,6 @@
   - unset GPG_KEY
   - source ci/touch_make_dependencies
 
-.release_s3:
-  extends:
-  - .release
-  needs:
-  - 'helper images'
-  - 'test coverage report'
-  - 'binaries darwin/386 darwin/amd64'
-  - 'binaries freebsd/386 freebsd/amd64 freebsd/arm'
-  - 'binaries linux/386 linux/amd64 linux/arm linux/arm64'
-  - 'binaries windows/386 windows/amd64'
-  - 'package-deb'
-  - 'package-rpm'
-  before_script:
-  - source ci/touch_make_dependencies
-  script:
-  - make release_s3
-  - |
-    # publish release on gitlab.com
-    if [[ -n "${CI_COMMIT_TAG}" ]]; then
-      ./ci/release_gitlab
-    else
-      echo -e "\033[0;31m****** gitlab publishing disabled ******\033[0m"
-    fi
 
 .release_packagecloud:
   needs:
@@ -94,13 +56,6 @@
   only:
   - /\Av[0-9]+\.[0-9]+\.[0-9]+\Z/@gitlab-org/gitlab-runner
 
-development S3:
-  extends:
-  - .release_s3
-  - .release_development
-  environment:
-    name: development/s3/${CI_COMMIT_REF_NAME}
-    url: https://gitlab-runner-downloads.s3.amazonaws.com/${CI_COMMIT_REF_NAME}/index.html
 
 development docker images:
   extends:
@@ -110,19 +65,6 @@ development docker images:
     PUBLISH_IMAGES: "false"
     PUSH_TO_DOCKER_HUB: "false"
 
-development servercore1809 helper docker image:
-  extends:
-  - .build_windows_docker_images
-  - .windows1809
-  - .release_development
-
-bleeding edge S3:
-  extends:
-  - .release_s3
-  - .release_bleeding_edge
-  environment:
-    name: bleeding_edge/s3
-    url: https://gitlab-runner-downloads.s3.amazonaws.com/${CI_COMMIT_REF_NAME}/index.html
 
 bleeding edge packagecloud:
   extends:
@@ -140,24 +82,6 @@ bleeding edge docker images:
     name: bleeding_edge/docker_images
     url: https://hub.docker.com/r/gitlab/gitlab-runner/tags/
 
-bleeding edge servercore1809 docker images:
-  extends:
-  - .build_windows_docker_images
-  - .windows1809
-  - .release_bleeding_edge
-  variables:
-    PUSH_TO_DOCKER_HUB: "true"
-  environment:
-    name: bleeding_edge/docker_images/windows1809
-    url: https://hub.docker.com/r/gitlab/gitlab-runner/tags/
-
-stable S3:
-  extends:
-  - .release_s3
-  - .release_stable
-  environment:
-    name: stable/s3
-    url: https://gitlab-runner-downloads.s3.amazonaws.com/${CI_COMMIT_REF_NAME}/index.html
 
 stable packagecloud:
   extends:
@@ -175,29 +99,3 @@ stable docker images:
     name: stable/docker_images
     url: https://hub.docker.com/r/gitlab/gitlab-runner/tags/
 
-stable servercore1809 docker images:
-  extends:
-  - .build_windows_docker_images
-  - .windows1809
-  - .release_stable
-  variables:
-    PUSH_TO_DOCKER_HUB: "true"
-  environment:
-    name: stable/docker_images/windows1809
-    url: https://hub.docker.com/r/gitlab/gitlab-runner/tags/
-
-static QA:
-  extends:
-  - .merge_request_pipelines
-  - .except_docs
-  - .no_cache
-  stage: release
-  image: alpine:3.7
-  needs:
-  - code_quality
-  script: |
-    if [ "$(cat gl-code-quality-report.json)" != "[]" ] ; then
-      apk add -U --no-cache jq > /dev/null
-      jq -C . gl-code-quality-report.json
-      exit 1
-    fi

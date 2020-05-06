@@ -146,6 +146,7 @@ buildx() {
         fi
     fi
 
+    set -x
     trap cleanup_docker_context_trap ERR SIGINT SIGTERM
     setup_docker_context
 

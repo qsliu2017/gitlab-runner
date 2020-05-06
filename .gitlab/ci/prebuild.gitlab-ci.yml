@@ -28,17 +28,3 @@ clone test repo:
     - tmp/gitlab-test
     expire_in: 7d
 
-tests definitions:
-  extends:
-  - .merge_request_pipelines
-  - .except_docs
-  stage: prebuild
-  script:
-  - apt-get update
-  - apt-get install -y make
-  - source ci/touch_make_dependencies
-  - make parallel_test_prepare
-  artifacts:
-    paths:
-    - testsdefinitions.txt
-    expire_in: 7d

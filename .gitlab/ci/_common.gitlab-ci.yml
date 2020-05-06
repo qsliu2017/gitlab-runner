@@ -72,23 +72,4 @@ before_script:
   tags:
   - gitlab-org-docker
 
-.windows_base:
-  variables:
-    PKG_NAMESPACE: gitlab.com\gitlab-org
-    PKG_NAME: gitlab-runner
-    GOPATH: "$CI_PROJECT_DIR\\.gopath"
-    PKG_BASE_DIR: "$CI_PROJECT_DIR\\.gopath\\src\\$PKG_NAMESPACE"
-    PKG_BUILD_DIR: "$CI_PROJECT_DIR\\.gopath\\src\\$PKG_NAMESPACE\\$PKG_NAME"
 
-.windows1809_variables:
-  variables:
-    WINDOWS_VERSION: servercore1809
-
-.windows1809:
-  extends:
-  - .windows_base
-  - .windows1809_variables
-  tags:
-  - shared-windows
-  - windows
-  - windows-1809
