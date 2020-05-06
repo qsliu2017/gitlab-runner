@@ -27,9 +27,7 @@ import (
 )
 
 func TestInteractiveTerminal(t *testing.T) {
-	if helpers.SkipIntegrationTests(t, "docker", "info") {
-		return
-	}
+	helpers.SkipDockerIntegrationTests(t)
 
 	successfulBuild, err := common.GetRemoteLongRunningBuild()
 	assert.NoError(t, err)

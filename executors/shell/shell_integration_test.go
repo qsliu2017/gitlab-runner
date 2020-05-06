@@ -963,9 +963,7 @@ func TestBuildChangesBranchesWhenFetchingRepo(t *testing.T) {
 }
 
 func TestBuildPowerShellCatchesExceptions(t *testing.T) {
-	if helpers.SkipIntegrationTests(t, "powershell") {
-		t.Skip()
-	}
+	helpers.SkipShellIntegrationTests(t, "powershell")
 
 	successfulBuild, err := common.GetRemoteSuccessfulBuild()
 	assert.NoError(t, err)
@@ -1023,9 +1021,7 @@ func TestInteractiveTerminal(t *testing.T) {
 				// Interactive web terminals aren't supported on Windows at the moment
 				t.Skip()
 			}
-			if helpers.SkipIntegrationTests(t, c.app) {
-				t.Skip()
-			}
+			helpers.SkipShellIntegrationTests(t, c.shell)
 
 			successfulBuild, err := common.GetLocalBuildResponse(c.command)
 			require.NoError(t, err)

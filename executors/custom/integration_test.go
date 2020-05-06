@@ -452,7 +452,7 @@ func TestBuildChangesBranchesWhenFetchingRepo(t *testing.T) {
 }
 
 func TestBuildPowerShellCatchesExceptions(t *testing.T) {
-	helpers.SkipIntegrationTests(t, "powershell")
+	helpers.SkipShellIntegrationTests(t, "powershell")
 
 	successfulBuild, err := common.GetRemoteSuccessfulBuild()
 	require.NoError(t, err)

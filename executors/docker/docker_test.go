@@ -1384,9 +1384,7 @@ func TestPullPolicyWhenIfNotPresentIsSet(t *testing.T) {
 }
 
 func TestDockerWatchOn_1_12_4(t *testing.T) {
-	if helpers.SkipIntegrationTests(t, "docker", "info") {
-		return
-	}
+	helpers.SkipDockerIntegrationTests(t)
 
 	e := &executor{
 		AbstractExecutor: executors.AbstractExecutor{

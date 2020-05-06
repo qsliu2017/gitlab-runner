@@ -81,9 +81,7 @@ func TestRunTestsWithFeatureFlag(t *testing.T) {
 }
 
 func testKubernetesSuccessRunFeatureFlag(t *testing.T, featureFlagName string, featureFlagValue bool) {
-	if helpers.SkipIntegrationTests(t, "kubectl", "cluster-info") {
-		return
-	}
+	helpers.SkipKubernetesIntegrationTests(t)
 
 	successfulBuild, err := common.GetRemoteSuccessfulBuild()
 	assert.NoError(t, err)
@@ -106,9 +104,7 @@ func testKubernetesSuccessRunFeatureFlag(t *testing.T, featureFlagName string, f
 }
 
 func testKubernetesTimeoutRunFeatureFlag(t *testing.T, featureFlagName string, featureFlagValue bool) {
-	if helpers.SkipIntegrationTests(t, "kubectl", "cluster-info") {
-		return
-	}
+	helpers.SkipKubernetesIntegrationTests(t)
 
 	longRunningBuild, err := common.GetRemoteLongRunningBuild()
 	assert.NoError(t, err)
@@ -135,9 +131,7 @@ func testKubernetesTimeoutRunFeatureFlag(t *testing.T, featureFlagName string, f
 }
 
 func testKubernetesBuildFailFeatureFlag(t *testing.T, featureFlagName string, featureFlagValue bool) {
-	if helpers.SkipIntegrationTests(t, "kubectl", "cluster-info") {
-		return
-	}
+	helpers.SkipKubernetesIntegrationTests(t)
 
 	failedBuild, err := common.GetRemoteFailedBuild()
 	assert.NoError(t, err)
@@ -162,9 +156,7 @@ func testKubernetesBuildFailFeatureFlag(t *testing.T, featureFlagName string, fe
 }
 
 func testKubernetesBuildAbortFeatureFlag(t *testing.T, featureFlagName string, featureFlagValue bool) {
-	if helpers.SkipIntegrationTests(t, "kubectl", "cluster-info") {
-		return
-	}
+	helpers.SkipKubernetesIntegrationTests(t)
 
 	failedBuild, err := common.GetRemoteFailedBuild()
 	assert.NoError(t, err)
@@ -200,9 +192,7 @@ func testKubernetesBuildAbortFeatureFlag(t *testing.T, featureFlagName string, f
 }
 
 func testKubernetesBuildCancelFeatureFlag(t *testing.T, featureFlagName string, featureFlagValue bool) {
-	if helpers.SkipIntegrationTests(t, "kubectl", "cluster-info") {
-		return
-	}
+	helpers.SkipKubernetesIntegrationTests(t)
 
 	failedBuild, err := common.GetRemoteFailedBuild()
 	assert.NoError(t, err)
@@ -536,9 +526,7 @@ func testSetupBuildPodServiceCreationErrorFeatureFlag(t *testing.T, featureFlagN
 }
 
 func testKubernetesCustomClonePathFeatureFlag(t *testing.T, featureFlagName string, featureFlagValue bool) {
-	if helpers.SkipIntegrationTests(t, "kubectl", "cluster-info") {
-		return
-	}
+	helpers.SkipKubernetesIntegrationTests(t)
 
 	jobResponse, err := common.GetRemoteBuildResponse(
 		"ls -al $CI_BUILDS_DIR/go/src/gitlab.com/gitlab-org/repo")
@@ -584,9 +572,7 @@ func testKubernetesCustomClonePathFeatureFlag(t *testing.T, featureFlagName stri
 }
 
 func testKubernetesNoRootImageFeatureFlag(t *testing.T, featureFlagName string, featureFlagValue bool) {
-	if helpers.SkipIntegrationTests(t, "kubectl", "cluster-info") {
-		return
-	}
+	helpers.SkipKubernetesIntegrationTests(t)
 
 	successfulBuild, err := common.GetRemoteSuccessfulBuildWithDumpedVariables()
 
@@ -611,9 +597,7 @@ func testKubernetesNoRootImageFeatureFlag(t *testing.T, featureFlagName string, 
 }
 
 func testKubernetesMissingImageFeatureFlag(t *testing.T, featureFlagName string, featureFlagValue bool) {
-	if helpers.SkipIntegrationTests(t, "kubectl", "cluster-info") {
-		return
-	}
+	helpers.SkipKubernetesIntegrationTests(t)
 
 	failedBuild, err := common.GetRemoteFailedBuild()
 	assert.NoError(t, err)
@@ -636,9 +620,7 @@ func testKubernetesMissingImageFeatureFlag(t *testing.T, featureFlagName string,
 }
 
 func testKubernetesMissingTagFeatureFlag(t *testing.T, featureFlagName string, featureFlagValue bool) {
-	if helpers.SkipIntegrationTests(t, "kubectl", "cluster-info") {
-		return
-	}
+	helpers.SkipKubernetesIntegrationTests(t)
 
 	failedBuild, err := common.GetRemoteFailedBuild()
 	assert.NoError(t, err)
@@ -661,9 +643,7 @@ func testKubernetesMissingTagFeatureFlag(t *testing.T, featureFlagName string, f
 }
 
 func testOverwriteNamespaceNotMatchFeatureFlag(t *testing.T, featureFlagName string, featureFlagValue bool) {
-	if helpers.SkipIntegrationTests(t, "kubectl", "cluster-info") {
-		return
-	}
+	helpers.SkipKubernetesIntegrationTests(t)
 
 	build := &common.Build{
 		JobResponse: common.JobResponse{
@@ -697,9 +677,7 @@ func testOverwriteNamespaceNotMatchFeatureFlag(t *testing.T, featureFlagName str
 }
 
 func testOverwriteServiceAccountNotMatchFeatureFlag(t *testing.T, featureFlagName string, featureFlagValue bool) {
-	if helpers.SkipIntegrationTests(t, "kubectl", "cluster-info") {
-		return
-	}
+	helpers.SkipKubernetesIntegrationTests(t)
 
 	build := &common.Build{
 		JobResponse: common.JobResponse{
@@ -733,9 +711,7 @@ func testOverwriteServiceAccountNotMatchFeatureFlag(t *testing.T, featureFlagNam
 }
 
 func testInteractiveTerminalFeatureFlag(t *testing.T, featureFlagName string, featureFlagValue bool) {
-	if helpers.SkipIntegrationTests(t, "kubectl", "cluster-info") {
-		return
-	}
+	helpers.SkipKubernetesIntegrationTests(t)
 
 	client, err := getKubeClient(&common.KubernetesConfig{}, &overwrites{})
 	require.NoError(t, err)
@@ -1541,9 +1517,7 @@ func TestPrepare(t *testing.T) {
 
 // This test reproduces the bug reported in https://gitlab.com/gitlab-org/gitlab-runner/issues/2583
 func TestPrepareIssue2583(t *testing.T) {
-	if helpers.SkipIntegrationTests(t, "kubectl", "cluster-info") {
-		return
-	}
+	helpers.SkipKubernetesIntegrationTests(t)
 
 	namespace := "my_namespace"
 	serviceAccount := "my_account"
