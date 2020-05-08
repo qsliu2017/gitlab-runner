@@ -68,33 +68,33 @@ func TestBuildCancel(t *testing.T) {
 		runAfterStagesOnCancel bool
 		steps                  Steps
 	}{
-		"don't run after_script and subsequent stages on canceled job": {
+		"don't run after_script and any following stages on canceled job": {
 			false,
 			[]Step{
 				{
-					Name:        StepNameScript,
-					Script:      []string{"echo hello"},
-					RunOnCancel: false,
+					Name:   StepNameScript,
+					Script: []string{"echo hello"},
+					When:   StepWhenOnSuccess,
 				},
 				{
-					Name:        StepNameAfterScript,
-					Script:      []string{"echo hello"},
-					RunOnCancel: false,
+					Name:   StepNameAfterScript,
+					Script: []string{"echo hello"},
+					When:   StepWhenAlways,
 				},
 			},
 		},
-		"run after_script and subsequent stages on canceled job": {
+		"run after_script and any following stages on canceled job": {
 			true,
 			[]Step{
 				{
-					Name:        StepNameScript,
-					Script:      []string{"echo hello"},
-					RunOnCancel: false,
+					Name:   StepNameScript,
+					Script: []string{"echo hello"},
+					When:   StepWhenOnSuccess,
 				},
 				{
-					Name:        StepNameAfterScript,
-					Script:      []string{"echo hello"},
-					RunOnCancel: true,
+					Name:   StepNameAfterScript,
+					Script: []string{"echo hello"},
+					When:   StepWhenGraceful,
 				},
 			},
 		},
@@ -102,9 +102,9 @@ func TestBuildCancel(t *testing.T) {
 			false,
 			[]Step{
 				{
-					Name:        StepNameScript,
-					Script:      []string{"echo hello"},
-					RunOnCancel: false,
+					Name:   StepNameScript,
+					Script: []string{"echo hello"},
+					When:   StepWhenOnSuccess,
 				},
 			},
 		},

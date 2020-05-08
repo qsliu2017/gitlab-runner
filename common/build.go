@@ -443,19 +443,22 @@ func StepToBuildStage(s Step) BuildStage {
 }
 
 func (b *Build) getAfterScriptCtx(ctx context.Context) context.Context {
-	var afterScriptStep *Step
-	for _, s := range b.Steps {
-		if s.Name == StepNameAfterScript {
-			afterScriptStep = &s
-		}
-	}
-	if afterScriptStep == nil {
-		return ctx
-	}
-	if afterScriptStep.RunOnCancel {
+	afterScriptStep := b.GetStep(StepNameAfterScript)
+	if afterScriptStep != nil && afterScriptStep.When == StepWhenGraceful {
 		return context.Background()
 	}
+
 	return ctx
+}
+
+func (b *Build) GetStep(name StepName) *Step {
+	for _, s := range b.Steps {
+		if s.Name == name {
+			return &s
+		}
+	}
+
+	return nil
 }
 
 func (b *Build) createReferees(executor Executor) {

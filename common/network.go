@@ -165,6 +165,7 @@ const (
 	StepWhenOnFailure StepWhen = "on_failure"
 	StepWhenOnSuccess StepWhen = "on_success"
 	StepWhenAlways    StepWhen = "always"
+	StepWhenGraceful  StepWhen = "graceful"
 )
 
 type CachePolicy string
@@ -181,7 +182,6 @@ type Step struct {
 	Script       StepScript `json:"script"`
 	Timeout      int        `json:"timeout"`
 	When         StepWhen   `json:"when"`
-	RunOnCancel  bool       `json:"run_on_cancel"`
 	AllowFailure bool       `json:"allow_failure"`
 }
 

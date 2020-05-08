@@ -654,13 +654,7 @@ func (b *AbstractShell) writeUploadArtifacts(w ShellWriter, info common.ShellScr
 }
 
 func (b *AbstractShell) writeAfterScript(w ShellWriter, info common.ShellScriptInfo) error {
-	var afterScriptStep *common.Step
-	for _, step := range info.Build.Steps {
-		if step.Name == common.StepNameAfterScript {
-			afterScriptStep = &step
-			break
-		}
-	}
+	afterScriptStep := info.Build.GetStep(common.StepNameAfterScript)
 
 	if afterScriptStep == nil || len(afterScriptStep.Script) == 0 {
 		return common.ErrSkipBuildStage
