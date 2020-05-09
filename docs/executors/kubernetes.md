@@ -442,6 +442,13 @@ section of the GitLab CI
 documentation but it is worthwhile to revisit them here as you might run into
 some slightly different things when running this on your cluster.
 
+NOTE: **Note:**
+While the Docker executor [currently supports](../configuration/advanced-configuration.md#the-runnersdocker-section)
+setting an `extra_hosts` parameter to define `/etc/hosts` entries for the launched docker container, the
+`services`, `helper`, and `build` job pods that are created by the Kubernetes executor
+can not inherit any [HostAliases](../install/kubernetes.md#adding-entries-to-etchosts-on-the-runner-pod-with-hostaliases) settings from the runner pod and there is not currently a way to
+utilize the HostAliases for these job pods. See [this issue](https://gitlab.com/gitlab-org/gitlab-runner/-/issues/2818) for details.
+
 ### Exposing `/var/run/docker.sock`
 
 Exposing your host's `/var/run/docker.sock` into your build container, using the
