@@ -23,17 +23,9 @@ Write-Information "Execution offset: $executionOffset"
 New-Item -ItemType "directory" -Path ".\" -Name ".testoutput"
 
 $failed = @()
-Get-Content $testsDefinitionsFile | Select-Object -skip $executionOffset -first $executionSize | ForEach-Object {
-    $pkg, $index, $tests = $_.Split(" ", 3)
-    $pkgSlug = ((echo $pkg | % { $_ -replace "[^a-z0-9_]","_" }))
-
-    Write-Information "`r`n`r`n--- Starting part $index of go tests of '$pkg' package:`r`n`r`n"
-
-    go test -cpuprofile cpu.prof -v $pkg -run "$tests" | Tee ".testoutput/${pkgSlug}.${index}.windows.${WINDOWS_VERSION}.output.txt"
-
-    if ($LASTEXITCODE -ne 0) {
-        $failed += "$pkg-$index"
-    }
+go test -cpuprofile cpu.prof -v --count=1 -run TestBuildWithDebugTrace ./executors/shell/... | Tee ".testoutput/${pkgSlug}.${index}.windows.${WINDOWS_VERSION}.output.txt"
+if ($LASTEXITCODE -ne 0) {
+    $failed += "$pkg-$index"
 }
 
 if ($failed.count -ne 0) {
