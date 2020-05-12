@@ -54,6 +54,7 @@ func (b *PsWriter) GetTemporaryPath() string {
 }
 
 func (b *PsWriter) Line(text string) {
+	b.WriteString(strings.Repeat("  ", b.indent) + "Get-Date -Format '>>> HH:mm:ss.fff'" + "\r\n")
 	b.WriteString(strings.Repeat("  ", b.indent) + text + "\r\n")
 }
 
