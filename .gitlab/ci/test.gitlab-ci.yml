@@ -139,6 +139,7 @@ unit test with race:
   artifacts:
     paths:
     - .testoutput/*
+    - cpu.prof
     when: always
     expire_in: 7d
   allow_failure: true
