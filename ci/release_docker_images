@@ -196,10 +196,10 @@ release_docker_helper_images() {
     helper_image_s390x_version="${1}/gitlab-runner-helper:s390x-${ref_tag}"
     helper_image_s390x_latest="${1}/gitlab-runner-helper:s390x-latest"
 
-    import out/helper-images/prebuilt-x86_64.tar.xz "${helper_image_x86_64}"
-    import out/helper-images/prebuilt-arm.tar.xz "${helper_image_arm}"
-    import out/helper-images/prebuilt-arm64.tar.xz "${helper_image_arm64}"
-    import out/helper-images/prebuilt-s390x.tar.xz "${helper_image_s390x}"
+    import out/helper-images/prebuilt-x86_64.tar "${helper_image_x86_64}"
+    import out/helper-images/prebuilt-arm.tar "${helper_image_arm}"
+    import out/helper-images/prebuilt-arm64.tar "${helper_image_arm64}"
+    import out/helper-images/prebuilt-s390x.tar "${helper_image_s390x}"
 
     tag_latest "${helper_image_x86_64}" "${helper_image_x86_64_latest}"
     tag_latest "${helper_image_arm}" "${helper_image_arm_latest}"

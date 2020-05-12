@@ -2,7 +2,7 @@ package docker
 
 import "time"
 
-const prebuiltImageExtension = ".tar.xz"
+const prebuiltImageExtension = ".tar"
 
 const dockerCleanupTimeout = 5 * time.Minute
 
