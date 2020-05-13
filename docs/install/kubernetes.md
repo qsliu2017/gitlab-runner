@@ -281,7 +281,7 @@ More information on how GitLab Runner uses these certificates can be found in th
 Company intranets and other private networks often have services hosted on
 systems that are not resolveable through the DNS service provided by the
 cluster or host system. Kubernetes provides a mechanism for adding
-[/etc/hosts entries](https://kubernetes.io/docs/concepts/services-networking/add-entries-to-pod-etc-hosts-with-host-aliases/)
+[`/etc/hosts` entries](https://kubernetes.io/docs/concepts/services-networking/add-entries-to-pod-etc-hosts-with-host-aliases/)
 to a pod using HostAliases. The GitLab Runner Helm chart supports this mechanism to add entries to /etc/hosts on the runner pod itself.
 
 ```yaml
