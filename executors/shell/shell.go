@@ -56,10 +56,10 @@ func (s *executor) Prepare(options common.ExecutorPrepareOptions) error {
 	return nil
 }
 
-func (s *executor) killAndWait(cmd *exec.Cmd, waitCh chan error) error {
+func (s *executor) killAndWait(kill func(), waitCh chan error) error {
 	for {
 		s.Debugln("Aborting command...")
-		helpers.KillProcessGroup(cmd)
+		kill()
 		select {
 		case <-time.After(time.Second):
 		case err := <-waitCh:
@@ -75,8 +75,8 @@ func (s *executor) Run(cmd common.ExecutorCommand) error {
 		return errors.New("failed to generate execution command")
 	}
 
-	helpers.SetProcessGroup(c)
-	defer helpers.KillProcessGroup(c)
+	kill := helpers.ProcessGroupKiller(c)
+	defer kill()
 
 	// Fill process environment variables
 	c.Env = append(os.Environ(), s.BuildShell.Environment...)
@@ -123,7 +123,7 @@ func (s *executor) Run(cmd common.ExecutorCommand) error {
 		return err
 
 	case <-cmd.Context.Done():
-		return s.killAndWait(c, waitCh)
+		return s.killAndWait(kill, waitCh)
 	}
 }
 

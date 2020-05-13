@@ -7,25 +7,22 @@ import (
 	"syscall"
 )
 
-func SetProcessGroup(cmd *exec.Cmd) {
-	// Create process group
+// ProcessGroupKiller configures exec.Cmd and returns a function for killing
+// the process.
+func ProcessGroupKiller(cmd *exec.Cmd) func() {
 	cmd.SysProcAttr = &syscall.SysProcAttr{
 		Setpgid: true,
 	}
-}
 
-func KillProcessGroup(cmd *exec.Cmd) {
-	if cmd == nil {
-		return
-	}
+	return func() {
+		if cmd.Process == nil {
+			return
+		}
 
-	process := cmd.Process
-	if process != nil {
-		if process.Pid > 0 {
-			syscall.Kill(-process.Pid, syscall.SIGKILL)
+		if cmd.Process.Pid > 0 {
+			syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
 		} else {
-			// doing normal kill
-			process.Kill()
+			cmd.Process.Kill()
 		}
 	}
 }
