@@ -276,7 +276,7 @@ Where:
 More information on how GitLab Runner uses these certificates can be found in the
 [Runner Documentation](../configuration/tls-self-signed.md#supported-options-for-self-signed-certificates).
 
-### Adding entries to /etc/hosts with HostAliases
+### Adding entries to the hosts file with HostAliases
 
 Company intranets and other private networks often have services hosted on
 systems that are not resolveable through the DNS service provided by the
