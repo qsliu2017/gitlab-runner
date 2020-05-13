@@ -300,7 +300,7 @@ hostAliases: []
 
 Setting `/etc/hosts` entries using the `hostAliases:` setting is limited to only the Runner pod.
 The `services`, `helper`, and `build` job pods that the Kubernetes executor creates
-can not inherit any [HostAliases](../install/kubernetes.md#adding-entries-to-etchosts-with-hostaliases)
+can not inherit any [HostAliases](../install/kubernetes.md#adding-entries-to-the-hosts-file-with-hostaliases)
 settings from the Runner pod. Currently, there is no way to
 [use the HostAliases for these job pods](https://gitlab.com/gitlab-org/gitlab-runner/-/issues/2818).
 

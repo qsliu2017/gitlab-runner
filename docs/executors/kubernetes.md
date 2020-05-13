@@ -444,7 +444,7 @@ some slightly different things when running this on your cluster.
 
 NOTE: **Note:**
 The `services`, `helper`, and `build` job pods that the Kubernetes executor creates
-can not inherit any [HostAliases](../install/kubernetes.md#adding-entries-to-etchosts-with-hostaliases)
+can not inherit any [HostAliases](../install/kubernetes.md#adding-entries-to-the-hosts-file-with-hostaliases)
 settings from the Runner pod. Currently, there is no way to
 [use the HostAliases for these job pods](https://gitlab.com/gitlab-org/gitlab-runner/-/issues/2818).
 
