@@ -298,11 +298,11 @@ hostAliases: []
   #   - "bar.remote"
 ```
 
-NOTE: **Note:**
-Setting `/etc/hosts` entries using the `hostAliases:` setting is limited to the runner pod itself.
-The `services`, `helper`, and `build` job pods that are created by the [Kubernetes executor](../executors/kubernetes.md)
-can not inherit these settings from the runner pod and there is not currently a way to
-utilize the HostAliases for these job pods. See [this issue](https://gitlab.com/gitlab-org/gitlab-runner/-/issues/2818) for details.
+Setting `/etc/hosts` entries using the `hostAliases:` setting is limited to only the Runner pod.
+The `services`, `helper`, and `build` job pods that the Kubernetes executor creates
+can not inherit any [HostAliases](../install/kubernetes.md#adding-entries-to-etchosts-with-hostaliases)
+settings from the Runner pod. Currently, there is no way to
+[use the HostAliases for these job pods](https://gitlab.com/gitlab-org/gitlab-runner/-/issues/2818).
 
 ### Set pod labels to CI environment variables keys
 
