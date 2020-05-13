@@ -282,7 +282,7 @@ Company intranets and other private networks often have services hosted on
 systems that are not resolveable through the DNS service provided by the
 cluster or host system. Kubernetes provides a mechanism for adding
 [`/etc/hosts` entries](https://kubernetes.io/docs/concepts/services-networking/add-entries-to-pod-etc-hosts-with-host-aliases/)
-to a pod using HostAliases. The GitLab Runner Helm chart supports this mechanism to add entries to /etc/hosts on the runner pod itself.
+to a pod using HostAliases. The GitLab Runner Helm chart supports adding entries to `/etc/hosts` on the Runner pod itself this way:
 
 ```yaml
 ## list of hosts and IPs that will be injected into the pod's hosts file
