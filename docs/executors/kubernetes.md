@@ -442,7 +442,6 @@ section of the GitLab CI
 documentation but it is worthwhile to revisit them here as you might run into
 some slightly different things when running this on your cluster.
 
-NOTE: **Note:**
 The `services`, `helper`, and `build` job pods that the Kubernetes executor creates
 can not inherit any [HostAliases](../install/kubernetes.md#adding-entries-to-the-hosts-file-with-hostaliases)
 settings from the Runner pod. Currently, there is no way to
