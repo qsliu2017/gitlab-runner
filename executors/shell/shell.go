@@ -2,21 +2,19 @@ package shell
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
-	"time"
 
 	"github.com/kardianos/osext"
 	"github.com/sirupsen/logrus"
 
 	"gitlab.com/gitlab-org/gitlab-runner/common"
 	"gitlab.com/gitlab-org/gitlab-runner/executors"
-	"gitlab.com/gitlab-org/gitlab-runner/helpers"
+	"gitlab.com/gitlab-org/gitlab-runner/helpers/jobcontrol"
 )
 
 type executor struct {
@@ -56,29 +54,8 @@ func (s *executor) Prepare(options common.ExecutorPrepareOptions) error {
 	return nil
 }
 
-func (s *executor) killAndWait(cmd *exec.Cmd, waitCh chan error) error {
-	for {
-		s.Debugln("Aborting command...")
-		helpers.KillProcessGroup(cmd)
-		select {
-		case <-time.After(time.Second):
-		case err := <-waitCh:
-			return err
-		}
-	}
-}
-
 func (s *executor) Run(cmd common.ExecutorCommand) error {
-	// Create execution command
-	c := exec.Command(s.BuildShell.Command, s.BuildShell.Arguments...)
-	if c == nil {
-		return errors.New("failed to generate execution command")
-	}
-
-	helpers.SetProcessGroup(c)
-	defer helpers.KillProcessGroup(c)
-
-	// Fill process environment variables
+	c := jobcontrol.Command(cmd.Context, s.BuildShell.Command, s.BuildShell.Arguments...)
 	c.Env = append(os.Environ(), s.BuildShell.Environment...)
 	c.Stdout = s.Trace
 	c.Stderr = s.Trace
@@ -108,23 +85,11 @@ func (s *executor) Run(cmd common.ExecutorCommand) error {
 	}
 
 	// Wait for process to finish
-	waitCh := make(chan error)
-	go func() {
-		err := c.Wait()
-		if _, ok := err.(*exec.ExitError); ok {
-			err = &common.BuildError{Inner: err}
-		}
-		waitCh <- err
-	}()
-
-	// Support process abort
-	select {
-	case err = <-waitCh:
-		return err
-
-	case <-cmd.Context.Done():
-		return s.killAndWait(c, waitCh)
+	err = c.Wait()
+	if _, ok := err.(*exec.ExitError); ok {
+		err = &common.BuildError{Inner: err}
 	}
+	return err
 }
 
 func init() {
