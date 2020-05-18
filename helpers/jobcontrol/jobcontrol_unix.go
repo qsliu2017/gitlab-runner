@@ -13,10 +13,10 @@ func (c *JobCmd) start() error {
 	return c.cmd.Start()
 }
 
-func (c *JobCmd) kill() {
+func (c *JobCmd) softKill() {
 	syscall.Kill(-c.cmd.Process.Pid, syscall.SIGTERM)
 }
 
-func (c *JobCmd) terminate() {
+func (c *JobCmd) hardKill() {
 	syscall.Kill(-c.cmd.Process.Pid, syscall.SIGKILL)
 }

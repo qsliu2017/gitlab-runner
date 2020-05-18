@@ -7,6 +7,12 @@ import (
 	"time"
 )
 
+// DefaultKillAttempts is the number of soft kill attempts before a hard
+// kill.
+const DefaultKillAttempts = 1
+
+// DefaultKillTimeout is the delay between soft kill attempts and the final
+// hard kill.
 const DefaultKillTimeout = 5 * time.Second
 
 // JobCmd represents an external command being prepared or run.
@@ -25,7 +31,8 @@ type JobCmd struct {
 	Stdout io.Writer
 	Stderr io.Writer
 
-	KillTimeout time.Duration
+	KillAttempts int           // attempts to soft kill before a hard kill
+	KillTimeout  time.Duration // delay between kills
 
 	// used on windows only
 	jobObjectHandle uintptr
@@ -65,14 +72,14 @@ func (c *JobCmd) Start() error {
 //
 // The command must have been started by Start.
 //
-// If the context supplied is cancelled, a graceful kill is attempted followed
-// by complete termination.
+// If the context supplied to `Command` is cancelled, a graceful kill is
+// attempted followed by complete termination.
 func (c *JobCmd) Wait() error {
 	waitCh := make(chan error)
 	go func() {
 		waitCh <- c.cmd.Wait()
 	}()
-	defer c.terminate()
+	defer c.hardKill()
 
 	killCtx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -82,25 +89,26 @@ func (c *JobCmd) Wait() error {
 		return err
 
 	case <-c.ctx.Done():
-		go c.killLoop(killCtx)
+		go c.waitKill(killCtx)
 	}
 
 	return <-waitCh
 }
 
-func (c *JobCmd) killLoop(ctx context.Context) {
-	c.kill()
+func (c *JobCmd) waitKill(ctx context.Context) {
+	defer c.hardKill()
 
 	ticker := time.NewTicker(c.KillTimeout)
 	defer ticker.Stop()
 
-	for {
+	for attempt := 0; attempt < DefaultKillAttempts; attempt++ {
+		c.softKill()
+
 		select {
 		case <-ctx.Done():
 			return
-
 		case <-ticker.C:
-			c.terminate()
+			// waits between soft kills / before final kill
 		}
 	}
 }
