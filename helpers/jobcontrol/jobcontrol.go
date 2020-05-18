@@ -42,10 +42,11 @@ type JobCmd struct {
 // given arguments.
 func Command(ctx context.Context, name string, arg ...string) *JobCmd {
 	return &JobCmd{
-		ctx:         ctx,
-		name:        name,
-		Args:        append([]string{name}, arg...),
-		KillTimeout: DefaultKillTimeout,
+		ctx:          ctx,
+		name:         name,
+		Args:         append([]string{name}, arg...),
+		KillTimeout:  DefaultKillTimeout,
+		KillAttempts: DefaultKillAttempts,
 	}
 }
 
@@ -101,7 +102,7 @@ func (c *JobCmd) waitKill(ctx context.Context) {
 	ticker := time.NewTicker(c.KillTimeout)
 	defer ticker.Stop()
 
-	for attempt := 0; attempt < DefaultKillAttempts; attempt++ {
+	for attempt := 0; attempt < c.KillAttempts; attempt++ {
 		c.softKill()
 
 		select {
