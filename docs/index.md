@@ -10,6 +10,9 @@ send the results back to GitLab. It is used in conjunction with [GitLab CI/CD](h
 the open-source continuous integration service included with GitLab that
 coordinates the jobs.
 
+NOTE: **Keeping GitLab Runner Updated:**
+It is important to use the latest stable version release when possible. As mentioned in [`Compatibility With GitLab Versions`](#compatibility-with-gitLab-versions), the GitLab Runner version should be in sync with the GitLab version. Also, while older GitLab Runner versions may still work with newer GitLab Runner versions, and vice versa, in some cases, features may be not available or work properly if there's a version difference.
+
 ## Requirements
 
 GitLab Runner is written in [Go](https://golang.org) and can be run as a single binary, no
