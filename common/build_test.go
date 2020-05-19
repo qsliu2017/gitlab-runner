@@ -109,8 +109,8 @@ func TestBuildCancel(t *testing.T) {
 			},
 		},
 	}
-	for name, tt := range tests {
-		t.Run(name, func(t *testing.T) {
+	for tn, tt := range tests {
+		t.Run(tn, func(t *testing.T) {
 			e := MockExecutor{}
 			defer e.AssertExpectations(t)
 
@@ -161,7 +161,7 @@ func TestBuildCancel(t *testing.T) {
 
 			err = build.Run(&Config{}, trace)
 			assert.IsType(t, err, &BuildError{})
-			assert.Contains(t, err.Error(), "canceled")
+			assert.EqualError(t, err, "canceled")
 		})
 	}
 }

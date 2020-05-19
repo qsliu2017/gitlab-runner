@@ -442,6 +442,9 @@ func StepToBuildStage(s Step) BuildStage {
 	return BuildStage(fmt.Sprintf("step_%s", strings.ToLower(string(s.Name))))
 }
 
+// getAfterScriptCtx returns a context for after_script execution.
+// Parses `when` to determine whether the context should be reset to context.Background() or
+// the one provided should be used. It doesn't add any timeouts.
 func (b *Build) getAfterScriptCtx(ctx context.Context) context.Context {
 	afterScriptStep := b.GetStep(StepNameAfterScript)
 	if afterScriptStep != nil && afterScriptStep.When == StepWhenGraceful {
