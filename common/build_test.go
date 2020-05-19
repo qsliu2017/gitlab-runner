@@ -68,7 +68,7 @@ func TestBuildCancel(t *testing.T) {
 		runAfterStagesOnCancel bool
 		steps                  Steps
 	}{
-		"don't run after_script and any following stages on canceled job": {
+		"don't run after_script or any following stages on canceled job": {
 			runAfterStagesOnCancel: false,
 			steps: []Step{
 				{
