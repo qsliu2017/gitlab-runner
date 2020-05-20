@@ -125,11 +125,8 @@ func TestBuildCancel(t *testing.T) {
 
 			e.On("Prepare", mock.Anything, mock.Anything, mock.Anything).Once().Return(nil)
 			e.On("Finish", mock.MatchedBy(func(err error) bool {
-				buildErr, ok := err.(*BuildError)
-				if !ok {
-					return false
-				}
-				return buildErr.Inner.Error() == "canceled"
+				var buildErr *BuildError
+				return errors.As(err, &buildErr) && errors.Is(buildErr.Inner, ErrBuildCanceled)
 			})).Once()
 			e.On("Cleanup").Once()
 
@@ -160,8 +157,10 @@ func TestBuildCancel(t *testing.T) {
 			trace := &immediatelyCancellingTrace{Trace{Writer: os.Stdout}}
 
 			err = build.Run(&Config{}, trace)
-			assert.IsType(t, err, &BuildError{})
-			assert.EqualError(t, err, "canceled")
+			var buildErr *BuildError
+
+			assert.True(t, errors.As(err, &buildErr))
+			assert.True(t, errors.Is(buildErr.Inner, ErrBuildCanceled))
 		})
 	}
 }

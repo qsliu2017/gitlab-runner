@@ -90,6 +90,8 @@ var staticBuildStages = []BuildStage{
 	BuildStageUploadOnFailureArtifacts,
 }
 
+var ErrBuildCanceled = errors.New("canceled")
+
 const (
 	ExecutorJobSectionAttempts = "EXECUTOR_JOB_SECTION_ATTEMPTS"
 )
@@ -530,7 +532,7 @@ func (b *Build) handleError(err error) error {
 	switch err {
 	case context.Canceled:
 		b.CurrentState = BuildRunRuntimeCanceled
-		return &BuildError{Inner: errors.New("canceled")}
+		return &BuildError{Inner: ErrBuildCanceled}
 
 	case context.DeadlineExceeded:
 		b.CurrentState = BuildRunRuntimeTimedout
