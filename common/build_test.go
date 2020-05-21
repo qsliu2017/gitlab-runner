@@ -159,9 +159,8 @@ func TestBuildCancel(t *testing.T) {
 			err = build.Run(&Config{}, trace)
 			var buildErr *BuildError
 
-			assert.True(t, errors.As(err, &buildErr))
 			require.True(t, errors.As(err, &buildErr), "expected err %T, but got %T", buildErr, err)
-			assert.True(t, errors.Is(buildErr.Inner, ErrBuildCanceled), "expected err %T, but got %T", ErrBuildCanceled, buildErr.Inner)
+			assert.True(t, errors.Is(buildErr.Inner, ErrBuildCanceled), "expected err %v, but got %v", ErrBuildCanceled, buildErr.Inner)
 		})
 	}
 }
