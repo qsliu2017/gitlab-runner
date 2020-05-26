@@ -1,6 +1,7 @@
 package custom_test
 
 import (
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -28,7 +29,7 @@ func TestMain(m *testing.M) {
 
 	curDir, err := os.Getwd()
 	if err != nil {
-		panic(fmt.Sprintf("Error on getting the working directory"))
+		panic("Error on getting the working directory")
 	}
 
 	sourcesDir := filepath.Join(curDir, "testdata", "test_executor")
@@ -36,7 +37,7 @@ func TestMain(m *testing.M) {
 
 	targetDir, err := ioutil.TempDir("", "test_executor")
 	if err != nil {
-		panic(fmt.Sprintf("Error on preparing tmp directory for test executor binary"))
+		panic("Error on preparing tmp directory for test executor binary")
 	}
 	testExecutorFile = filepath.Join(targetDir, "main")
 
@@ -55,7 +56,7 @@ func TestMain(m *testing.M) {
 
 	err = cmd.Run()
 	if err != nil {
-		panic(fmt.Sprintf("Error on executing go build to prepare test custom executor"))
+		panic("Error on executing go build to prepare test custom executor")
 	}
 
 	code := m.Run()
@@ -177,7 +178,8 @@ func TestBuildBuildFailure(t *testing.T) {
 
 		err = buildtest.RunBuild(t, build)
 		assert.Error(t, err)
-		assert.IsType(t, &common.BuildError{}, err)
+		var buildErr *common.BuildError
+		assert.True(t, errors.As(err, &buildErr), "expected %T, got %T", buildErr, err)
 	})
 }
 
@@ -197,7 +199,8 @@ func TestBuildSystemFailure(t *testing.T) {
 
 		err = buildtest.RunBuild(t, build)
 		assert.Error(t, err)
-		assert.IsType(t, &exec.ExitError{}, err)
+		var exitError *exec.ExitError
+		assert.True(t, errors.As(err, &exitError), "expected %T, got %T", exitError, err)
 		t.Log(err)
 	})
 }
@@ -218,7 +221,8 @@ func TestBuildUnknownFailure(t *testing.T) {
 
 		err = buildtest.RunBuild(t, build)
 		assert.Error(t, err)
-		assert.IsType(t, &command.ErrUnknownFailure{}, err)
+		var errUnknownFailure *command.ErrUnknownFailure
+		assert.True(t, errors.As(err, &errUnknownFailure), "expected %T, got %T", errUnknownFailure, err)
 	})
 }
 

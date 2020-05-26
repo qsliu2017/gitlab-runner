@@ -3,10 +3,10 @@
 GitLab Runner can use Docker to run jobs on user provided images. This is
 possible with the use of **Docker** executor.
 
-The **Docker** executor when used with GitLab CI, connects to [Docker Engine]
+The **Docker** executor when used with GitLab CI, connects to [Docker Engine](https://www.docker.com/products/container-runtime)
 and runs each build in a separate and isolated container using the predefined
-image that is [set up in `.gitlab-ci.yml`][yaml] and in accordance in
-[`config.toml`][toml].
+image that is [set up in `.gitlab-ci.yml`](https://docs.gitlab.com/ee/ci/yaml/README.html) and in accordance in
+[`config.toml`](../commands/README.md#configuration-file).
 
 That way you can have a simple and reproducible build environment that can also
 run on your workstation. The added benefit is that you can test all the
@@ -88,7 +88,6 @@ follows our [support lifecycle for
 Windows](../install/windows.md#windows-version-support-policy):
 
 - Windows Server 1809.
-- Windows Server 1803 *Deprecated*.
 
 For future Windows Server versions, we have a [future version support
 policy](../install/windows.md#windows-version-support-policy).
@@ -101,7 +100,6 @@ be used:
 - `mcr.microsoft.com/windows/servercore:1809`
 - `mcr.microsoft.com/windows/servercore:1809-amd64`
 - `mcr.microsoft.com/windows/servercore:ltsc2019`
-- `mcr.microsoft.com/windows/servercore:1803`
 
 ### Configuring a Windows Docker executor
 
@@ -149,17 +147,17 @@ The Docker executor divides the job into multiple steps:
 1. **Post-job**: Create cache, upload artifacts to GitLab. This is run on
    a special Docker Image.
 
-The special Docker image is based on [Alpine Linux] and contains all the tools
+The special Docker image is based on [Alpine Linux](https://alpinelinux.org/) and contains all the tools
 required to run the prepare, pre-job, and post-job steps, like the Git and the
 Runner binaries for supporting caching and artifacts. You can find the definition of
-this special image [in the official Runner repository][special-build].
+this special image [in the official Runner repository](https://gitlab.com/gitlab-org/gitlab-runner/tree/master/dockerfiles/build).
 
 ## The `image` keyword
 
 The `image` keyword is the name of the Docker image that is present in the
 local Docker Engine (list all images with `docker images`) or any image that
-can be found at [Docker Hub][hub]. For more information about images and Docker
-Hub please read the [Docker Fundamentals][] documentation.
+can be found at [Docker Hub](https://hub.docker.com/). For more information about images and Docker
+Hub please read the [Docker Fundamentals](https://docs.docker.com/engine/understanding-docker/) documentation.
 
 In short, with `image` we refer to the docker image, which will be used to
 create a container on which your build will run.
@@ -178,7 +176,7 @@ don't specify a tag (like `image: ruby`), `latest` is implied.
 NOTE: **Note:**
 The image you choose to run your build in via `image` directive must have a
 working shell in its operating system `PATH`. Supported shells are `sh` or
-`bash` for Linux, `cmd` or PowerShell for Windows. GitLab Runner cannot
+`bash` for Linux, and PowerShell for Windows. GitLab Runner cannot
 execute a command using the underlying OS system calls (like `exec`).
 
 ## The `services` keyword
@@ -316,8 +314,6 @@ Look for the `[runners.docker]` section:
 
 NOTE: **Note:**
 The example above uses the [array of tables syntax](https://github.com/toml-lang/toml#user-content-array-of-tables).
-Defining services with the [array of strings syntax](https://github.com/toml-lang/toml#user-content-array)
-is deprecated and will be removed in a future version.
 
 The image and services defined this way will be added to all builds run by
 that Runner, so even if you don't define an `image` inside `.gitlab-ci.yml`,
@@ -338,7 +334,7 @@ In the example above, GitLab Runner will look at `my.registry.tld:5000` for the
 image `namespace/image:tag`.
 
 If the repository is private you need to authenticate your GitLab Runner in the
-registry. Read more on [using a private Docker registry][runner-priv-reg].
+registry. Read more on [using a private Docker registry](../configuration/advanced-configuration.md#using-a-private-container-registry).
 
 ## Accessing the services
 
@@ -479,14 +475,14 @@ If you make the `/builds` to be **the host-bound storage**, your builds will be 
 ## The privileged mode
 
 The Docker executor supports a number of options that allows to fine tune the
-build container. One of these options is the [`privileged` mode][privileged].
+build container. One of these options is the [`privileged` mode](https://docs.docker.com/engine/reference/run/#runtime-privilege-and-linux-capabilities).
 
 ### Use docker-in-docker with privileged mode
 
 The configured `privileged` flag is passed to the build container and all
 services, thus allowing to easily use the docker-in-docker approach.
 
-First, configure your Runner (config.toml) to run in `privileged` mode:
+First, configure your Runner (`config.toml`) to run in `privileged` mode:
 
 ```toml
 [[runners]]
@@ -511,7 +507,7 @@ build:
 
 ## The ENTRYPOINT
 
-The Docker executor doesn't overwrite the [`ENTRYPOINT` of a Docker image][entry].
+The Docker executor doesn't overwrite the [`ENTRYPOINT` of a Docker image](https://docs.docker.com/engine/reference/run/#entrypoint-default-command-to-execute-at-runtime).
 
 That means that if your image defines the `ENTRYPOINT` and doesn't allow to run
 scripts with `CMD`, the image will not work with the Docker executor.
@@ -648,14 +644,17 @@ by each other. Especially do not use this pull policy for shared Runners.
 
 To understand why the `if-not-present` pull policy creates security issues
 when used with private images, read the
-[security considerations documentation][secpull].
+[security considerations documentation](../security/index.md#usage-of-private-docker-images-with-if-not-present-pull-policy).
 
 ### Using the `always` pull policy
 
 The `always` pull policy will ensure that the image is **always** pulled.
 When `always` is used, the Runner will try to pull the image even if a local
-copy is available. If the image is not found, then the build will
-fail with an error similar to:
+copy is available. The [caching semantics](https://kubernetes.io/docs/concepts/configuration/overview/#container-images))
+of the underlying image provider make this policy efficient.
+The pull attempt is fast because all image layers are cached.
+
+If the image is not found, then the build will fail with an error similar to:
 
 ```plaintext
 Pulling docker image registry.tld/my/image:latest ...
@@ -690,7 +689,7 @@ configuration of the Runner.
 
 This pull policy will definitely not work if you need to use locally
 stored images. In this case, the Runner will skip the local copy of the image
-and try to pull it from the remote registry. If the image was build locally
+and try to pull it from the remote registry. If the image was built locally
 and doesn't exist in any public registry (and especially in the default
 Docker registry), the build will fail with:
 
@@ -714,18 +713,3 @@ Docker-SSH then connects to the SSH server that is running inside the container
 using its internal IP.
 
 This executor is no longer maintained and will be removed in the near future.
-
-[Docker Fundamentals]: https://docs.docker.com/engine/understanding-docker/
-[docker engine]: https://www.docker.com/products/container-runtime
-[hub]: https://hub.docker.com/
-[linking-containers]: https://docs.docker.com/engine/userguide/networking/default_network/dockerlinks/
-[postgres-hub]: https://registry.hub.docker.com/u/library/postgres/
-[mysql-hub]: https://registry.hub.docker.com/u/library/mysql/
-[runner-priv-reg]: ../configuration/advanced-configuration.md#using-a-private-container-registry
-[yaml]: http://doc.gitlab.com/ce/ci/yaml/README.html
-[toml]: ../commands/README.md#configuration-file
-[alpine linux]: https://alpinelinux.org/
-[special-build]: https://gitlab.com/gitlab-org/gitlab-runner/tree/master/dockerfiles/build
-[privileged]: https://docs.docker.com/engine/reference/run/#runtime-privilege-and-linux-capabilities
-[entry]: https://docs.docker.com/engine/reference/run/#entrypoint-default-command-to-execute-at-runtime
-[secpull]: ../security/index.md#usage-of-private-docker-images-with-if-not-present-pull-policy

@@ -6,10 +6,10 @@ import (
 
 const (
 	CmdDisableDelayedErrorLevelExpansion string = "FF_CMD_DISABLE_DELAYED_ERROR_LEVEL_EXPANSION"
-	UseLegacyBuildsDirForDocker          string = "FF_USE_LEGACY_BUILDS_DIR_FOR_DOCKER"
-	UseLegacyVolumesMountingOrder        string = "FF_USE_LEGACY_VOLUMES_MOUNTING_ORDER"
 	NetworkPerBuild                      string = "FF_NETWORK_PER_BUILD"
 	UseLegacyKubernetesExecutionStrategy string = "FF_USE_LEGACY_KUBERNETES_EXECUTION_STRATEGY"
+	UseDirectDownload                    string = "FF_USE_DIRECT_DOWNLOAD"
+	SkipNoOpBuildStages                  string = "FF_SKIP_NOOP_BUILD_STAGES"
 )
 
 type FeatureFlag struct {
@@ -30,7 +30,7 @@ var flags = []FeatureFlag{
 		Name:            CmdDisableDelayedErrorLevelExpansion,
 		DefaultValue:    "false",
 		Deprecated:      false,
-		ToBeRemovedWith: "13.0",
+		ToBeRemovedWith: "",
 		Description:     "Disables [EnableDelayedExpansion](https://ss64.com/nt/delayedexpansion.html) for error checking for when using [Window Batch](../shells/index.md#windows-batch) shell",
 	},
 	{
@@ -41,25 +41,25 @@ var flags = []FeatureFlag{
 		Description:     "Enables creation of a docker [network per build](../executors/docker.md#networking) with the docker executor",
 	},
 	{
-		Name:            UseLegacyBuildsDirForDocker,
-		DefaultValue:    "false",
-		Deprecated:      true,
-		ToBeRemovedWith: "13.0",
-		Description:     "Disables the new strategy for Docker executor to cache the content of `/builds` directory instead of `/builds/group-org`",
-	},
-	{
-		Name:            UseLegacyVolumesMountingOrder,
-		DefaultValue:    "false",
-		Deprecated:      true,
-		ToBeRemovedWith: "13.0",
-		Description:     "Disables the new ordering of volumes mounting when `docker*` executors are being used.",
-	},
-	{
 		Name:            UseLegacyKubernetesExecutionStrategy,
 		DefaultValue:    "true",
 		Deprecated:      false,
 		ToBeRemovedWith: "",
 		Description:     "When set to `false` disables execution of remote Kubernetes commands through `exec` in favor of `attach` to solve problems like [#4119](https://gitlab.com/gitlab-org/gitlab-runner/issues/4119)",
+	},
+	{
+		Name:            UseDirectDownload,
+		DefaultValue:    "false",
+		Deprecated:      false,
+		ToBeRemovedWith: "",
+		Description:     "When set to `true` Runner tries to direct-download all artifacts instead of proxying through GitLab. Enabling might result in a download failures due to problem validating TLS certificate of Object Storage if it is enabled by GitLab",
+	},
+	{
+		Name:            SkipNoOpBuildStages,
+		DefaultValue:    "true",
+		Deprecated:      false,
+		ToBeRemovedWith: "",
+		Description:     "When set to `false` all build stages are executed even if running them has no effect",
 	},
 }
 

@@ -2,7 +2,7 @@
 last_updated: 2019-08-21
 ---
 
-> **[Article Type](https://docs.gitlab.com/ee/development/writing_documentation.html#types-of-technical-articles):** Admin guide ||
+> **[Article Type](https://docs.gitlab.com/ee/development/writing_documentation.html#types-of-technical-articles):** Administration guide ||
 > **Level:** intermediary ||
 > **Author:** [Achilleas Pipinellis](https://gitlab.com/axil) ||
 > **Publication date:** 2017-11-24
@@ -21,7 +21,7 @@ In this tutorial, we'll explore how to properly configure a GitLab Runner in
 AWS that will serve as the Runner Manager where it will spawn new Docker machines on
 demand.
 
-In addition, we'll make use of [Amazon's EC2 Spot instances][spot] which will
+In addition, we'll make use of [Amazon's EC2 Spot instances](https://aws.amazon.com/ec2/spot/) which will
 greatly reduce the costs of the Runner instances while still using quite
 powerful autoscaling machines.
 
@@ -48,11 +48,12 @@ is likely different, so consider what works best for your situation.
 
 Docker Machine will attempt to use a
 [default security group](https://docs.docker.com/machine/drivers/aws/#security-group)
-with rules for port `2376`, which is required for communication with the Docker
+with rules for port `2376` and SSH `22`, which is required for communication with the Docker
 daemon. Instead of relying on Docker, you can create a security group with the
 rules you need and provide that in the Runner options as we will
 [see below](#the-runnersmachine-section). This way, you can customize it to your
 liking ahead of time based on your networking environment.
+You have to make sure that ports `2376` and `22` are accessible by the [Runner Manager instance](#prepare-the-runner-manager-instance).
 
 ### AWS credentials
 
@@ -135,7 +136,7 @@ must be set to `docker+machine`. Most of those settings are taken care of when
 you register the Runner for the first time.
 
 `limit` sets the maximum number of machines (running and idle) that this Runner
-will spawn. For more info check the [relationship between `limit`, `concurrent`
+will spawn. For more information, check the [relationship between `limit`, `concurrent`
 and `IdleCount`](../autoscale.md#how-concurrent-limit-and-idlecount-generate-the-upper-limit-of-running-machines).
 
 Example:
@@ -198,7 +199,7 @@ In the following example, we use Amazon S3:
       BucketLocation = "us-east-1"
 ```
 
-Here's some more info to further explore the cache mechanism:
+Here's some more information to further explore the cache mechanism:
 
 - [Reference for `runners.cache`](../advanced-configuration.md#the-runnerscache-section)
 - [Reference for `runners.cache.s3`](../advanced-configuration.md#the-runnerscaches3-section)
@@ -215,7 +216,7 @@ We will focus on the AWS machine options, for the rest of the settings read
 about the:
 
 - [Autoscaling algorithm and the parameters it's based on](../autoscale.md#autoscaling-algorithm-and-parameters) - depends on the needs of your organization
-- [Off peak time configuration](../autoscale.md#off-peak-time-mode-configuration) - useful when there are regular time periods in your organization when no work is done, for example weekends
+- [Autoscaling periods](../autoscale.md#autoscaling-periods-configuration) - useful when there are regular time periods in your organization when no work is done, for example weekends
 
 Here's an example of the `runners.machine` section:
 
@@ -224,12 +225,16 @@ Here's an example of the `runners.machine` section:
     IdleCount = 1
     IdleTime = 1800
     MaxBuilds = 10
-    OffPeakPeriods = [
-      "* * 0-9,18-23 * * mon-fri *",
-      "* * * * * sat,sun *"
-    ]
-    OffPeakIdleCount = 0
-    OffPeakIdleTime = 1200
+     [[runners.machine.autoscaling]]
+      Periods = ["* * 9-17 * * mon-fri *"]
+      IdleCount = 50
+      IdleTime = 3600
+      Timezone = "UTC"
+    [[runners.machine.autoscaling]]
+      Periods = ["* * * * * sat,sun *"]
+      IdleCount = 5
+      IdleTime = 60
+      Timezone = "UTC"
     MachineDriver = "amazonec2"
     MachineName = "gitlab-docker-machine-%s"
     MachineOptions = [
@@ -318,12 +323,16 @@ check_interval = 0
     IdleCount = 1
     IdleTime = 1800
     MaxBuilds = 100
-    OffPeakPeriods = [
-      "* * 0-9,18-23 * * mon-fri *",
-      "* * * * * sat,sun *"
-    ]
-    OffPeakIdleCount = 0
-    OffPeakIdleTime = 1200
+    [[runners.machine.autoscaling]]
+      Periods = ["* * 9-17 * * mon-fri *"]
+      IdleCount = 50
+      IdleTime = 3600
+      Timezone = "UTC"
+    [[runners.machine.autoscaling]]
+      Periods = ["* * * * * sat,sun *"]
+      IdleCount = 5
+      IdleTime = 60
+      Timezone = "UTC"
     MachineDriver = "amazonec2"
     MachineName = "gitlab-docker-machine-%s"
     MachineOptions = [
@@ -341,7 +350,7 @@ check_interval = 0
 
 ## Cutting down costs with Amazon EC2 Spot instances
 
-As [described by][spot] Amazon:
+As [described by](https://aws.amazon.com/ec2/spot/) Amazon:
 
 >
 Amazon EC2 Spot instances allow you to bid on spare Amazon EC2 computing capacity.
@@ -408,7 +417,7 @@ are locked out for a bit because the call amount limit is exceeded.
 If you encounter that case, you can use the following command in the Runner Manager
 machine to see the Docker Machines state:
 
-```sh
+```shell
 docker-machine ls -q --filter state=Error --format "{{.NAME}}"
 ```
 
@@ -435,5 +444,3 @@ influenced:
 
 - [HumanGeo - Scaling GitLab CI](http://blog.thehumangeo.com/gitlab-autoscale-runners.html)
 - [Substrakt Health - Autoscale GitLab CI Runners and save 90% on EC2 costs](https://about.gitlab.com/blog/2017/11/23/autoscale-ci-runners/)
-
-[spot]: https://aws.amazon.com/ec2/spot/

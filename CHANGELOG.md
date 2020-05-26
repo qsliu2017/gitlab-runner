@@ -1,3 +1,114 @@
+## v13.0.0 (2020-05-20)
+
+### Breaking Changes
+
+- Remove support for --docker-services flag on register command !2036
+- Remove fedora/29 package !1905 (Fábio Matavelli @fabiomatavelli)
+- Remove /debug/jobs/list?v=1 endpoint !1894 (Fábio Matavelli @fabiomatavelli)
+- Remove backported os.Expand() implementation !1892 (Fábio Matavelli @fabiomatavelli)
+- Remove FF_USE_LEGACY_VOLUMES_MOUNTING_ORDER feature flag !1889 (Fábio Matavelli @fabiomatavelli)
+- Remove macOS 32 bit support !2051
+- Remove support for Windows 1803 !2033
+- Remove legacy build directory caching in Docker Executor !2067
+- Remove support for array of strings when defining services for Docker Executor !2035
+
+### New features
+
+- Support more glob patterns for artifact/cache !1917
+- Add arm64 Docker images for gitlab/gitlab-runner !1861
+- Make docker machine configuration more elastic !1980
+- Add support for `direct_download` artifacts !2093
+
+### Bug fixes
+
+- Fix duplicate volume check with trailing slash !2050
+- Fix permissions of docker volumes created by Runner !2047
+- Fix removal of build volume when disable_cache set to true !2042
+- Fix err checks from volume manager !2034
+- Revert "Merge branch '4450-fix-container-wait' into 'master'" !2026
+
+### Maintenance
+
+- Retry Docker build jobs !2087
+- Update installation of mockery !2085
+- Fix Docker Auth config to be platform agnostic !2077
+- Refactor tests in builds_helper_test !2057
+- Enable unused linter !2043
+- Remove support for array of strings when defining services for Docker Executor !2035
+- Update assertion for Docker test !2031
+- Add tests for Docker config read when no username is specified !2024 (Andrii Zakharov @andriiz1)
+- Skip flaky TestDockerCommandRunAttempts until fix is merged !2017
+- Remove prealloc linter !2014
+- Pin CI jobs to gitlab-org runners !1979
+- Replace Code Climate with golangci-lint !1956
+- Change license management to use rules !2096
+
+### Documentation changes
+
+- Update capitalization configuration !2084
+- Update proxy.md documentation for grammar and clarity !2071 (Kade Cole @kadecole)
+- Add link to AWS Fargate documentation page !2070
+- Adds the link to new AWS Fargate page !2068
+- Add more Vale rules to project !2061
+- Remove tip alert box !2054
+- Added Kaniko reference materials to Runner helm charts page !2039
+- Sync Vale substitutions rules from GitLab project !2029
+- Update PowerShell documentation to include video and working example project. !2028
+- Handle situation where vale docs-lint error is overwritten by markdownlint success !2025
+- Update faq to include firewall troubleshooting !2023
+- Add recommended extensions for VS Code !2022
+- Move documentation linting to Makefile !2021
+- Add section about using TLS with custom CA in regular build scripts !2018
+- Sync Markdownlint settings from GitLab project !2015
+- Fixed helm search command !2007 (penguindustin @penguindustin)
+- Improve signals documentation and add a best practice for graceful shutdown !1988
+- Make docker machine configuration more elastic !1980
+- Autoscale GitLab Runner on AWS Fargate configuration doc !1914
+- Add details about how pull always is still fast and efficient !1885 (Ben Bodenmiller @bbodenmiller)
+- Correct documentation inaccuracies for `OffPeakPeriods` !1805 (Wes Cossick @wescossick)
+- Removed `CONTAINER_ID` in prepare.sh, so `CONTAINER_ID` in base.sh is used. !1723 (JUN JIE NAN @nanjj)
+
+## v12.10.0 (2020-04-21)
+
+### New features
+
+- Allow Windows 1909 for Docker executor !1999
+- Allow windows 1903 for Docker executor !1984
+- Add support for `raw` variables !1882
+
+### Bug fixes
+
+- Add attempts to Docker executor for container not found !1995
+- Use Docker volumes instead of cache containers !1989
+- Use unique container names for Docker executor !1801
+
+### Maintenance
+
+- Fix TestScanHandlesCancelledContext having a WaitGroup without a delta and a few other log processor flaky tests !1961
+- Rename `docker_helpers` to `docker` !1943
+- Add retry when executing commands with kube attach !1907
+- Fix golint issue for error starting with capital letter !1851
+- Fix some Windows docker executor test !1789
+
+### Documentation changes
+
+- Minor Update index.md !2004 (KATO Tomoyuki @tomo667a)
+- Minor rewording in PROCESS.md templates !2003
+- Add further checks from GitLab project !2001
+- Add info that ssh is also required to be accessible in the security group !1997 (Daniel Schwiperich @d.schwiperich)
+- Add Vale version text rule !1994
+- Clean up note style !1993
+- Fix redirected links in docs !1992
+- Updates Markdownlint configuration from GitLab project !1991
+- Added link to the git download page !1972
+- Pull policy security concerns apply to Kubernetes executors too !1886 (Ben Bodenmiller @bbodenmiller)
+
+### Other changes
+
+- Clean Temporary Directories created by the Custom Executor !1978 (Mark McGuire @TronPaul)
+- Fix broken master for non existent method call !1974
+- Rely on `git ls-files` and `git diff` for checking mocks !1973
+
 ## v12.9.0 (2020-03-20)
 
 ### New features

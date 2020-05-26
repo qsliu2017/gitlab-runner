@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path"
 	"path/filepath"
 	"regexp"
 	"sort"
@@ -16,12 +15,12 @@ import (
 	"sync"
 	"time"
 
+	"github.com/bmatcuk/doublestar"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/kardianos/osext"
-	"github.com/mattn/go-zglob"
 	"github.com/sirupsen/logrus"
 
 	"gitlab.com/gitlab-org/gitlab-runner/common"
@@ -29,11 +28,12 @@ import (
 	"gitlab.com/gitlab-org/gitlab-runner/executors/docker/internal/networks"
 	"gitlab.com/gitlab-org/gitlab-runner/executors/docker/internal/volumes"
 	"gitlab.com/gitlab-org/gitlab-runner/executors/docker/internal/volumes/parser"
+	"gitlab.com/gitlab-org/gitlab-runner/executors/docker/internal/volumes/permission"
+	"gitlab.com/gitlab-org/gitlab-runner/executors/docker/internal/wait"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers/container/helperimage"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers/container/services"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers/docker"
-	"gitlab.com/gitlab-org/gitlab-runner/helpers/featureflags"
 )
 
 const (
@@ -52,9 +52,6 @@ const (
 	AuthConfigSourceNameJobPayload   = "job payload (GitLab Registry)"
 )
 
-// containerStatusCreated is one of the Docker states a container can be in.
-const containerStatusCreated = "created"
-
 var DockerPrebuiltImagesPaths []string
 
 var neverRestartPolicy = container.RestartPolicy{Name: "no"}
@@ -65,9 +62,10 @@ var errNetworksManagerUndefined = errors.New("networksManager is undefined")
 
 type executor struct {
 	executors.AbstractExecutor
-	client       docker.Client
-	volumeParser parser.Parser
-	info         types.Info
+	client                    docker.Client
+	volumeParser              parser.Parser
+	newVolumePermissionSetter func() (permission.Setter, error)
+	info                      types.Info
 
 	temporary []string // IDs of containers that should be removed
 
@@ -151,7 +149,6 @@ func (e *executor) getHomeDirAuthConfiguration(indexName string) (string, *types
 		return "", nil
 	}
 	return sourceFile, docker.ResolveDockerAuthConfig(indexName, authConfigs)
-
 }
 
 type authConfigResolver func(indexName string) (string, *types.AuthConfig)
@@ -430,10 +427,7 @@ func (e *executor) wasImageUsed(imageName, imageID string) bool {
 	e.usedImagesLock.RLock()
 	defer e.usedImagesLock.RUnlock()
 
-	if e.usedImages[imageName] == imageID {
-		return true
-	}
-	return false
+	return e.usedImages[imageName] == imageID
 }
 
 func (e *executor) markImageAsUsed(imageName, imageID string) {
@@ -537,7 +531,7 @@ func (e *executor) getProjectUniqRandomizedName() string {
 }
 
 func (e *executor) getServicesDefinitions() (common.Services, error) {
-	internalServiceImages := []string{}
+	var internalServiceImages []string
 	serviceDefinitions := common.Services{}
 
 	for _, service := range e.Config.Docker.Services {
@@ -693,18 +687,6 @@ func (e *executor) createServices() (err error) {
 	return
 }
 
-func (e *executor) getValidContainers(containers []string) []string {
-	var newContainers []string
-
-	for _, container := range containers {
-		if _, err := e.client.ContainerInspect(e.Context, container); err == nil {
-			newContainers = append(newContainers, container)
-		}
-	}
-
-	return newContainers
-}
-
 func (e *executor) createContainer(containerType string, imageDefinition common.Image, cmd []string, allowedInternalImages []string) (*types.ContainerJSON, error) {
 	if e.volumesManager == nil {
 		return nil, errVolumesManagerUndefined
@@ -773,7 +755,7 @@ func (e *executor) createContainer(containerType string, imageDefinition common.
 		OomScoreAdj:   e.Config.Docker.OomScoreAdjust,
 		ShmSize:       e.Config.Docker.ShmSize,
 		VolumeDriver:  e.Config.Docker.VolumeDriver,
-		VolumesFrom:   append(e.Config.Docker.VolumesFrom),
+		VolumesFrom:   e.Config.Docker.VolumesFrom,
 		LogConfig: container.LogConfig{
 			Type: "json-file",
 		},
@@ -827,57 +809,12 @@ func (e *executor) killContainer(id string, waitCh chan error) (err error) {
 func (e *executor) waitForContainer(ctx context.Context, id string) error {
 	e.Debugln("Waiting for container", id, "...")
 
-	retries := 0
+	waiter := wait.NewDockerWaiter(e.client)
 
-	// Use active wait
-	for ctx.Err() == nil {
-		ctr, err := e.client.ContainerInspect(ctx, id)
-		if err != nil {
-			if docker.IsErrNotFound(err) {
-				return err
-			}
-
-			if retries > 3 {
-				return err
-			}
-
-			retries++
-			time.Sleep(time.Second)
-			continue
-		}
-
-		// Reset retry timer
-		retries = 0
-
-		if containerCreated(ctr) {
-			time.Sleep(time.Second)
-			continue
-		}
-
-		if ctr.State.ExitCode != 0 {
-			return &common.BuildError{
-				Inner: fmt.Errorf("exit code %d", ctr.State.ExitCode),
-			}
-		}
-
-		return nil
-	}
-
-	return ctx.Err()
-}
-
-func containerCreated(ctr types.ContainerJSON) bool {
-	return ctr.State.Running || ctr.State.Status == containerStatusCreated
+	return waiter.Wait(ctx, id)
 }
 
 func (e *executor) watchContainer(ctx context.Context, id string, input io.Reader) (err error) {
-	waitStarted := make(chan struct{})
-	waitCh := make(chan error, 1)
-	go func() {
-		close(waitStarted)
-		waitCh <- e.waitForContainer(e.Context, id)
-	}()
-
 	options := types.ContainerAttachOptions{
 		Stream: true,
 		Stdin:  true,
@@ -892,7 +829,6 @@ func (e *executor) watchContainer(ctx context.Context, id string, input io.Reade
 	}
 	defer hijacked.Close()
 
-	<-waitStarted
 	e.Debugln("Starting container", id, "...")
 	err = e.client.ContainerStart(ctx, id, types.ContainerStartOptions{})
 	if err != nil {
@@ -917,6 +853,11 @@ func (e *executor) watchContainer(ctx context.Context, id string, input io.Reade
 		if err != nil {
 			attachCh <- err
 		}
+	}()
+
+	waitCh := make(chan error, 1)
+	go func() {
+		waitCh <- e.waitForContainer(e.Context, id)
 	}()
 
 	select {
@@ -976,12 +917,11 @@ func (e *executor) disconnectNetwork(ctx context.Context, id string) {
 			}
 		}
 	}
-	return
 }
 
 func (e *executor) verifyAllowedImage(image, optionName string, allowedImages []string, internalImages []string) error {
 	for _, allowedImage := range allowedImages {
-		ok, _ := zglob.Match(allowedImage, image)
+		ok, _ := doublestar.Match(allowedImage, image)
 		if ok {
 			return nil
 		}
@@ -1094,19 +1034,6 @@ func (e *executor) createDependencies() error {
 		e.createServices,
 	}
 
-	if e.Build.IsFeatureFlagOn(featureflags.UseLegacyVolumesMountingOrder) {
-		// TODO: Remove in 13.0 https://gitlab.com/gitlab-org/gitlab-runner/issues/4180
-		createDependenciesStrategy = []func() error{
-			e.createNetworksManager,
-			e.createBuildNetwork,
-			e.bindDevices,
-			e.createVolumesManager,
-			e.createBuildVolume,
-			e.createServices,
-			e.createVolumes,
-		}
-	}
-
 	for _, setup := range createDependenciesStrategy {
 		err := setup()
 		if err != nil {
@@ -1127,7 +1054,7 @@ func (e *executor) createVolumes() error {
 
 	for _, volume := range e.Config.Docker.Volumes {
 		err := e.volumesManager.Create(e.Context, volume)
-		if err == volumes.ErrCacheVolumesDisabled {
+		if errors.Is(err, volumes.ErrCacheVolumesDisabled) {
 			e.Warningln(fmt.Sprintf(
 				"Container based cache volumes creation is disabled. Will not create volume for %q",
 				volume,
@@ -1153,14 +1080,6 @@ func (e *executor) createBuildVolume() error {
 
 	jobsDir := e.Build.RootDir
 
-	// TODO: Remove in 13.0 https://gitlab.com/gitlab-org/gitlab-runner/issues/4180
-	if e.Build.IsFeatureFlagOn(featureflags.UseLegacyBuildsDirForDocker) {
-		// Cache Git sources:
-		// take path of the projects directory,
-		// because we use `rm -rf` which could remove the mounted volume
-		jobsDir = path.Dir(e.Build.FullProjectDir())
-	}
-
 	var err error
 
 	if e.Build.GetGitStrategy() == common.GitFetch {
@@ -1169,7 +1088,7 @@ func (e *executor) createBuildVolume() error {
 			return nil
 		}
 
-		if err == volumes.ErrCacheVolumesDisabled {
+		if errors.Is(err, volumes.ErrCacheVolumesDisabled) {
 			err = e.volumesManager.CreateTemporary(e.Context, jobsDir)
 		}
 	} else {
@@ -1177,7 +1096,8 @@ func (e *executor) createBuildVolume() error {
 	}
 
 	if err != nil {
-		if _, ok := err.(*volumes.ErrVolumeAlreadyDefined); !ok {
+		var volDefinedErr *volumes.ErrVolumeAlreadyDefined
+		if !errors.As(err, &volDefinedErr) {
 			return err
 		}
 	}
@@ -1271,14 +1191,23 @@ func (e *executor) Cleanup() {
 
 	wg.Wait()
 
-	err := e.cleanupNetwork(ctx)
+	err := e.cleanupVolume(ctx)
+	if err != nil {
+		volumeLogger := e.WithFields(logrus.Fields{
+			"error": err,
+		})
+
+		volumeLogger.Errorln("Failed to cleanup volumes")
+	}
+
+	err = e.cleanupNetwork(ctx)
 	if err != nil {
 		networkLogger := e.WithFields(logrus.Fields{
 			"network": e.networkMode.NetworkName(),
 			"error":   err,
 		})
 
-		networkLogger.Errorln("Removing network for build")
+		networkLogger.Errorln("Failed to remove network for build")
 	}
 
 	if e.client != nil {
@@ -1286,6 +1215,20 @@ func (e *executor) Cleanup() {
 	}
 
 	e.AbstractExecutor.Cleanup()
+}
+
+func (e *executor) cleanupVolume(ctx context.Context) error {
+	if e.volumesManager == nil {
+		e.Debugln("Volumes manager is empty, skipping volumes cleanup")
+		return nil
+	}
+
+	err := e.volumesManager.RemoveTemporary(ctx)
+	if err != nil {
+		return fmt.Errorf("remove temporary volumes: %w", err)
+	}
+
+	return nil
 }
 
 type serviceHealthCheckError struct {
@@ -1336,22 +1279,18 @@ func (e *executor) runServiceHealthCheckContainer(service *types.Container, time
 	if err != nil {
 		return fmt.Errorf("create service container: %w", err)
 	}
-
 	defer e.removeContainer(e.Context, resp.ID)
 
-	waitStarted := make(chan struct{})
-	waitResult := make(chan error, 1)
-	go func() {
-		close(waitStarted)
-		waitResult <- e.waitForContainer(e.Context, resp.ID)
-	}()
-
-	<-waitStarted
 	e.Debugln(fmt.Sprintf("Starting service healthcheck container %s (%s)...", containerName, resp.ID))
 	err = e.client.ContainerStart(e.Context, resp.ID, types.ContainerStartOptions{})
 	if err != nil {
-		return fmt.Errorf("start service container %q: %w", resp.ID, err)
+		return fmt.Errorf("start service container: %w", err)
 	}
+
+	waitResult := make(chan error, 1)
+	go func() {
+		waitResult <- e.waitForContainer(e.Context, resp.ID)
+	}()
 
 	// these are warnings and they don't make the build fail
 	select {

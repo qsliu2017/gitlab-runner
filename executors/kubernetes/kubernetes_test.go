@@ -797,6 +797,7 @@ func testInteractiveTerminalFeatureFlag(t *testing.T, featureFlagName string, fe
 	}
 	conn, resp, err := websocket.DefaultDialer.Dial(u.String(), headers)
 	defer func() {
+		resp.Body.Close()
 		if conn != nil {
 			_ = conn.Close()
 		}
@@ -1310,8 +1311,9 @@ func TestPrepare(t *testing.T) {
 			RunnerConfig: &common.RunnerConfig{
 				RunnerSettings: common.RunnerSettings{
 					Kubernetes: &common.KubernetesConfig{
-						Namespace: "namespace",
-						Host:      "test-server",
+						Namespace:                 "namespace",
+						Host:                      "test-server",
+						NamespaceOverwriteAllowed: "^namespace-[0-9]$",
 					},
 				},
 			},
@@ -1324,7 +1326,7 @@ func TestPrepare(t *testing.T) {
 						Name: "test-image",
 					},
 					Variables: []common.JobVariable{
-						{Key: NamespaceOverwriteVariableName, Value: "namespace"},
+						{Key: NamespaceOverwriteVariableName, Value: "namespace-$CI_CONCURRENT_ID"},
 					},
 				},
 				Runner: &common.RunnerConfig{},
@@ -1335,7 +1337,7 @@ func TestPrepare(t *testing.T) {
 						Name: "test-image",
 					},
 				},
-				configurationOverwrites: &overwrites{namespace: "namespace"},
+				configurationOverwrites: &overwrites{namespace: "namespace-0"},
 				serviceLimits:           api.ResourceList{},
 				buildLimits:             api.ResourceList{},
 				helperLimits:            api.ResourceList{},
@@ -1839,7 +1841,7 @@ func TestSetupBuildPod(t *testing.T) {
 			VerifyFn: func(t *testing.T, test setupBuildPodTestDef, pod *api.Pod) {
 				hasHelper := false
 				for _, c := range pod.Spec.Containers {
-					if c.Name == "helper" {
+					if c.Name == helperContainerName {
 						hasHelper = true
 					}
 				}

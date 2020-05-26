@@ -267,7 +267,7 @@ func (b *CmdShell) GenerateScript(buildStage common.BuildStage, info common.Shel
 			w.Line("echo Running on %COMPUTERNAME%...")
 		}
 
-		w.Warning("DEPRECATION: CMD shell is deprecated and will be removed in 13.0: https://gitlab.com/gitlab-org/gitlab-runner/issues/4163")
+		w.Warning("DEPRECATION: CMD shell is deprecated and will no longer be supported")
 	}
 
 	err = b.writeScript(w, buildStage, info)
@@ -276,7 +276,6 @@ func (b *CmdShell) GenerateScript(buildStage common.BuildStage, info common.Shel
 }
 
 func (b *CmdShell) IsDefault() bool {
-	// TODO: Remove in 13.0 - Make PowerShell default shell for Windows.
 	return runtime.GOOS == "windows"
 }
 

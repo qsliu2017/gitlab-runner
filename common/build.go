@@ -38,6 +38,11 @@ const (
 	gitCleanFlagsNone    = "none"
 )
 
+const (
+	gitFetchFlagsDefault = "--prune --quiet"
+	gitFetchFlagsNone    = "none"
+)
+
 type SubmoduleStrategy int
 
 const (
@@ -83,6 +88,27 @@ var BuildStages = []BuildStage{
 	BuildStageArchiveCache,
 	BuildStageUploadOnSuccessArtifacts,
 	BuildStageUploadOnFailureArtifacts,
+}
+
+const (
+	ExecutorJobSectionAttempts = "EXECUTOR_JOB_SECTION_ATTEMPTS"
+)
+
+// ErrSkipBuildStage is returned when there's nothing to be executed for the
+// build stage.
+var ErrSkipBuildStage = errors.New("skip build stage")
+
+type invalidAttemptError struct {
+	key string
+}
+
+func (i *invalidAttemptError) Error() string {
+	return fmt.Sprintf("number of attempts out of the range [1, 10] for variable: %s", i.key)
+}
+
+func (i *invalidAttemptError) Is(err error) bool {
+	_, ok := err.(*invalidAttemptError)
+	return ok
 }
 
 type Build struct {
@@ -165,7 +191,7 @@ func (b *Build) ProjectUniqueDir(sharedDir bool) string {
 	// ex.<some-path>/01234567/0/group/repo/
 	if sharedDir {
 		dir = path.Join(
-			fmt.Sprintf("%s", b.Runner.ShortDescription()),
+			b.Runner.ShortDescription(),
 			fmt.Sprintf("%d", b.ProjectRunnerID),
 			dir,
 		)
@@ -237,6 +263,15 @@ func (b *Build) executeStage(ctx context.Context, buildStage BuildStage, executo
 	}
 
 	script, err := GenerateShellScript(buildStage, *shell)
+	if errors.Is(err, ErrSkipBuildStage) {
+		if b.IsFeatureFlagOn(featureflags.SkipNoOpBuildStages) {
+			b.Log().WithField("build_stage", buildStage).Debug("Skipping stage (nothing to do)")
+			return nil
+		}
+
+		err = nil
+	}
+
 	if err != nil {
 		return err
 	}
@@ -306,10 +341,12 @@ func (b *Build) executeScript(ctx context.Context, executor Executor) error {
 
 	// Prepare stage
 	err := b.executeStage(ctx, BuildStagePrepare, executor)
-
-	if err == nil {
-		err = b.attemptExecuteStage(ctx, BuildStageGetSources, executor, b.GetGetSourcesAttempts())
+	if err != nil {
+		return fmt.Errorf("prepare environment: %w. Check https://docs.gitlab.com/runner/shells/index.html#shell-profile-loading for more information", err)
 	}
+
+	err = b.attemptExecuteStage(ctx, BuildStageGetSources, executor, b.GetGetSourcesAttempts())
+
 	if err == nil {
 		err = b.attemptExecuteStage(ctx, BuildStageRestoreCache, executor, b.GetRestoreCacheAttempts())
 	}
@@ -560,7 +597,7 @@ func (b *Build) getTerminalTimeout(ctx context.Context, timeout time.Duration) t
 	expiryTime, _ := ctx.Deadline()
 
 	if expiryTime.Before(time.Now().Add(timeout)) {
-		timeout = expiryTime.Sub(time.Now())
+		timeout = time.Until(expiryTime)
 	}
 
 	return timeout
@@ -868,6 +905,19 @@ func (b *Build) GetGitCleanFlags() []string {
 	return strings.Fields(flags)
 }
 
+func (b *Build) GetGitFetchFlags() []string {
+	flags := b.GetAllVariables().Get("GIT_FETCH_EXTRA_FLAGS")
+	if flags == "" {
+		flags = gitFetchFlagsDefault
+	}
+
+	if flags == gitFetchFlagsNone {
+		return []string{}
+	}
+
+	return strings.Fields(flags)
+}
+
 func (b *Build) IsDebugTraceEnabled() bool {
 	trace, err := strconv.ParseBool(b.GetAllVariables().Get("CI_DEBUG_TRACE"))
 	if err != nil {
@@ -875,7 +925,7 @@ func (b *Build) IsDebugTraceEnabled() bool {
 	}
 
 	if b.Runner.DebugTraceDisabled {
-		if trace == true {
+		if trace {
 			b.logger.Warningln("CI_DEBUG_TRACE usage is disabled on this Runner")
 		}
 
@@ -919,6 +969,23 @@ func (b *Build) GetCacheRequestTimeout() int {
 		return DefaultCacheRequestTimeout
 	}
 	return timeout
+}
+
+func (b *Build) GetExecutorJobSectionAttempts() (int, error) {
+	attempts, err := strconv.Atoi(b.GetAllVariables().Get(ExecutorJobSectionAttempts))
+	if err != nil {
+		return DefaultExecutorStageAttempts, nil
+	}
+
+	if validAttempts(attempts) {
+		return 0, &invalidAttemptError{key: ExecutorJobSectionAttempts}
+	}
+
+	return attempts, nil
+}
+
+func validAttempts(attempts int) bool {
+	return attempts < 1 || attempts > 10
 }
 
 func (b *Build) Duration() time.Duration {

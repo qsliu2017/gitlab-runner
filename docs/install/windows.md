@@ -17,7 +17,7 @@ With GitLab Runner 10, the executable was renamed to `gitlab-runner`. If you
 want to install a version prior to GitLab Runner 10, [visit the old docs](old.md).
 
 1. Create a folder somewhere in your system, ex.: `C:\GitLab-Runner`.
-1. Download the binary for [x86][] or [amd64][] and put it into the folder you
+1. Download the binary for [x86](https://gitlab-runner-downloads.s3.amazonaws.com/latest/binaries/gitlab-runner-windows-386.exe) or [amd64](https://gitlab-runner-downloads.s3.amazonaws.com/latest/binaries/gitlab-runner-windows-amd64.exe) and put it into the folder you
    created. Rename the binary to `gitlab-runner.exe`.
    You can download a binary for every available version as described in
    [Bleeding Edge - download any other tagged
@@ -51,7 +51,7 @@ want to install a version prior to GitLab Runner 10, [visit the old docs](old.md
 
 1. (Optional) Update Runners `concurrent` value in `C:\GitLab-Runner\config.toml`
    to allow multiple concurrent jobs as detailed in [advanced configuration details](../configuration/advanced-configuration.md).
-   Additionally you can use the advanced configuration details to update your
+   Additionally, you can use the advanced configuration details to update your
    shell executor to use Bash or PowerShell rather than Batch.
 
 Voila! Runner is installed, running, and will start again after each system reboot.
@@ -66,7 +66,7 @@ Logs are stored in Windows Event Log.
    .\gitlab-runner.exe stop
    ```
 
-1. Download the binary for [x86][] or [amd64][] and replace runner's executable.
+1. Download the binary for [x86](https://gitlab-runner-downloads.s3.amazonaws.com/latest/binaries/gitlab-runner-windows-386.exe) or [amd64](https://gitlab-runner-downloads.s3.amazonaws.com/latest/binaries/gitlab-runner-windows-amd64.exe) and replace runner's executable.
    You can download a binary for every available version as described in
    [Bleeding Edge - download any other tagged release](bleeding-edge.md#download-any-other-tagged-release).
 
@@ -122,7 +122,7 @@ remove it in the next major change. For example, in 12.x we started
 supporting [`Windows
 1803`](https://support.microsoft.com/en-us/lifecycle/search?alpha=1803)
 because it came out on `2018-04-30`. Mainstream support ended on
-`2019-11-12`, so we deprecated `Windows 1803` in 12.x and it will be
+`2019-11-12`, so we deprecated `Windows 1803` in 12.x and it was
 [removed](https://gitlab.com/gitlab-org/gitlab-runner/issues/6553) in
 GitLab 13.0.
 
@@ -135,9 +135,7 @@ date:
 
 | OS                                  | Mainstream support end of life date |
 |-------------------------------------|-------------------------------------|
-| Windows 10 1803                     | November 2019 *Deprecated*          |
 | Windows 10 1809/2019                | January 2024                        |
-| Windows Server Datacenter 1803      | November 2019 *Deprecated*          |
 | Windows Server Datacenter 1809/2019 | January 2024                        |
 | Windows Server Datacenter 1903      | December 2020                       |
 
@@ -176,6 +174,3 @@ use the Built-in System Account.
 If you have issues with the Built-in System Account, please read
 [How to Configure the Service to Start Up with the Built-in System Account](https://support.microsoft.com/en-us/help/327545/how-to-troubleshoot-service-startup-permissions-in-windows-server-2003#6)
 on Microsoft's support website.
-
-[x86]: https://gitlab-runner-downloads.s3.amazonaws.com/latest/binaries/gitlab-runner-windows-386.exe
-[amd64]: https://gitlab-runner-downloads.s3.amazonaws.com/latest/binaries/gitlab-runner-windows-amd64.exe

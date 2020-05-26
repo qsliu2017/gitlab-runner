@@ -46,6 +46,17 @@ func TestRegisterDefaultDockerCacheVolume(t *testing.T) {
 	assert.Equal(t, "/cache", s.Docker.Volumes[0])
 }
 
+func TestDoNotRegisterDefaultDockerCacheVolumeWhenDisableCache(t *testing.T) {
+	s := setupDockerRegisterCommand(&common.DockerConfig{
+		Volumes:      []string{},
+		DisableCache: true,
+	})
+
+	s.askDocker()
+
+	assert.Len(t, s.Docker.Volumes, 0)
+}
+
 func TestRegisterCustomDockerCacheVolume(t *testing.T) {
 	s := setupDockerRegisterCommand(&common.DockerConfig{
 		Volumes: []string{"/cache"},
@@ -337,44 +348,4 @@ func TestConfigTemplate_MergeTo(t *testing.T) {
 			tc.assertConfiguration(t, tc.config)
 		})
 	}
-}
-
-// TODO: Remove in 13.0 https://gitlab.com/gitlab-org/gitlab-runner/issues/6404
-func TestDockerServiceFlags(t *testing.T) {
-	mNetwork := new(common.MockNetwork)
-	defer mNetwork.AssertExpectations(t)
-	mNetwork.On("RegisterRunner", mock.Anything, mock.Anything).
-		Return(&common.RegisterRunnerResponse{
-			Token: "test-runner-token",
-		}).
-		Once()
-
-	cmd := newRegisterCommand()
-	cmd.network = mNetwork
-
-	app := cli.NewApp()
-	app.Commands = []cli.Command{
-		{
-			Name:   "register",
-			Action: cmd.Execute,
-			Flags:  clihelpers.GetFlagsFromStruct(cmd),
-		},
-	}
-
-	args := []string{
-		"binary", "register",
-		"-n",
-		"--url", "http://gitlab.example.com/",
-		"--registration-token", "test-registration-token",
-		"--executor", "docker",
-		"--docker-image", "alpine:3.11",
-		"--docker-services", "alpine:3.11",
-		"--docker-services", "ruby:2.6",
-	}
-
-	err := app.Run(args)
-	require.NoError(t, err)
-
-	assert.Equal(t, "alpine:3.11", cmd.Docker.Services[0].Name)
-	assert.Equal(t, "ruby:2.6", cmd.Docker.Services[1].Name)
 }

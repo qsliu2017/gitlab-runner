@@ -16,6 +16,7 @@ type Client interface {
 	ImagePullBlocking(ctx context.Context, ref string, options types.ImagePullOptions) error
 	ImageImportBlocking(ctx context.Context, source types.ImageImportSource, ref string, options types.ImageImportOptions) error
 
+	ContainerList(ctx context.Context, options types.ContainerListOptions) ([]types.Container, error)
 	ContainerCreate(ctx context.Context, config *container.Config, hostConfig *container.HostConfig, networkingConfig *network.NetworkingConfig, containerName string) (container.ContainerCreateCreatedBody, error)
 	ContainerStart(ctx context.Context, containerID string, options types.ContainerStartOptions) error
 	ContainerKill(ctx context.Context, containerID, signal string) error
@@ -33,6 +34,7 @@ type Client interface {
 	NetworkInspect(ctx context.Context, networkID string) (types.NetworkResource, error)
 
 	VolumeCreate(ctx context.Context, options volume.VolumeCreateBody) (types.Volume, error)
+	VolumeRemove(ctx context.Context, volumeID string, force bool) error
 
 	Info(ctx context.Context) (types.Info, error)
 

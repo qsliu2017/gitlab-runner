@@ -18,12 +18,11 @@ We provide packages for the currently supported versions of Debian, Ubuntu, Mint
 | Mint         | sarah                      | approx. 2021          |
 | RHEL/CentOS  | 7                          | June 2024             |
 | RHEL/CentOS  | 6                          | November 2020         |
-| Fedora       | 29                         | approx. November 2019 *Deprecated* |
 | Fedora       | 30                         | approx. June 2020 |
 
 ## Prerequisites
 
-If you want to use the [Docker executor], make sure to install Docker before
+If you want to use the [Docker executor](../executors/docker.md), make sure to install Docker before
 using the Runner. [Read how to install Docker for your distribution](https://docs.docker.com/engine/installation/).
 
 ## Installing the Runner
@@ -170,5 +169,3 @@ To upgrade GitLab Runner from a version prior to 10.0:
    CAUTION: **Important:** If you don't run the above command, you will be left
    with no service file. Follow [issue #2786](https://gitlab.com/gitlab-org/gitlab-runner/issues/2786)
    for more information.
-
-[docker executor]: ../executors/docker.md

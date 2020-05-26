@@ -55,7 +55,7 @@ on the cluster.
 
 ## The keywords
 
-The following keywords help to define the behaviour of the Runner within Kubernetes:
+The following keywords help to define the behavior of the Runner within Kubernetes:
 
 - `namespace`: Namespace in which to run Kubernetes Pods
 - `namespace_overwrite_allowed`: Regular expression to validate the contents of
@@ -63,20 +63,20 @@ The following keywords help to define the behaviour of the Runner within Kuberne
   it disables the namespace overwrite feature
 - `privileged`: Run containers with the privileged flag
 - `cpu_limit`: The CPU allocation given to build containers
-- `cpu_limit_overwrite_max_allowed`: The max amount the CPU allocation can be writen to for build containers. When empty,
+- `cpu_limit_overwrite_max_allowed`: The max amount the CPU allocation can be written to for build containers. When empty,
     it disables the cpu limit overwrite feature
 - `memory_limit`: The amount of memory allocated to build containers
-- `memory_limit_overwrite_max_allowed`: The max amount the memory allocation can be writen to for build containers. When empty,
+- `memory_limit_overwrite_max_allowed`: The max amount the memory allocation can be written to for build containers. When empty,
     it disables the memory limit overwrite feature
 - `service_cpu_limit`: The CPU allocation given to build service containers
 - `service_memory_limit`: The amount of memory allocated to build service containers
 - `helper_cpu_limit`: The CPU allocation given to build helper containers
 - `helper_memory_limit`: The amount of memory allocated to build helper containers
 - `cpu_request`: The CPU allocation requested for build containers
-- `cpu_request_overwrite_max_allowed`: The max amount the CPU allocation request can be writen to for build containers. When empty,
+- `cpu_request_overwrite_max_allowed`: The max amount the CPU allocation request can be written to for build containers. When empty,
     it disables the cpu request overwrite feature
 - `memory_request`: The amount of memory requested from build containers
-- `memory_request_overwrite_max_allowed`: The max amount the memory allocation request can be writen to for build containers. When empty,
+- `memory_request_overwrite_max_allowed`: The max amount the memory allocation request can be written to for build containers. When empty,
     it disables the memory request overwrite feature
 - `service_cpu_request`: The CPU allocation requested for build service containers
 - `service_memory_request`: The amount of memory requested for build service containers
@@ -95,14 +95,14 @@ The following keywords help to define the behaviour of the Runner within Kuberne
 - `pod_annotations_overwrite_allowed`: Regular expression to validate the contents of
   the pod annotations overwrite environment variable. When empty,
   it disables the pod annotations overwrite feature
-- `pod_security_context`: Configured through the config file, this sets a pod security context for the build pod. [Read more about security context](#using-security-context)
+- `pod_security_context`: Configured through the configuration file, this sets a pod security context for the build pod. [Read more about security context](#using-security-context)
 - `service_account`: default service account to be used for making Kubernetes API calls.
 - `service_account_overwrite_allowed`: Regular expression to validate the contents of
   the service account overwrite environment variable. When empty,
   it disables the service account overwrite feature
 - `bearer_token`: Default bearer token used to launch build pods.
 - `bearer_token_overwrite_allowed`: Boolean to allow projects to specify a bearer token that will be used to create the build pod.
-- `volumes`: configured through the config file, the list of volumes that will be mounted in the build container. [Read more about using volumes.](#using-volumes)
+- `volumes`: configured through the configuration file, the list of volumes that will be mounted in the build container. [Read more about using volumes](#using-volumes)
 - `services`:
   [Since GitLab Runner
   12.5](https://gitlab.com/gitlab-org/gitlab-runner/issues/4470), list of
@@ -130,7 +130,7 @@ variables:
 ```
 
 Furthermore, to ensure only designated namespaces will be used during CI runs, set the configuration
-`namespace_overwrite_allowed` with an appropriate regular expression. When left empty the overwrite behaviour is
+`namespace_overwrite_allowed` with an appropriate regular expression. When left empty the overwrite behavior is
 disabled.
 
 ### Overwriting Kubernetes Default Service Account
@@ -148,11 +148,14 @@ variables:
 
 To ensure only designated service accounts will be used during CI runs, set the configuration
 `service_account_overwrite_allowed` or set the environment variable `KUBERNETES_SERVICE_ACCOUNT_OVERWRITE_ALLOWED`
-with an appropriate regular expression. When left empty the overwrite behaviour is disabled.
+with an appropriate regular expression. When left empty the overwrite behavior is disabled.
 
 ### Setting Bearer Token to be Used When Making Kubernetes API calls
 
-In conjunction with setting the namespace and service account as mentioned above, you may set the bearer token used when making API calls to create the build pods. This will allow project owners to use project secret variables to specify a bearer token. When specifying the bearer token, it is required that you set the `Host` config keyword.
+In conjunction with setting the namespace and service account as mentioned above, you may set the
+bearer token used when making API calls to create the build pods. This will allow project owners to
+use project secret variables to specify a bearer token. When specifying the bearer token, you must
+set the `Host` configuration keyword.
 
 ``` yaml
 variables:
@@ -190,7 +193,7 @@ following variables:
 The values for these variables are restricted to what the max overwrite
 for that resource has been set to.
 
-## Define keywords in the config toml
+## Define keywords in the configuration TOML
 
 Each of the keywords can be defined in the `config.toml` for the GitLab Runner.
 
@@ -278,7 +281,7 @@ concurrent = 4
 
 ### Host Path volumes
 
-[_HostPath_ volume][k8s-host-path-volume-docs] configuration instructs Kubernetes to mount
+[_HostPath_ volume](https://kubernetes.io/docs/concepts/storage/volumes/#hostpath) configuration instructs Kubernetes to mount
 a specified host path inside of the container. The volume can be configured with
 following options:
 
@@ -291,7 +294,7 @@ following options:
 
 ### PVC volumes
 
-[_PVC_ volume][k8s-pvc-volume-docs] configuration instructs Kubernetes to use a _PersistentVolumeClaim_
+[_PVC_ volume](https://kubernetes.io/docs/concepts/storage/volumes/#persistentvolumeclaim) configuration instructs Kubernetes to use a _PersistentVolumeClaim_
 that is defined in Kubernetes cluster and mount it inside of the container. The volume
 can be configured with following options:
 
@@ -301,9 +304,9 @@ can be configured with following options:
 | mount_path | string  | yes      | Path inside of container where the volume should be mounted |
 | read_only  | boolean | no       | Set's the volume in read-only mode (defaults to false) |
 
-### Config Map volumes
+### ConfigMap volumes
 
-_ConfigMap_ volume configuration instructs Kubernetes to use a [_configMap_][k8s-config-map-docs]
+_ConfigMap_ volume configuration instructs Kubernetes to use a [_configMap_](https://kubernetes.io/docs/tasks/configure-pod-container/configure-pod-configmap/)
 that is defined in Kubernetes cluster and mount it inside of the container.
 
 | Option     | Type    | Required | Description |
@@ -326,7 +329,7 @@ to volume's mount path) where _configMap's_ value should be saved. When using `i
 
 ### Secret volumes
 
-[_Secret_ volume][k8s-secret-volume-docs] configuration instructs Kubernetes to use
+[_Secret_ volume](https://kubernetes.io/docs/concepts/storage/volumes/#secret) configuration instructs Kubernetes to use
 a _secret_ that is defined in Kubernetes cluster and mount it inside of the container.
 
 | Option     | Type    | Required | Description |
@@ -349,7 +352,7 @@ to volume's mount path) where _secret's_ value should be saved. When using `item
 
 ### Empty Dir volumes
 
-[_emptyDir_ volume][k8s-empty-dir-volume-docs] configuration instructs Kubernetes to mount an empty directory inside of the container.
+[_emptyDir_ volume](https://kubernetes.io/docs/concepts/storage/volumes/#emptydir) configuration instructs Kubernetes to mount an empty directory inside of the container.
 
 | Option     | Type    | Required | Description |
 |------------|---------|----------|-------------|
@@ -359,7 +362,7 @@ to volume's mount path) where _secret's_ value should be saved. When using `item
 
 ## Using Security Context
 
-[Pod security context][k8s-pod-security-docs] configuration instructs executor to set a pod security policy on the build pod.
+[Pod security context](https://kubernetes.io/docs/concepts/policy/pod-security-policy/) configuration instructs executor to set a pod security policy on the build pod.
 
 | Option              | Type     | Required | Description |
 |---------------------|----------|----------|-------------|
@@ -369,7 +372,7 @@ to volume's mount path) where _secret's_ value should be saved. When using `item
 | run_as_user         | int      | no       | The UID to run the entrypoint of the container process |
 | supplemental_groups | int list | no       | A list of groups applied to the first process run in each container, in addition to the container's primary GID |
 
-Assigining a security context to pods provides security to your Kubernetes cluster. For this to work you'll need to provide a helper
+Assigning a security context to pods provides security to your Kubernetes cluster. For this to work you'll need to provide a helper
 image that conforms to the policy you set here.
 
 More about the helper image can be found [here](../configuration/advanced-configuration.md#helper-image).
@@ -386,7 +389,7 @@ USER 59417:59417
 
 This example creates a user and group called `nonroot` and sets the image to run as that user.
 
-Example of setting pod security context in your config.toml:
+Example of setting pod security context in your `config.toml`:
 
 ```toml
 concurrent = %(concurrent)s
@@ -518,10 +521,3 @@ kaniko:
 - Works without the Docker daemon.
 
 For more information, see [Building images with kaniko and GitLab CI/CD](https://docs.gitlab.com/ee/ci/docker/using_kaniko.html).
-
-[k8s-host-path-volume-docs]: https://kubernetes.io/docs/concepts/storage/volumes/#hostpath
-[k8s-pvc-volume-docs]: https://kubernetes.io/docs/concepts/storage/volumes/#persistentvolumeclaim
-[k8s-secret-volume-docs]: https://kubernetes.io/docs/concepts/storage/volumes/#secret
-[k8s-config-map-docs]: https://kubernetes.io/docs/tasks/configure-pod-container/configure-pod-configmap/
-[k8s-empty-dir-volume-docs]:https://kubernetes.io/docs/concepts/storage/volumes/#emptydir
-[k8s-pod-security-docs]:https://kubernetes.io/docs/concepts/policy/pod-security-policy/

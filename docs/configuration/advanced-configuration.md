@@ -4,7 +4,7 @@ table_display_block: true
 
 # Advanced configuration
 
-GitLab Runner configuration uses the [TOML][] format.
+GitLab Runner configuration uses the [TOML](https://github.com/toml-lang/toml) format.
 
 The file to be edited can be found in:
 
@@ -21,8 +21,8 @@ This defines global settings of GitLab Runner.
 | Setting | Description |
 | ------- | ----------- |
 | `concurrent`     | limits how many jobs globally can be run concurrently. The most upper limit of jobs using all defined runners. `0` **does not** mean unlimited |
-| `log_level`      | Log level (options: debug, info, warn, error, fatal, panic). Note that this setting has lower priority than level set by command line argument `--debug`, `-l` or `--log-level` |
-| `log_format`     | Log format (options: runner, text, json). Note that this setting has lower priority than format set by command line argument `--log-format` |
+| `log_level`      | Log level (options: `debug`, `info`, `warn`, `error`, `fatal`, `panic`). Note that this setting has lower priority than level set by command line argument `--debug`, `-l`, or `--log-level` |
+| `log_format`     | Log format (options: `runner`, `text`, `json`). Note that this setting has lower priority than format set by command line argument `--log-format` |
 | `check_interval` | defines the interval length, in seconds, between new jobs check. The default value is `3`; if set to `0` or lower, the default value will be used. |
 | `sentry_dsn`     | enable tracking of all system level errors to Sentry |
 | `listen_address` | address (`<host>:<port>`) on which the Prometheus metrics HTTP server should be listening |
@@ -166,9 +166,9 @@ There are a couple of available executors currently.
 | Executor | Description |
 | -------- | ----------- |
 | `shell`       | run build locally, default |
-| `docker`      | run build using Docker container. This requires the presence of `[runners.docker]` and [Docker Engine][] installed on a system that the Runner will run the job on. |
-| `docker-windows` | run build using Windows Docker container. This requires the presence of `[runners.docker]` and [Docker Engine][] installed on a Windows system. |
-| `docker-ssh`  | run build using Docker container, but connect to it with SSH - this requires the presence of `[runners.docker]` , `[runners.ssh]` and [Docker Engine][] installed on the system that the Runner runs. **Note: This will run the docker container on the local machine, it just changes how the commands are run inside that container. If you want to run docker commands on an external machine, then you should change the `host` parameter in the `runners.docker` section.**|
+| `docker`      | run build using Docker container. This requires the presence of `[runners.docker]` and [Docker Engine](https://docs.docker.com/engine/) installed on a system that the Runner will run the job on. |
+| `docker-windows` | run build using Windows Docker container. This requires the presence of `[runners.docker]` and [Docker Engine](https://docs.docker.com/engine/) installed on a Windows system. |
+| `docker-ssh`  | run build using Docker container, but connect to it with SSH - this requires the presence of `[runners.docker]` , `[runners.ssh]` and [Docker Engine](https://docs.docker.com/engine/) installed on the system that the Runner runs. **Note: This will run the docker container on the local machine, it just changes how the commands are run inside that container. If you want to run docker commands on an external machine, then you should change the `host` parameter in the `runners.docker` section.**|
 | `ssh`         | run build remotely with SSH - this requires the presence of `[runners.ssh]` |
 | `parallels`   | run build using Parallels VM, but connect to it with SSH - this requires the presence of `[runners.parallels]` and `[runners.ssh]` |
 | `virtualbox`  | run build using VirtualBox VM, but connect to it with SSH - this requires the presence of `[runners.virtualbox]` and `[runners.ssh]` |
@@ -184,8 +184,7 @@ There are a couple of available shells that can be run on different platforms.
 | ----- | ----------- |
 | `bash`        | generate Bash (Bourne-shell) script. All commands executed in Bash context (default for all Unix systems) |
 | `sh`          | generate Sh (Bourne-shell) script. All commands executed in Sh context (fallback for `bash` for all Unix systems) |
-| `cmd`         | generate Windows Batch script. All commands are executed in Batch context (default for Windows) |
-| `powershell`  | generate Windows PowerShell script. All commands are executed in PowerShell context |
+| `powershell`  | generate Windows PowerShell script. All commands are executed in PowerShell context (default for Windows) |
 
 ## The `[runners.docker]` section
 
@@ -350,15 +349,15 @@ well.
 >  of credentials on runner's host. We recommend to upgrade your Runner to
 >  at least version **1.8** if you want to use private registries.
 >- Using private registries with the `if-not-present` pull policy may introduce
->  [security implications][secpull]. To fully understand how pull policies work,
+>  [security implications](../security/index.md#usage-of-private-docker-images-with-if-not-present-pull-policy). To fully understand how pull policies work,
 >  read the [pull policies documentation](../executors/docker.md#how-pull-policies-work).
 
 If you want to use private registries as a source of images for your builds,
 you can set the authorization configuration in the `DOCKER_AUTH_CONFIG`
-[variable]. It can be set in both GitLab Variables section of
+[variable](https://docs.gitlab.com/ee/ci/variables/#variables). It can be set in both GitLab Variables section of
 a project and in the `config.toml` file.
 
-For a detailed example, visit the [Using Docker images documentation][priv-example].
+For a detailed example, visit the [Using Docker images documentation](https://docs.gitlab.com/ee/ci/docker/using_docker_images.html#define-an-image-from-a-private-container-registry).
 
 The steps performed by the Runner can be summed up to:
 
@@ -369,7 +368,7 @@ The steps performed by the Runner can be summed up to:
    found, subsequent pulls will make use of it.
 
 Now that the Runner is set up to authenticate against your private registry,
-learn [how to configure `.gitlab-ci.yml`][yaml-priv-reg] in order to use that
+learn [how to configure `.gitlab-ci.yml`](https://docs.gitlab.com/ee/ci/yaml/README.html#image-and-services) in order to use that
 registry.
 
 #### Support for GitLab integrated registry
@@ -389,7 +388,7 @@ configuration added with `DOCKER_AUTH_CONFIG` variable.
 Thanks to this, in your builds you can use any image from you GitLab integrated
 registry, even if the image is private/protected. To fully understand for
 which images the builds will have access, read the
-[New CI build permissions model][ci-build-permissions-model] documentation.
+[New CI build permissions model](https://docs.gitlab.com/ee/user/project/new_ci_build_permissions_model.html) documentation.
 
 #### Precedence of Docker authorization resolving
 
@@ -493,14 +492,24 @@ found in the separate [runners autoscale documentation](autoscale.md).
 |---------------------|-------------|
 | `IdleCount`         | Number of machines, that need to be created and waiting in _Idle_ state. |
 | `IdleTime`          | Time (in seconds) for machine to be in _Idle_ state before it is removed. |
-| `OffPeakPeriods`    | Time periods when the scheduler is in the OffPeak mode. An array of cron-style patterns (described below). |
-| `OffPeakTimezone`   | Timezone for the times given in OffPeakPeriods. A timezone string like `Europe/Berlin`. Defaults to the locale system setting of the host if omitted or empty. GitLab Runner attempts to locate the timezone database in the directory or uncompressed zip file named by the `ZONEINFO` environment variable, then looks in known installation locations on Unix systems, and finally looks in `$GOROOT/lib/time/zoneinfo.zip`. |
-| `OffPeakIdleCount`  | Like `IdleCount`, but for _Off Peak_ time periods. |
-| `OffPeakIdleTime`   | Like `IdleTime`, but for _Off Peak_ time periods. |
+| `[[runners.machine.autoscaling]]` | Multiple sections each containing overrides for autoscaling configuration. The last section with the expression matching the current time is selected. |
+| `OffPeakPeriods`    | Deprecated: Time periods when the scheduler is in the OffPeak mode. An array of cron-style patterns (described [below](#periods-syntax)). |
+| `OffPeakTimezone`   | Deprecated: Timezone for the times given in OffPeakPeriods. A timezone string like `Europe/Berlin`. Defaults to the locale system setting of the host if omitted or empty. GitLab Runner attempts to locate the timezone database in the directory or uncompressed zip file named by the `ZONEINFO` environment variable, then looks in known installation locations on Unix systems, and finally looks in `$GOROOT/lib/time/zoneinfo.zip`. |
+| `OffPeakIdleCount`  | Deprecated: Like `IdleCount`, but for _Off Peak_ time periods. |
+| `OffPeakIdleTime`   | Deprecated: Like `IdleTime`, but for _Off Peak_ time periods. |
 | `MaxBuilds`         | Builds count after which machine will be removed. |
 | `MachineName`       | Name of the machine. It **must** contain `%s`, which will be replaced with a unique machine identifier. |
 | `MachineDriver`     | Docker Machine `driver` to use. More details can be found in the [Docker Machine configuration section](autoscale.md#supported-cloud-providers). |
 | `MachineOptions`    | Docker Machine options. More details can be found in the [Docker Machine configuration section](autoscale.md#supported-cloud-providers). |
+
+### The `[[runners.machine.autoscaling]]` sections
+
+| Parameter           | Description |
+|---------------------|-------------|
+| `Periods`           | Time periods during which this schedule is active. An array of cron-style patterns (described [below](#periods-syntax)).
+| `IdleCount`         | Number of machines that need to be created and waiting in _Idle_ state. |
+| `IdleTime`          | Time (in seconds) for a machine to be in _Idle_ state before it is removed. |
+| `Timezone`   | Timezone for the times given in `Periods`. A timezone string like `Europe/Berlin`. Defaults to the locale system setting of the host if omitted or empty. GitLab Runner attempts to locate the timezone database in the directory or uncompressed zip file named by the `ZONEINFO` environment variable, then looks in known installation locations on Unix systems, and finally looks in `$GOROOT/lib/time/zoneinfo.zip`. |
 
 Example:
 
@@ -508,13 +517,16 @@ Example:
 [runners.machine]
   IdleCount = 5
   IdleTime = 600
-  OffPeakPeriods = [
-    "* * 0-10,18-23 * * mon-fri *",
-    "* * * * * sat,sun *"
-  ]
-  OffPeakTimezone = "Europe/Berlin"
-  OffPeakIdleCount = 1
-  OffPeakIdleTime = 3600
+  [[runners.machine.autoscaling]]
+    Periods = ["* * 9-17 * * mon-fri *"]
+    IdleCount = 50
+    IdleTime = 3600
+    Timezone = "UTC"
+  [[runners.machine.autoscaling]]
+    Periods = ["* * * * * sat,sun *"]
+    IdleCount = 5
+    IdleTime = 60
+    Timezone = "UTC"
   MaxBuilds = 100
   MachineName = "auto-scale-%s"
   MachineDriver = "digitalocean"
@@ -529,9 +541,9 @@ Example:
   ]
 ```
 
-### OffPeakPeriods syntax
+### Periods syntax
 
-The `OffPeakPeriods` setting contains an array of string patterns of
+The `Periods` setting contains an array of string patterns of
 time periods represented in a cron-style format. The line contains
 following fields:
 
@@ -541,7 +553,7 @@ following fields:
 
 Like in the standard cron configuration file, the fields can contain single
 values, ranges, lists and asterisks. A detailed description of the syntax
-can be found [here][cronvendor].
+can be found [here](https://github.com/gorhill/cronexpr#implementation).
 
 ## The `[runners.custom]` section
 
@@ -903,13 +915,3 @@ For example, a shared Runner environment using the docker-machine executor would
 If you'd like to deploy to multiple servers using GitLab CI, you can create a
 single script that deploys to multiple servers or you can create many scripts.
 It depends on what you'd like to do.
-
-[TOML]: https://github.com/toml-lang/toml
-[Docker Engine]: https://docs.docker.com/engine/
-[yaml-priv-reg]: https://docs.gitlab.com/ee/ci/yaml/README.html#image-and-services
-[ci-build-permissions-model]: https://docs.gitlab.com/ee/user/project/new_ci_build_permissions_model.html
-[secpull]: ../security/index.md#usage-of-private-docker-images-with-if-not-present-pull-policy
-
-[priv-example]: https://docs.gitlab.com/ee/ci/docker/using_docker_images.html#define-an-image-from-a-private-container-registry
-[variable]: https://docs.gitlab.com/ee/ci/variables/#variables
-[cronvendor]: https://github.com/gorhill/cronexpr#implementation

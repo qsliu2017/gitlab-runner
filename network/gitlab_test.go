@@ -21,6 +21,11 @@ import (
 	. "gitlab.com/gitlab-org/gitlab-runner/common"
 )
 
+const (
+	validToken   = "valid"
+	invalidToken = "invalid"
+)
+
 var brokenCredentials = RunnerCredentials{
 	URL: "broken",
 }
@@ -73,7 +78,7 @@ func testRegisterRunnerHandler(w http.ResponseWriter, r *http.Request, t *testin
 		return
 	}
 
-	if r.Method != "POST" {
+	if r.Method != http.MethodPost {
 		w.WriteHeader(http.StatusNotAcceptable)
 		return
 	}
@@ -88,14 +93,14 @@ func testRegisterRunnerHandler(w http.ResponseWriter, r *http.Request, t *testin
 	res := make(map[string]interface{})
 
 	switch req["token"].(string) {
-	case "valid":
+	case validToken:
 		if req["description"].(string) != "test" {
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
 
 		res["token"] = req["token"].(string)
-	case "invalid":
+	case invalidToken:
 		w.WriteHeader(http.StatusForbidden)
 		return
 	default:
@@ -127,12 +132,12 @@ func TestRegisterRunner(t *testing.T) {
 
 	validToken := RunnerCredentials{
 		URL:   s.URL,
-		Token: "valid",
+		Token: validToken,
 	}
 
 	invalidToken := RunnerCredentials{
 		URL:   s.URL,
-		Token: "invalid",
+		Token: invalidToken,
 	}
 
 	otherToken := RunnerCredentials{
@@ -166,7 +171,7 @@ func testUnregisterRunnerHandler(w http.ResponseWriter, r *http.Request, t *test
 		return
 	}
 
-	if r.Method != "DELETE" {
+	if r.Method != http.MethodDelete {
 		w.WriteHeader(http.StatusNotAcceptable)
 		return
 	}
@@ -179,9 +184,9 @@ func testUnregisterRunnerHandler(w http.ResponseWriter, r *http.Request, t *test
 	assert.NoError(t, err)
 
 	switch req["token"].(string) {
-	case "valid":
+	case validToken:
 		w.WriteHeader(http.StatusNoContent)
-	case "invalid":
+	case invalidToken:
 		w.WriteHeader(http.StatusForbidden)
 	default:
 		w.WriteHeader(http.StatusBadRequest)
@@ -198,12 +203,12 @@ func TestUnregisterRunner(t *testing.T) {
 
 	validToken := RunnerCredentials{
 		URL:   s.URL,
-		Token: "valid",
+		Token: validToken,
 	}
 
 	invalidToken := RunnerCredentials{
 		URL:   s.URL,
-		Token: "invalid",
+		Token: invalidToken,
 	}
 
 	otherToken := RunnerCredentials{
@@ -232,7 +237,7 @@ func testVerifyRunnerHandler(w http.ResponseWriter, r *http.Request, t *testing.
 		return
 	}
 
-	if r.Method != "POST" {
+	if r.Method != http.MethodPost {
 		w.WriteHeader(http.StatusNotAcceptable)
 		return
 	}
@@ -245,9 +250,9 @@ func testVerifyRunnerHandler(w http.ResponseWriter, r *http.Request, t *testing.
 	assert.NoError(t, err)
 
 	switch req["token"].(string) {
-	case "valid":
+	case validToken:
 		w.WriteHeader(http.StatusOK) // since the job id is broken, we should not find this job
-	case "invalid":
+	case invalidToken:
 		w.WriteHeader(http.StatusForbidden)
 	default:
 		w.WriteHeader(http.StatusBadRequest)
@@ -264,12 +269,12 @@ func TestVerifyRunner(t *testing.T) {
 
 	validToken := RunnerCredentials{
 		URL:   s.URL,
-		Token: "valid",
+		Token: validToken,
 	}
 
 	invalidToken := RunnerCredentials{
 		URL:   s.URL,
-		Token: "invalid",
+		Token: invalidToken,
 	}
 
 	otherToken := RunnerCredentials{
@@ -404,7 +409,7 @@ func testRequestJobHandler(w http.ResponseWriter, r *http.Request, t *testing.T)
 		return
 	}
 
-	if r.Method != "POST" {
+	if r.Method != http.MethodPost {
 		w.WriteHeader(http.StatusNotAcceptable)
 		return
 	}
@@ -417,12 +422,12 @@ func testRequestJobHandler(w http.ResponseWriter, r *http.Request, t *testing.T)
 	assert.NoError(t, err)
 
 	switch req["token"].(string) {
-	case "valid":
+	case validToken:
 	case "no-jobs":
 		w.Header().Add("X-GitLab-Last-Update", "a nice timestamp")
 		w.WriteHeader(http.StatusNoContent)
 		return
-	case "invalid":
+	case invalidToken:
 		w.WriteHeader(http.StatusForbidden)
 		return
 	default:
@@ -456,7 +461,7 @@ func TestRequestJob(t *testing.T) {
 	validToken := RunnerConfig{
 		RunnerCredentials: RunnerCredentials{
 			URL:   s.URL,
-			Token: "valid",
+			Token: validToken,
 		},
 	}
 
@@ -470,7 +475,7 @@ func TestRequestJob(t *testing.T) {
 	invalidToken := RunnerConfig{
 		RunnerCredentials: RunnerCredentials{
 			URL:   s.URL,
-			Token: "invalid",
+			Token: invalidToken,
 		},
 	}
 
@@ -539,7 +544,7 @@ func testUpdateJobHandler(w http.ResponseWriter, r *http.Request, t *testing.T) 
 		return
 	}
 
-	if r.Method != "PUT" {
+	if r.Method != http.MethodPut {
 		w.WriteHeader(http.StatusNotAcceptable)
 		return
 	}
@@ -604,7 +609,7 @@ func TestUpdateJob(t *testing.T) {
 }
 
 func testUpdateJobKeepAliveHandler(w http.ResponseWriter, r *http.Request, t *testing.T) {
-	if r.Method != "PUT" {
+	if r.Method != http.MethodPut {
 		w.WriteHeader(http.StatusNotAcceptable)
 		return
 	}
@@ -804,7 +809,7 @@ func TestPatchTraceCantConnect(t *testing.T) {
 
 func TestPatchTraceUpdatedTrace(t *testing.T) {
 	sentTrace := 0
-	traceContent := []byte{}
+	var traceContent []byte
 
 	updates := []struct {
 		traceUpdate             []byte
@@ -1069,7 +1074,7 @@ func testArtifactsUploadHandler(w http.ResponseWriter, r *http.Request, t *testi
 		return
 	}
 
-	if r.Method != "POST" {
+	if r.Method != http.MethodPost {
 		w.WriteHeader(http.StatusNotAcceptable)
 		return
 	}
@@ -1171,12 +1176,18 @@ func TestArtifactsUpload(t *testing.T) {
 }
 
 func testArtifactsDownloadHandler(w http.ResponseWriter, r *http.Request, t *testing.T) {
+	if r.URL.Path == "/direct-download" {
+		w.WriteHeader(http.StatusOK)
+		w.Write(bytes.NewBufferString("Artifact: direct_download=true").Bytes())
+		return
+	}
+
 	if r.URL.Path != "/api/v4/jobs/10/artifacts" {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
 
-	if r.Method != "GET" {
+	if r.Method != http.MethodGet {
 		w.WriteHeader(http.StatusNotAcceptable)
 		return
 	}
@@ -1186,8 +1197,28 @@ func testArtifactsDownloadHandler(w http.ResponseWriter, r *http.Request, t *tes
 		return
 	}
 
+	// parse status of direct download
+	directDownloadFlag := r.URL.Query().Get("direct_download")
+	if directDownloadFlag == "" {
+		w.WriteHeader(http.StatusOK)
+		w.Write(bytes.NewBufferString("Artifact: direct_download=missing").Bytes())
+		return
+	}
+
+	directDownload, err := strconv.ParseBool(directDownloadFlag)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	if directDownload {
+		w.Header().Set("Location", "/direct-download")
+		w.WriteHeader(http.StatusTemporaryRedirect)
+		return
+	}
+
 	w.WriteHeader(http.StatusOK)
-	w.Write(bytes.NewBufferString("Test artifact file content").Bytes())
+	w.Write(bytes.NewBufferString("Artifact: direct_download=false").Bytes())
 }
 
 func TestArtifactsDownload(t *testing.T) {
@@ -1198,7 +1229,7 @@ func TestArtifactsDownload(t *testing.T) {
 	s := httptest.NewServer(http.HandlerFunc(handler))
 	defer s.Close()
 
-	credentials := JobCredentials{
+	validCredentials := JobCredentials{
 		ID:    10,
 		URL:   s.URL,
 		Token: "token",
@@ -1214,22 +1245,68 @@ func TestArtifactsDownload(t *testing.T) {
 		Token: "token",
 	}
 
-	c := NewGitLabClient()
+	trueValue := true
+	falseValue := false
 
-	tempDir, err := ioutil.TempDir("", "artifacts")
-	assert.NoError(t, err)
+	testCases := map[string]struct {
+		credentials      JobCredentials
+		directDownload   *bool
+		expectedState    DownloadState
+		expectedArtifact string
+	}{
+		"successful download": {
+			credentials:      validCredentials,
+			expectedState:    DownloadSucceeded,
+			expectedArtifact: "Artifact: direct_download=missing",
+		},
+		"properly handles direct_download=false": {
+			credentials:      validCredentials,
+			directDownload:   &falseValue,
+			expectedState:    DownloadSucceeded,
+			expectedArtifact: "Artifact: direct_download=false",
+		},
+		"properly handles direct_download=true": {
+			credentials:      validCredentials,
+			directDownload:   &trueValue,
+			expectedState:    DownloadSucceeded,
+			expectedArtifact: "Artifact: direct_download=true",
+		},
+		"forbidden should be generated for invalid credentials": {
+			credentials:    invalidTokenCredentials,
+			directDownload: &trueValue,
+			expectedState:  DownloadForbidden,
+		},
+		"file should not be downloaded if not existing": {
+			credentials:    fileNotFoundTokenCredentials,
+			directDownload: &trueValue,
+			expectedState:  DownloadNotFound,
+		},
+	}
 
-	artifactsFileName := filepath.Join(tempDir, "downloaded-artifact")
-	defer os.Remove(artifactsFileName)
+	for testName, testCase := range testCases {
+		t.Run(testName, func(t *testing.T) {
+			c := NewGitLabClient()
 
-	state := c.DownloadArtifacts(credentials, artifactsFileName)
-	assert.Equal(t, DownloadSucceeded, state, "Artifacts should be downloaded")
+			tempDir, err := ioutil.TempDir("", "artifacts")
+			require.NoError(t, err)
+			defer os.Remove(tempDir)
 
-	state = c.DownloadArtifacts(invalidTokenCredentials, artifactsFileName)
-	assert.Equal(t, DownloadForbidden, state, "Artifacts should be not downloaded if invalid token is used")
+			artifactsFileName := filepath.Join(tempDir, "downloaded-artifact")
 
-	state = c.DownloadArtifacts(fileNotFoundTokenCredentials, artifactsFileName)
-	assert.Equal(t, DownloadNotFound, state, "Artifacts should be bit downloaded if it's not found")
+			state := c.DownloadArtifacts(testCase.credentials, artifactsFileName, testCase.directDownload)
+			require.Equal(t, testCase.expectedState, state)
+
+			artifact, err := ioutil.ReadFile(artifactsFileName)
+
+			if testCase.expectedArtifact == "" {
+				assert.Error(t, err)
+				return
+			}
+
+			assert.NoError(t, err)
+			assert.Equal(t, string(artifact), testCase.expectedArtifact)
+		})
+	}
 }
 
 func TestRunnerVersion(t *testing.T) {

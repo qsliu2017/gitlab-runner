@@ -80,7 +80,7 @@ func (m *manager) Create(ctx context.Context, networkMode string) (container.Net
 }
 
 func (m *manager) Inspect(ctx context.Context) (types.NetworkResource, error) {
-	if m.perBuild != true {
+	if !m.perBuild {
 		return types.NetworkResource{}, nil
 	}
 
