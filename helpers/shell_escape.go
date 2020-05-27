@@ -12,6 +12,7 @@ import (
  * Escaping
  */
 
+//nolint:stylecheck
 const (
 	ACK           = 6
 	TAB           = 9

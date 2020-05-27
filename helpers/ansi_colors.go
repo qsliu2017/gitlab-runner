@@ -1,5 +1,6 @@
 package helpers
 
+//nolint:stylecheck
 const (
 	ANSI_BOLD_BLACK   = "\033[30;1m"
 	ANSI_BOLD_RED     = "\033[31;1m"

@@ -89,7 +89,6 @@ linters:
     - goconst
     - gocritic
     - goimports
-    - golint
     - goprintffuncname
     - gosimple
     - govet
@@ -100,6 +99,7 @@ linters:
     - staticcheck
     - nestif
     - structcheck
+    - stylecheck
     - typecheck
     - unconvert
     - unparam
@@ -128,12 +128,9 @@ issues:
     - path: executors/virtualbox/
       linters:
         - gocyclo
-    - linters:
-        - golint
-      text: "don't use ALL_CAPS in Go names; use CamelCase"
-    - linters:
-        - golint
-      text: "don't use an underscore in package name"
+    - text: "should not use underscores in package names"
+      linters:
+        - stylecheck
     - path: ".*_test.go"
       linters:
         - bodyclose
@@ -144,11 +141,6 @@ issues:
       text: "Error return value is not checked"
       linters:
         - errcheck
-    - path: ".*_test.go"
-      text: "regexpMust"
-      linters:
-        - errcheck
-        - gocritic
     - path: referees/prometheus_api.go
       linters:
         - deadcode

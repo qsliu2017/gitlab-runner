@@ -45,5 +45,5 @@ func processZipUIDGidField(data []byte, file *zip.FileHeader) error {
 		return errors.New("uid/gid data not supported")
 	}
 
-	return os.Lchown(file.Name, int(ugField.UID), int(ugField.Gid))
+	return os.Lchown(file.Name, int(ugField.UID), int(ugField.GID))
 }

@@ -23,7 +23,7 @@ type ZipUIDGidField struct {
 	UIDSize uint8
 	UID     uint32
 	GIDSize uint8
-	Gid     uint32
+	GID     uint32
 }
 
 type ZipTimestampField struct {

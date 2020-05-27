@@ -81,7 +81,7 @@ func TestCacheExtractorForNotExistingFile(t *testing.T) {
 
 func testServeCache(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
-		http.Error(w, "408 Method not allowed", 408)
+		http.Error(w, "408 Method not allowed", http.StatusRequestTimeout)
 		return
 	}
 	if r.URL.Path != "/cache.zip" {
