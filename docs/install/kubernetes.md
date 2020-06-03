@@ -282,7 +282,7 @@ Company intranets and other private networks often have services hosted on
 systems that are not resolveable through the DNS service provided by the
 cluster or host system. Kubernetes provides a mechanism for adding
 [/etc/hosts entries](https://kubernetes.io/docs/concepts/services-networking/add-entries-to-pod-etc-hosts-with-host-aliases/)
-to a pod using HostAliases. The GitLab runner helm chart supports this mechanism to add entries to /etc/hosts on the runner pod itself.
+to a pod using HostAliases. The GitLab Runner helm chart supports this mechanism to add entries to /etc/hosts on the runner pod itself.
 
 ```yaml
 ## list of hosts and IPs that will be injected into the pod's hosts file
@@ -298,10 +298,9 @@ hostAliases: []
   #   - "bar.remote"
 ```
 
-
 NOTE: **Note:**
 Setting `/etc/hosts` entries using the `hostAliases:` setting is limited to the runner pod itself.
-The `services`, `helper`, and `build` job pods that are created by the [kubernetes executor](../executors/kubernetes.md)
+The `services`, `helper`, and `build` job pods that are created by the [Kubernetes executor](../executors/kubernetes.md)
 can not inherit these settings from the runner pod and there is not currently a way to
 utilize the HostAliases for these job pods. See [this issue](https://gitlab.com/gitlab-org/gitlab-runner/-/issues/2818) for details.
 
