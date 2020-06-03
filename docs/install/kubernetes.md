@@ -276,6 +276,35 @@ Where:
 More information on how GitLab Runner uses these certificates can be found in the
 [Runner Documentation](../configuration/tls-self-signed.md#supported-options-for-self-signed-certificates).
 
+### Adding entries to /etc/hosts on the runner pod with HostAliases
+
+Company intranets and other private networks often have services hosted on
+systems that are not resolveable through the DNS service provided by the
+cluster or host system. Kubernetes provides a mechanism for adding
+[/etc/hosts entries](https://kubernetes.io/docs/concepts/services-networking/add-entries-to-pod-etc-hosts-with-host-aliases/)
+to a pod using HostAliases. The GitLab runner helm chart supports this mechanism to add entries to /etc/hosts on the runner pod itself.
+
+```yaml
+## list of hosts and IPs that will be injected into the pod's hosts file
+hostAliases: []
+  # Example:
+  # - ip: "127.0.0.1"
+  #   hostnames:
+  #   - "foo.local"
+  #   - "bar.local"
+  # - ip: "10.1.2.3"
+  #   hostnames:
+  #   - "foo.remote"
+  #   - "bar.remote"
+```
+
+
+NOTE: **Note:**
+Setting `/etc/hosts` entries using the `hostAliases:` setting is limited to the runner pod itself.
+The `services`, `helper`, and `build` job pods that are created by the [kubernetes executor](../executors/kubernetes.md)
+can not inherit these settings from the runner pod and there is not currently a way to
+utilize the HostAliases for these job pods. See [this issue](https://gitlab.com/gitlab-org/gitlab-runner/-/issues/2818) for details.
+
 ### Set pod labels to CI environment variables keys
 
 At the moment it is not possible to use environment variables as pod labels within the `values.yaml` file.
