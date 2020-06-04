@@ -10,9 +10,6 @@ echo "${GIT_LFS_256_CHECKSUM}  /tmp/git-lfs.tar.gz" > /tmp/checksums
 sha256sum -c /tmp/checksums
 
 tar -xzf /tmp/git-lfs.tar.gz -C /tmp
-cp /tmp/git-lfs /usr/local/bin
-chmod +x /usr/local/bin/git-lfs
-
-git-lfs install --skip-repo
-
-rm -rf /tmp/*
+mkdir -p /build/usr/local/bin
+mv /tmp/git-lfs /build/usr/local/bin
+chmod +x /build/usr/local/bin/git-lfs

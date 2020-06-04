@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 set -eo pipefail
 
@@ -32,7 +32,6 @@ push () {
     registry_credentials_available || return 0
     docker push "${BUILD_IMAGE}"
 }
-
 
 build() {
     echo "Building image: ${BUILD_IMAGE}"
