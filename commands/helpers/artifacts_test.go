@@ -8,9 +8,9 @@ import (
 	"os"
 	"testing"
 
+	"github.com/klauspost/compress/zip"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
-	"github.com/klauspost/compress/zip"
 
 	"gitlab.com/gitlab-org/gitlab-runner/common"
 )
