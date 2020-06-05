@@ -1,12 +1,12 @@
 package archives
 
 import (
-	"archive/zip"
 	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 
+	"github.com/klauspost/compress/zip"
 	"github.com/sirupsen/logrus"
 )
 

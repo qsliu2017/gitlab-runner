@@ -1,7 +1,6 @@
 package helpers
 
 import (
-	"archive/zip"
 	"bytes"
 	"net/http"
 	"net/http/httptest"
@@ -9,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/klauspost/compress/zip"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 

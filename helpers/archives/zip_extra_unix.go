@@ -3,13 +3,14 @@
 package archives
 
 import (
-	"archive/zip"
 	"bytes"
 	"encoding/binary"
 	"errors"
 	"io"
 	"os"
 	"syscall"
+
+	"github.com/klauspost/compress/zip"
 )
 
 func createZipUIDGidField(w io.Writer, fi os.FileInfo) (err error) {

@@ -1,9 +1,10 @@
 package archives
 
 import (
-	"archive/zip"
 	"io"
 	"os"
+
+	"github.com/klauspost/compress/zip"
 )
 
 func createZipUIDGidField(w io.Writer, fi os.FileInfo) (err error) {

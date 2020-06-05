@@ -1,13 +1,12 @@
 package archives
 
 import (
+	"encoding/binary"
 	"io/ioutil"
 	"os"
 	"testing"
 
-	"archive/zip"
-	"encoding/binary"
-
+	"github.com/klauspost/compress/zip"
 	"github.com/stretchr/testify/assert"
 )
 

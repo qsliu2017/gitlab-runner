@@ -1,13 +1,13 @@
 package archives
 
 import (
-	"archive/zip"
 	"bytes"
 	"io"
 	"io/ioutil"
 	"os"
 	"testing"
 
+	"github.com/klauspost/compress/zip"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

@@ -1,12 +1,13 @@
 package archives
 
 import (
-	"archive/zip"
 	"bytes"
 	"encoding/binary"
 	"io"
 	"os"
 	"time"
+
+	"github.com/klauspost/compress/zip"
 )
 
 const ZipUIDGidFieldType = 0x7875
