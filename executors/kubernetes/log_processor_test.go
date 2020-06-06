@@ -230,13 +230,21 @@ func TestListenReadLines(t *testing.T) {
 				log{line: expectedLines[0], offset: 10},
 				log{line: expectedLines[1], offset: 20},
 			)
-			cancel()
+			// cancel the context one second after we have written to the writer
+			// this ensures that all the readers, channels etc. had time to process the data
+			time.AfterFunc(time.Second, cancel)
 		}).
 		Return(nil).
 		Once()
 
+	mockBackoffCalculator := new(mockBackoffCalculator)
+	defer mockBackoffCalculator.AssertExpectations(t)
+	// force the sleep to be more than the timeout of the context cancellation
+	mockBackoffCalculator.On("ForAttempt", float64(1)).Return(5 * time.Second).Once()
+
 	processor := newTestKubernetesLogProcessor()
 	processor.logStreamer = mockLogStreamer
+	processor.backoff = mockBackoffCalculator
 
 	ch := processor.Process(ctx)
 	receivedLogs := make([]string, 0)
@@ -317,6 +325,7 @@ func TestAttachReconnectLogStream(t *testing.T) {
 	defer mockBackoffCalculator.AssertExpectations(t)
 	mockBackoffCalculator.On("ForAttempt", float64(1)).Return(time.Duration(0)).Once()
 	mockBackoffCalculator.On("ForAttempt", float64(2)).Return(time.Duration(0)).Once()
+	mockBackoffCalculator.On("ForAttempt", float64(3)).Return(time.Second).Once()
 
 	processor := new(kubernetesLogProcessor)
 	processor.logger = logrus.New()
@@ -353,6 +362,7 @@ func TestAttachReconnectReadLogs(t *testing.T) {
 	defer mockBackoffCalculator.AssertExpectations(t)
 	mockBackoffCalculator.On("ForAttempt", float64(1)).Return(time.Duration(0)).Once()
 	mockBackoffCalculator.On("ForAttempt", float64(2)).Return(time.Duration(0)).Once()
+	mockBackoffCalculator.On("ForAttempt", float64(3)).Return(time.Second).Once()
 
 	processor := new(kubernetesLogProcessor)
 	processor.logger = logrus.New()
@@ -390,8 +400,14 @@ func TestAttachCorrectOffset(t *testing.T) {
 		Return(new(brokenReaderError)).
 		Once()
 
+	mockBackoffCalculator := new(mockBackoffCalculator)
+	defer mockBackoffCalculator.AssertExpectations(t)
+	mockBackoffCalculator.On("ForAttempt", float64(1)).Return(time.Duration(0)).Once()
+	mockBackoffCalculator.On("ForAttempt", float64(2)).Return(time.Second).Once()
+
 	processor := newTestKubernetesLogProcessor()
 	processor.logStreamer = mockLogStreamer
+	processor.backoff = mockBackoffCalculator
 
 	ch := processor.Process(ctx)
 	for range ch {

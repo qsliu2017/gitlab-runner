@@ -120,24 +120,23 @@ func (l *kubernetesLogProcessor) Process(ctx context.Context) <-chan string {
 
 func (l *kubernetesLogProcessor) attach(ctx context.Context, outCh chan string) {
 	var attempt float64 = -1
+	var backoffDuration time.Duration
 
 	for {
+		attempt++
+		if attempt > 0 {
+			backoffDuration = l.backoff.ForAttempt(attempt)
+			l.logger.Debugln(fmt.Sprintf("Backing off reattaching log for %s for %s", l.logStreamer, backoffDuration))
+		}
+
 		select {
 		case <-ctx.Done():
 			return
-		default:
-		}
-
-		attempt++
-		if attempt > 0 {
-			backoffDuration := l.backoff.ForAttempt(attempt)
-			l.logger.Debugln(fmt.Sprintf("Backing off reattaching log for %s for %s", l.logStreamer, backoffDuration))
-			time.Sleep(backoffDuration)
-		}
-
-		err := l.processStream(ctx, outCh)
-		if err != nil {
-			l.logger.Warningln(fmt.Sprintf("Error %s. Retrying...", err))
+		case <-time.After(backoffDuration):
+			err := l.processStream(ctx, outCh)
+			if err != nil {
+				l.logger.Warningln(fmt.Sprintf("Error %s. Retrying...", err))
+			}
 		}
 	}
 }
