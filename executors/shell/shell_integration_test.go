@@ -205,6 +205,9 @@ func TestRawVariableOutput(t *testing.T) {
 		"powershell": {
 			command: "echo $env:TEST",
 		},
+		"pwsh": {
+			command: "echo $env:TEST",
+		},
 	}
 
 	shellstest.OnEachShell(t, func(t *testing.T, shell string) {
@@ -1038,37 +1041,39 @@ func TestBuildChangesBranchesWhenFetchingRepo(t *testing.T) {
 }
 
 func TestBuildPowerShellCatchesExceptions(t *testing.T) {
-	if helpers.SkipIntegrationTests(t, "powershell") {
-		t.Skip()
+	for _, shell := range []string{"powershell", "pwsh"} {
+		t.Run(shell, func(t *testing.T) {
+			helpers.SkipIntegrationTests(t, shell)
+
+			successfulBuild, err := common.GetRemoteSuccessfulBuild()
+			assert.NoError(t, err)
+			build, cleanup := newBuild(t, successfulBuild, shell)
+			defer cleanup()
+			build.Variables = append(build.Variables, common.JobVariable{Key: "ErrorActionPreference", Value: "Stop"})
+			build.Variables = append(build.Variables, common.JobVariable{Key: "GIT_STRATEGY", Value: "fetch"})
+
+			out, err := buildtest.RunBuildReturningOutput(t, build)
+			assert.NoError(t, err)
+			assert.Contains(t, out, "Created fresh repository")
+
+			out, err = buildtest.RunBuildReturningOutput(t, build)
+			assert.NoError(t, err)
+			assert.NotContains(t, out, "Created fresh repository")
+			assert.Regexp(t, "Checking out [a-f0-9]+ as", out)
+
+			build.Variables = append(build.Variables, common.JobVariable{Key: "ErrorActionPreference", Value: "Continue"})
+			out, err = buildtest.RunBuildReturningOutput(t, build)
+			assert.NoError(t, err)
+			assert.NotContains(t, out, "Created fresh repository")
+			assert.Regexp(t, "Checking out [a-f0-9]+ as", out)
+
+			build.Variables = append(build.Variables, common.JobVariable{Key: "ErrorActionPreference", Value: "SilentlyContinue"})
+			out, err = buildtest.RunBuildReturningOutput(t, build)
+			assert.NoError(t, err)
+			assert.NotContains(t, out, "Created fresh repository")
+			assert.Regexp(t, "Checking out [a-f0-9]+ as", out)
+		})
 	}
-
-	successfulBuild, err := common.GetRemoteSuccessfulBuild()
-	assert.NoError(t, err)
-	build, cleanup := newBuild(t, successfulBuild, "powershell")
-	defer cleanup()
-	build.Variables = append(build.Variables, common.JobVariable{Key: "ErrorActionPreference", Value: "Stop"})
-	build.Variables = append(build.Variables, common.JobVariable{Key: "GIT_STRATEGY", Value: "fetch"})
-
-	out, err := buildtest.RunBuildReturningOutput(t, build)
-	assert.NoError(t, err)
-	assert.Contains(t, out, "Created fresh repository")
-
-	out, err = buildtest.RunBuildReturningOutput(t, build)
-	assert.NoError(t, err)
-	assert.NotContains(t, out, "Created fresh repository")
-	assert.Regexp(t, "Checking out [a-f0-9]+ as", out)
-
-	build.Variables = append(build.Variables, common.JobVariable{Key: "ErrorActionPreference", Value: "Continue"})
-	out, err = buildtest.RunBuildReturningOutput(t, build)
-	assert.NoError(t, err)
-	assert.NotContains(t, out, "Created fresh repository")
-	assert.Regexp(t, "Checking out [a-f0-9]+ as", out)
-
-	build.Variables = append(build.Variables, common.JobVariable{Key: "ErrorActionPreference", Value: "SilentlyContinue"})
-	out, err = buildtest.RunBuildReturningOutput(t, build)
-	assert.NoError(t, err)
-	assert.NotContains(t, out, "Created fresh repository")
-	assert.Regexp(t, "Checking out [a-f0-9]+ as", out)
 }
 
 func TestInteractiveTerminal(t *testing.T) {
@@ -1095,6 +1100,12 @@ func TestInteractiveTerminal(t *testing.T) {
 			shell:              "powershell",
 			command:            "Start-Sleep -s 2",
 			expectedStatusCode: http.StatusInternalServerError,
+		},
+		{
+			app:                "pwsh",
+			shell:              "pwsh",
+			command:            "Start-Sleep -s 2",
+			expectedStatusCode: http.StatusSwitchingProtocols,
 		},
 	}
 
