@@ -1985,18 +1985,18 @@ func TestGetServiceDefinitions(t *testing.T) {
 			},
 		},
 		"one service (max 0)": {
-			services: []*common.DockerService{
+			services: []common.Service{
 				{
-					Service: common.Service{"name"},
+					Name: "name",
 				},
 			},
 			servicesLimit: func(i int) *int { return &i }(0),
 			expectedErr:   "too many services requested: 1 (only 0 allowed)",
 		},
 		"one service (max 1)": {
-			services: []*common.DockerService{
+			services:[] common.Service{
 				{
-					Service: common.Service{"name"},
+					Name: "name",
 				},
 			},
 			servicesLimit: func(i int) *int { return &i }(1),
@@ -2007,12 +2007,12 @@ func TestGetServiceDefinitions(t *testing.T) {
 			},
 		},
 		"two services (max 1)": {
-			services: []*common.DockerService{
+			services: []common.Service{
 				{
-					Service: common.Service{"name"},
+					Name: "name",
 				},
 				{
-					Service: common.Service{"name"},
+					Name: "name",
 				},
 			},
 			servicesLimit: func(i int) *int { return &i }(1),
