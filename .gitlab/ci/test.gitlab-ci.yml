@@ -141,9 +141,9 @@ windows 1903 tests:
   extends:
   - .windows test
   - .windows1903
-  only:
-    refs:
-    - master@gitlab-org/gitlab-runner
+  # only:
+  #  refs:
+  #  - master@gitlab-org/gitlab-runner
 
 windows 1909 tests:
   extends:
