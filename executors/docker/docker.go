@@ -507,6 +507,24 @@ func (e *executor) getProjectUniqRandomizedName() string {
 	return e.projectUniqRandomizedName
 }
 
+type tooManyServicesRequestedError struct {
+	requested int
+	allowed   int
+}
+
+func (e *tooManyServicesRequestedError) Error() string {
+	return fmt.Sprintf("too many services requested: %d, only %d allowed", e.requested, e.allowed)
+}
+
+func (e *tooManyServicesRequestedError) Is(err error) bool {
+	var target *tooManyServicesRequestedError
+	if !errors.As(err, &target) {
+		return false
+	}
+
+	return e.allowed == target.allowed && e.requested == target.allowed
+}
+
 func (e *executor) getServicesDefinitions() (common.Services, error) {
 	var internalServiceImages []string
 	serviceDefinitions := common.Services{}
@@ -527,10 +545,9 @@ func (e *executor) getServicesDefinitions() (common.Services, error) {
 		serviceDefinitions = append(serviceDefinitions, service)
 	}
 
-	if e.Config.Docker.ServicesLimit != nil &&
-		*e.Config.Docker.ServicesLimit >= 0 &&
-		len(serviceDefinitions) > *e.Config.Docker.ServicesLimit {
-		return nil, fmt.Errorf("too many services requested: %d (only %d allowed)", len(serviceDefinitions), *e.Config.Docker.ServicesLimit)
+	servicesLimit := e.Config.Docker.GetServicesLimit()
+	if servicesLimit >= 0 && len(serviceDefinitions) > servicesLimit {
+		return nil, &tooManyServicesRequestedError{requested: len(serviceDefinitions), allowed: servicesLimit}
 	}
 
 	return serviceDefinitions, nil

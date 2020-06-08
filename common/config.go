@@ -508,6 +508,14 @@ func (c *DockerConfig) GetOomKillDisable() *bool {
 	return &c.OomKillDisable
 }
 
+func (c *DockerConfig) GetServicesLimit() int {
+	if c.ServicesLimit == nil {
+		return -1
+	}
+
+	return *c.ServicesLimit
+}
+
 func (c *KubernetesConfig) GetPollAttempts() int {
 	if c.PollTimeout <= 0 {
 		c.PollTimeout = KubernetesPollTimeout

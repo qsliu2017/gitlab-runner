@@ -1447,11 +1447,10 @@ func TestDockerCPUSetCPUsSetting(t *testing.T) {
 }
 
 func TestDockerServiceSettings(t *testing.T) {
-	type test struct {
+	tests := map[string]struct {
 		dockerConfig common.DockerConfig
 		verifyFn     func(t *testing.T, config *container.Config, hostConfig *container.HostConfig)
-	}
-	tests := map[string]test{
+	}{
 		"memory": {
 			dockerConfig: common.DockerConfig{
 				ServiceMemory: "42m",
@@ -1462,7 +1461,7 @@ func TestDockerServiceSettings(t *testing.T) {
 				assert.Equal(t, value, hostConfig.Memory)
 			},
 		},
-		"memoryreservation": {
+		"memory reservation": {
 			dockerConfig: common.DockerConfig{
 				ServiceMemoryReservation: "64m",
 			},
@@ -1482,7 +1481,7 @@ func TestDockerServiceSettings(t *testing.T) {
 				assert.Equal(t, value, hostConfig.MemorySwap)
 			},
 		},
-		"cpusetcpus": {
+		"CPUSetCPUs": {
 			dockerConfig: common.DockerConfig{
 				ServiceCPUSetCPUs: "1-3,5",
 			},
@@ -1490,31 +1489,46 @@ func TestDockerServiceSettings(t *testing.T) {
 				assert.Equal(t, "1-3,5", hostConfig.CpusetCpus)
 			},
 		},
-	}
-
-	// Add multiple cpus check
-	cpusSetting := []struct {
-		cpus     string
-		nanocpus int64
-	}{
-		{"0.5", 500000000},
-		{"0.25", 250000000},
-		{"1/3", 333333333},
-		{"1/8", 125000000},
-		{"0.0001", 100000},
-	}
-	for _, example := range cpusSetting {
-		// Make an explicit copy to be used inside verifyFn
-		// otherwise its value is last round of for loop
-		tmp := example
-		tests["cpus_"+tmp.cpus] = test{
+		"cpus_0.5": {
 			dockerConfig: common.DockerConfig{
-				ServiceCPUS: tmp.cpus,
+				ServiceCPUS: "0.5",
 			},
 			verifyFn: func(t *testing.T, config *container.Config, hostConfig *container.HostConfig) {
-				assert.Equal(t, int64(tmp.nanocpus), hostConfig.NanoCPUs)
+				assert.Equal(t, int64(500000000), hostConfig.NanoCPUs)
 			},
-		}
+		},
+		"cpus_0.25": {
+			dockerConfig: common.DockerConfig{
+				ServiceCPUS: "0.25",
+			},
+			verifyFn: func(t *testing.T, config *container.Config, hostConfig *container.HostConfig) {
+				assert.Equal(t, int64(250000000), hostConfig.NanoCPUs)
+			},
+		},
+		"cpus_1/3": {
+			dockerConfig: common.DockerConfig{
+				ServiceCPUS: "1/3",
+			},
+			verifyFn: func(t *testing.T, config *container.Config, hostConfig *container.HostConfig) {
+				assert.Equal(t, int64(333333333), hostConfig.NanoCPUs)
+			},
+		},
+		"cpus_1/8": {
+			dockerConfig: common.DockerConfig{
+				ServiceCPUS: "1/8",
+			},
+			verifyFn: func(t *testing.T, config *container.Config, hostConfig *container.HostConfig) {
+				assert.Equal(t, int64(125000000), hostConfig.NanoCPUs)
+			},
+		},
+		"cpus_0.0001": {
+			dockerConfig: common.DockerConfig{
+				ServiceCPUS: "0.0001",
+			},
+			verifyFn: func(t *testing.T, config *container.Config, hostConfig *container.HostConfig) {
+				assert.Equal(t, int64(100000), hostConfig.NanoCPUs)
+			},
+		},
 	}
 
 	for tn, tt := range tests {
@@ -1884,6 +1898,10 @@ func TestCheckOSType(t *testing.T) {
 	}
 }
 
+func testServicesLimit(i int) *int {
+	return &i
+}
+
 func TestGetServiceDefinitions(t *testing.T) {
 	e := new(executor)
 	e.Build = &common.Build{
@@ -1984,29 +2002,29 @@ func TestGetServiceDefinitions(t *testing.T) {
 				},
 			},
 		},
-		"one service (max 0)": {
+		"requested 1 service, max 0": {
 			services: []common.Service{
 				{
 					Name: "name",
 				},
 			},
-			servicesLimit: func(i int) *int { return &i }(0),
-			expectedErr:   "too many services requested: 1 (only 0 allowed)",
+			servicesLimit: testServicesLimit(0),
+			expectedErr:   (&tooManyServicesRequestedError{requested: 1, allowed: 0}).Error(),
 		},
-		"one service (max 1)": {
-			services:[] common.Service{
+		"requested 1 service, max 1": {
+			services: []common.Service{
 				{
 					Name: "name",
 				},
 			},
-			servicesLimit: func(i int) *int { return &i }(1),
+			servicesLimit: testServicesLimit(1),
 			expectedServices: common.Services{
 				{
 					Name: "name",
 				},
 			},
 		},
-		"two services (max 1)": {
+		"requested 2 services, max 1": {
 			services: []common.Service{
 				{
 					Name: "name",
@@ -2015,8 +2033,8 @@ func TestGetServiceDefinitions(t *testing.T) {
 					Name: "name",
 				},
 			},
-			servicesLimit: func(i int) *int { return &i }(1),
-			expectedErr:   "too many services requested: 2 (only 1 allowed)",
+			servicesLimit: testServicesLimit(1),
+			expectedErr:   (&tooManyServicesRequestedError{requested: 2, allowed: 1}).Error(),
 		},
 	}
 
