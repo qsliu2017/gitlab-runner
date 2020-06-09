@@ -4,7 +4,16 @@ last_updated: 2020-06-09
 
 # Install GitLab Runner using the official GitLab repositories
 
-We provide packages for the currently supported versions of Debian, Ubuntu, Mint, RHEL, Fedora, and CentOS.
+We provide packages for the following distributions and their versions
+
+<!--
+The table of supported distribution versions is created automatically.
+If you need to update it, call `make update_linux_repositories_package_versions_docs`
+in the root directory of this project.
+The versions are defined in `./.gitlab/package_versions.yml` file.
+-->
+
+<!-- distribution_versions_table_start -->
 
 | Distribution | Version                    | End of Life date      |
 |--------------|----------------------------|-----------------------|
@@ -21,6 +30,8 @@ We provide packages for the currently supported versions of Debian, Ubuntu, Mint
 | RHEL/CentOS  | 7                          | June 2024             |
 | RHEL/CentOS  | 8                          | May 2029              |
 | Fedora       | 30                         | approx. June 2020 |
+
+<!-- distribution_versions_table_end -->
 
 ## Prerequisites
 
