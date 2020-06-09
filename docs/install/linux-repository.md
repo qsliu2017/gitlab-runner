@@ -15,21 +15,21 @@ The versions are defined in `./.gitlab/package_versions.yml` file.
 
 <!-- distribution_versions_table_start -->
 
-| Distribution | Version                    | End of Life date      |
-|--------------|----------------------------|-----------------------|
-| Debian       | jessie                     | June 2020             |
-| Debian       | stretch                    | approx. 2022          |
-| Debian       | buster                     |                       |
-| Ubuntu       | xenial                     | April 2021            |
-| Ubuntu       | bionic                     | April 2023            |
-| Ubuntu       | focal                      | April 2025            |
-| Mint         | sarah                      | approx. 2021          |
-| Mint         | serena                     | approx. 2021          |
-| Mint         | sonya                      | approx. 2021          |
-| RHEL/CentOS  | 6                          | November 2020         |
-| RHEL/CentOS  | 7                          | June 2024             |
-| RHEL/CentOS  | 8                          | May 2029              |
-| Fedora       | 30                         | approx. June 2020 |
+| Distribution | Version | End of Life date |
+|--------------|---------|------------------|
+| Debian/Raspbian | jessie (8) | 2020-06 |
+| Debian/Raspbian | stretch (9) | approx. 2022 |
+| Debian/Raspbian | buster (10) |  |
+| Ubuntu | xenial (16.04) | 2021-04 |
+| Ubuntu | bionic (18.04) | 2023-04 |
+| Ubuntu | focal (20.04) | 2025-04 |
+| Mint | sarah (18) | 2021-04 |
+| Mint | serena (18.1) | 2021-04 |
+| Mint | sonya (18.2) | 2021-04 |
+| RHEL/CentOS | 6 | 2020-11 |
+| RHEL/CentOS | 7 | 2024-06 |
+| RHEL/CentOS | 8 | 2029-05 |
+| Fedora | 30 | approx. 2020-06 |
 
 <!-- distribution_versions_table_end -->
 
