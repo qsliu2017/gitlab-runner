@@ -12,21 +12,11 @@ ifeq ($(shell git describe --exact-match --match $(LATEST_STABLE_TAG) >/dev/null
 export IS_LATEST := true
 endif
 
-PACKAGE_CLOUD ?= ayufan/gitlab-ci-multi-runner
-PACKAGE_CLOUD_URL ?= https://packagecloud.io/
+export PACKAGE_CLOUD ?= ayufan/gitlab-ci-multi-runner
+export PACKAGE_CLOUD_URL ?= https://packagecloud.io/
+
 BUILD_PLATFORMS ?= -os '!netbsd' -os '!openbsd' -arch '!mips' -arch '!mips64' -arch '!mipsle' -arch '!mips64le' -arch '!s390x'
 S3_UPLOAD_PATH ?= master
-
-# Keep in sync with docs/install/linux-repository.md
-DEB_PLATFORMS ?= debian/jessie debian/stretch debian/buster \
-    ubuntu/xenial ubuntu/bionic ubuntu/eoan ubuntu/focal \
-    raspbian/jessie raspbian/stretch raspbian/buster \
-    linuxmint/sarah linuxmint/serena linuxmint/sonya
-DEB_ARCHS ?= amd64 i386 armel armhf arm64 aarch64
-RPM_PLATFORMS ?= el/6 el/7 el/8 \
-    ol/6 ol/7 \
-    fedora/30
-RPM_ARCHS ?= x86_64 i686 arm armhf arm64 aarch64
 
 PKG = gitlab.com/gitlab-org/$(PACKAGE_NAME)
 COMMON_PACKAGE_NAMESPACE=$(PKG)/common
@@ -87,8 +77,6 @@ help:
 	# make deps - install all dependencies
 	# make build_all - build project for all supported OSes
 	# make package - package project using FPM
-	# make packagecloud - send all packages to packagecloud
-	# make packagecloud-yank - remove specific version from packagecloud
 
 version:
 	@echo Current version: $(VERSION)
@@ -189,42 +177,9 @@ build-and-deploy-binary:
 	$(MAKE) build_all BUILD_PLATFORMS="-os=linux -arch=amd64"
 	scp out/binaries/$(PACKAGE_NAME)-linux-amd64 $(SERVER):/usr/bin/gitlab-runner
 
-packagecloud: packagecloud-deps packagecloud-deb packagecloud-rpm
-
 packagecloud-deps:
 	# Installing packagecloud dependencies...
 	gem install package_cloud --version "~> 0.3.0" --no-document
-
-packagecloud-deb:
-	# Sending Debian compatible packages...
-	-for DIST in $(DEB_PLATFORMS); do \
-		package_cloud push --url $(PACKAGE_CLOUD_URL) $(PACKAGE_CLOUD)/$$DIST out/deb/*.deb; \
-	done
-
-packagecloud-rpm:
-	# Sending RedHat compatible packages...
-	-for DIST in $(RPM_PLATFORMS); do \
-		package_cloud push --url $(PACKAGE_CLOUD_URL) $(PACKAGE_CLOUD)/$$DIST out/rpm/*.rpm; \
-	done
-
-packagecloud-yank:
-ifneq ($(YANK),)
-	# Removing $(YANK) from packagecloud...
-	-for DIST in $(DEB_PLATFORMS); do \
-		for ARCH in $(DEB_ARCHS); do \
-			package_cloud yank --url $(PACKAGE_CLOUD_URL) $(PACKAGE_CLOUD)/$$DIST $(PACKAGE_NAME)_$(YANK)_$$ARCH.deb & \
-		done; \
-	done; \
-	for DIST in $(RPM_PLATFORMS); do \
-		for ARCH in $(RPM_ARCHS); do \
-			package_cloud yank --url $(PACKAGE_CLOUD_URL) $(PACKAGE_CLOUD)/$$DIST $(PACKAGE_NAME)-$(YANK)-1.$$ARCH.rpm & \
-		done; \
-	done; \
-	wait
-else
-	# No version specified in YANK
-	@exit 1
-endif
 
 s3-upload:
 	export ARTIFACTS_DEST=artifacts; curl -sL https://raw.githubusercontent.com/travis-ci/artifacts/master/install | bash
@@ -236,9 +191,11 @@ s3-upload:
 		$(shell cd out/; find . -type f)
 	@echo "\n\033[1m==> Download index file: \033[36mhttps://$$ARTIFACTS_S3_BUCKET.s3.amazonaws.com/$$S3_UPLOAD_PATH/index.html\033[0m\n"
 
-release_packagecloud:
-	# Releasing to https://packages.gitlab.com/runner/
-	@./ci/release_packagecloud "$$CI_JOB_NAME"
+release_packages: packagecloud-deps
+	@go run ./scripts/release-packages/ release "$$CI_JOB_NAME"
+
+yank_packages: packagecloud-deps
+	@go run ./scripts/release-packages/ yank "$(YANK)"
 
 release_s3: copy_helper_binaries prepare_windows_zip prepare_zoneinfo prepare_index
 	# Releasing to S3
@@ -296,7 +253,13 @@ check-tags-in-changelog:
 	done
 
 update_feature_flags_docs:
-	go run ./scripts/update-feature-flags-docs/main.go
+	@go run ./scripts/update-feature-flags-docs/main.go
+
+update_linux_repositories_package_versions_docs:
+	@go run ./scripts/release-packages/ update-docs
+
+list_linux_repositories_package_versions:
+	@go run ./scripts/release-packages/ list
 
 development_setup:
 	test -d tmp/gitlab-test || git clone https://gitlab.com/gitlab-org/ci-cd/tests/gitlab-test.git tmp/gitlab-test

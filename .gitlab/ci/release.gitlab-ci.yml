@@ -71,14 +71,14 @@
       echo -e "\033[0;31m****** gitlab publishing disabled ******\033[0m"
     fi
 
-.release_packagecloud:
+.release_packages:
   needs:
   - 'package-deb'
   - 'package-rpm'
   extends:
   - .release
   script:
-  - make release_packagecloud
+  - make release_packages
 
 .release_development:
   only:
@@ -140,7 +140,7 @@ bleeding edge S3:
 
 bleeding edge packagecloud:
   extends:
-  - .release_packagecloud
+  - .release_packages
   - .release_bleeding_edge
   environment:
     name: bleeding_edge/packagecloud
@@ -197,7 +197,7 @@ stable S3:
 
 stable packagecloud:
   extends:
-  - .release_packagecloud
+  - .release_packages
   - .release_stable
   environment:
     name: stable/packagecloud
