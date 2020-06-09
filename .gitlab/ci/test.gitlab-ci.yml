@@ -35,13 +35,28 @@ check feature flags docs:
   - .merge_request_pipelines
   - .no_cache_and_dependencies
   script:
-  - cp docs/configuration/feature-flags.md docs/configuration/feature-flags.md.orig
   - make update_feature_flags_docs
   - |
-    diff docs/configuration/feature-flags.md.orig docs/configuration/feature-flags.md || (
+    git --no-pager diff --exit-code -- docs/configuration/feature-flags.md || (
       echo
       echo "Feature Flags list in documentation is not up-to-date"
       echo "Run 'make update_feature_flags_docs' to upate it"
+      echo
+      exit 1
+    )
+
+check linux packages docs:
+  stage: test
+  extends:
+  - .merge_request_pipelines
+  - .no_cache_and_dependencies
+  script:
+  - make update_linux_repositories_package_versions_docs
+  - |
+    git --no-pager diff --exit-code -- docs/install/linux-repository.md || (
+      echo
+      echo "Linux packages list in documentation is not up-to-date"
+      echo "Run 'make update_linux_repositories_package_versions_docs' to upate it"
       echo
       exit 1
     )
