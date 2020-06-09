@@ -1,0 +1,81 @@
+distributions:
+- name: Debian/Raspbian
+  type: deb
+  versions:
+  - version: jessie (8)
+    eol: 2020-06
+    ids:
+    - debian/jessie
+    - raspbian/jessie
+    publish_to_unstable: true
+  - version: stretch (9)
+    eol: approx. 2022
+    ids:
+    - debian/stretch
+    - raspbian/stretch
+    publish_to_unstable: true
+  - version: buster (10)
+    ids:
+    - debian/buster
+    - raspbian/buster
+    publish_to_unstable: true
+- name: Ubuntu
+  type: deb
+  versions:
+  - version: xenial (16.04)
+    eol: 2021-04
+    ids:
+    - ubuntu/xenial
+    publish_to_unstable: true
+  - version: bionic (18.04)
+    eol: 2023-04
+    ids:
+    - ubuntu/bionic
+    publish_to_unstable: true
+  - version: focal (20.04)
+    eol: 2025-04
+    ids:
+    - ubuntu/focal
+- name: Mint
+  type: deb
+  versions:
+  - version: sarah (18)
+    eol: 2021-04
+    ids:
+    - linuxmint/sarah
+  - version: serena (18.1)
+    eol: 2021-04
+    ids:
+    - linuxmint/serena
+  - version: sonya (18.2)
+    eol: 2021-04
+    ids:
+    - linuxmint/sonya
+- name: RHEL/CentOS
+  type: rpm
+  versions:
+  - version: "6"
+    eol: 2020-11
+    ids:
+    - el/6
+    - ol/6
+  - version: "7"
+    eol: 2024-06
+    ids:
+    - el/7
+    - ol/7
+    publish_to_unstable: true
+  - version: "8"
+    eol: 2029-05
+    ids:
+    - el/8
+    - ol/8
+    publish_to_unstable: true
+- name: Fedora
+  type: rpm
+  versions:
+  - version: "30"
+    eol: approx. 2020-06
+    ids:
+    - fedora/30
+    publish_to_unstable: true
