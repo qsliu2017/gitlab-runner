@@ -16,12 +16,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/bmatcuk/doublestar"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/kardianos/osext"
+	"github.com/saracen/matcher"
 	"github.com/sirupsen/logrus"
 
 	"gitlab.com/gitlab-org/gitlab-runner/common"
@@ -911,7 +911,7 @@ func (e *executor) disconnectNetwork(ctx context.Context, id string) {
 
 func (e *executor) verifyAllowedImage(image, optionName string, allowedImages, internalImages []string) error {
 	for _, allowedImage := range allowedImages {
-		ok, _ := doublestar.Match(allowedImage, image)
+		ok, _ := matcher.Match(allowedImage, image)
 		if ok {
 			return nil
 		}

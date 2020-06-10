@@ -57,6 +57,7 @@ require (
 	github.com/prometheus/common v0.6.0
 	github.com/prometheus/procfs v0.0.5 // indirect
 	github.com/sanity-io/litter v1.2.0 // indirect
+	github.com/saracen/matcher v0.0.0-20200906130205-7b85889bd762
 	github.com/sirupsen/logrus v1.4.2
 	github.com/smartystreets/goconvey v1.6.4 // indirect
 	github.com/spf13/pflag v1.0.1-0.20171106142849-4c012f6dcd95 // indirect
@@ -69,7 +70,7 @@ require (
 	golang.org/x/crypto v0.0.0-20200221231518-2aa609cf4a9d
 	golang.org/x/lint v0.0.0-20191125180803-fdd1cda4f05f // indirect
 	golang.org/x/net v0.0.0-20200222125558-5a598a2470a0
-	golang.org/x/sync v0.0.0-20190423024810-112230192c58
+	golang.org/x/sync v0.0.0-20200625203802-6e8e738ad208
 	golang.org/x/sys v0.0.0-20200223170610-d5e6a3e2c0ae
 	golang.org/x/tools v0.0.0-20200128002243-345141a36859 // indirect
 	gopkg.in/inf.v0 v0.9.0 // indirect
