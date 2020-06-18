@@ -184,8 +184,8 @@ Use the following commands to register a new runner, or list and verify
 them if they are still registered.
 
 - [`gitlab-runner register`](#gitlab-runner-register)
-  - [Interactive registration](#interactive-registration)
-  - [Non-interactive registration](#non-interactive-registration)
+    - [Interactive registration](#interactive-registration)
+    - [Non-interactive registration](#non-interactive-registration)
 - [`gitlab-runner list`](#gitlab-runner-list)
 - [`gitlab-runner verify`](#gitlab-runner-verify)
 - [`gitlab-runner unregister`](#gitlab-runner-unregister)

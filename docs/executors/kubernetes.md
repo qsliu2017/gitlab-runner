@@ -93,7 +93,7 @@ The following keywords help to define the behavior of the Runner within Kubernet
 - `helper_memory_request`: The amount of memory requested for build helper containers
 - `helper_memory_request_overwrite_max_allowed`: The max amount the memory allocation request can be written to for helper containers. When empty, it disables the memory request overwrite feature
 - `pull_policy`: specify the image pull policy: `never`, `if-not-present`, `always`. The cluster's image [default pull policy](https://kubernetes.io/docs/concepts/containers/images/#updating-images) will be used if not set.
-  - See also [`if-not-present` security considerations](../security/index.md#usage-of-private-docker-images-with-if-not-present-pull-policy).
+    - See also [`if-not-present` security considerations](../security/index.md#usage-of-private-docker-images-with-if-not-present-pull-policy).
 - `node_selector`: A `table` of `key=value` pairs of `string=string`. Setting this limits the creation of pods to Kubernetes nodes matching all the `key=value` pairs
 - `node_tolerations`: A `table` of `"key=value" = "Effect"` pairs in the format of `string=string:string`. Setting this allows pods to schedule to nodes with all or a subset of tolerated taints. Only one toleration can be supplied through environment variable configuration. The `key`, `value`, and `effect` match with the corresponding field names in Kubernetes pod toleration configuration.
 - `image_pull_secrets`: A array of secrets that are used to authenticate Docker image pulling

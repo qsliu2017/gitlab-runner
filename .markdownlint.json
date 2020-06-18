@@ -7,6 +7,7 @@
   "ul-style": {
     "style": "dash"
   },
+  "MD007": { "indent": 4 },
   "no-trailing-spaces": false,
   "line-length": false,
   "no-duplicate-header": {

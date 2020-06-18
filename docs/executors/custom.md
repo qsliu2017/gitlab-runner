@@ -246,9 +246,9 @@ executed with:
 
 - The usual environment variables.
 - Two arguments:
-  - The path to the script that GitLab Runner creates for the Custom
-    executor to run.
-  - Name of the stage.
+    - The path to the script that GitLab Runner creates for the Custom
+      executor to run.
+    - Name of the stage.
 
 For example:
 

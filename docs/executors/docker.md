@@ -79,9 +79,9 @@ Docker executor:
   Docker](https://github.com/MicrosoftDocs/Virtualization-Documentation/issues/334),
   if the destination path drive letter is not `c:`, paths are not supported for:
 
-  - [`builds_dir`](../configuration/advanced-configuration.md#the-runners-section)
-  - [`cache_dir`](../configuration/advanced-configuration.md#the-runners-section)
-  - [`volumes`](../configuration/advanced-configuration.md#volumes-in-the-runnersdocker-section)
+    - [`builds_dir`](../configuration/advanced-configuration.md#the-runners-section)
+    - [`cache_dir`](../configuration/advanced-configuration.md#the-runners-section)
+    - [`volumes`](../configuration/advanced-configuration.md#volumes-in-the-runnersdocker-section)
 
   This means values such as `f:\\cache_dir` are not supported, but `f:` is supported.
   However, if the destination path is on the `c:` drive, paths are also supported
@@ -241,12 +241,12 @@ the default Docker `bridge` mode to link the job container with the services.
 using one of the following values:
 
 - One of the standard Docker [networking modes](https://docs.docker.com/engine/reference/run/#network-settings):
-  - `bridge`: use the bridge network (default)
-  - `host`: use the host's network stack inside the container
-  - `none`: no networking (not recommended)
-  - Any other `network_mode` value is taken as the name of an already existing
-    Docker network, which the build container should connect to.
-
+    - `bridge`: use the bridge network (default)
+    - `host`: use the host's network stack inside the container
+    - `none`: no networking (not recommended)
+    - Any other `network_mode` value is taken as the name of an already existing
+      Docker network, which the build container should connect to.
+    
 For name resolution to work, Docker will manipulate the `/etc/hosts` file in the build
 job container to include the service container hostname (and alias). However,
 the service container will **not** be able to resolve the build job container

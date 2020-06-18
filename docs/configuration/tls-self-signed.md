@@ -24,10 +24,10 @@ GitLab Runner supports the following options:
 - GitLab Runner reads the PEM certificate (**DER format is not supported**) from a
   predefined file:
 
-  - `/etc/gitlab-runner/certs/hostname.crt` on *nix systems when GitLab Runner is executed as root.
-  - `~/.gitlab-runner/certs/hostname.crt` on *nix systems when GitLab Runner is executed as non-root.
-  - `./certs/hostname.crt` on other systems. If running Runner as a Windows service,
-    this will not work. Use the last option instead.
+    - `/etc/gitlab-runner/certs/hostname.crt` on *nix systems when GitLab Runner is executed as root.
+    - `~/.gitlab-runner/certs/hostname.crt` on *nix systems when GitLab Runner is executed as non-root.
+    - `./certs/hostname.crt` on other systems. If running Runner as a Windows service,
+      this will not work. Use the last option instead.
 
 - If your server address is: `https://my.gitlab.server.com:8443/`, create the
   certificate file at: `/etc/gitlab-runner/certs/my.gitlab.server.com.crt`.

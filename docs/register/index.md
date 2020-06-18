@@ -9,12 +9,12 @@ Before registering a runner, you need to first:
 - [Install it](../install/index.md) on a server separate than where GitLab
   is installed
 - Obtain a token:
-  - For a [shared runner](https://docs.gitlab.com/ee/ci/runners/#shared-runners),
-    have an administrator go to the GitLab Admin Area and click **Overview > Runners**
-  - For a [group runner](https://docs.gitlab.com/ee/ci/runners/README.html#group-runners),
-    go to **Settings > CI/CD** and expand the **Runners** section
-  - For a [project-specific runner](https://docs.gitlab.com/ee/ci/runners/README.html#specific-runners),
-    go to **Settings > CI/CD** and expand the **Runners** section
+    - For a [shared runner](https://docs.gitlab.com/ee/ci/runners/#shared-runners),
+      have an administrator go to the GitLab Admin Area and click **Overview > Runners**
+    - For a [group runner](https://docs.gitlab.com/ee/ci/runners/README.html#group-runners),
+      go to **Settings > CI/CD** and expand the **Runners** section
+    - For a [project-specific runner](https://docs.gitlab.com/ee/ci/runners/README.html#specific-runners),
+      go to **Settings > CI/CD** and expand the **Runners** section
 
 NOTE: **Note:**
 When registering a GitLab Runner on GitLab.com, the `gitlab-ci coordinator URL`

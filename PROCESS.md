@@ -1,4 +1,4 @@
-## GitLab core team & GitLab Inc. contribution process
+# GitLab core team & GitLab Inc. contribution process
 
 ---
 
@@ -8,27 +8,27 @@
 
 - [Be kind](#be-kind)
 - [Feature freeze on the 7th for the release on the 22nd](#feature-freeze-on-the-7th-for-the-release-on-the-22nd)
-  - [Between the 1st and the 7th](#between-the-1st-and-the-7th)
-    - [What happens if these deadlines are missed?](#what-happens-if-these-deadlines-are-missed)
-  - [On the 7th](#on-the-7th)
-  - [After the 7th](#after-the-7th)
-  - [Asking for an exception](#asking-for-an-exception)
+    - [Between the 1st and the 7th](#between-the-1st-and-the-7th)
+        - [What happens if these deadlines are missed?](#what-happens-if-these-deadlines-are-missed)
+    - [On the 7th](#on-the-7th)
+    - [After the 7th](#after-the-7th)
+    - [Asking for an exception](#asking-for-an-exception)
 - [Bugs](#bugs)
-  - [Regressions](#regressions)
-  - [Managing bugs](#managing-bugs)
+    - [Regressions](#regressions)
+    - [Managing bugs](#managing-bugs)
 - [Supported releases](#supported-releases)
 - [Releasing GitLab Runner](#releasing-gitlab-runner)
-  - [Security release](#security-release)
+    - [Security release](#security-release)
 - [Renew expired GPG key](#renew-expired-gpg-key)
-- [Copy & paste responses](#copy--paste-responses)
-  - [Improperly formatted issue](#improperly-formatted-issue)
-  - [Issue report for old version](#issue-report-for-old-version)
-  - [Support requests and configuration questions](#support-requests-and-configuration-questions)
-  - [Code format](#code-format)
-  - [Issue fixed in newer version](#issue-fixed-in-newer-version)
-  - [Improperly formatted merge request](#improperly-formatted-merge-request)
-  - [Accepting merge requests](#accepting-merge-requests)
-  - [Only accepting merge requests with green tests](#only-accepting-merge-requests-with-green-tests)
+- [Copy & paste responses](#copy-&-paste-responses)
+    - [Improperly formatted issue](#improperly-formatted-issue)
+    - [Issue report for old version](#issue-report-for-old-version)
+    - [Support requests and configuration questions](#support-requests-and-configuration-questions)
+    - [Code format](#code-format)
+    - [Issue fixed in newer version](#issue-fixed-in-newer-version)
+    - [Improperly formatted merge request](#improperly-formatted-merge-request)
+    - [Accepting merge requests](#accepting-merge-requests)
+    - [Only accepting merge requests with green tests](#only-accepting-merge-requests-with-green-tests)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -211,11 +211,11 @@ Regressions should be considered high priority issues that should be solved as s
 The two scenarios below can [bypass the exception request in the release process](https://gitlab.com/gitlab-org/release/docs/blob/master/general/exception-request/process.md#after-the-7th), where the affected regression version matches the current monthly release version:
 
 - A regression which worked in the **Last monthly release**
-  - **Example:** In 11.0 we released a new `feature X` that is verified as working. Then in release 11.1 the feature no longer works, this is regression for 11.1. The issue should have the `regression:11.1` label.
-  - *Note:* When we say `the last recent monthly release`, this can refer to either the version currently running on GitLab.com, or the most recent version available in the package repositories.
+    - **Example:** In 11.0 we released a new `feature X` that is verified as working. Then in release 11.1 the feature no longer works, this is regression for 11.1. The issue should have the `regression:11.1` label.
+    - *Note:* When we say `the last recent monthly release`, this can refer to either the version currently running on GitLab.com, or the most recent version available in the package repositories.
 - A regression which worked in the **Current release candidates**
-  - **Example:** In 11.1-RC3 we shipped a new feature which has been verified as working. Then in 11.1-RC5 the feature no longer works, this is regression for 11.1. The issue should have the `regression:11.1` label.
-  - *Note:* Because GitLab.com runs release candidates of new releases, a regression can be reported in a release before its 'official' release date on the 22nd of the month.
+    - **Example:** In 11.1-RC3 we shipped a new feature which has been verified as working. Then in 11.1-RC5 the feature no longer works, this is regression for 11.1. The issue should have the `regression:11.1` label.
+    - *Note:* Because GitLab.com runs release candidates of new releases, a regression can be reported in a release before its 'official' release date on the 22nd of the month.
 
 When a bug is found:
 
@@ -307,14 +307,14 @@ that documents and automates the process.
 
 ### Improperly formatted issue
 
-```
+```markdown
 Thank you for the issue report. Please reformat your issue to conform to the
 [contribution guidelines](https://docs.gitlab.com/ee/development/contributing/issue_workflow.html#issue-tracker-guidelines).
 ```
 
 ### Issue report for old version
 
-```
+```markdown
 Thank you for the issue report. We only support issues for the latest stable version of GitLab.
 I'm closing this issue, however if you still experience this problem in the latest stable version,
 please open a new issue (and please reference the old issue(s)).
@@ -324,7 +324,7 @@ guidelines found in our [contribution guidelines](https://docs.gitlab.com/ee/dev
 
 ### Support requests and configuration questions
 
-```
+```markdown
 Thank you for your interest in GitLab. We don't use the issue tracker for support
 requests and configuration questions. Please check our
 [Support](https://about.gitlab.com/support/) page to see all of the available
@@ -337,7 +337,7 @@ You can read more about this policy in our
 
 ### Code format
 
-```
+```markdown
 Please enclose console output, logs, and code in backticks (`` ` ``), as it's
 very hard to read otherwise. For more information, read our
 [guide on code and codeblocks in markdown](https://docs.gitlab.com/ee/development/documentation/styleguide.html#code-blocks)
@@ -345,7 +345,7 @@ very hard to read otherwise. For more information, read our
 
 ### Issue fixed in newer version
 
-```
+```markdown
 Thank you for the issue report. This issue has already been fixed in newer versions of GitLab.
 Due to the size of this project and our limited resources we are only able to support the
 latest stable release as outlined in our [contribution guidelines](https://docs.gitlab.com/ee/development/contributing/issue_workflow.html).
@@ -357,14 +357,14 @@ tracker guidelines found in the [contribution guidelines](https://docs.gitlab.co
 
 ### Improperly formatted merge request
 
-```
+```markdown
 Thanks for your interest in improving the GitLab codebase!
 Please update your merge request according to the [contribution guidelines](https://gitlab.com/gitlab-org/gitlab-ce/blob/master/doc/development/contributing/merge_request_workflow.md#merge-request-guidelines).
 ```
 
 ### Accepting merge requests
 
-```
+```markdown
 Is there an issue on the
 [issue tracker](https://gitlab.com/gitlab-org/gitlab-ce/issues) that is
 similar to this? Could you please link it here?
@@ -375,7 +375,7 @@ might not make it into GitLab.
 
 ### Only accepting merge requests with green tests
 
-```
+```markdown
 We can only accept a merge request if all the tests are green. I've just
 restarted the build. If the tests are still not green after this restart and
 you're sure that is does not have anything to do with your code changes, please
