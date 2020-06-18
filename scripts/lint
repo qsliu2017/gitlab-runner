@@ -1,0 +1,102 @@
+#!/usr/bin/env bash
+
+set -Eo pipefail
+
+ERROR_RESULTS=0
+
+# Colors
+YLW=$(tput -Txterm setaf 3)
+RED=$(tput -Txterm setaf 1)
+WHT=$(tput -Txterm setaf 7)
+GRN=$(tput -Txterm setaf 2)
+RST='\033[0m'
+
+linter2cc='linter2cc'
+ccJSONReports=()
+
+function checkTool() {
+    local tool="$1"
+    local url="$2"
+    local path="$1"
+    if [[ $# -eq 3 ]]; then
+        path="$3"
+    fi
+
+    command -v "${path}" >/dev/null 2>&1 && return
+
+    echo -e "${RED}✖ ERROR: '${tool}' tool not found." >/dev/stderr
+    echo -e "         Please consider installing it from ${url}${RST}" >/dev/stderr
+    ((ERROR_RESULTS++))
+}
+
+function runLinter() {
+    echo -e "${YLW}Lint $1${RST}" >/dev/stderr
+    shift 1
+    $1 --version >/dev/stderr
+
+    if [[ "${OUT_FORMAT}" == "code-climate" ]]; then
+        local json
+        json="$("${linter2cc}" "$@")"
+        EXIT_CODE=$?
+        if [ -n "${json}" ]; then
+            ((ERROR_RESULTS++))
+            # shellcheck disable=SC2068
+            ccJSONReports+=( "${json}" )
+        fi
+    else
+        eval "$@"
+        EXIT_CODE=$?
+        [[ $EXIT_CODE == 0 ]] || ((ERROR_RESULTS++))
+    fi
+
+    [[ $EXIT_CODE -gt 2 ]] && exit $EXIT_CODE
+}
+
+if [ "${OUT_FORMAT}" = "code-climate" ]; then
+    "${linter2cc}" --version >/dev/stderr || exit 2
+fi
+
+if [[ "${GOLANGLINT}" != .tmp/golangci-lint ]]; then
+    rm -f .tmp/golangci-lint && cp -f "${GOLANGLINT}" .tmp/golangci-lint
+    GOLANGLINT=.tmp/golangci-lint
+fi
+checkTool golangci-lint 'https://github.com/golangci/golangci-lint#install-golangci-lint' "${GOLANGLINT}"
+checkTool shellcheck 'https://github.com/koalaman/shellcheck#installing'
+
+if [[ "${ERROR_RESULTS}" -ne 0 ]]; then
+    exit 2
+fi
+
+while IFS='' read -r line; do shellFiles+=("$line"); done < \
+    <(find ci dockerfiles scripts -type f -perm +111 -not -name 'gitlab-runner-*' -not -name 'security-harness')
+
+# shellcheck disable=SC2086
+runLinter "Go files" "${GOLANGLINT}" run ./... --out-format "${OUT_FORMAT}" ${LINT_FLAGS}
+runLinter "shell scripts" shellcheck "${shellFiles[@]}"
+
+if [[ "${OUT_FORMAT}" == "code-climate" ]]; then
+    #
+    # Create an aggregate Code Climate file with the output of all the linters
+    #
+    report=$(echo -n "${ccJSONReports[@]}" | tr '\n' ',')
+    # Output report for artifact
+    echo -n "[${report}]"
+    # Add line break if necessary
+    [[ -n "${report}" ]] && echo >/dev/stderr
+    # Output human-readable report by iterating the JSON objects and extracting properties
+    # Add some colors in the process. We need to run sed to replace markers because jq doesn't
+    # handle the colors correctly
+    echo -n "[${report}]" | \
+        jq -r '.[] | "$WHT"+.location.path+":"+(.location.lines.begin|tostring)+" - $YLW"+.check_name+"$WHT: "+.description' \
+            | sed "s/\$YLW/${YLW}/g" \
+            | sed "s/\$WHT/${WHT}/g" >/dev/stderr
+fi
+
+if [ "${ERROR_RESULTS}" -ne 0 ]; then
+    echo -e "${RED}✖ ${ERROR_RESULTS} linter(s) failed. Review the log carefully to see full listing.${RST}" \
+        >/dev/stderr
+    exit 1
+else
+    echo -e "${GRN}✔ Linting passed${RST}" >/dev/stderr
+    exit 0
+fi

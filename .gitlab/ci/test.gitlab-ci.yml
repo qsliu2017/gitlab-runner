@@ -122,9 +122,7 @@ code_quality:
   # Copy the Docker image's golangci-lint to the location expected by `make lint` so that it is not built
   - cp $(which golangci-lint) .tmp/golangci-lint
   script:
-    # Write the code coverage report to gl-code-quality-report.json
-    # and print linting issues to stdout in the format: path/to/file:line description
-  - make --silent lint | tee ${REPORT_FILE}
+  - make --silent lint > ${REPORT_FILE}
   timeout: 15 minutes
   artifacts:
     reports:

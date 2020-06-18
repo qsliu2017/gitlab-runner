@@ -112,10 +112,11 @@ version:
 deps: $(DEVELOPMENT_TOOLS)
 
 .PHONY: lint
-lint: OUT_FORMAT ?= colored-line-number
-lint: LINT_FLAGS ?=
+lint: export GOLANGLINT ?= $(GOLANGLINT)
+lint: export OUT_FORMAT ?= colored-line-number
+lint: export LINT_FLAGS ?=
 lint: $(GOLANGLINT)
-	@$(GOLANGLINT) run ./... --out-format $(OUT_FORMAT) $(LINT_FLAGS)
+	@scripts/lint
 
 .PHONY: lint-docs
 lint-docs:
