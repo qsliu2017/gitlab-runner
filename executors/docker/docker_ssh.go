@@ -8,6 +8,7 @@ import (
 	"gitlab.com/gitlab-org/gitlab-runner/common"
 	"gitlab.com/gitlab-org/gitlab-runner/executors"
 	"gitlab.com/gitlab-org/gitlab-runner/executors/docker/internal/volumes/parser"
+	"gitlab.com/gitlab-org/gitlab-runner/helpers/deprecate"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers/ssh"
 )
 
@@ -22,9 +23,8 @@ func (s *sshExecutor) Prepare(options common.ExecutorPrepareOptions) error {
 		return err
 	}
 
-	s.Warningln(
-		"Since GitLab Runner 10.0 docker-ssh and docker-ssh+machine executors " +
-			"are marked as DEPRECATED and will be removed in one of the upcoming releases")
+	deprecate.Warningln(s, "2732", "Since GitLab Runner 10.0 docker-ssh and docker-ssh+machine executors "+
+		"are marked as DEPRECATED and will be removed in one of the upcoming releases")
 
 	if s.Config.SSH == nil {
 		return errors.New("missing SSH configuration")

@@ -18,6 +18,7 @@ import (
 	"gitlab.com/gitlab-org/gitlab-runner/common"
 	"gitlab.com/gitlab-org/gitlab-runner/executors"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers"
+	"gitlab.com/gitlab-org/gitlab-runner/helpers/deprecate"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers/featureflags"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers/process"
 )
@@ -85,7 +86,7 @@ func (s *executor) Run(cmd common.ExecutorCommand) error {
 
 // TODO: Remove in 14.0 https://gitlab.com/gitlab-org/gitlab-runner/issues/6413
 func (s *executor) runLegacy(cmd common.ExecutorCommand) error {
-	s.BuildLogger.Debugln("Using legacy command execution")
+	deprecate.Debugln(s, "6413", "using legacy command execution will be removed in 14.0")
 	// Create execution command
 	c := exec.Command(s.BuildShell.Command, s.BuildShell.Arguments...)
 	if c == nil {
