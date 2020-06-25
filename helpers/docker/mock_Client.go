@@ -121,6 +121,27 @@ func (_m *MockClient) ContainerExecCreate(ctx context.Context, _a1 string, confi
 	return r0, r1
 }
 
+// ContainerExecInspect provides a mock function with given fields: ctx, execID
+func (_m *MockClient) ContainerExecInspect(ctx context.Context, execID string) (types.ContainerExecInspect, error) {
+	ret := _m.Called(ctx, execID)
+
+	var r0 types.ContainerExecInspect
+	if rf, ok := ret.Get(0).(func(context.Context, string) types.ContainerExecInspect); ok {
+		r0 = rf(ctx, execID)
+	} else {
+		r0 = ret.Get(0).(types.ContainerExecInspect)
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = rf(ctx, execID)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // ContainerInspect provides a mock function with given fields: ctx, containerID
 func (_m *MockClient) ContainerInspect(ctx context.Context, containerID string) (types.ContainerJSON, error) {
 	ret := _m.Called(ctx, containerID)

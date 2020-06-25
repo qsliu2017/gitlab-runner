@@ -23,9 +23,11 @@ import (
 	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/kardianos/osext"
 	"github.com/sirupsen/logrus"
+	"golang.org/x/sync/errgroup"
 
 	"gitlab.com/gitlab-org/gitlab-runner/common"
 	"gitlab.com/gitlab-org/gitlab-runner/executors"
+	"gitlab.com/gitlab-org/gitlab-runner/executors/docker/internal/containerprobe"
 	"gitlab.com/gitlab-org/gitlab-runner/executors/docker/internal/labels"
 	"gitlab.com/gitlab-org/gitlab-runner/executors/docker/internal/networks"
 	"gitlab.com/gitlab-org/gitlab-runner/executors/docker/internal/volumes"
@@ -37,6 +39,7 @@ import (
 	"gitlab.com/gitlab-org/gitlab-runner/helpers/container/services"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers/docker"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers/docker/auth"
+	"gitlab.com/gitlab-org/gitlab-runner/helpers/probe"
 )
 
 const (
@@ -55,6 +58,7 @@ var PrebuiltImagesPaths []string
 const (
 	labelServiceType = "service"
 	labelWaitType    = "wait"
+	labelHelperType  = "helper"
 )
 
 var neverRestartPolicy = container.RestartPolicy{Name: "no"}
@@ -513,7 +517,101 @@ func (e *executor) getServicesDefinitions() (common.Services, error) {
 	return serviceDefinitions, nil
 }
 
-func (e *executor) waitForServices() {
+func (e *executor) waitForServices() error {
+	if e.networkMode.UserDefined() == "" {
+		return e.waitForServicesLegacy()
+	}
+
+	return e.waitForServicesProber()
+}
+
+func (e *executor) waitForServicesProber() error {
+	waitForServicesTimeout := e.Config.Docker.WaitForServicesTimeout
+	if waitForServicesTimeout == 0 {
+		waitForServicesTimeout = common.DefaultWaitForServicesTimeout
+	}
+
+	if waitForServicesTimeout == 0 || len(e.services) == 0 {
+		return nil
+	}
+
+	e.Println("Waiting for services to be up and running...")
+
+	return e.createHelperContainer(func(containerID string) error {
+		var eg errgroup.Group
+
+		for _, service := range e.services {
+			// For now, until we improve support for probes, we guess the container
+			// port.
+			guessedPorts, err := e.getContainerExposedPorts(service)
+			if err != nil {
+				return fmt.Errorf("get container exposed ports: %v", err)
+			}
+			if len(guessedPorts) == 0 {
+				e.Warningln(
+					fmt.Sprintf("Unable to guess port for service %v. Will assume the container is healthy...",
+						service.Names))
+				continue
+			}
+
+			// In the future, we will support the following probes:
+			// - TCP Probe
+			// - HTTP Get Probe
+			// - Exec Probe
+			//
+			// All of these probes are implemented, but the CI server doesn't
+			// yet support them.
+			//
+			// The TCP Probe and HTTP Get Probe need to be executed inside of
+			// the helper container. To do this, we use the ExecProbe.
+			//
+			// Eventually, ExecProbes will also be used for health probes
+			// defined by the ci config, for accessing containers other than
+			// the helper container, for executing arbitrary commands.
+			//
+			// A large retry count is used to mimic existing behaviour (the inner
+			// health check runs forever). The exec probe's timeout
+			// (waitForServicesTimeout) will cancel the prober.
+			execProbe := &containerprobe.ExecProbe{
+				Client:      e.client,
+				ContainerID: containerID,
+				Names:       service.Names,
+				Cmd: []string{
+					"gitlab-runner-helper",
+					"health-probe",
+					"--host", service.ID[12:],
+					"--retries", "10000",
+					"--period", "1s",
+					"tcp",
+					"--port", strconv.Itoa(guessedPorts[0]),
+				},
+			}
+
+			eg.Go(func() error {
+				success := probe.Probe(e.Context,
+					e,
+					execProbe,
+					probe.Config{
+						Retries:      5,
+						InitialDelay: 3 * time.Second,
+						Period:       1 * time.Second,
+						Timeout:      time.Duration(waitForServicesTimeout) * time.Second,
+					})
+
+				if !success {
+					// we retain a "probably didn't start properly" error to produce a warning
+					// with similar content to previous behaviour.
+					return errors.New("some services probably didn't start properly")
+				}
+				return nil
+			})
+		}
+
+		return eg.Wait()
+	})
+}
+
+func (e *executor) waitForServicesLegacy() error {
 	waitForServicesTimeout := e.Config.Docker.WaitForServicesTimeout
 	if waitForServicesTimeout == 0 {
 		waitForServicesTimeout = common.DefaultWaitForServicesTimeout
@@ -532,6 +630,60 @@ func (e *executor) waitForServices() {
 		}
 		wg.Wait()
 	}
+
+	return nil
+}
+
+func (e *executor) createHelperContainer(run func(containerID string) error) error {
+	image, err := e.getPrebuiltImage()
+	if err != nil {
+		return err
+	}
+
+	hostname := e.Config.Docker.Hostname
+	if hostname == "" {
+		hostname = e.Build.ProjectUniqueName()
+	}
+
+	labels := map[string]string{
+		"type": labelHelperType,
+	}
+
+	config := &container.Config{
+		Hostname: hostname,
+		Image:    image.ID,
+		Labels:   e.labeler.Labels(labels),
+		Cmd:      []string{"gitlab-runner-helper", "pause"},
+	}
+
+	hostConfig := &container.HostConfig{
+		RestartPolicy: neverRestartPolicy,
+		NetworkMode:   e.networkMode,
+		ExtraHosts:    e.Config.Docker.ExtraHosts,
+	}
+
+	containerName := e.getProjectUniqRandomizedName() + "-helper"
+
+	resp, err := e.client.ContainerCreate(e.Context, config, hostConfig, nil, containerName)
+	if err != nil {
+		return fmt.Errorf("ContainerCreate: %v", err)
+	}
+
+	err = e.client.ContainerStart(e.Context, resp.ID, types.ContainerStartOptions{})
+	if err != nil {
+		return err
+	}
+
+	defer func() {
+		_ = e.waiter.KillWait(e.Context, resp.ID)
+	}()
+
+	err = run(resp.ID)
+	if err != nil {
+		return err
+	}
+
+	return e.waiter.KillWait(e.Context, resp.ID)
 }
 
 func (e *executor) buildServiceLinks(linksMap map[string]*types.Container) (links []string) {
@@ -649,7 +801,9 @@ func (e *executor) createServices() (err error) {
 		}
 	}
 
-	e.waitForServices()
+	if err := e.waitForServices(); err != nil {
+		e.Warningln(err)
+	}
 
 	if e.networkMode.IsBridge() || e.networkMode.NetworkName() == "" {
 		e.Debugln("Building service links...")

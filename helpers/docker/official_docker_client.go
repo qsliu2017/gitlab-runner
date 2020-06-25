@@ -187,6 +187,15 @@ func (c *officialDockerClient) ContainerExecAttach(
 	return resp, wrapError("ContainerExecAttach", err, started)
 }
 
+func (c *officialDockerClient) ContainerExecInspect(
+	ctx context.Context,
+	execID string,
+) (types.ContainerExecInspect, error) {
+	started := time.Now()
+	resp, err := c.client.ContainerExecInspect(ctx, execID)
+	return resp, wrapError("ContainerExecInspect", err, started)
+}
+
 func (c *officialDockerClient) NetworkCreate(
 	ctx context.Context,
 	networkName string,
