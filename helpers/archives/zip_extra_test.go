@@ -1,12 +1,12 @@
 package archives
 
 import (
-	"io/ioutil"
-	"os"
-	"testing"
-
 	"archive/zip"
 	"encoding/binary"
+	"io/ioutil"
+	"os"
+	"runtime"
+	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -22,6 +22,12 @@ func TestCreateZipExtra(t *testing.T) {
 
 	data := createZipExtra(fi)
 	assert.NotEmpty(t, data)
+
+	if runtime.GOOS == "windows" {
+		assert.Len(t, data, binary.Size(&ZipExtraField{})+binary.Size(&ZipTimestampField{}))
+		return
+	}
+
 	assert.Len(t, data, binary.Size(&ZipExtraField{})*2+
 		binary.Size(&ZipUIDGidField{})+
 		binary.Size(&ZipTimestampField{}))

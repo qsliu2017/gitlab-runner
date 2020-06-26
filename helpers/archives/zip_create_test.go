@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"io/ioutil"
 	"os"
-	"syscall"
 	"testing"
 
 	"github.com/sirupsen/logrus"
@@ -16,7 +15,7 @@ import (
 var testZipFileContent = []byte("test content")
 
 func createTestFile(t *testing.T) string {
-	err := ioutil.WriteFile("test_file.txt", testZipFileContent, 0640)
+	err := ioutil.WriteFile("test_file.txt", testZipFileContent, 0444)
 	assert.NoError(t, err)
 	return "test_file.txt"
 }
@@ -33,17 +32,11 @@ func createTestDirectory(t *testing.T) string {
 	return "test_directory"
 }
 
-func createTestPipe(t *testing.T) string {
-	err := syscall.Mkfifo("test_pipe", 0600)
-	assert.NoError(t, err)
-	return "test_pipe"
-}
-
 func createTestGitPathFile(t *testing.T) string {
 	err := os.Mkdir(".git", 0711)
 	assert.NoError(t, err)
 
-	err = ioutil.WriteFile(".git/test_file", testZipFileContent, 0640)
+	err = ioutil.WriteFile(".git/test_file", testZipFileContent, 0444)
 	assert.NoError(t, err)
 
 	return ".git/test_file"
@@ -87,7 +80,7 @@ func TestZipCreate(t *testing.T) {
 		assert.Len(t, archive.File, 3)
 
 		assert.Equal(t, "test_file.txt", archive.File[0].Name)
-		assert.Equal(t, os.FileMode(0640), archive.File[0].Mode().Perm())
+		assert.Equal(t, os.FileMode(0444), archive.File[0].Mode().Perm())
 		assert.NotEmpty(t, archive.File[0].Extra)
 
 		assert.Equal(t, "new_symlink", archive.File[1].Name)
@@ -120,7 +113,7 @@ func TestZipCreateWithGitPath(t *testing.T) {
 		assert.Len(t, archive.File, 1)
 
 		assert.Equal(t, ".git/test_file", archive.File[0].Name)
-		assert.Equal(t, os.FileMode(0640), archive.File[0].Mode().Perm())
+		assert.Equal(t, os.FileMode(0444), archive.File[0].Mode().Perm())
 		assert.NotEmpty(t, archive.File[0].Extra)
 	})
 }
