@@ -483,7 +483,7 @@ func (e *executor) createHostConfigForService() (*container.HostConfig, error) {
 		LogConfig: container.LogConfig{
 			Type: "json-file",
 		},
-	}
+	}, nil
 }
 
 func (e *executor) networkConfig(aliases []string) *network.NetworkingConfig {
