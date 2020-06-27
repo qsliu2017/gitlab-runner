@@ -37,7 +37,7 @@ sign_helper images:
   - .docker
   stage: package
   script:
-  - ci/sign_binary dockerfiles/build/binaries/
+  - ci/sign_binary out/binaries/gitlab-runner-helper/
       "${WINDOWS_CODE_SIGN_KEY_PATH}" "${WINDOWS_CODE_SIGN_CERT_PATH}"
       "${WINDOWS_CODE_SIGN_PASSWORD}"
       x86_64-windows
@@ -46,7 +46,7 @@ sign_helper images:
   artifacts:
     paths:
     - out/helper-images/
-    - dockerfiles/build/binaries/gitlab-runner-helper*
+    - out/binaries/gitlab-runner-helper/gitlab-runner-helper*
     - .gopath/bin
     - .gopath/.ok
     expire_in: 7d
@@ -66,5 +66,5 @@ sign_binaries windows/386 windows/amd64:
       ${platforms[@]}
   artifacts:
     paths:
-      - out/binaries/
+    - out/binaries/
     expire_in: 7d
