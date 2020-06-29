@@ -1,0 +1,23 @@
+extends: default
+
+rules:
+  document-start: disable
+
+  # accept both     key:
+  #                   - item
+  #
+  # and             key:
+  #                 - item
+  indentation:
+    indent-sequences: whatever
+
+  line-length:
+    max: 120
+    level: warning
+    ignore: |
+      .gitlab/ci/docs.gitlab-ci.yml
+      docs/.vale/gitlab/CodeblockFences.yml
+
+  trailing-spaces:
+    ignore: |
+      doc/dependency_decisions.yml

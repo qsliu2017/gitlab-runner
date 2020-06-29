@@ -69,6 +69,7 @@ fi
 checkTool golangci-lint 'https://github.com/golangci/golangci-lint#install-golangci-lint' "${GOLANGLINT}"
 checkTool hadolint 'https://github.com/hadolint/hadolint#install'
 checkTool shellcheck 'https://github.com/koalaman/shellcheck#installing'
+checkTool yamllint 'https://github.com/adrienverge/yamllint#installation'
 
 if [[ "${ERROR_RESULTS}" -ne 0 ]]; then
     exit 2
@@ -83,10 +84,14 @@ while IFS='' read -r line; do shellFiles+=("$line"); done < \
 while IFS='' read -r line; do dockerfiles+=("$line"); done < \
     <(find dockerfiles -type f -name 'Dockerfile*' -not -name '*servercore*')
 
+readarray -t yamlfiles < <(find . -name '*.yml' -not -path './vendor/*' -not -path './builds/*' \
+    -not -path './docs/.vale*')
+
 # shellcheck disable=SC2086
 runLinter "Go files" "${GOLANGLINT}" run ./... --out-format "${OUT_FORMAT}" ${LINT_FLAGS}
 runLinter "shell scripts" shellcheck "${shellFiles[@]}"
 runLinter "Dockerfiles" hadolint "${dockerfiles[@]}"
+runLinter "YAML files" yamllint "${yamlfiles[@]}"
 
 if [[ "${OUT_FORMAT}" == "code-climate" ]]; then
     #
