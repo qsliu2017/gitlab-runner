@@ -21,8 +21,9 @@ variables:
       - corpus
       - crashes
       - fuzzer
-    reports:
-      coverage_fuzzing: gl-cov-fuzz-report.json
+      - gl-cov-fuzz-report.json
+    #reports:
+      #coverage_fuzzing: gl-cov-fuzz-report.json
     expire_in: 1 week
     when: always
 
