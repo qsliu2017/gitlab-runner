@@ -41,5 +41,23 @@ fuzz yaml:
     - go get -u github.com/dvyukov/go-fuzz/go-fuzz github.com/dvyukov/go-fuzz/go-fuzz-build
     - go-fuzz-build -libfuzzer -o parse_yaml.a ./fuzz
     - clang -fsanitize=fuzzer parse_yaml.a -o parse-yaml
-    - mkdir -p corpus && cp fuzz/yaml_corpus_seeds/* corpus
-    - ./gl-fuzz run --regression=$REGRESSION -- ./parse-yaml
+    - mkdir -p corpus merge crashes
+    - cp fuzz/yaml_corpus_seeds/* corpus
+    # Uncomment when https://gitlab.com/gitlab-org/security-products/analyzers/gitlab-cov-fuzz-src/-/issues/1
+    # is not an issue anymore
+    #- ./gl-fuzz run --regression=$REGRESSION -- ./parse-yaml
+    -|
+      ./parse-yaml \
+        -print_final_stats=1 \
+        -artifact_prefix=./crashes \
+        -max_total_time=3600 \
+        corpus
+    -|
+      ./parse-yaml \
+        -print_final_stats=1 \
+        -artifact_prefix=./crashes \
+        -merge_control_file=/tmp/merge_control.txt \
+        -merge=1 merge \
+        merge \
+        corpus
+    - rm -rf corpus && mv merge corpus
