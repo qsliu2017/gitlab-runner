@@ -115,7 +115,7 @@ code_quality:
     REPORT_FILE: gl-code-quality-report.json
     LINT_FLAGS: "--color never --deadline 15m"
     OUT_FORMAT: code-climate
-    GOLANGLINT_VERSION: "" # Don't add version suffix to Makefile's GOLANGLINT (use plain golangci-lint from image)
+    GOLANGLINT_VERSION: ""  # Don't add version suffix to Makefile's GOLANGLINT (use plain golangci-lint from image)
   before_script:
   # Ensure the goargs linter plugin is available at .tmp/goargs.so to suit .golangci.yml
   - mkdir .tmp && ln -s /usr/lib/goargs.so .tmp/goargs.so
@@ -256,4 +256,3 @@ integration_k8s:
   - kubectl cluster-info
   script:
   - go test -v gitlab.com/gitlab-org/gitlab-runner/executors/kubernetes
-
