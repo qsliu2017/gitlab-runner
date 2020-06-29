@@ -50,8 +50,10 @@ fuzz yaml:
       ./parse-yaml \
         -print_final_stats=1 \
         -artifact_prefix=./crashes \
-        -max_total_time=3600 \
+        -max_total_time=60 \
         corpus
+    - echo "Found $(ls crashes | wc -l) crashes"
+    - echo "Generated $(ls corpus | wc -l) unmerged corpus inputs"
     - |
       ./parse-yaml \
         -print_final_stats=1 \
@@ -61,3 +63,4 @@ fuzz yaml:
         merge \
         corpus
     - rm -rf corpus && mv merge corpus
+    - echo "Merged corpus to $(ls corpus | wc -l) corpus inputs"
