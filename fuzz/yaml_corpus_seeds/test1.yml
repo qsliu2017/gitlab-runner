@@ -1,0 +1,30 @@
+image: global:image
+
+job1:
+  stage: test
+  script:
+  - line 1
+  - line 2
+  image: job1:image
+  services:
+  - service:1
+  - service:2
+
+job2:
+  script: test
+
+job3:
+  stage: a
+
+job4:
+  script: job4
+  image:
+    name: alpine
+    entrypoint: ["/bin/sh"]
+  services:
+  - name: service:1
+    command: ["sleep", "30"]
+    alias: service-1
+  - name: service:2
+    entrypoint: ["/bin/sh"]
+    alias: service-2

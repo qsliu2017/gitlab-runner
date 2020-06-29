@@ -1,0 +1,21 @@
+image:
+  name: global:image
+  entrypoint: [/bin/sh]
+
+services:
+- name: service:1
+  command: ["sleep", "30"]
+  alias: service-1
+- name: service:2
+  entrypoint: [/bin/sh]
+  alias: service-2
+
+job1:
+  script: job1
+
+job2:
+  script: job1
+  image: job2:image
+  services:
+  - service:1
+  - service:2

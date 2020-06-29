@@ -40,4 +40,5 @@ fuzz yaml:
     - go get -u github.com/dvyukov/go-fuzz/go-fuzz github.com/dvyukov/go-fuzz/go-fuzz-build
     - go-fuzz-build -libfuzzer -o parse_yaml.a ./fuzz
     - clang -fsanitize=fuzzer parse_yaml.a -o parse-yaml
+    - mkdir -p corpus && cp fuzz/yaml_corpus_seeds/* corpus
     - ./gl-fuzz run --regression=$REGRESSION -- ./parse-yaml
