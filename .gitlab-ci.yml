@@ -20,3 +20,4 @@ include:
 - local: /.gitlab/ci/release.gitlab-ci.yml
 - local: /.gitlab/ci/postrelease.gitlab-ci.yml
 - local: /.gitlab/ci/docs.gitlab-ci.yml
+- local: /.gitlab/ci/fuzz.gitlab-ci.yml

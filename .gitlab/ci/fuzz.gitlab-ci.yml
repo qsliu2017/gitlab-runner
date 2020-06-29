@@ -1,0 +1,43 @@
+# Will be included from the lib/gitlab/ci/templates/Security/Coverage-Fuzzing.gitlab-ci.yml
+# template once https://gitlab.com/gitlab-org/gitlab/-/merge_requests/34984
+# lands
+
+variables:
+  # Which branch we want to run full fledged long running fuzzing jobs.
+  # All others will run fuzzing regression
+  COVERAGE_FUZZING_BRANCH: "$CI_DEFAULT_BRANCH"
+  GL_FUZZ_VERSION: v1.0.7
+
+.fuzz_base:
+  stage: fuzz
+  allow_failure: true
+  before_script:
+    - wget -O gl-fuzz https://storage.googleapis.com/gl-fuzz-downloads-demo/"${GL_FUZZ_VERSION}"/gl-fuzz_Linux_x86_64
+    - chmod a+x gl-fuzz
+    - export REGRESSION=true
+    - if [[ $CI_COMMIT_BRANCH = $COVERAGE_FUZZING_BRANCH ]]; then REGRESSION=false; fi;
+  artifacts:
+    paths:
+      - corpus
+      - crashes
+      - fuzzer
+    reports:
+      coverage_fuzzing: gl-cov-fuzz-report.json
+    expire_in: 1 week
+    when: always
+
+# -------------------------------
+
+fuzz yaml:
+  extends: .fuzz_base
+  stage: test
+  image: registry.gitlab.com/gitlab-org/security-products/analyzers/gitlab-cov-fuzz/golang:1.12-buster-llvm9
+  script:
+    - rm -rf /usr/local/go
+    - wget https://dl.google.com/go/go1.13.12.linux-amd64.tar.gz
+    - tar -xzvf go*.tar.gz -C /usr/local
+      # rebuild go-fuzz-build
+    - go get -u github.com/dvyukov/go-fuzz/go-fuzz github.com/dvyukov/go-fuzz/go-fuzz-build
+    - go-fuzz-build -libfuzzer -o parse_yaml.a ./fuzz
+    - clang -fsanitize=fuzzer parse_yaml.a -o parse-yaml
+    - ./gl-fuzz run --regression=$REGRESSION -- ./parse-yaml

@@ -19,6 +19,14 @@ type GitLabCiYamlParser struct {
 	jobConfig DataBag
 }
 
+func (c *GitLabCiYamlParser) SetFilename(filename string) {
+	c.filename = filename
+}
+
+func (c *GitLabCiYamlParser) SetJobName(jobName string) {
+	c.jobName = jobName
+}
+
 func (c *GitLabCiYamlParser) parseFile() (err error) {
 	data, err := ioutil.ReadFile(c.filename)
 	if err != nil {
