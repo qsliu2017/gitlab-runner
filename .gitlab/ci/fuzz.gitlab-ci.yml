@@ -46,13 +46,13 @@ fuzz yaml:
     # Uncomment when https://gitlab.com/gitlab-org/security-products/analyzers/gitlab-cov-fuzz-src/-/issues/1
     # is not an issue anymore
     #- ./gl-fuzz run --regression=$REGRESSION -- ./parse-yaml
-    -|
+    - |
       ./parse-yaml \
         -print_final_stats=1 \
         -artifact_prefix=./crashes \
         -max_total_time=3600 \
         corpus
-    -|
+    - |
       ./parse-yaml \
         -print_final_stats=1 \
         -artifact_prefix=./crashes \
