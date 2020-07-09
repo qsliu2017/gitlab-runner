@@ -252,8 +252,10 @@ function writeChecksum() {
   local binVarNamePrefix="$1"
   local targetArch="$2"
   local binFile="$3"
-  local archVarNameSuffix=$(echo "${targetArch}" | tr '[:lower:]' '[:upper:]')
-  local checksum="${checksums["${binVarNamePrefix}_${archVarNameSuffix}"]}"
+  local archVarNameSuffix
+  local checksum
+  archVarNameSuffix=$(echo "${targetArch}" | tr '[:lower:]' '[:upper:]')
+  checksum="${checksums["${binVarNamePrefix}_${archVarNameSuffix}"]}"
 
   [[ -n "${checksum}" ]] && echo "${checksum}  ${binFile}" >> "${runner_home_dir}/checksums-${targetArch}" || return 0
 }
