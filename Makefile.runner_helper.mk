@@ -21,10 +21,10 @@ TAR_XZ += ${BASE_TAR_PATH}-s390x.tar.xz
 
 # Binaries that we support for the helper image. We are using the following
 # pattern match:
-# out/binaries/gitlab-runner-helper/gitlab-runner-helper.{{arch}}-{{os}}, these should
+# out/binaries/runner-helper/gitlab-runner-helper.{{arch}}-{{os}}, these should
 # match up with GO_ARCH_* variables names. Note that Linux is implied by
 # default.
-BASE_BINARY_PATH := out/binaries/gitlab-runner-helper/gitlab-runner-helper
+BASE_BINARY_PATH := out/binaries/runner-helper/gitlab-runner-helper
 BINARIES := ${BASE_BINARY_PATH}.x86_64-windows
 BINARIES += ${BASE_BINARY_PATH}.x86_64
 BINARIES += ${BASE_BINARY_PATH}.arm

@@ -38,7 +38,7 @@ case "${TARGET_ARCH}" in
         ;;
 esac;
 
-binary_file="out/binaries/gitlab-runner-helper/gitlab-runner-helper.${TARGET_ARCH}"
+binary_file="out/binaries/runner-helper/gitlab-runner-helper.${TARGET_ARCH}"
 
 if [ ! -f "$binary_file" ]; then
     echo -e "${RED}Missing binary file. You probably need to run 'make helper-bin'.${RST}"

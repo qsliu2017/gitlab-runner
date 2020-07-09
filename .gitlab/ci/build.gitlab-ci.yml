@@ -12,7 +12,7 @@
   - make runner-bin BUILD_PLATFORMS="-osarch='$platforms'"
   artifacts:
     paths:
-    - out/binaries/
+    - out/binaries/gitlab-runner-*
     expire_in: 7d
 
 binaries darwin/amd64: *binaries
