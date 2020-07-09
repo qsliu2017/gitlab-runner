@@ -29,6 +29,12 @@ function checkTool() {
     ((ERROR_RESULTS++))
 }
 
+join_by() {
+    local IFS="$1"
+    shift
+    echo -n "$*"
+}
+
 function runLinter() {
     echo -e "${YLW}Lint $1${RST}" >/dev/stderr
     shift 1
@@ -86,7 +92,7 @@ if [[ "${OUT_FORMAT}" == "code-climate" ]]; then
     #
     # Create an aggregate Code Climate file with the output of all the linters
     #
-    report=$(echo -n "${ccJSONReports[@]}" | tr '\n' ',')
+    report=$(join_by ',' "${ccJSONReports[@]}" | tr '\n' ',')
     # Output report for artifact
     echo -n "[${report}]"
     # Add line break if necessary
