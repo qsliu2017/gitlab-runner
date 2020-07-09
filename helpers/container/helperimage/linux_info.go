@@ -15,7 +15,7 @@ const (
 	archArm64       = "arm64"
 )
 
-var bashCmd = []string{"gitlab-runner-build"}
+var bashCmd = []string{"/bin/bash"}
 
 type linuxInfo struct{}
 
