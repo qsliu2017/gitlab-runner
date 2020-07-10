@@ -143,18 +143,10 @@ unit test with race:
   - 'tests definitions'
   - 'clone test repo'
   parallel: 10
-  variables:
-    GOROOT: "C:\\Go"
   before_script:
-  - *go-cache-windows_before_script
-  - if (Test-Path $GOPATH) { Remove-Item -Force -Recurse $GOPATH }
-  - New-Item $PKG_BASE_DIR -ItemType directory -Force
-  - New-Item -ItemType SymbolicLink -Path $PKG_BUILD_DIR -Value $CI_PROJECT_DIR
-  - cd $PKG_BUILD_DIR
+  - choco install golang -y --version ${GO_VERSION}
   script:
   - .\ci\test_windows.ps1
-  after_script:
-  - if (Test-Path $PKG_BUILD_DIR) { $(Get-Item $PKG_BUILD_DIR).Delete() }
   artifacts:
     paths:
     - .testoutput/*
