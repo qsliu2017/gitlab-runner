@@ -34,7 +34,7 @@ func TestServiceLogHook(t *testing.T) {
 	}
 
 	for level, sysLoggerMethod := range tests {
-		t.Run(fmt.Sprintf("level-%s", level), func(t *testing.T) {
+		t.Run(fmt.Sprintf("%s-level", level), func(t *testing.T) {
 			defer func() {
 				_ = recover()
 			}()

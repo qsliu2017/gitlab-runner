@@ -19,9 +19,9 @@ panicFailures=()
 for file in ${testOutputPattern}; do
     set +e
     if [[ "${file}" == *".windows."* ]]; then
-      panicMsgs="$(iconv -f utf-16 -t utf-8 "${file}" | grep "panic:")"
+      panicMsgs="$(iconv -f utf-16 -t utf-8 "${file}" | grep "^panic:")"
     else
-      panicMsgs="$(grep "panic:" "${file}")"
+      panicMsgs="$(grep "^panic:" "${file}")"
     fi
     set -e
 
