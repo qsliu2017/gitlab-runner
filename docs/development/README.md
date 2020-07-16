@@ -106,14 +106,14 @@ Normally you would use `gitlab-runner`. In order to compile and run the Go sourc
 
 ```shell
 make runner-and-helper-bin-host
-./out/binaries/gitlab-runner run
+./out/binaries/runner/gitlab-runner run
 ```
 
 You can run GitLab Runner in debug-mode:
 
 ```shell
 make runner-and-helper-bin-host
-./out/binaries/gitlab-runner --debug run
+./out/binaries/runner/gitlab-runner --debug run
 ```
 
 `make runner-and-helper-bin-host` is a superset of `make runner-bin-host` which in addition

@@ -108,10 +108,8 @@ func init() {
 	}
 
 	PrebuiltImagesPaths = []string{
-		// When gitlab-runner is running from repository root
-		filepath.Join(runnerFolder, "out/helper-images"),
-		// When gitlab-runner is running from `out/binaries`
-		filepath.Join(runnerFolder, "../helper-images"),
+		// When gitlab-runner is running from `out/binaries/runner`
+		filepath.Join(runnerFolder, "../../helper-images"),
 		// Add working directory path, used when running from temp directory, such as with `go run`
 		filepath.Join(helpers.GetCurrentWorkingDirectory(), "out/helper-images"),
 	}

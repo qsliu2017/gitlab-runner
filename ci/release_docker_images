@@ -284,7 +284,7 @@ cp "${runner_home_dir}/install-deps" "${runner_home_dir}/alpine/"
 for arch in "${TARGET_ARCHS[@]}"; do
     cp "${runner_home_dir}/checksums-${arch}" "out/deb/gitlab-runner_${arch}.deb" \
         "${runner_home_dir}/ubuntu/"
-    cp "${runner_home_dir}/checksums-${arch}" "out/binaries/gitlab-runner-linux-${arch}" \
+    cp "${runner_home_dir}/checksums-${arch}" "out/binaries/runner/gitlab-runner-linux-${arch}" \
         "${runner_home_dir}/alpine/"
 done
 

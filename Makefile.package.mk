@@ -36,13 +36,13 @@ package-rpm: package-deps package-prepare
 .PHONY: package-deb-arch
 package-deb-arch: ARCH ?= amd64
 package-deb-arch: export PACKAGE_ARCH ?= amd64
-package-deb-arch: export RUNNER_BINARY ?= out/binaries/$(NAME)-linux-$(ARCH)
+package-deb-arch: export RUNNER_BINARY ?= out/binaries/runner/$(NAME)-linux-$(ARCH)
 package-deb-arch:
 	@./ci/package deb
 
 .PHONY: package-rpm-arch
 package-rpm-arch: ARCH ?= amd64
 package-rpm-arch: export PACKAGE_ARCH ?= amd64
-package-rpm-arch: export RUNNER_BINARY ?= out/binaries/$(NAME)-linux-$(ARCH)
+package-rpm-arch: export RUNNER_BINARY ?= out/binaries/runner/$(NAME)-linux-$(ARCH)
 package-rpm-arch:
 	@./ci/package rpm

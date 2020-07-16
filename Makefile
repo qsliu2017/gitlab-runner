@@ -221,7 +221,7 @@ build-and-deploy-binary: ARCH ?= amd64
 build-and-deploy-binary:
 	$(MAKE) runner-bin BUILD_PLATFORMS="-osarch=linux/$(ARCH)"
 	@[ -z "$(SERVER)" ] && echo "SERVER variable not specified!" && exit 1
-	scp out/binaries/$(PACKAGE_NAME)-linux-$(ARCH) $(SERVER):/usr/bin/gitlab-runner
+	scp out/binaries/runner/$(PACKAGE_NAME)-linux-$(ARCH) $(SERVER):/usr/bin/gitlab-runner
 
 .PHONY: packagecloud
 packagecloud: packagecloud-deps packagecloud-deb packagecloud-rpm
@@ -279,11 +279,11 @@ release_s3: prepare_windows_zip prepare_zoneinfo prepare_index
 	# Releasing to S3
 	@./ci/release_s3
 
-out/binaries/gitlab-runner-windows-%.zip: out/binaries/gitlab-runner-windows-%.exe
+out/binaries/runner/gitlab-runner-windows-%.zip: out/binaries/runner/gitlab-runner-windows-%.exe
 	zip --junk-paths $@ $<
 	cd out/ && zip -r ../$@ helper-images
 
-prepare_windows_zip: out/binaries/gitlab-runner-windows-386.zip out/binaries/gitlab-runner-windows-amd64.zip
+prepare_windows_zip: out/binaries/runner/gitlab-runner-windows-386.zip out/binaries/runner/gitlab-runner-windows-amd64.zip
 
 prepare_zoneinfo:
 	# preparing the zoneinfo file

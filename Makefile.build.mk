@@ -2,7 +2,7 @@ runner-bin: $(GOX)
 	# Building $(NAME) in version $(VERSION) for $(BUILD_PLATFORMS)
 	$(GOX) $(BUILD_PLATFORMS) \
 		   -ldflags "$(GO_LDFLAGS)" \
-		   -output="out/binaries/$(NAME)-{{.OS}}-{{.Arch}}" \
+		   -output="out/binaries/runner/$(NAME)-{{.OS}}-{{.Arch}}" \
 		   $(PKG)
 
 runner-bin-host: OS := $(shell uname -s | tr '[:upper:]' '[:lower:]')
@@ -10,7 +10,7 @@ runner-bin-host: ARCH := $(shell uname -m | sed s/x86_64/amd64/ | sed s/i386/386
 runner-bin-host:
 	# Building $(NAME) in version $(VERSION) for host platform
 	$(MAKE) runner-bin BUILD_PLATFORMS="-osarch=$(OS)/$(ARCH)"
-	cp -f "out/binaries/$(NAME)-$(OS)-$(ARCH)" out/binaries/gitlab-runner
+	cp -f "out/binaries/runner/$(NAME)-$(OS)-$(ARCH)" out/binaries/runner/gitlab-runner
 
 runner-bin-linux: OS := 'linux'
 runner-bin-linux:
