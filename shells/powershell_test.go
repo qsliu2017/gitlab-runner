@@ -1,9 +1,11 @@
 package shells
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"gitlab.com/gitlab-org/gitlab-runner/common"
 )
 
 func TestPowershell_LineBreaks(t *testing.T) {
@@ -38,8 +40,7 @@ func TestPowershell_LineBreaks(t *testing.T) {
 			writer := &PsWriter{Shell: tc.shell, EOL: eol}
 			writer.Command("foo", "")
 
-			expectedOutput := "\xef\xbb\xbf" +
-				`#requires -PSEdition ` + tc.expectedEdition + eol +
+			expectedOutput := `#requires -PSEdition ` + tc.expectedEdition + eol +
 				eol +
 				tc.expectedErrorPreference +
 				`& "foo" ""` + eol + "if(!$?) { Exit &{if($LASTEXITCODE) {$LASTEXITCODE} else {1}} }" + eol +
@@ -78,4 +79,131 @@ func TestPowershell_MkTmpDirOnUNCShare(t *testing.T) {
 		`New-Item -ItemType directory -Force -Path "\\unc-server\share\tmp" | out-null`+writer.EOL,
 		writer.String(),
 	)
+}
+
+func TestPowershell_Encodings(t *testing.T) {
+	testCases := map[string]struct {
+		Encoding    Encoding
+		shell       string
+		script      string
+		expectedBOM bool
+	}{
+		"Powershell default": {
+			shell:       "powershell",
+			script:      "echo 'hello world'",
+			expectedBOM: false,
+		},
+		"Powershell UTF8": {
+			Encoding:    UTF8,
+			shell:       "powershell",
+			script:      "echo 'hello world'",
+			expectedBOM: false,
+		},
+		"Powershell UTF8 with special character": {
+			Encoding:    UTF8,
+			shell:       "powershell",
+			script:      "echo 'hello 世界'",
+			expectedBOM: true,
+		},
+		"Powershell UTF8BOM": {
+			Encoding:    UTF8BOM,
+			shell:       "powershell",
+			script:      "echo 'hello world'",
+			expectedBOM: true,
+		},
+		"Powershell UTF8BOM with special character": {
+			Encoding:    UTF8BOM,
+			shell:       "powershell",
+			script:      "echo 'hello 世界'",
+			expectedBOM: true,
+		},
+		"Powershell UTF8NoBOM": {
+			Encoding:    UTF8NoBOM,
+			shell:       "powershell",
+			script:      "echo 'hello world'",
+			expectedBOM: false,
+		},
+		"Powershell UTF8NoBOM with special character": {
+			Encoding:    UTF8NoBOM,
+			shell:       "powershell",
+			script:      "echo 'hello 世界'",
+			expectedBOM: false,
+		},
+
+		"Powershell Core UTF8": {
+			Encoding:    UTF8,
+			shell:       "pwsh",
+			script:      "echo 'hello world'",
+			expectedBOM: false,
+		},
+		"Powershell Core UTF8 with special character": {
+			Encoding:    UTF8,
+			shell:       "pwsh",
+			script:      "echo 'hello 世界'",
+			expectedBOM: false,
+		},
+		"Powershell Core UTF8BOM": {
+			Encoding:    UTF8BOM,
+			shell:       "pwsh",
+			script:      "echo 'hello world'",
+			expectedBOM: true,
+		},
+		"Powershell Core UTF8BOM with special character": {
+			Encoding:    UTF8BOM,
+			shell:       "pwsh",
+			script:      "echo 'hello 世界'",
+			expectedBOM: true,
+		},
+		"Powershell Core UTF8NoBOM": {
+			Encoding:    UTF8NoBOM,
+			shell:       "pwsh",
+			script:      "echo 'hello world'",
+			expectedBOM: false,
+		},
+		"Powershell Core UTF8NoBOM with special character": {
+			Encoding:    UTF8NoBOM,
+			shell:       "pwsh",
+			script:      "echo 'hello 世界'",
+			expectedBOM: false,
+		},
+	}
+
+	for tn, tc := range testCases {
+		t.Run(tn, func(t *testing.T) {
+			shell := &PowerShell{Shell: tc.shell}
+			script, err := shell.GenerateScript(
+				common.BuildStageAfterScript,
+				common.ShellScriptInfo{
+					Shell:         tc.shell,
+					Type:          common.NormalShell,
+					RunnerCommand: "gitlab-runner",
+					Build: &common.Build{
+						Runner: &common.RunnerConfig{},
+						JobResponse: common.JobResponse{
+							Steps: common.Steps{
+								{
+									Name:   common.StepNameAfterScript,
+									Script: common.StepScript([]string{tc.script}),
+								},
+							},
+							Variables: common.JobVariables{
+								{
+									Key:   "POWERSHELL_ENCODING",
+									Value: string(tc.Encoding),
+								},
+							},
+						},
+					},
+				},
+			)
+			assert.NoError(t, err)
+
+			hasBOM := strings.HasPrefix(script, "\xef\xbb\xbf")
+			if tc.expectedBOM {
+				assert.True(t, hasBOM)
+			} else {
+				assert.False(t, hasBOM)
+			}
+		})
+	}
 }

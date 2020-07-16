@@ -9,16 +9,23 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"unicode"
 
 	"gitlab.com/gitlab-org/gitlab-runner/common"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers"
 )
+
+type Encoding string
 
 const (
 	dockerWindowsExecutor = "docker-windows"
 
 	SNPwsh       = "pwsh"
 	SNPowershell = "powershell"
+
+	UTF8      Encoding = "utf8"
+	UTF8NoBOM Encoding = "utf8nobom"
+	UTF8BOM   Encoding = "utf8bom"
 )
 
 type PowerShell struct {
@@ -33,6 +40,7 @@ type PsWriter struct {
 	indent        int
 	Shell         string
 	EOL           string
+	Encoding      Encoding
 }
 
 func psQuote(text string) string {
@@ -278,8 +286,25 @@ func (p *PsWriter) Finish(trace bool) string {
 	var buffer bytes.Buffer
 	w := bufio.NewWriter(&buffer)
 
-	// write BOM
-	_, _ = io.WriteString(w, "\xef\xbb\xbf")
+	// In PowerShell 6+, the default encoding is UTF-8 without BOM on all
+	// platforms.
+	// In Windows PowerShell, the default encoding is usually Windows-1252, aka
+	// latin-1/ISO 8859-1.
+	//
+	// By default, we use UTF8 without a BOM unless Windows Powershell is used
+	// and a non-ascii character is detected.
+	// This can be overridden by setting the shell's Encoding value to UTF8BOM
+	// or UTF8NoBOM.
+	auto := false
+	if p.Shell == SNPowershell {
+		exceedsLatin1Range := strings.IndexFunc(p.String(), func(r rune) bool {
+			return r > unicode.MaxLatin1
+		})
+		auto = exceedsLatin1Range >= 0
+	}
+	if p.Encoding == UTF8BOM || p.Encoding == UTF8 && auto {
+		_, _ = io.WriteString(w, "\xef\xbb\xbf")
+	}
 
 	p.writeShebang(w)
 	p.writeTrace(w, trace)
@@ -337,14 +362,22 @@ func (b *PowerShell) GetConfiguration(info common.ShellScriptInfo) (script *comm
 	return
 }
 
-func (b *PowerShell) GenerateScript(
-	buildStage common.BuildStage,
-	info common.ShellScriptInfo,
-) (script string, err error) {
+func (b *PowerShell) GenerateScript(buildStage common.BuildStage, info common.ShellScriptInfo) (string, error) {
 	w := &PsWriter{
 		Shell:         b.Shell,
 		EOL:           b.EOL,
 		TemporaryPath: info.Build.TmpProjectDir(),
+	}
+
+	encoding := strings.ToLower(info.Build.GetAllVariables().Get("POWERSHELL_ENCODING"))
+	switch Encoding(encoding) {
+	case UTF8NoBOM, UTF8BOM, UTF8:
+		w.Encoding = Encoding(encoding)
+	default:
+		if encoding != "" {
+			w.Warningf("unrecognised powershell encoding, defaulting to UTF8")
+		}
+		w.Encoding = UTF8
 	}
 
 	if buildStage == common.BuildStagePrepare {
@@ -358,14 +391,14 @@ func (b *PowerShell) GenerateScript(
 		}
 	}
 
-	err = b.writeScript(w, buildStage, info)
+	err := b.writeScript(w, buildStage, info)
 
 	// No need to set up BOM or tracing since no script was generated.
 	if w.Buffer.Len() > 0 {
-		script = w.Finish(info.Build.IsDebugTraceEnabled())
+		return w.Finish(info.Build.IsDebugTraceEnabled()), err
 	}
 
-	return
+	return "", err
 }
 
 func (b *PowerShell) IsDefault() bool {
