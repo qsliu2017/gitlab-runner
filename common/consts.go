@@ -18,12 +18,12 @@ const DefaultRestoreCacheAttempts = 1
 const DefaultExecutorStageAttempts = 1
 const KubernetesPollInterval = 3
 const KubernetesPollTimeout = 180
-const AfterScriptTimeout = 5 * time.Minute
+const AfterScriptTimeout = 10 * time.Minute
 const DefaultMetricsServerPort = 9252
 const DefaultCacheRequestTimeout = 10
 const DefaultNetworkClientTimeout = 60 * time.Minute
 const DefaultSessionTimeout = 30 * time.Minute
-const WaitForBuildFinishTimeout = 5 * time.Minute
+const WaitForBuildFinishTimeout = 10 * time.Minute
 
 const (
 	DefaultTraceOutputLimit    = 4 * 1024 * 1024 // in bytes

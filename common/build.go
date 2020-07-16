@@ -399,6 +399,8 @@ func (b *Build) executeScript(ctx context.Context, executor Executor) error {
 	}
 
 	afterCtx := b.getAfterScriptCtx(ctx)
+	timeoutCtx, timeoutCancel := context.WithTimeout(afterCtx, AfterScriptTimeout)
+	defer timeoutCancel()
 
 	if err == nil {
 		for _, s := range b.Steps {
@@ -412,23 +414,19 @@ func (b *Build) executeScript(ctx context.Context, executor Executor) error {
 			}
 		}
 
-		// Execute after script (after_script)
-		timeoutCtx, timeoutCancel := context.WithTimeout(afterCtx, AfterScriptTimeout)
-		defer timeoutCancel()
-
 		_ = b.executeStage(timeoutCtx, BuildStageAfterScript, executor)
 	}
 
 	// Execute post script (cache store, artifacts upload)
 	if err == nil {
-		err = b.executeStage(afterCtx, BuildStageArchiveCache, executor)
+		err = b.executeStage(timeoutCtx, BuildStageArchiveCache, executor)
 	}
 
-	artifactUploadErr := b.executeUploadArtifacts(afterCtx, err, executor)
+	artifactUploadErr := b.executeUploadArtifacts(timeoutCtx, err, executor)
 
 	// track job end and execute referees
 	endTime := time.Now()
-	b.executeUploadReferees(afterCtx, startTime, endTime)
+	b.executeUploadReferees(timeoutCtx, startTime, endTime)
 
 	// Use job's error as most important
 	if err != nil {
