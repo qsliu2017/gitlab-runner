@@ -137,7 +137,10 @@ func TestBuildCancel(t *testing.T) {
 			e.On("Run", matchContextCanceled(BuildStageDownloadArtifacts, true)).Return(nil).Once()
 			e.On("Run", matchContextCanceled("step_script", true)).Return(errors.New("context canceled")).Once()
 			e.On("Run", matchContextCanceled(BuildStageAfterScript, !tt.runAfterStagesOnCancel)).Return(nil).Once()
-			e.On("Run", matchContextCanceled(BuildStageUploadOnFailureArtifacts, !tt.runAfterStagesOnCancel)).Return(nil).Once()
+			e.On(
+				"Run",
+				matchContextCanceled(BuildStageUploadOnFailureArtifacts, !tt.runAfterStagesOnCancel),
+			).Return(nil).Once()
 
 			RegisterExecutorProvider(t.Name(), &p)
 
@@ -160,7 +163,13 @@ func TestBuildCancel(t *testing.T) {
 			var buildErr *BuildError
 
 			require.True(t, errors.As(err, &buildErr), "expected err %T, but got %T", buildErr, err)
-			assert.True(t, errors.Is(buildErr.Inner, ErrBuildCanceled), "expected err %v, but got %v", ErrBuildCanceled, buildErr.Inner)
+			assert.True(
+				t,
+				errors.Is(buildErr.Inner, ErrBuildCanceled),
+				"expected err %v, but got %v",
+				ErrBuildCanceled,
+				buildErr.Inner,
+			)
 		})
 	}
 }
