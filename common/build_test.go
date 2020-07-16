@@ -135,7 +135,7 @@ func TestBuildCancel(t *testing.T) {
 			e.On("Run", matchContextCanceled(BuildStageGetSources, true)).Return(nil).Once()
 			e.On("Run", matchContextCanceled(BuildStageRestoreCache, true)).Return(nil).Once()
 			e.On("Run", matchContextCanceled(BuildStageDownloadArtifacts, true)).Return(nil).Once()
-			e.On("Run", matchContextCanceled(BuildStageUserScript, true)).Return(errors.New("context canceled")).Once()
+			e.On("Run", matchContextCanceled("step_script", true)).Return(errors.New("context canceled")).Once()
 			e.On("Run", matchContextCanceled(BuildStageAfterScript, !tt.runAfterStagesOnCancel)).Return(nil).Once()
 			e.On("Run", matchContextCanceled(BuildStageUploadOnFailureArtifacts, !tt.runAfterStagesOnCancel)).Return(nil).Once()
 
@@ -998,6 +998,38 @@ func TestStartBuild(t *testing.T) {
 			assert.Equal(t, test.expectedBuildDir, build.BuildDir)
 			assert.Equal(t, test.args.rootDir, build.RootDir)
 			assert.Equal(t, test.expectedCacheDir, build.CacheDir)
+		})
+	}
+}
+
+func TestGetStep(t *testing.T) {
+	multistepJobResponse, err := GetRemoteSuccessfulMultistepBuild()
+	require.NoError(t, err)
+
+	build := &Build{
+		JobResponse: multistepJobResponse,
+	}
+
+	tests := map[string]struct {
+		input  StepName
+		output *Step
+	}{
+		"script step exists": {
+			"script",
+			&build.Steps[0],
+		},
+		"release step exists": {
+			"release",
+			&build.Steps[1],
+		},
+		"unknown step": {
+			"unknown step",
+			nil,
+		},
+	}
+	for tn, tt := range tests {
+		t.Run(tn, func(t *testing.T) {
+			assert.Equal(t, tt.output, build.GetStep(tt.input))
 		})
 	}
 }
