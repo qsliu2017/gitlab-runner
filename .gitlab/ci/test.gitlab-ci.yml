@@ -36,8 +36,7 @@ check feature flags docs:
   extends:
   - .merge_request_pipelines
   - .no_cache_and_dependencies
-  needs:
-  - 'prepare done'
+  needs: []
   script:
   - cp docs/configuration/feature-flags.md docs/configuration/feature-flags.md.orig
   - make update_feature_flags_docs
@@ -56,8 +55,7 @@ check modules:
   - .merge_request_pipelines
   - .except_docs
   - .no_cache_and_dependencies
-  needs:
-  - 'prepare done'
+  needs: []
   script:
   - make check_modules
 
@@ -67,8 +65,7 @@ check mocks:
   - .merge_request_pipelines
   - .except_docs
   - .no_cache_and_dependencies
-  needs:
-  - 'prepare done'
+  needs: []
   script:
   - make check_mocks
 
@@ -200,8 +197,7 @@ integration_k8s:
   extends:
   - .merge_request_pipelines
   - .docker
-  needs:
-  - 'prepare done'
+  needs: []
   stage: test
   services:
   - name: registry.gitlab.com/gitlab-org/cluster-integration/test-utils/k3s-gitlab-ci/releases/v1.16.7-k3s1
