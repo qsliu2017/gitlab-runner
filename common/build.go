@@ -399,8 +399,6 @@ func (b *Build) executeScript(ctx context.Context, executor Executor) error {
 	}
 
 	afterCtx := b.getAfterScriptCtx(ctx)
-	timeoutCtx, timeoutCancel := context.WithTimeout(afterCtx, AfterScriptTimeout)
-	defer timeoutCancel()
 
 	if err == nil {
 		for _, s := range b.Steps {
@@ -414,19 +412,26 @@ func (b *Build) executeScript(ctx context.Context, executor Executor) error {
 			}
 		}
 
+		// Execute after script (after_script)
+		timeoutCtx, timeoutCancel := context.WithTimeout(afterCtx, AfterScriptTimeout)
+		defer timeoutCancel()
+
 		_ = b.executeStage(timeoutCtx, BuildStageAfterScript, executor)
 	}
 
+	uploadTimeoutCtx, timeoutCancel := context.WithTimeout(afterCtx, UploadArtifactsRefereesTimeout)
+	defer timeoutCancel()
+
 	// Execute post script (cache store, artifacts upload)
 	if err == nil {
-		err = b.executeStage(timeoutCtx, BuildStageArchiveCache, executor)
+		err = b.executeStage(uploadTimeoutCtx, BuildStageArchiveCache, executor)
 	}
 
-	artifactUploadErr := b.executeUploadArtifacts(timeoutCtx, err, executor)
+	artifactUploadErr := b.executeUploadArtifacts(uploadTimeoutCtx, err, executor)
 
 	// track job end and execute referees
 	endTime := time.Now()
-	b.executeUploadReferees(timeoutCtx, startTime, endTime)
+	b.executeUploadReferees(uploadTimeoutCtx, startTime, endTime)
 
 	// Use job's error as most important
 	if err != nil {
@@ -585,23 +590,9 @@ func (b *Build) run(ctx context.Context, executor Executor) (err error) {
 
 	// Wait till we receive that build did finish
 	runCancel()
-	b.waitForBuildFinish(buildFinish, WaitForBuildFinishTimeout)
+	<-buildFinish
 
 	return err
-}
-
-// waitForBuildFinish will wait for the build to finish or timeout, whichever
-// comes first. This is to prevent issues where something in the build can't be
-// killed or processed and results into the Job running until the GitLab Runner
-// process exists.
-func (b *Build) waitForBuildFinish(buildFinish <-chan error, timeout time.Duration) {
-	select {
-	case <-buildFinish:
-		return
-	case <-time.After(timeout):
-		b.logger.Warningln("Timed out waiting for the build to finish")
-		return
-	}
 }
 
 func (b *Build) retryCreateExecutor(
