@@ -375,11 +375,9 @@ func (b *Build) executeUploadArtifacts(ctx context.Context, state error, executo
 }
 
 func (b *Build) executeScript(ctx context.Context, executor Executor) error {
-	// track job start and create referees
 	startTime := time.Now()
 	b.createReferees(executor)
 
-	// Prepare stage
 	err := b.executeStage(ctx, BuildStagePrepare, executor)
 	if err != nil {
 		return fmt.Errorf(
@@ -412,7 +410,6 @@ func (b *Build) executeScript(ctx context.Context, executor Executor) error {
 			}
 		}
 
-		// Execute after script (after_script)
 		timeoutCtx, timeoutCancel := context.WithTimeout(afterCtx, AfterScriptTimeout)
 		defer timeoutCancel()
 
@@ -422,23 +419,19 @@ func (b *Build) executeScript(ctx context.Context, executor Executor) error {
 	uploadTimeoutCtx, timeoutCancel := context.WithTimeout(afterCtx, UploadArtifactsRefereesTimeout)
 	defer timeoutCancel()
 
-	// Execute post script (cache store, artifacts upload)
 	if err == nil {
 		err = b.executeStage(uploadTimeoutCtx, BuildStageArchiveCache, executor)
 	}
 
 	artifactUploadErr := b.executeUploadArtifacts(uploadTimeoutCtx, err, executor)
 
-	// track job end and execute referees
 	endTime := time.Now()
 	b.executeUploadReferees(uploadTimeoutCtx, startTime, endTime)
 
-	// Use job's error as most important
 	if err != nil {
 		return err
 	}
 
-	// Otherwise, use uploadError
 	return artifactUploadErr
 }
 
