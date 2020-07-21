@@ -1,3 +1,6 @@
 #!/bin/bash
-umask 0000
+use_umask=${FF_USE_LEGACY_DOCKER_UMASK,,}
+if [[ "$use_umask" = "true" || "$use_umask" = "1" || "$use_umask" = "t" ]]; then
+  umask 0000
+fi
 exec /bin/bash

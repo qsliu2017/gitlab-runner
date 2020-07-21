@@ -201,6 +201,16 @@ func (c *officialDockerClient) ContainerExecAttach(
 	return resp, wrapError("ContainerExecAttach", err, started)
 }
 
+func (c *officialDockerClient) CopyFromContainer(
+	ctx context.Context,
+	containerID,
+	srcPath string,
+) (io.ReadCloser, types.ContainerPathStat, error) {
+	started := time.Now()
+	rc, stat, err := c.client.CopyFromContainer(ctx, containerID, srcPath)
+	return rc, stat, wrapError("CopyFromContainer", err, started)
+}
+
 func (c *officialDockerClient) NetworkCreate(
 	ctx context.Context,
 	networkName string,

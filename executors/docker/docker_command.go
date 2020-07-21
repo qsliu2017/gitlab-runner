@@ -1,18 +1,21 @@
 package docker
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
+	"io/ioutil"
+	"strings"
 	"sync"
 
 	"github.com/docker/docker/api/types"
 
 	"gitlab.com/gitlab-org/gitlab-runner/common"
 	"gitlab.com/gitlab-org/gitlab-runner/executors"
+	"gitlab.com/gitlab-org/gitlab-runner/executors/docker/internal/user"
 	"gitlab.com/gitlab-org/gitlab-runner/executors/docker/internal/volumes/parser"
 	"gitlab.com/gitlab-org/gitlab-runner/executors/docker/internal/volumes/permission"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers/docker"
+	"gitlab.com/gitlab-org/gitlab-runner/helpers/featureflags"
 )
 
 type commandExecutor struct {
@@ -91,7 +94,43 @@ func (s *commandExecutor) requestBuildContainer() (*types.ContainerJSON, error) 
 		return nil, err
 	}
 
+	if err := s.updateBuildContainerOwner(); err != nil {
+		return nil, err
+	}
+
 	return s.buildContainer, nil
+}
+
+func (s *commandExecutor) updateBuildContainerOwner() error {
+	if s.Build.IsFeatureFlagOn(featureflags.UseLegacyDockerUmask) {
+		return nil
+	}
+
+	if s.buildContainer.Platform != "linux" {
+		return nil
+	}
+
+	c, err := s.requestNewPredefinedContainer()
+	if err != nil {
+		return err
+	}
+
+	uid, gid, err := user.LookupUser(s.Context, s.client, s.buildContainer.ID, s.buildContainer.Config.User)
+	if err != nil {
+		return fmt.Errorf("looking up build container's user: %w", err)
+	}
+
+	// take no action if user is root
+	if uid == 0 {
+		return nil
+	}
+
+	cmd := fmt.Sprintf("chown -RP -- %d:%d %s", uid, gid, s.RootDir())
+	if err := s.startAndWatchContainer(s.Context, c.ID, ioutil.Discard, strings.NewReader(cmd)); err != nil {
+		return fmt.Errorf("updating build container owner: %w", err)
+	}
+
+	return nil
 }
 
 func (s *commandExecutor) Run(cmd common.ExecutorCommand) error {
@@ -114,7 +153,7 @@ func (s *commandExecutor) Run(cmd common.ExecutorCommand) error {
 		s.Debugln("Executing on", ctr.Name, "the", cmd.Script)
 		s.SetCurrentStage(ExecutorStageRun)
 
-		runErr = s.startAndWatchContainer(cmd.Context, ctr.ID, bytes.NewBufferString(cmd.Script))
+		runErr = s.startAndWatchContainer(cmd.Context, ctr.ID, s.Trace, strings.NewReader(cmd.Script))
 		if !docker.IsErrNotFound(runErr) {
 			return runErr
 		}

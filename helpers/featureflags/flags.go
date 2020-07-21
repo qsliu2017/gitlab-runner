@@ -12,6 +12,7 @@ const (
 	SkipNoOpBuildStages                  string = "FF_SKIP_NOOP_BUILD_STAGES"
 	ShellExecutorUseLegacyProcessKill    string = "FF_SHELL_EXECUTOR_USE_LEGACY_PROCESS_KILL"
 	ResetHelperImageEntrypoint           string = "FF_RESET_HELPER_IMAGE_ENTRYPOINT"
+	UseLegacyDockerUmask                 string = "FF_USE_LEGACY_DOCKER_UMASK"
 )
 
 type FeatureFlag struct {
@@ -85,6 +86,18 @@ var flags = []FeatureFlag{
 		Description: "Enables adding an ENTRYPOINT layer for Helper images imported from local Docker archives " +
 			"by the `docker` executor, in order to enable [importing of user certificate roots]" +
 			"(./tls-self-signed.md#trusting-the-certificate-for-the-other-cicd-stages)",
+	},
+	{
+		Name:            UseLegacyDockerUmask,
+		DefaultValue:    "true",
+		Deprecated:      true,
+		ToBeRemovedWith: "",
+		Description: "When set to 'true', 'umask 0000' is used for all predefined steps (fetching sources, " +
+			"artifacts and caches). This results in any files the steps produce being world writable. " +
+			"When set to 'false', a uid/gid lookup is performed on the build image " +
+			"and 'chown -RP -- %d:%d' is executed if the user is not root. This sets the files to be owned by " +
+			"the same user as the build image, allowing a build user to write to the files without them having " +
+			"to be explicitly world writable.",
 	},
 }
 

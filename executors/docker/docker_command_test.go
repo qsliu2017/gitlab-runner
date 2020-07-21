@@ -1417,3 +1417,65 @@ func TestDockerCommand_WriteToVolumeNonRootImage(t *testing.T) {
 	err = buildtest.RunBuild(t, &build)
 	assert.NoError(t, err)
 }
+
+func TestDockerRootDirOwner(t *testing.T) {
+	helpers.SkipIntegrationTests(t, "docker", "info")
+	if runtime.GOOS == "windows" {
+		t.Skip("Skipping unix test on windows")
+	}
+
+	tests := map[string]struct {
+		useLegacyDockerUmask string
+		imageName            string
+		contains             string
+	}{
+		"use umask with root (FF_USE_LEGACY_DOCKER_UMASK=true)": {
+			useLegacyDockerUmask: "1",
+			imageName:            common.TestAlpineImage,
+			contains:             "Access: (0777/drwxrwxrwx)  Uid: (    0/    root)   Gid: (    0/    root)",
+		},
+		"use umask with non-root (FF_USE_LEGACY_DOCKER_UMASK=true)": {
+			useLegacyDockerUmask: "TRUE",
+			imageName:            common.TestAlpineNoRootImage,
+			contains:             "Access: (0777/drwxrwxrwx)  Uid: (    0/    root)   Gid: (    0/    root)",
+		},
+		"use chown with root (FF_USE_LEGACY_DOCKER_UMASK=false)": {
+			useLegacyDockerUmask: "false",
+			imageName:            common.TestAlpineImage,
+			contains:             "Access: (0755/drwxr-xr-x)  Uid: (    0/    root)   Gid: (    0/    root)",
+		},
+		"use chown with non-root (FF_USE_LEGACY_DOCKER_UMASK=false)": {
+			useLegacyDockerUmask: "false",
+			imageName:            common.TestAlpineNoRootImage,
+			contains:             "Access: (0755/drwxr-xr-x)  Uid: ( 1000/  alpine)   Gid: ( 1000/  alpine)",
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			resp, err := common.GetRemoteBuildResponse("stat .git; env")
+			require.NoError(t, err)
+
+			build := common.Build{
+				JobResponse: resp,
+				Runner: &common.RunnerConfig{
+					RunnerSettings: common.RunnerSettings{
+						Executor: "docker",
+						Docker:   &common.DockerConfig{},
+					},
+				},
+			}
+
+			build.Image = common.Image{Name: tc.imageName}
+			build.Variables = append(build.Variables, common.JobVariable{
+				Key:    "FF_USE_LEGACY_DOCKER_UMASK",
+				Value:  tc.useLegacyDockerUmask,
+				Public: true,
+			})
+
+			out, err := buildtest.RunBuildReturningOutput(t, &build)
+			assert.NoError(t, err)
+			assert.Contains(t, out, tc.contains)
+		})
+	}
+}

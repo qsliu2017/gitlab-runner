@@ -798,7 +798,7 @@ func (e *executor) createHostConfig() (*container.HostConfig, error) {
 	}, nil
 }
 
-func (e *executor) startAndWatchContainer(ctx context.Context, id string, input io.Reader) error {
+func (e *executor) startAndWatchContainer(ctx context.Context, id string, w io.Writer, r io.Reader) error {
 	options := types.ContainerAttachOptions{
 		Stream: true,
 		Stdin:  true,
@@ -822,14 +822,14 @@ func (e *executor) startAndWatchContainer(ctx context.Context, id string, input 
 	// Copy any output to the build trace
 	stdoutErrCh := make(chan error)
 	go func() {
-		_, errCopy := stdcopy.StdCopy(e.Trace, e.Trace, hijacked.Reader)
+		_, errCopy := stdcopy.StdCopy(w, w, hijacked.Reader)
 		stdoutErrCh <- errCopy
 	}()
 
 	// Write the input to the container and close its STDIN to get it to finish
 	stdinErrCh := make(chan error)
 	go func() {
-		_, errCopy := io.Copy(hijacked.Conn, input)
+		_, errCopy := io.Copy(hijacked.Conn, r)
 		_ = hijacked.CloseWrite()
 		if errCopy != nil {
 			stdinErrCh <- errCopy

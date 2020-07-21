@@ -255,6 +255,36 @@ func (_m *MockClient) ContainerWait(ctx context.Context, containerID string, con
 	return r0, r1
 }
 
+// CopyFromContainer provides a mock function with given fields: ctx, containerID, srcPath
+func (_m *MockClient) CopyFromContainer(ctx context.Context, containerID string, srcPath string) (io.ReadCloser, types.ContainerPathStat, error) {
+	ret := _m.Called(ctx, containerID, srcPath)
+
+	var r0 io.ReadCloser
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) io.ReadCloser); ok {
+		r0 = rf(ctx, containerID, srcPath)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(io.ReadCloser)
+		}
+	}
+
+	var r1 types.ContainerPathStat
+	if rf, ok := ret.Get(1).(func(context.Context, string, string) types.ContainerPathStat); ok {
+		r1 = rf(ctx, containerID, srcPath)
+	} else {
+		r1 = ret.Get(1).(types.ContainerPathStat)
+	}
+
+	var r2 error
+	if rf, ok := ret.Get(2).(func(context.Context, string, string) error); ok {
+		r2 = rf(ctx, containerID, srcPath)
+	} else {
+		r2 = ret.Error(2)
+	}
+
+	return r0, r1, r2
+}
+
 // ImageImportBlocking provides a mock function with given fields: ctx, source, ref, options
 func (_m *MockClient) ImageImportBlocking(ctx context.Context, source types.ImageImportSource, ref string, options types.ImageImportOptions) error {
 	ret := _m.Called(ctx, source, ref, options)

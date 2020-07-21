@@ -46,6 +46,7 @@ The flags are defined in `./helpers/featureflags/flags.go` file.
 | `FF_SKIP_NOOP_BUILD_STAGES` | `true` | ✗ |  | When set to `false` all build stages are executed even if running them has no effect |
 | `FF_SHELL_EXECUTOR_USE_LEGACY_PROCESS_KILL` | `false` | ✓ | 14.0 | Use the old process termination that was used prior to GitLab 13.1 where only `SIGKILL` was sent |
 | `FF_RESET_HELPER_IMAGE_ENTRYPOINT` | `true` | ✓ | 14.0 | Enables adding an ENTRYPOINT layer for Helper images imported from local Docker archives by the `docker` executor, in order to enable [importing of user certificate roots](./tls-self-signed.md#trusting-the-certificate-for-the-other-cicd-stages) |
+| `FF_USE_LEGACY_DOCKER_UMASK` | `true` | ✓ |  | When set to 'true', 'umask 0000' is used for all predefined steps (fetching sources, artifacts and caches). This results in any files the steps produce being world writable. When set to 'false', a uid/gid lookup is performed on the build image and 'chown -RP -- %d:%d' is executed if the user is not root. This sets the files to be owned by the same user as the build image, allowing a build user to write to the files without them having to be explicitly world writable. |
 
 <!-- feature_flags_list_end -->
 
