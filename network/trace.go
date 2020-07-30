@@ -2,6 +2,8 @@ package network
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"sync"
 	"time"
 
@@ -20,7 +22,8 @@ type clientJobTrace struct {
 	id             int
 	cancelFunc     context.CancelFunc
 
-	buffer *trace.Buffer
+	buffer         *trace.Buffer
+	chunkChecksums []string
 
 	lock          sync.RWMutex
 	state         common.JobState
@@ -34,6 +37,7 @@ type clientJobTrace struct {
 	forceSendInterval   time.Duration
 	finishRetryInterval time.Duration
 	maxTracePatchSize   int
+	checksumChunkSize   int
 
 	failuresCollector common.FailuresCollector
 }
@@ -173,8 +177,37 @@ func (c *clientJobTrace) anyTraceToSend() bool {
 	return c.buffer.Size() != c.sentTrace
 }
 
+func (c *clientJobTrace) updateChecksums(final bool) {
+	if c.checksumChunkSize == 0 {
+		return
+	}
+
+	chunkOffset := len(c.chunkChecksums) * c.checksumChunkSize
+
+	// append checksum of a completed chunk
+	for chunkOffset < c.buffer.Size() {
+		if !final && chunkOffset+c.checksumChunkSize > c.buffer.Size() {
+			// incrementally append only full chunks
+			// on final calculate checksum of partial chunk
+			break
+		}
+
+		data, err := c.buffer.Bytes(chunkOffset, c.checksumChunkSize)
+		if err != nil {
+			// TODO: log and handle
+			return
+		}
+
+		checksum := sha256.Sum256(data)
+		checksumString := hex.EncodeToString([]byte(checksum))
+		c.chunkChecksums = append(c.chunkChecksums, checksumString)
+		chunkOffset += len(data)
+	}
+}
+
 func (c *clientJobTrace) sendPatch() common.UpdateState {
 	c.lock.RLock()
+	c.updateChecksums() // to reduce CPU pressure it is best to process data while we send it
 	content, err := c.buffer.Bytes(c.sentTrace, c.maxTracePatchSize)
 	sentTrace := c.sentTrace
 	c.lock.RUnlock()
@@ -186,6 +219,8 @@ func (c *clientJobTrace) sendPatch() common.UpdateState {
 	if len(content) == 0 {
 		return common.UpdateSucceeded
 	}
+
+	// TODO: We could append information about a new added chunk checksums for a finished chunks
 
 	result := c.client.PatchTrace(c.config, c.jobCredentials, content, sentTrace)
 
@@ -215,6 +250,7 @@ func (c *clientJobTrace) setUpdateInterval(newUpdateInterval time.Duration) {
 // Update Coordinator that the job is still running.
 func (c *clientJobTrace) touchJob() common.UpdateState {
 	c.lock.RLock()
+	c.updateChecksums(true)
 	shouldRefresh := time.Since(c.sentTime) > c.forceSendInterval
 	c.lock.RUnlock()
 
@@ -247,9 +283,13 @@ func (c *clientJobTrace) sendUpdate() common.UpdateState {
 		ID:            c.id,
 		State:         state,
 		FailureReason: c.failureReason,
+		// TODO: append all checksums
 	}
 
 	status := c.client.UpdateJob(c.config, c.jobCredentials, jobInfo)
+
+	// TODO: we might want to implement a method that GitLab rejected trace
+	// and asks us to resend all
 
 	if status == common.UpdateSucceeded {
 		c.lock.Lock()
@@ -319,5 +359,6 @@ func newJobTrace(
 		updateInterval:      common.DefaultTraceUpdateInterval,
 		forceSendInterval:   common.TraceForceSendInterval,
 		finishRetryInterval: common.TraceFinishRetryInterval,
+		// checksumChunkSize: pass checksumChunkSize from `FeaturesInfo::ChecksumChunkSize`,
 	}, nil
 }
