@@ -59,9 +59,12 @@ setup_docker_context
 _docker_buildx build \
     --platform "${platform}" \
     --no-cache \
-    --output "type=tar,dest=$TARGET_FILE" \
+    --output "type=docker" \
     --tag "gitlab/gitlab-runner-helper:$TARGET_ARCH-$REVISION" \
     dockerfiles/runner-helper
+
+_docker create --name=runner-helper-$TARGET_ARCH-$REVISION "gitlab/gitlab-runner-helper:$TARGET_ARCH-$REVISION"
+_docker export -o $TARGET_FILE runner-helper-$TARGET_ARCH-$REVISION
 
 trap - ERR SIGINT SIGTERM
 cleanup_docker_context
