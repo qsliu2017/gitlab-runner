@@ -17,7 +17,7 @@ type clientJobTrace struct {
 	cancelFunc     context.CancelFunc
 	abortFunc      context.CancelFunc
 
-	buffer *trace.Buffer
+	buffer *trace.Trace
 
 	lock          sync.RWMutex
 	state         common.JobState

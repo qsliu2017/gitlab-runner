@@ -190,10 +190,10 @@ func TestJobOutputLimit(t *testing.T) {
 
 	receivedTrace := bytes.NewBuffer([]byte{})
 	mockNetwork.On("PatchTrace", jobOutputLimit, jobCredentials, mock.Anything, mock.Anything).
-		Return(common.NewPatchTraceResult(1078, common.PatchSucceeded, 0)).
+		Return(common.NewPatchTraceResult(1077, common.PatchSucceeded, 0)).
 		Once().
 		Run(func(args mock.Arguments) {
-			// the 1078 == len(data)
+			// the 1077 == len(data)
 			data := args.Get(2).([]byte)
 			receivedTrace.Write(data)
 		})

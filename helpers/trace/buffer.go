@@ -189,7 +189,7 @@ func (b *Buffer) process(pipe *io.PipeReader) {
 	close(b.finish)
 }
 
-func New() (*Buffer, error) {
+func Old() (*Buffer, error) {
 	logFile, err := ioutil.TempFile("", "trace")
 	if err != nil {
 		return nil, err
