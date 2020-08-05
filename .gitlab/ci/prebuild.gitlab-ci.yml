@@ -2,9 +2,20 @@ helper images:
   extends:
   - .merge_request_pipelines
   - .docker
-  - .go-cache-docker-qemu
+  #- .go-cache-docker-qemu
   stage: prebuild
+  image: golang:1.13.8-alpine
   script:
+  - apk add --no-cache bash make git wget xz
+  - wget -q https://download.docker.com/linux/static/stable/x86_64/docker-${DOCKER_VERSION}.tgz -O /tmp/docker.tar.gz &&
+    tar -xzf /tmp/docker.tar.gz -C /tmp/ &&
+    cp /tmp/docker/docker* /usr/bin &&
+    chmod +x /usr/bin/docker* &&
+    rm -rf /tmp/*
+  - mkdir -p ~/.docker/cli-plugins &&
+    wget -q https://github.com/docker/buildx/releases/download/v${BUILDX_VERSION}/buildx-v${BUILDX_VERSION}.linux-amd64 -O ~/.docker/cli-plugins/docker-buildx &&
+    chmod a+x ~/.docker/cli-plugins/docker-buildx
+  - docker run --rm --privileged docker/binfmt:a7996909642ee92942dcd6cff44b9b95f08dad64
   - make helper-bin helper-dockerarchive
   retry: 2
   artifacts:

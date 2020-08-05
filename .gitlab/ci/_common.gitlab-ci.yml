@@ -3,7 +3,7 @@ variables:
   GOROOT: /usr/local/go
   # Following variables are used in some jobs to install specified software
   RELEASE_INDEX_GEN_VERSION: "latest"
-  DOCKER_VERSION: 19.03.5
+  DOCKER_VERSION: "19.03.5"
   DOCKER_MACHINE_VERSION: "0.16.2"
   BUILDX_VERSION: 0.3.1
   KUBECTL_VERSION: 1.18.0
