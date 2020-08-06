@@ -70,7 +70,6 @@ func (s *safeBuffer) String() string {
 
 func TestDockerCommandSuccessRun(t *testing.T) {
 	helpers.SkipIntegrationTests(t, "docker", "info")
-	test.SkipIfGitLabCIOn(t, test.OSWindows)
 
 	build := getBuildForOS(t, common.GetRemoteSuccessfulBuild)
 
@@ -287,7 +286,6 @@ func TestDockerCommandNoRootImage(t *testing.T) {
 
 func TestDockerCommandBuildFail(t *testing.T) {
 	helpers.SkipIntegrationTests(t, "docker", "info")
-	test.SkipIfGitLabCIOn(t, test.OSWindows)
 
 	build := getBuildForOS(t, common.GetRemoteFailedBuild)
 
