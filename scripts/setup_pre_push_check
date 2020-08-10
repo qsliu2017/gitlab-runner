@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+
+set -eo pipefail
+
+GIT_ROOT=$(cd "${BASH_SOURCE%/*}" && git rev-parse --show-toplevel)
+
+if [ -f "${GIT_ROOT}/.git/hooks/pre-push" ]; then
+  echo "pre-push hook already exists. Please delete it and re-run the script if you wish to overwrite it."
+  exit
+fi
+
+cat > "${GIT_ROOT}/.git/hooks/pre-push" << EOF
+#!/usr/bin/env bash
+
+z40=0000000000000000000000000000000000000000
+
+IFS=' '
+while read local_ref local_sha remote_ref remote_sha
+do
+  if [ "$local_sha" = $z40 ]; then
+    # Handle delete
+   echo "Deleting ref"
+  else
+    make pre-push-check || exit 1
+  fi
+done
+
+command -v git-lfs >/dev/null 2>&1 || { echo >&2 "\nThis repository is configured for Git LFS but 'git-lfs' was not found on your path. If you no longer wish to use Git LFS, remove this hook by deleting .git/hooks/pre-push.\n"; exit 2; }
+git lfs pre-push "$@"
+EOF

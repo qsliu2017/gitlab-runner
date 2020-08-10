@@ -381,3 +381,12 @@ $(GITLAB_CHANGELOG):
 .PHONY: clean
 clean:
 	-$(RM) -rf $(TARGET_DIR)
+
+.PHONY: setup-pre-push-check
+setup-pre-push-check:
+	@scripts/setup_pre_push_check
+
+.PHONY: pre-push-check
+pre-push-check: lint update_feature_flags_docs
+	@git --no-pager diff --compact-summary --exit-code -- ./docs/configuration/feature-flags.md || \
+		echo "Modifications detected in docs/configuration/feature-flags.md. Please commit changes."
