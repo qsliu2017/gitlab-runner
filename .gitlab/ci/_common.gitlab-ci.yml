@@ -89,7 +89,7 @@ before_script:
   - gitlab-org-docker
 
 .docker_qemu-before_script: &docker_qemu-before_script
-  - docker run --rm --privileged docker/binfmt:a7996909642ee92942dcd6cff44b9b95f08dad64
+  - docker run --rm --privileged linuxkit/binfmt:v0.8
 
 .docker_qemu:
   before_script:
