@@ -50,6 +50,7 @@ helper-bin-host: ${BASE_BINARY_PATH}.$(shell uname -m)
 # Build the Runner Helper binaries for all supported platforms.
 .PHONY: helper-bin
 helper-bin: $(BINARIES)
+	go env
 
 ${BASE_BINARY_PATH}.%: $(HELPER_GO_FILES) $(GOX)
 	$(GOX) -osarch=$(GO_ARCH_$*) -ldflags "$(GO_LDFLAGS)" -output=$@ $(PKG)/apps/gitlab-runner-helper

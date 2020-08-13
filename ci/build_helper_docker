@@ -60,7 +60,6 @@ _docker_buildx build \
     --platform "${platform}" \
     --no-cache \
     --output "type=tar,dest=$TARGET_FILE" \
-    --tag "gitlab/gitlab-runner-helper:$TARGET_ARCH-$REVISION" \
     dockerfiles/runner-helper
 
 trap - ERR SIGINT SIGTERM

@@ -5,9 +5,6 @@
   image: docker:${DOCKER_VERSION}-git
   script:
   - source ./ci/build_ci_image
-  only:
-    refs:
-    - merge_requests@gitlab-org/gitlab-runner
 
 prepare ci image:
   extends:
@@ -22,13 +19,13 @@ prepare ci image:
     - .gitlab/ci/_common.gitlab-ci.yml
     - .gitlab/ci/prepare.gitlab-ci.yml
 
-prepare alpine-no-root image:
-  extends:
-  - .image_builder
-  variables:
-    BUILD_IMAGE: registry.gitlab.com/gitlab-org/gitlab-runner/alpine-no-root:latest
-    BUILD_DOCKERFILE: ./tests/dockerfiles/alpine-no-root/Dockerfile
-  only:
-    changes:
-    - tests/dockerfiles/alpine-no-root/*
-    - .gitlab/ci/prepare.gitlab-ci.yml
+#prepare alpine-no-root image:
+#  extends:
+#  - .image_builder
+#  variables:
+#    BUILD_IMAGE: registry.gitlab.com/gitlab-org/gitlab-runner/alpine-no-root:latest
+#    BUILD_DOCKERFILE: ./tests/dockerfiles/alpine-no-root/Dockerfile
+#  only:
+#    changes:
+#    - tests/dockerfiles/alpine-no-root/*
+#    - .gitlab/ci/prepare.gitlab-ci.yml
