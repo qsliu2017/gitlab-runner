@@ -4,7 +4,9 @@ helper images:
   - .go-cache-docker-qemu
   stage: prebuild
   script:
-  - make helper-bin BINARIES="out/binaries/gitlab-runner-helper/gitlab-runner-helper.x86_64" helper-dockerarchive TAR_XZ="out/helper-images/prebuilt-x86_64.tar.xz"
+  - mkdir -p out/binaries/gitlab-runner-helper
+  - cp gitlab-runner-helper.x86_64 out/binaries/gitlab-runner-helper/gitlab-runner-helper.x86_64
+  - make helper-dockerarchive TAR_XZ="out/helper-images/prebuilt-x86_64.tar.xz"
   retry: 2
   artifacts:
     paths:

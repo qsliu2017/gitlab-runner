@@ -52,8 +52,8 @@ helper-bin-host: ${BASE_BINARY_PATH}.$(shell uname -m)
 helper-bin: $(BINARIES)
 	go env
 
-${BASE_BINARY_PATH}.%: $(HELPER_GO_FILES) $(GOX)
-	$(GOX) -osarch=$(GO_ARCH_$*) -ldflags "$(GO_LDFLAGS)" -output=$@ $(PKG)/apps/gitlab-runner-helper
+#${BASE_BINARY_PATH}.%: $(HELPER_GO_FILES) $(GOX)
+	#$(GOX) -osarch=$(GO_ARCH_$*) -ldflags "$(GO_LDFLAGS)" -output=$@ $(PKG)/apps/gitlab-runner-helper
 
 # Build the Runner Helper tar files for host platform.
 .PHONY: helper-dockerarchive-host
