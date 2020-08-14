@@ -45,9 +45,9 @@ The following options are provided, which allow you to connect to the Kubernetes
 The user account provided must have permission to create, list and attach to Pods in
 the specified namespace in order to function.
 
-If you are running the GitLab CI Runner within the Kubernetes cluster you can omit
-all of the above fields to have the Runner auto-discover the Kubernetes API. This
-is the recommended approach.
+If you are running the GitLab CI Runner within the Kubernetes cluster (the one you
+are running your GitLab k8s installation) you can omit all of the above fields
+to have the Runner auto-discover the Kubernetes API. This is the recommended approach.
 
 If you are running it externally to the Cluster then you will need to set each
 of these keywords and make sure that the Runner has access to the Kubernetes API
