@@ -46,7 +46,7 @@ The user account provided must have permission to create, list and attach to Pod
 the specified namespace in order to function.
 
 If you are running the GitLab CI Runner within the Kubernetes cluster (the one you
-are running your GitLab k8s installation) you can omit all of the above fields
+are running your GitLab k8s deployment in) you can omit all of the above fields
 to have the Runner auto-discover the Kubernetes API. This is the recommended approach.
 
 If you are running it externally to the Cluster then you will need to set each
