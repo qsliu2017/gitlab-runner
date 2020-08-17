@@ -58,6 +58,7 @@ type BuildRuntimeState string
 const (
 	BuildRunStatePending      BuildRuntimeState = "pending"
 	BuildRunRuntimeRunning    BuildRuntimeState = "running"
+	BuildRunRuntimeCanceling  BuildRuntimeState = "canceling"
 	BuildRunRuntimeFinished   BuildRuntimeState = "finished"
 	BuildRunRuntimeCanceled   BuildRuntimeState = "canceled"
 	BuildRunRuntimeTerminated BuildRuntimeState = "terminated"
@@ -539,8 +540,10 @@ func (b *Build) GetBuildTimeout() time.Duration {
 func (b *Build) handleError(err error) error {
 	switch err {
 	case context.Canceled:
-		b.setCurrentState(BuildRunRuntimeCanceled)
-		return &BuildError{Inner: errors.New("canceled")}
+		return &BuildError{
+			Inner:         errors.New("canceled"),
+			FailureReason: JobCanceled,
+		}
 
 	case context.DeadlineExceeded:
 		b.setCurrentState(BuildRunRuntimeTimedout)
@@ -765,7 +768,15 @@ func (b *Build) Run(globalConfig *Config, trace JobTrace) (err error) {
 	ctx, cancel := context.WithTimeout(context.Background(), b.GetBuildTimeout())
 	defer cancel()
 
-	trace.SetCancelFunc(cancel)
+	trace.SetCancelFunc(func(remoteJobState JobState) {
+		switch remoteJobState {
+		case Canceled:
+			b.setCurrentState(BuildRunRuntimeCanceled)
+		case Canceling:
+			b.setCurrentState(BuildRunRuntimeCanceling)
+		}
+		cancel()
+	})
 	trace.SetMasked(b.GetAllVariables().Masked())
 
 	options := ExecutorPrepareOptions{

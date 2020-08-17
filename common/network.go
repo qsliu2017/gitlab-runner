@@ -1,7 +1,6 @@
 package common
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"time"
@@ -20,12 +19,17 @@ const (
 	Running JobState = "running"
 	Failed  JobState = "failed"
 	Success JobState = "success"
+
+	// only remote job states
+	Canceling JobState = "canceling"
+	Canceled  JobState = "canceled"
 )
 
 const (
 	ScriptFailure       JobFailureReason = "script_failure"
 	RunnerSystemFailure JobFailureReason = "runner_system_failure"
 	JobExecutionTimeout JobFailureReason = "job_execution_timeout"
+	JobCanceled         JobFailureReason = "job_canceled"
 )
 
 const (
@@ -34,6 +38,7 @@ const (
 	UpdateAbort
 	UpdateFailed
 	UpdateRangeMismatch
+	UpdateCanceling
 )
 
 const (
@@ -68,6 +73,7 @@ type FeaturesInfo struct {
 	RawVariables            bool `json:"raw_variables"`
 	ArtifactsExclude        bool `json:"artifacts_exclude"`
 	MultiBuildSteps         bool `json:"multi_build_steps"`
+	Canceling               bool `json:"canceling"`
 }
 
 type RegisterRunnerParameters struct {
@@ -369,12 +375,14 @@ type FailuresCollector interface {
 	RecordFailure(reason JobFailureReason, runnerDescription string)
 }
 
+type CancelFunc func(remoteJobState JobState)
+
 type JobTrace interface {
 	io.Writer
 	Success()
 	Fail(err error, failureReason JobFailureReason)
-	SetCancelFunc(cancelFunc context.CancelFunc)
-	Cancel() bool
+	SetCancelFunc(cancelFunc CancelFunc)
+	Cancel(JobState) bool
 	SetFailuresCollector(fc FailuresCollector)
 	SetMasked(values []string)
 	IsStdout() bool

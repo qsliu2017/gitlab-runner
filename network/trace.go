@@ -1,7 +1,6 @@
 package network
 
 import (
-	"context"
 	"sync"
 	"time"
 
@@ -18,7 +17,7 @@ type clientJobTrace struct {
 	config         common.RunnerConfig
 	jobCredentials *common.JobCredentials
 	id             int
-	cancelFunc     context.CancelFunc
+	cancelFunc     common.CancelFunc
 
 	buffer *trace.Buffer
 
@@ -72,14 +71,14 @@ func (c *clientJobTrace) SetMasked(masked []string) {
 	c.buffer.SetMasked(masked)
 }
 
-func (c *clientJobTrace) SetCancelFunc(cancelFunc context.CancelFunc) {
+func (c *clientJobTrace) SetCancelFunc(cancelFunc common.CancelFunc) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
 	c.cancelFunc = cancelFunc
 }
 
-func (c *clientJobTrace) Cancel() bool {
+func (c *clientJobTrace) Cancel(remoteJobState common.JobState) bool {
 	c.lock.RLock()
 	defer c.lock.RUnlock()
 
@@ -87,7 +86,7 @@ func (c *clientJobTrace) Cancel() bool {
 		return false
 	}
 
-	c.cancelFunc()
+	c.cancelFunc(remoteJobState)
 	return true
 }
 
@@ -117,7 +116,7 @@ func (c *clientJobTrace) start() {
 func (c *clientJobTrace) finalTraceUpdate() {
 	for c.anyTraceToSend() {
 		switch c.sendPatch() {
-		case common.UpdateSucceeded:
+		case common.UpdateSucceeded, common.UpdateCanceling:
 			// we continue sending till we succeed
 			continue
 		case common.UpdateAbort:
@@ -135,7 +134,7 @@ func (c *clientJobTrace) finalTraceUpdate() {
 func (c *clientJobTrace) finalStatusUpdate() {
 	for {
 		switch c.sendUpdate() {
-		case common.UpdateSucceeded:
+		case common.UpdateSucceeded, common.UpdateCanceling:
 			return
 		case common.UpdateAbort:
 			return
@@ -159,7 +158,7 @@ func (c *clientJobTrace) finish() {
 
 func (c *clientJobTrace) incrementalUpdate() common.UpdateState {
 	state := c.sendPatch()
-	if state != common.UpdateSucceeded {
+	if state != common.UpdateSucceeded && state != common.UpdateCanceling {
 		return state
 	}
 
@@ -191,7 +190,8 @@ func (c *clientJobTrace) sendPatch() common.UpdateState {
 
 	c.setUpdateInterval(result.NewUpdateInterval)
 
-	if result.State == common.UpdateSucceeded || result.State == common.UpdateRangeMismatch {
+	switch result.State {
+	case common.UpdateSucceeded, common.UpdateCanceling, common.UpdateRangeMismatch:
 		c.lock.Lock()
 		c.sentTime = time.Now()
 		c.sentTrace = result.SentOffset
@@ -229,7 +229,7 @@ func (c *clientJobTrace) touchJob() common.UpdateState {
 
 	status := c.client.UpdateJob(c.config, c.jobCredentials, jobInfo)
 
-	if status == common.UpdateSucceeded {
+	if status == common.UpdateSucceeded || status == common.UpdateCanceling {
 		c.lock.Lock()
 		c.sentTime = time.Now()
 		c.lock.Unlock()
@@ -251,7 +251,7 @@ func (c *clientJobTrace) sendUpdate() common.UpdateState {
 
 	status := c.client.UpdateJob(c.config, c.jobCredentials, jobInfo)
 
-	if status == common.UpdateSucceeded {
+	if status == common.UpdateSucceeded || status == common.UpdateCanceling {
 		c.lock.Lock()
 		c.sentTime = time.Now()
 		c.lock.Unlock()
@@ -260,10 +260,9 @@ func (c *clientJobTrace) sendUpdate() common.UpdateState {
 	return status
 }
 
-func (c *clientJobTrace) abort() bool {
-	cancelled := c.Cancel()
+func (c *clientJobTrace) abort(remoteJobState common.JobState) {
+	c.Cancel(remoteJobState)
 	c.SetCancelFunc(nil)
-	return cancelled
 }
 
 func (c *clientJobTrace) watch() {
@@ -271,11 +270,15 @@ func (c *clientJobTrace) watch() {
 		select {
 		case <-time.After(c.getUpdateInterval()):
 			state := c.incrementalUpdate()
-			if state == common.UpdateAbort && c.abort() {
+			switch state {
+			case common.UpdateAbort:
+				c.abort(common.Canceled)
 				<-c.finished
 				return
+
+			case common.UpdateCanceling:
+				c.abort(common.Canceling)
 			}
-			break
 
 		case <-c.finished:
 			return

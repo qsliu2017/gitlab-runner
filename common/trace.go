@@ -1,7 +1,6 @@
 package common
 
 import (
-	"context"
 	"io"
 	"os"
 	"sync"
@@ -9,7 +8,7 @@ import (
 
 type Trace struct {
 	Writer     io.Writer
-	cancelFunc context.CancelFunc
+	cancelFunc CancelFunc
 	mutex      sync.Mutex
 }
 
@@ -32,14 +31,14 @@ func (s *Trace) Success() {
 func (s *Trace) Fail(err error, failureReason JobFailureReason) {
 }
 
-func (s *Trace) SetCancelFunc(cancelFunc context.CancelFunc) {
+func (s *Trace) SetCancelFunc(cancelFunc CancelFunc) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
 	s.cancelFunc = cancelFunc
 }
 
-func (s *Trace) Cancel() bool {
+func (s *Trace) Cancel(remoteJobState JobState) bool {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
@@ -47,7 +46,7 @@ func (s *Trace) Cancel() bool {
 		return false
 	}
 
-	s.cancelFunc()
+	s.cancelFunc(remoteJobState)
 	return true
 }
 

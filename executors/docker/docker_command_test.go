@@ -508,7 +508,7 @@ func TestDockerCommandBuildCancel(t *testing.T) {
 
 	abortTimer := time.AfterFunc(time.Second, func() {
 		t.Log("Interrupt")
-		trace.Cancel()
+		trace.Cancel(common.Canceled)
 	})
 	defer abortTimer.Stop()
 

@@ -2,22 +2,19 @@ package network
 
 import (
 	"net/http"
+
+	"gitlab.com/gitlab-org/gitlab-runner/common"
 )
 
-const (
-	remoteStateHeader = "Job-Status"
-
-	statusCanceled = "canceled"
-	statusFailed   = "failed"
-)
+const remoteStateHeader = "Job-Status"
 
 type RemoteJobStateResponse struct {
 	StatusCode  int
-	RemoteState string
+	RemoteState common.JobState
 }
 
-func (r *RemoteJobStateResponse) IsAborted() bool {
-	if r.RemoteState == statusCanceled || r.RemoteState == statusFailed {
+func (r *RemoteJobStateResponse) IsFailed() bool {
+	if r.RemoteState == common.Canceled || r.RemoteState == common.Failed {
 		return true
 	}
 
@@ -28,6 +25,10 @@ func (r *RemoteJobStateResponse) IsAborted() bool {
 	return false
 }
 
+func (r *RemoteJobStateResponse) IsCanceled() bool {
+	return r.RemoteState == common.Canceling
+}
+
 func NewRemoteJobStateResponse(response *http.Response) *RemoteJobStateResponse {
 	if response == nil {
 		return &RemoteJobStateResponse{}
@@ -35,6 +36,6 @@ func NewRemoteJobStateResponse(response *http.Response) *RemoteJobStateResponse 
 
 	return &RemoteJobStateResponse{
 		StatusCode:  response.StatusCode,
-		RemoteState: response.Header.Get(remoteStateHeader),
+		RemoteState: common.JobState(response.Header.Get(remoteStateHeader)),
 	}
 }

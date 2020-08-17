@@ -46,10 +46,9 @@ func TestBuildsHelperCollect(t *testing.T) {
 	}
 	trace := &common.Trace{Writer: ioutil.Discard}
 
+	done := make(chan error)
 	go func() {
-		err = buildtest.RunBuildWithTrace(t, build, trace)
-		assert.EqualError(t, err, "canceled")
-		assert.True(t, errors.Is(err, &common.BuildError{}), "expected: %T, got: %T", common.BuildError{}, err)
+		done <- buildtest.RunBuildWithTrace(t, build, trace)
 	}()
 
 	b.builds = append(b.builds, build)
@@ -58,11 +57,15 @@ func TestBuildsHelperCollect(t *testing.T) {
 	// metrics are collected.
 	for i := 0; i < 200; i++ {
 		if i == 100 {
-			trace.Cancel()
+			trace.Cancel(common.Canceled)
 		}
 		b.Collect(ch)
 		<-ch
 	}
+
+	err = <-done
+	expected := &common.BuildError{FailureReason: common.JobCanceled}
+	assert.True(t, errors.Is(err, expected), "expected: %[1]T (%[1]v), got: %[2]T (%[2]v)", expected, err)
 }
 
 func TestBuildsHelperAcquireRequestWithLimit(t *testing.T) {

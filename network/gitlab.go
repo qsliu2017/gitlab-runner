@@ -392,14 +392,17 @@ func (n *GitLabClient) UpdateJob(
 	})
 
 	switch {
-	case remoteJobStateResponse.IsAborted():
-		log.Warningln("Submitting job to coordinator...", "aborted")
+	case remoteJobStateResponse.IsFailed():
+		log.Warningln("Submitting job to coordinator...", "job failed")
 		return common.UpdateAbort
+	case remoteJobStateResponse.IsCanceled():
+		log.Warningln("Submitting job to coordinator...", "job canceled")
+		return common.UpdateCanceling
 	case result == http.StatusOK:
 		log.Debugln("Submitting job to coordinator...", "ok")
 		return common.UpdateSucceeded
 	case result == http.StatusNotFound:
-		log.Warningln("Submitting job to coordinator...", "aborted")
+		log.Warningln("Submitting job to coordinator...", "not found")
 		return common.UpdateAbort
 	case result == http.StatusForbidden:
 		log.WithField("status", statusText).Errorln("Submitting job to coordinator...", "forbidden")
@@ -480,9 +483,15 @@ func (n *GitLabClient) createPatchTraceResult(
 	}
 
 	switch {
-	case tracePatchResponse.IsAborted():
-		log.Warningln("Appending trace to coordinator...", "aborted")
+	case tracePatchResponse.IsFailed():
+		log.Warningln("Appending trace to coordinator...", "job failed")
 		result.State = common.UpdateAbort
+
+		return result
+
+	case tracePatchResponse.IsCanceled():
+		log.Warningln("Appending trace to coordinator...", "job canceled")
+		result.State = common.UpdateCanceling
 
 		return result
 
