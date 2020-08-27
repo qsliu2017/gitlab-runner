@@ -57,7 +57,7 @@ func TestBuildsHelperCollect(t *testing.T) {
 	// metrics are collected.
 	for i := 0; i < 200; i++ {
 		if i == 100 {
-			trace.Cancel(common.Canceled)
+			trace.Cancel()
 		}
 		b.Collect(ch)
 		<-ch

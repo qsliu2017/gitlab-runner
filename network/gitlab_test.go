@@ -731,7 +731,7 @@ func TestUpdateJobAsKeepAlive(t *testing.T) {
 	assert.Equal(t, UpdateAbort, state, "Update should continue when Job-Status=failed")
 
 	state = c.UpdateJob(config, jobCredentials, UpdateJobInfo{ID: 13, State: "running"})
-	assert.Equal(t, UpdateCanceling, state, "Update should succeed with cancel when Job-Status=canceling")
+	assert.Equal(t, UpdateSucceededButCanceled, state, "Update should succeed with cancel when Job-Status=canceling")
 }
 
 const patchToken = "token"
@@ -1081,16 +1081,16 @@ func TestPatchTraceUpdateIntervalHeaderHandling(t *testing.T) {
 }
 
 func TestAbortedPatchTrace(t *testing.T) {
-	tests := map[JobState]UpdateState{
-		Canceling: UpdateCanceling,
-		Canceled:  UpdateAbort,
-		Failed:    UpdateAbort,
+	tests := map[string]UpdateState{
+		"canceling": UpdateSucceededButCanceled,
+		"canceled":  UpdateAbort,
+		"failed":    UpdateAbort,
 	}
 
 	for status, expectedState := range tests {
-		t.Run(string(status), func(t *testing.T) {
+		t.Run(status, func(t *testing.T) {
 			handler := func(w http.ResponseWriter, r *http.Request, body []byte, offset, limit int) {
-				w.Header().Set("Job-Status", string(status))
+				w.Header().Set("Job-Status", status)
 				w.WriteHeader(http.StatusAccepted)
 			}
 

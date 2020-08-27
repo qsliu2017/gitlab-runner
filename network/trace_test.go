@@ -87,9 +87,8 @@ func TestJobAbort(t *testing.T) {
 	require.NoError(t, err)
 
 	b.updateInterval = 0
-	b.SetCancelFunc(func(_ common.JobState) {
-		cancel()
-	})
+	b.SetCancelFunc(cancel)
+	b.SetAbortFunc(cancel)
 
 	b.start()
 	assert.NotNil(t, <-ctx.Done(), "should abort the job")
@@ -108,19 +107,18 @@ func TestJobCanceling(t *testing.T) {
 
 	// abort while running
 	mockNetwork.On("UpdateJob", jobConfig, jobCredentials, keepAliveUpdateMatcher).
-		Return(common.UpdateCanceling).Once()
+		Return(common.UpdateSucceededButCanceled).Once()
 
 	// try to send status at least once more
 	mockNetwork.On("UpdateJob", jobConfig, jobCredentials, updateMatcher).
-		Return(common.UpdateCanceling).Once()
+		Return(common.UpdateSucceededButCanceled).Once()
 
 	b, err := newJobTrace(mockNetwork, jobConfig, jobCredentials)
 	require.NoError(t, err)
 
 	b.updateInterval = 0
-	b.SetCancelFunc(func(_ common.JobState) {
-		cancel()
-	})
+	b.SetCancelFunc(cancel)
+	b.SetAbortFunc(cancel)
 
 	b.start()
 	assert.NotNil(t, <-ctx.Done(), "should abort the job")

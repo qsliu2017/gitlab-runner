@@ -58,7 +58,6 @@ type BuildRuntimeState string
 const (
 	BuildRunStatePending      BuildRuntimeState = "pending"
 	BuildRunRuntimeRunning    BuildRuntimeState = "running"
-	BuildRunRuntimeCanceling  BuildRuntimeState = "canceling"
 	BuildRunRuntimeFinished   BuildRuntimeState = "finished"
 	BuildRunRuntimeCanceled   BuildRuntimeState = "canceled"
 	BuildRunRuntimeTerminated BuildRuntimeState = "terminated"
@@ -768,15 +767,8 @@ func (b *Build) Run(globalConfig *Config, trace JobTrace) (err error) {
 	ctx, cancel := context.WithTimeout(context.Background(), b.GetBuildTimeout())
 	defer cancel()
 
-	trace.SetCancelFunc(func(remoteJobState JobState) {
-		switch remoteJobState {
-		case Canceled:
-			b.setCurrentState(BuildRunRuntimeCanceled)
-		case Canceling:
-			b.setCurrentState(BuildRunRuntimeCanceling)
-		}
-		cancel()
-	})
+	trace.SetCancelFunc(cancel)
+	trace.SetAbortFunc(cancel)
 	trace.SetMasked(b.GetAllVariables().Masked())
 
 	options := ExecutorPrepareOptions{

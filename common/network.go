@@ -1,6 +1,7 @@
 package common
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"time"
@@ -19,10 +20,6 @@ const (
 	Running JobState = "running"
 	Failed  JobState = "failed"
 	Success JobState = "success"
-
-	// only remote job states
-	Canceling JobState = "canceling"
-	Canceled  JobState = "canceled"
 )
 
 const (
@@ -38,7 +35,7 @@ const (
 	UpdateAbort
 	UpdateFailed
 	UpdateRangeMismatch
-	UpdateCanceling
+	UpdateSucceededButCanceled
 )
 
 const (
@@ -375,14 +372,14 @@ type FailuresCollector interface {
 	RecordFailure(reason JobFailureReason, runnerDescription string)
 }
 
-type CancelFunc func(remoteJobState JobState)
-
 type JobTrace interface {
 	io.Writer
 	Success()
 	Fail(err error, failureReason JobFailureReason)
-	SetCancelFunc(cancelFunc CancelFunc)
-	Cancel(JobState) bool
+	SetCancelFunc(cancelFunc context.CancelFunc)
+	Cancel() bool
+	SetAbortFunc(cancelFunc context.CancelFunc)
+	Abort() bool
 	SetFailuresCollector(fc FailuresCollector)
 	SetMasked(values []string)
 	IsStdout() bool
