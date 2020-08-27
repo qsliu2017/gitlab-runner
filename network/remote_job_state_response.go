@@ -30,7 +30,12 @@ func (r *RemoteJobStateResponse) IsFailed() bool {
 }
 
 func (r *RemoteJobStateResponse) IsCanceled() bool {
-	return r.RemoteState == statusCanceling
+	switch r.StatusCode {
+	case http.StatusOK, http.StatusCreated, http.StatusAccepted, http.StatusNoContent:
+		return r.RemoteState == statusCanceling
+	default:
+		return false
+	}
 }
 
 func NewRemoteJobStateResponse(response *http.Response) *RemoteJobStateResponse {

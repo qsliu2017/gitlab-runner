@@ -288,6 +288,7 @@ func (c *clientJobTrace) cancel() {
 
 func (c *clientJobTrace) abort() {
 	c.Abort()
+	c.SetCancelFunc(nil)
 	c.SetAbortFunc(nil)
 }
 

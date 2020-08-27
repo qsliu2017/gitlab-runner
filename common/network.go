@@ -70,7 +70,7 @@ type FeaturesInfo struct {
 	RawVariables            bool `json:"raw_variables"`
 	ArtifactsExclude        bool `json:"artifacts_exclude"`
 	MultiBuildSteps         bool `json:"multi_build_steps"`
-	Canceling               bool `json:"canceling"`
+	Cancelable              bool `json:"cancelable"`
 }
 
 type RegisterRunnerParameters struct {

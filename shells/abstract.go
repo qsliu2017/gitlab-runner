@@ -27,7 +27,7 @@ func (b *AbstractShell) GetFeatures(features *common.FeaturesInfo) {
 	features.RawVariables = true
 	features.ArtifactsExclude = true
 	features.MultiBuildSteps = true
-	features.Canceling = true
+	features.Cancelable = true
 }
 
 func (b *AbstractShell) writeCdBuildDir(w ShellWriter, info common.ShellScriptInfo) {
