@@ -406,10 +406,17 @@ func (b *Build) executeUploadArtifacts(ctx context.Context, state error, executo
 	return b.executeStage(ctx, BuildStageUploadOnFailureArtifacts, executor)
 }
 
-func (b *Build) executeScript(ctx context.Context, executor Executor) error {
+func (b *Build) executeScript(abortCtx context.Context, trace JobTrace, executor Executor) error {
 	// track job start and create referees
 	startTime := time.Now()
 	b.createReferees(executor)
+
+	ctx, cancel := context.WithCancel(abortCtx)
+	defer cancel()
+
+	trace.SetCancelFunc(cancel)
+	// This sets a CancelFunc to AbortFunc
+	defer trace.SetCancelFunc(nil)
 
 	// Prepare stage
 	err := b.executeStage(ctx, BuildStagePrepare, executor)
@@ -442,11 +449,14 @@ func (b *Build) executeScript(ctx context.Context, executor Executor) error {
 			}
 		}
 
-		// Execute after script (after_script)
-		timeoutCtx, timeoutCancel := context.WithTimeout(ctx, AfterScriptTimeout)
-		defer timeoutCancel()
+		// execute only unless a parent context of ctx was not canceled
+		if abortCtx.Err() == nil {
+			// Execute after script (after_script)
+			timeoutCtx, timeoutCancel := context.WithTimeout(abortCtx, AfterScriptTimeout)
+			defer timeoutCancel()
 
-		_ = b.executeStage(timeoutCtx, BuildStageAfterScript, executor)
+			_ = b.executeStage(timeoutCtx, BuildStageAfterScript, executor)
+		}
 	}
 
 	// Execute post script (cache store, artifacts upload)
@@ -540,8 +550,8 @@ func (b *Build) handleError(err error) error {
 	switch err {
 	case context.Canceled:
 		return &BuildError{
-			Inner:         errors.New("canceled"),
-			FailureReason: JobCanceled,
+			Inner:         errors.New("aborted"),
+			FailureReason: JobAborted,
 		}
 
 	case context.DeadlineExceeded:
@@ -557,7 +567,7 @@ func (b *Build) handleError(err error) error {
 	}
 }
 
-func (b *Build) run(ctx context.Context, executor Executor) (err error) {
+func (b *Build) run(ctx context.Context, trace JobTrace, executor Executor) (err error) {
 	b.setCurrentState(BuildRunRuntimeRunning)
 
 	buildFinish := make(chan error, 1)
@@ -575,7 +585,7 @@ func (b *Build) run(ctx context.Context, executor Executor) (err error) {
 
 	// Run build script
 	go func() {
-		buildFinish <- b.executeScript(runContext, executor)
+		buildFinish <- b.executeScript(runContext, trace, executor)
 	}()
 
 	// Wait for signals: cancel, timeout, abort or finish
@@ -792,7 +802,7 @@ func (b *Build) Run(globalConfig *Config, trace JobTrace) (err error) {
 	executor, err = b.executeBuildSection(executor, options, provider)
 
 	if err == nil {
-		err = b.run(ctx, executor)
+		err = b.run(ctx, trace, executor)
 		if errWait := b.waitForTerminal(ctx, globalConfig.SessionServer.GetSessionTimeout()); errWait != nil {
 			b.Log().WithError(errWait).Debug("Stopped waiting for terminal")
 		}

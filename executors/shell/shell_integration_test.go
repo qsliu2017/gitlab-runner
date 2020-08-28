@@ -246,14 +246,19 @@ func TestBuildInterrupt(t *testing.T) {
 		build, cleanup := newBuild(t, longRunningBuild, shell)
 		defer cleanup()
 
-		abortTimer := time.AfterFunc(time.Second, func() {
+		buf := new(bytes.Buffer)
+		trace := &common.Trace{Writer: buf}
+
+		abortTimer := time.AfterFunc(5*time.Second, func() {
 			t.Log("Interrupt")
 			build.SystemInterrupt <- os.Interrupt
 		})
 		defer abortTimer.Stop()
 
-		err = buildtest.RunBuild(t, build)
+		err = buildtest.RunBuildWithTrace(t, build, trace)
+		t.Log(buf.String())
 		assert.EqualError(t, err, "aborted: interrupt")
+		assert.NotContains(t, buf.String(), "Running After Script")
 	})
 }
 
@@ -264,17 +269,47 @@ func TestBuildAbort(t *testing.T) {
 		build, cleanup := newBuild(t, longRunningBuild, shell)
 		defer cleanup()
 
-		trace := &common.Trace{Writer: os.Stdout}
+		buf := new(bytes.Buffer)
+		trace := &common.Trace{Writer: buf}
 
-		abortTimer := time.AfterFunc(time.Second, func() {
+		abortTimer := time.AfterFunc(5*time.Second, func() {
 			t.Log("Abort")
 			trace.Abort()
 		})
 		defer abortTimer.Stop()
 
 		err = buildtest.RunBuildWithTrace(t, build, trace)
-		assert.EqualError(t, err, "canceled")
+		t.Log(buf.String())
+		assert.EqualError(t, err, "aborted")
 		assert.IsType(t, &common.BuildError{}, err)
+		assert.NotContains(t, buf.String(), "Running After Script")
+	})
+}
+
+func TestBuildCancel(t *testing.T) {
+	shellstest.OnEachShell(t, func(t *testing.T, shell string) {
+		longRunningBuild, err := common.GetLongRunningBuild()
+		assert.NoError(t, err)
+		build, cleanup := newBuild(t, longRunningBuild, shell)
+		defer cleanup()
+
+		buf := new(bytes.Buffer)
+		trace := &common.Trace{Writer: buf}
+
+		// TODO: this should be build by reading the trace and reacting
+		// to its message, as this is a flaky time-based approach
+		cancelTimer := time.AfterFunc(5*time.Second, func() {
+			t.Log("Cancel")
+			trace.Cancel()
+		})
+		defer cancelTimer.Stop()
+
+		err = buildtest.RunBuildWithTrace(t, build, trace)
+		t.Log(buf.String())
+		assert.IsType(t, &common.BuildError{}, err)
+		// TODO: it should have failure-reason canceled
+		// assert.EqualError(t, err, "canceled")
+		assert.Contains(t, buf.String(), "Running After Script")
 	})
 }
 

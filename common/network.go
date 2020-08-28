@@ -27,6 +27,7 @@ const (
 	RunnerSystemFailure JobFailureReason = "runner_system_failure"
 	JobExecutionTimeout JobFailureReason = "job_execution_timeout"
 	JobCanceled         JobFailureReason = "job_canceled"
+	JobAborted          JobFailureReason = "job_aborted"
 )
 
 const (

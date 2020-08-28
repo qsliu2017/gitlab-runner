@@ -37,6 +37,9 @@ func (s *Trace) SetCancelFunc(cancelFunc context.CancelFunc) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
+	if cancelFunc == nil {
+		cancelFunc = s.abortFunc
+	}
 	s.cancelFunc = cancelFunc
 }
 

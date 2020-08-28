@@ -246,6 +246,12 @@ func getBuildResponse(repoURL string, commands []string) JobResponse {
 				When:         StepWhenAlways,
 				AllowFailure: false,
 			},
+			Step{
+				Name:         StepNameAfterScript,
+				Script:       []string{"echo 'Running After Script'"},
+				When:         StepWhenAlways,
+				AllowFailure: false,
+			},
 		},
 	}
 }
