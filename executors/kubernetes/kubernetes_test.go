@@ -49,8 +49,8 @@ func TestRunTestsWithFeatureFlag(t *testing.T) {
 		"testKubernetesMultistepRun":            testKubernetesMultistepRunFeatureFlag,
 		"testKubernetesTimeoutRun":              testKubernetesTimeoutRunFeatureFlag,
 		"testKubernetesBuildFail":               testKubernetesBuildFailFeatureFlag,
+		"testKubernetesBuildInterrupt":          testKubernetesBuildInterruptFeatureFlag,
 		"testKubernetesBuildAbort":              testKubernetesBuildAbortFeatureFlag,
-		"testKubernetesBuildCancel":             testKubernetesBuildCancelFeatureFlag,
 		"testVolumeMounts":                      testVolumeMountsFeatureFlag,
 		"testVolumes":                           testVolumesFeatureFlag,
 		"testSetupBuildPodServiceCreationError": testSetupBuildPodServiceCreationErrorFeatureFlag,
@@ -251,7 +251,7 @@ func testKubernetesBuildFailFeatureFlag(t *testing.T, featureFlagName string, fe
 	assert.Contains(t, err.Error(), "command terminated with exit code 1")
 }
 
-func testKubernetesBuildAbortFeatureFlag(t *testing.T, featureFlagName string, featureFlagValue bool) {
+func testKubernetesBuildInterruptFeatureFlag(t *testing.T, featureFlagName string, featureFlagValue bool) {
 	if helpers.SkipIntegrationTests(t, "kubectl", "cluster-info") {
 		return
 	}
@@ -289,7 +289,7 @@ func testKubernetesBuildAbortFeatureFlag(t *testing.T, featureFlagName string, f
 	assert.EqualError(t, err, "aborted: interrupt")
 }
 
-func testKubernetesBuildCancelFeatureFlag(t *testing.T, featureFlagName string, featureFlagValue bool) {
+func testKubernetesBuildAbortFeatureFlag(t *testing.T, featureFlagName string, featureFlagValue bool) {
 	if helpers.SkipIntegrationTests(t, "kubectl", "cluster-info") {
 		return
 	}
@@ -315,7 +315,7 @@ func testKubernetesBuildCancelFeatureFlag(t *testing.T, featureFlagName string, 
 
 	abortTimer := time.AfterFunc(time.Second, func() {
 		t.Log("Interrupt")
-		trace.Cancel()
+		trace.Abort()
 	})
 	defer abortTimer.Stop()
 

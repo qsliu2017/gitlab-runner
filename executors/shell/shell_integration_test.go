@@ -239,7 +239,7 @@ func TestRawVariableOutput(t *testing.T) {
 	})
 }
 
-func TestBuildAbort(t *testing.T) {
+func TestBuildInterrupt(t *testing.T) {
 	shellstest.OnEachShell(t, func(t *testing.T, shell string) {
 		longRunningBuild, err := common.GetLongRunningBuild()
 		assert.NoError(t, err)
@@ -257,7 +257,7 @@ func TestBuildAbort(t *testing.T) {
 	})
 }
 
-func TestBuildCancel(t *testing.T) {
+func TestBuildAbort(t *testing.T) {
 	shellstest.OnEachShell(t, func(t *testing.T, shell string) {
 		longRunningBuild, err := common.GetLongRunningBuild()
 		assert.NoError(t, err)
@@ -266,11 +266,11 @@ func TestBuildCancel(t *testing.T) {
 
 		trace := &common.Trace{Writer: os.Stdout}
 
-		cancelTimer := time.AfterFunc(time.Second, func() {
-			t.Log("Cancel")
-			trace.Cancel()
+		abortTimer := time.AfterFunc(time.Second, func() {
+			t.Log("Abort")
+			trace.Abort()
 		})
-		defer cancelTimer.Stop()
+		defer abortTimer.Stop()
 
 		err = buildtest.RunBuildWithTrace(t, build, trace)
 		assert.EqualError(t, err, "canceled")

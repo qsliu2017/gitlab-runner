@@ -162,7 +162,7 @@ func TestVirtualBoxMissingSSHCredentials(t *testing.T) {
 	assert.Contains(t, err.Error(), "missing SSH config")
 }
 
-func TestVirtualBoxBuildAbort(t *testing.T) {
+func TestVirtualBoxBuildInterrupt(t *testing.T) {
 	if helpers.SkipIntegrationTests(t, vboxManage, "--version") {
 		return
 	}
@@ -200,7 +200,7 @@ func TestVirtualBoxBuildAbort(t *testing.T) {
 	assert.EqualError(t, err, "aborted: interrupt")
 }
 
-func TestVirtualBoxBuildCancel(t *testing.T) {
+func TestVirtualBoxBuildAbort(t *testing.T) {
 	if helpers.SkipIntegrationTests(t, vboxManage, "--version") {
 		return
 	}
@@ -225,7 +225,7 @@ func TestVirtualBoxBuildCancel(t *testing.T) {
 
 	abortTimer := time.AfterFunc(time.Second, func() {
 		t.Log("Interrupt")
-		trace.Cancel()
+		trace.Abort()
 	})
 	defer abortTimer.Stop()
 

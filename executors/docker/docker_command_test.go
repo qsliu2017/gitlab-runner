@@ -497,7 +497,7 @@ func TestDockerCommandBuildAbort(t *testing.T) {
 	assert.EqualError(t, err, "aborted: interrupt")
 }
 
-func TestDockerCommandBuildCancel(t *testing.T) {
+func TestDockerCommandBuildAbort(t *testing.T) {
 	if helpers.SkipIntegrationTests(t, "docker", "info") {
 		return
 	}
@@ -508,7 +508,7 @@ func TestDockerCommandBuildCancel(t *testing.T) {
 
 	abortTimer := time.AfterFunc(time.Second, func() {
 		t.Log("Interrupt")
-		trace.Cancel()
+		trace.Abort()
 	})
 	defer abortTimer.Stop()
 

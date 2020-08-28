@@ -162,7 +162,7 @@ func TestParallelsMissingSSHCredentials(t *testing.T) {
 	assert.Contains(t, err.Error(), "missing SSH config")
 }
 
-func TestParallelsBuildAbort(t *testing.T) {
+func TestParallelsBuildInterrupt(t *testing.T) {
 	if helpers.SkipIntegrationTests(t, prlCtl, "--version") {
 		return
 	}
@@ -200,7 +200,7 @@ func TestParallelsBuildAbort(t *testing.T) {
 	assert.EqualError(t, err, "aborted: interrupt")
 }
 
-func TestParallelsBuildCancel(t *testing.T) {
+func TestParallelsBuildAbort(t *testing.T) {
 	if helpers.SkipIntegrationTests(t, prlCtl, "--version") {
 		return
 	}
@@ -225,7 +225,7 @@ func TestParallelsBuildCancel(t *testing.T) {
 
 	abortTimer := time.AfterFunc(time.Second, func() {
 		t.Log("Interrupt")
-		trace.Cancel()
+		trace.Abort()
 	})
 	defer abortTimer.Stop()
 
