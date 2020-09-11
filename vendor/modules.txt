@@ -217,9 +217,6 @@ github.com/klauspost/pgzip
 github.com/konsorten/go-windows-terminal-sequences
 # github.com/kr/pty v1.1.1
 github.com/kr/pty
-# github.com/markelog/trie v0.0.0-20171230083431-098fa99650c0
-github.com/markelog/trie
-github.com/markelog/trie/node
 # github.com/mattn/go-ieproxy v0.0.0-20190702010315-6dee0af9227d
 github.com/mattn/go-ieproxy
 # github.com/matttproud/golang_protobuf_extensions v1.0.1
