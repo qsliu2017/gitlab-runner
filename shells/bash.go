@@ -173,27 +173,28 @@ func (b *BashWriter) Join(elem ...string) string {
 }
 
 func (b *BashWriter) Printf(format string, arguments ...interface{}) {
-	coloredText := helpers.ANSI_RESET + fmt.Sprintf(format, arguments...)
-	b.Line("echo " + helpers.ShellEscape(coloredText))
+	b.echof(helpers.ANSI_RESET, format, arguments...)
 }
 
 func (b *BashWriter) Noticef(format string, arguments ...interface{}) {
-	coloredText := helpers.ANSI_BOLD_GREEN + fmt.Sprintf(format, arguments...) + helpers.ANSI_RESET
-	b.Line("echo " + helpers.ShellEscape(coloredText))
+	b.echof(helpers.ANSI_BOLD_GREEN, format, arguments...)
 }
 
 func (b *BashWriter) Warningf(format string, arguments ...interface{}) {
-	coloredText := helpers.ANSI_YELLOW + fmt.Sprintf(format, arguments...) + helpers.ANSI_RESET
-	b.Line("echo " + helpers.ShellEscape(coloredText))
+	b.echof(helpers.ANSI_YELLOW, format, arguments...)
 }
 
 func (b *BashWriter) Errorf(format string, arguments ...interface{}) {
-	coloredText := helpers.ANSI_BOLD_RED + fmt.Sprintf(format, arguments...) + helpers.ANSI_RESET
-	b.Line("echo " + helpers.ShellEscape(coloredText))
+	b.echof(helpers.ANSI_BOLD_RED, format, arguments...)
 }
 
 func (b *BashWriter) EmptyLine() {
-	b.Line("echo")
+	b.echof("", "")
+}
+
+func (b *BashWriter) echof(color, format string, arguments ...interface{}) {
+	coloredText := color + fmt.Sprintf(format, arguments...) + helpers.ANSI_RESET
+	b.Line("_runner_current_exit_code=$?; echo " + helpers.ShellEscape(coloredText) + "; (exit $_runner_current_exit_code) && true")
 }
 
 func (b *BashWriter) Finish(trace bool) string {
