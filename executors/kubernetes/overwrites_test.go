@@ -319,7 +319,11 @@ func TestOverwrites(t *testing.T) {
 				CPULimitOverwriteMaxAllowed: "10",
 			},
 			CPULimitOverwriteVariableValue: "12",
-			Error:                          new(overwriteTooHighError),
+			Error: &overwriteTooHighError{
+				resource:  "CPULimit",
+				max:       "10",
+				overwrite: "12",
+			},
 		},
 		{
 			Name: "CPULimit too high using millicpu",
@@ -327,7 +331,11 @@ func TestOverwrites(t *testing.T) {
 				CPULimitOverwriteMaxAllowed: "500m",
 			},
 			CPULimitOverwriteVariableValue: "600m",
-			Error:                          new(overwriteTooHighError),
+			Error: &overwriteTooHighError{
+				resource:  "CPULimit",
+				max:       "500m",
+				overwrite: "600m",
+			},
 		},
 		{
 			Name: "CPURequest too high",
@@ -335,7 +343,11 @@ func TestOverwrites(t *testing.T) {
 				CPURequestOverwriteMaxAllowed: "10",
 			},
 			CPURequestOverwriteVariableValue: "12",
-			Error:                            new(overwriteTooHighError),
+			Error: &overwriteTooHighError{
+				resource:  "CPURequest",
+				max:       "10",
+				overwrite: "12",
+			},
 		},
 		{
 			Name: "CPURequest too high using millicpu",
@@ -343,7 +355,11 @@ func TestOverwrites(t *testing.T) {
 				CPURequestOverwriteMaxAllowed: "500m",
 			},
 			CPURequestOverwriteVariableValue: "600m",
-			Error:                            new(overwriteTooHighError),
+			Error: &overwriteTooHighError{
+				resource:  "CPURequest",
+				max:       "500m",
+				overwrite: "600m",
+			},
 		},
 		{
 			Name: "MemoryLimit too high",
@@ -351,7 +367,11 @@ func TestOverwrites(t *testing.T) {
 				MemoryLimitOverwriteMaxAllowed: "2Gi",
 			},
 			MemoryLimitOverwriteVariableValue: "10Gi",
-			Error:                             new(overwriteTooHighError),
+			Error: &overwriteTooHighError{
+				resource:  "MemoryLimit",
+				max:       "2Gi",
+				overwrite: "10Gi",
+			},
 		},
 		{
 			Name: "MemoryLimit too high Mi",
@@ -359,7 +379,11 @@ func TestOverwrites(t *testing.T) {
 				MemoryLimitOverwriteMaxAllowed: "20Mi",
 			},
 			MemoryLimitOverwriteVariableValue: "10Gi",
-			Error:                             new(overwriteTooHighError),
+			Error: &overwriteTooHighError{
+				resource:  "MemoryLimit",
+				max:       "20Mi",
+				overwrite: "10Gi",
+			},
 		},
 		{
 			Name: "MemoryRequest too high",
@@ -367,7 +391,11 @@ func TestOverwrites(t *testing.T) {
 				MemoryRequestOverwriteMaxAllowed: "2Gi",
 			},
 			MemoryRequestOverwriteVariableValue: "10Gi",
-			Error:                               new(overwriteTooHighError),
+			Error: &overwriteTooHighError{
+				resource:  "MemoryRequest",
+				max:       "2Gi",
+				overwrite: "10Gi",
+			},
 		},
 		{
 			Name: "MemoryRequest too high Mi",
@@ -375,7 +403,11 @@ func TestOverwrites(t *testing.T) {
 				MemoryRequestOverwriteMaxAllowed: "20Mi",
 			},
 			MemoryRequestOverwriteVariableValue: "100Mi",
-			Error:                               new(overwriteTooHighError),
+			Error: &overwriteTooHighError{
+				resource:  "MemoryRequest",
+				max:       "20Mi",
+				overwrite: "100Mi",
+			},
 		},
 		{
 			Name: "MemoryRequest too high different suffix",
@@ -383,7 +415,11 @@ func TestOverwrites(t *testing.T) {
 				MemoryRequestOverwriteMaxAllowed: "2Gi",
 			},
 			MemoryRequestOverwriteVariableValue: "5000Mi",
-			Error:                               new(overwriteTooHighError),
+			Error: &overwriteTooHighError{
+				resource:  "MemoryRequest",
+				max:       "2Gi",
+				overwrite: "5000Mi",
+			},
 		},
 
 		{
@@ -392,7 +428,11 @@ func TestOverwrites(t *testing.T) {
 				EphemeralStorageLimitOverwriteMaxAllowed: "2Gi",
 			},
 			EphemeralStorageLimitOverwriteVariableValue: "10Gi",
-			Error: new(overwriteTooHighError),
+			Error: &overwriteTooHighError{
+				resource:  "EphemeralStorageLimit",
+				max:       "2Gi",
+				overwrite: "10Gi",
+			},
 		},
 		{
 			Name: "EphemeralStorageLimit too high Mi",
@@ -400,7 +440,11 @@ func TestOverwrites(t *testing.T) {
 				EphemeralStorageLimitOverwriteMaxAllowed: "20Mi",
 			},
 			EphemeralStorageLimitOverwriteVariableValue: "10Gi",
-			Error: new(overwriteTooHighError),
+			Error: &overwriteTooHighError{
+				resource:  "EphemeralStorageRequest",
+				max:       "2Gi",
+				overwrite: "10Gi",
+			},
 		},
 		{
 			Name: "EphemeralStorageRequest too high",
@@ -408,7 +452,11 @@ func TestOverwrites(t *testing.T) {
 				EphemeralStorageRequestOverwriteMaxAllowed: "2Gi",
 			},
 			EphemeralStorageRequestOverwriteVariableValue: "10Gi",
-			Error: new(overwriteTooHighError),
+			Error: &overwriteTooHighError{
+				resource:  "EphemeralStorageRequest",
+				max:       "2Gi",
+				overwrite: "10Gi",
+			},
 		},
 		{
 			Name: "EphemeralStorageRequest too high Mi",
@@ -416,7 +464,11 @@ func TestOverwrites(t *testing.T) {
 				EphemeralStorageRequestOverwriteMaxAllowed: "20Mi",
 			},
 			EphemeralStorageRequestOverwriteVariableValue: "100Mi",
-			Error: new(overwriteTooHighError),
+			Error: &overwriteTooHighError{
+				resource:  "EphemeralStorageRequest",
+				max:       "2Gi",
+				overwrite: "5000Mi",
+			},
 		},
 		{
 			Name: "EphemeralStorageRequest too high different suffix",

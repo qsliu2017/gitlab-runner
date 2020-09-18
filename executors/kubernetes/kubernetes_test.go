@@ -67,6 +67,7 @@ func TestRunTestsWithFeatureFlag(t *testing.T) {
 		"testOverwriteNamespaceNotMatch":        testOverwriteNamespaceNotMatchFeatureFlag,
 		"testOverwriteServiceAccountNotMatch":   testOverwriteServiceAccountNotMatchFeatureFlag,
 		"testInteractiveTerminal":               testInteractiveTerminalFeatureFlag,
+		"testResourceLimits":                    testResourceLimits,
 	}
 
 	featureFlags := []string{
@@ -855,6 +856,226 @@ func testInteractiveTerminalFeatureFlag(t *testing.T, featureFlagName string, fe
 	t.Log(out)
 
 	assert.Contains(t, out, "Terminal is connected, will time out in 2s...")
+}
+
+func testResourceLimits(t *testing.T, featureFlagName string, featureFlagValue bool) {
+	tests := map[string]buildPodCheckTest{
+		"no limits or overwrites": {
+			setup: func(build *common.Build) {
+			},
+			assertion: func(t *testing.T, pod api.Pod, build, helper, service *api.Container) {
+				assert.Nil(t, build.Resources.Limits)
+				assert.Nil(t, build.Resources.Requests)
+				assert.Nil(t, helper.Resources.Limits)
+				assert.Nil(t, helper.Resources.Requests)
+				assert.Nil(t, service.Resources.Limits)
+				assert.Nil(t, service.Resources.Requests)
+			},
+		},
+		"all limits": {
+			setup: func(build *common.Build) {
+				build.Runner.Kubernetes = &common.KubernetesConfig{
+					CPULimit:                     "200m",
+					MemoryLimit:                  "300Mi",
+					EphemeralStorageLimit:        "300Mi",
+					HelperCPULimit:               "50m",
+					HelperMemoryLimit:            "100Mi",
+					HelperEphemeralStorageLimit:  "200Mi",
+					ServiceCPULimit:              "100m",
+					ServiceMemoryLimit:           "200Mi",
+					ServiceEphemeralStorageLimit: "300Mi",
+				}
+			},
+			assertion: func(t *testing.T, pod api.Pod, build, helper, service *api.Container) {
+				assert.Equal(t, mustCreateResourceList(t, "200m", "300Mi", "300Mi"), build.Resources.Limits)
+				assert.Equal(t, mustCreateResourceList(t, "50m", "100Mi", "200Mi"), helper.Resources.Limits)
+				assert.Equal(t, mustCreateResourceList(t, "100m", "200Mi", "300Mi"), service.Resources.Limits)
+			},
+		},
+		"all requests": {
+			setup: func(build *common.Build) {
+				build.Runner.Kubernetes = &common.KubernetesConfig{
+					CPURequest:                     "200m",
+					MemoryRequest:                  "300Mi",
+					EphemeralStorageRequest:        "300Mi",
+					HelperCPURequest:               "50m",
+					HelperMemoryRequest:            "100Mi",
+					HelperEphemeralStorageRequest:  "200Mi",
+					ServiceCPURequest:              "100m",
+					ServiceMemoryRequest:           "200Mi",
+					ServiceEphemeralStorageRequest: "300Mi",
+				}
+			},
+			assertion: func(t *testing.T, pod api.Pod, build, helper, service *api.Container) {
+				assert.Equal(t, mustCreateResourceList(t, "200m", "300Mi", "300Mi"), build.Resources.Requests)
+				assert.Equal(t, mustCreateResourceList(t, "50m", "100Mi", "200Mi"), helper.Resources.Requests)
+				assert.Equal(t, mustCreateResourceList(t, "100m", "200Mi", "300Mi"), service.Resources.Requests)
+				assert.Nil(t, build.Resources.Limits)
+				assert.Nil(t, helper.Resources.Limits)
+				assert.Nil(t, service.Resources.Limits)
+			},
+		},
+		"overwrites within range": {
+			setup: func(build *common.Build) {
+				build.Runner.Kubernetes = &common.KubernetesConfig{
+					CPULimitOverwriteMaxAllowed:                       "200m",
+					CPURequestOverwriteMaxAllowed:                     "200m",
+					MemoryLimitOverwriteMaxAllowed:                    "300Mi",
+					MemoryRequestOverwriteMaxAllowed:                  "300Mi",
+					EphemeralStorageLimitOverwriteMaxAllowed:          "300Mi",
+					EphemeralStorageRequestOverwriteMaxAllowed:        "300Mi",
+					HelperCPULimitOverwriteMaxAllowed:                 "50m",
+					HelperCPURequestOverwriteMaxAllowed:               "50m",
+					HelperMemoryLimitOverwriteMaxAllowed:              "50Mi",
+					HelperMemoryRequestOverwriteMaxAllowed:            "50Mi",
+					HelperEphemeralStorageLimitOverwriteMaxAllowed:    "50Mi",
+					HelperEphemeralStorageRequestOverwriteMaxAllowed:  "50Mi",
+					ServiceCPULimitOverwriteMaxAllowed:                "30m",
+					ServiceCPURequestOverwriteMaxAllowed:              "30m",
+					ServiceMemoryLimitOverwriteMaxAllowed:             "30Mi",
+					ServiceMemoryRequestOverwriteMaxAllowed:           "30Mi",
+					ServiceEphemeralStorageLimitOverwriteMaxAllowed:   "30Mi",
+					ServiceEphemeralStorageRequestOverwriteMaxAllowed: "30Mi",
+				}
+				build.Variables = append(
+					build.Variables,
+					common.JobVariable{Key: CPULimitOverwriteVariableValue, Value: "200m"},
+					common.JobVariable{Key: CPURequestOverwriteVariableValue, Value: "200m"},
+					common.JobVariable{Key: MemoryLimitOverwriteVariableValue, Value: "300Mi"},
+					common.JobVariable{Key: MemoryRequestOverwriteVariableValue, Value: "300Mi"},
+					common.JobVariable{Key: EphemeralStorageLimitOverwriteVariableValue, Value: "300Mi"},
+					common.JobVariable{Key: EphemeralStorageRequestOverwriteVariableValue, Value: "300Mi"},
+					common.JobVariable{Key: HelperCPULimitOverwriteVariableValue, Value: "50m"},
+					common.JobVariable{Key: HelperCPURequestOverwriteVariableValue, Value: "50m"},
+					common.JobVariable{Key: HelperMemoryLimitOverwriteVariableValue, Value: "50Mi"},
+					common.JobVariable{Key: HelperMemoryRequestOverwriteVariableValue, Value: "50Mi"},
+					common.JobVariable{Key: HelperEphemeralStorageLimitOverwriteVariableValue, Value: "50Mi"},
+					common.JobVariable{Key: HelperEphemeralStorageRequestOverwriteVariableValue, Value: "50Mi"},
+					common.JobVariable{Key: ServiceCPULimitOverwriteVariableValue, Value: "30m"},
+					common.JobVariable{Key: ServiceCPURequestOverwriteVariableValue, Value: "30m"},
+					common.JobVariable{Key: ServiceMemoryLimitOverwriteVariableValue, Value: "30Mi"},
+					common.JobVariable{Key: ServiceMemoryRequestOverwriteVariableValue, Value: "30Mi"},
+					common.JobVariable{Key: ServiceEphemeralStorageLimitOverwriteVariableValue, Value: "30Mi"},
+					common.JobVariable{Key: ServiceEphemeralStorageRequestOverwriteVariableValue, Value: "30Mi"},
+				)
+			},
+			assertion: func(t *testing.T, pod api.Pod, build, helper, service *api.Container) {
+				assert.Equal(t, mustCreateResourceList(t, "200m", "300Mi", "300Mi"), build.Resources.Requests)
+				assert.Equal(t, mustCreateResourceList(t, "50m", "50Mi", "50Mi"), helper.Resources.Requests)
+				assert.Equal(t, mustCreateResourceList(t, "30m", "30Mi", "30Mi"), service.Resources.Requests)
+			},
+		},
+		"cpu limit exceeded on build": {
+			setup: func(build *common.Build) {
+				build.Runner.Kubernetes = &common.KubernetesConfig{
+					CPULimitOverwriteMaxAllowed: "200m",
+				}
+				build.Variables = append(
+					build.Variables,
+					common.JobVariable{Key: CPULimitOverwriteVariableValue, Value: "300m"},
+				)
+			},
+			expectedErr: &overwriteTooHighError{
+				resource:  "CPULimit",
+				max:       "200m",
+				overwrite: "300m",
+			},
+		},
+		"cpu request exceeded on helper": {
+			setup: func(build *common.Build) {
+				build.Runner.Kubernetes = &common.KubernetesConfig{
+					HelperCPURequestOverwriteMaxAllowed: "200m",
+				}
+				build.Variables = append(
+					build.Variables,
+					common.JobVariable{Key: HelperCPURequestOverwriteVariableValue, Value: "300m"},
+				)
+			},
+			expectedErr: &overwriteTooHighError{
+				resource:  "HelperCPURequest",
+				max:       "200m",
+				overwrite: "300m",
+			},
+		},
+		"memory limit exceeded on build": {
+			setup: func(build *common.Build) {
+				build.Runner.Kubernetes = &common.KubernetesConfig{
+					MemoryLimitOverwriteMaxAllowed: "300Mi",
+				}
+				build.Variables = append(
+					build.Variables,
+					common.JobVariable{Key: MemoryLimitOverwriteVariableValue, Value: "400Mi"},
+				)
+			},
+			expectedErr: &overwriteTooHighError{
+				resource:  "MemoryLimit",
+				max:       "300Mi",
+				overwrite: "400Mi",
+			},
+		},
+		"memory request exceeded on service": {
+			setup: func(build *common.Build) {
+				build.Runner.Kubernetes = &common.KubernetesConfig{
+					ServiceMemoryRequestOverwriteMaxAllowed: "300Mi",
+				}
+				build.Variables = append(
+					build.Variables,
+					common.JobVariable{Key: ServiceMemoryRequestOverwriteVariableValue, Value: "400Mi"},
+				)
+			},
+			expectedErr: &overwriteTooHighError{
+				resource:  "ServiceMemoryRequest",
+				max:       "300Mi",
+				overwrite: "400Mi",
+			},
+		},
+		"ephemeral storage limit exceeded on build": {
+			setup: func(build *common.Build) {
+				build.Runner.Kubernetes = &common.KubernetesConfig{
+					EphemeralStorageLimitOverwriteMaxAllowed: "300Mi",
+				}
+				build.Variables = append(
+					build.Variables,
+					common.JobVariable{Key: EphemeralStorageLimitOverwriteVariableValue, Value: "400Mi"},
+				)
+			},
+			expectedErr: &overwriteTooHighError{
+				resource:  "EphemeralStorageLimit",
+				max:       "300Mi",
+				overwrite: "400Mi",
+			},
+		},
+		"ephemeral storage request exceeded on helper": {
+			setup: func(build *common.Build) {
+				build.Runner.Kubernetes = &common.KubernetesConfig{
+					HelperEphemeralStorageRequestOverwriteMaxAllowed: "300Mi",
+				}
+				build.Variables = append(
+					build.Variables,
+					common.JobVariable{Key: HelperEphemeralStorageRequestOverwriteVariableValue, Value: "400Mi"},
+				)
+			},
+			expectedErr: &overwriteTooHighError{
+				resource:  "HelperEphemeralStorageRequest",
+				max:       "300Mi",
+				overwrite: "400Mi",
+			},
+		},
+	}
+
+	for tn, tc := range tests {
+		t.Run(tn, func(t *testing.T) {
+			podCheck := buildPodCheckTest{
+				setup: func(build *common.Build) {
+					setBuildFeatureFlag(build, featureFlagName, featureFlagValue)
+					tc.setup(build)
+				},
+				assertion:   tc.assertion,
+				expectedErr: tc.expectedErr,
+			}
+			executeBuildWithPodCheck(t, podCheck)
+		})
+	}
 }
 
 func TestCleanup(t *testing.T) {

@@ -2,10 +2,12 @@ package kubernetes
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"strings"
 	"testing"
 
@@ -17,6 +19,7 @@ import (
 	api "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	runtimeserializer "k8s.io/apimachinery/pkg/runtime/serializer"
@@ -25,6 +28,8 @@ import (
 	"k8s.io/client-go/rest/fake"
 
 	"gitlab.com/gitlab-org/gitlab-runner/common"
+	"gitlab.com/gitlab-org/gitlab-runner/common/buildtest"
+	"gitlab.com/gitlab-org/gitlab-runner/helpers"
 )
 
 func TestGetKubeClientConfig(t *testing.T) {
@@ -600,4 +605,88 @@ func TestGetCapabilities(t *testing.T) {
 			tt.assertCapabilities(t, getCapabilities(tt.defaultCapDrop, tt.capAdd, tt.capDrop))
 		})
 	}
+}
+
+type buildPodCheckTest struct {
+	setup       func(build *common.Build)
+	assertion   func(t *testing.T, pod api.Pod, build, helper, service *api.Container)
+	expectedErr error
+}
+
+// executeBuildWithPodCheck creates a long running build job with one service
+// that passes the pod, along with the build, helper and service containers to
+// the provided assertion function.
+func executeBuildWithPodCheck(t *testing.T, tc buildPodCheckTest) {
+	helpers.SkipIntegrationTests(t, "kubectl", "cluster-info")
+
+	build := &common.Build{
+		Runner: &common.RunnerConfig{
+			RunnerSettings: common.RunnerSettings{
+				Kubernetes: &common.KubernetesConfig{},
+			},
+		},
+	}
+
+	var err error
+	build.JobResponse, err = common.GetRemoteLongRunningBuild()
+	require.NoError(t, err)
+	build.JobResponse.Image.Name = common.TestDockerGitImage
+	build.JobResponse.Services = append(
+		build.JobResponse.Services,
+		common.Image{
+			Name: common.TestLivenessImage,
+		},
+	)
+	tc.setup(build)
+
+	build.Runner.Executor = "kubernetes"
+	if build.Runner.Kubernetes == nil {
+		build.Runner.Kubernetes = new(common.KubernetesConfig)
+	}
+	if build.Runner.Kubernetes.PodLabels == nil {
+		build.Runner.Kubernetes.PodLabels = make(map[string]string)
+	}
+
+	config, err := getKubeClientConfig(new(common.KubernetesConfig), new(overwrites))
+	require.NoError(t, err)
+
+	client, err := kubernetes.NewForConfig(config)
+	require.NoError(t, err)
+
+	trace := &common.Trace{Writer: os.Stdout}
+	build.Runner.Kubernetes.PodLabels["test.k8s.gitlab.com/name"], _ = helpers.GenerateRandomUUID(10)
+
+	defer buildtest.OnStage(build, string(common.BuildStagePrepare), func() {
+		defer trace.Cancel()
+
+		pods, err := client.CoreV1().Pods("default").List(metav1.ListOptions{
+			LabelSelector: labels.Set(build.Runner.Kubernetes.PodLabels).String(),
+		})
+		require.NoError(t, err)
+		require.Len(t, pods.Items, 1)
+		pod := pods.Items[0]
+		require.Len(t, pod.Spec.Containers, 3)
+
+		var build, helper, service *api.Container
+		for idx, container := range pod.Spec.Containers {
+			switch container.Name {
+			case "build":
+				build = &pod.Spec.Containers[idx]
+			case "helper":
+				helper = &pod.Spec.Containers[idx]
+			case "svc-0":
+				service = &pod.Spec.Containers[idx]
+			default:
+				require.Fail(t, "unexpected container name")
+			}
+		}
+
+		tc.assertion(t, pod, build, helper, service)
+	})()
+
+	err = buildtest.RunBuildWithTrace(t, build, trace)
+	if tc.expectedErr == nil {
+		tc.expectedErr = &common.BuildError{FailureReason: common.JobCanceled}
+	}
+	require.True(t, errors.Is(err, tc.expectedErr), "expected: %[1]T (%[1]v), got: %[2]T (%[2]v)", tc.expectedErr, err)
 }

@@ -83,8 +83,14 @@ func (o *overwriteTooHighError) Error() string {
 }
 
 func (o *overwriteTooHighError) Is(err error) bool {
-	_, ok := err.(*overwriteTooHighError)
-	return ok
+	overwriteErr, ok := err.(*overwriteTooHighError)
+	if !ok {
+		return false
+	}
+
+	return o.resource == overwriteErr.resource &&
+		o.max == overwriteErr.max &&
+		o.overwrite == overwriteErr.overwrite
 }
 
 type malformedOverwriteError struct {
