@@ -188,18 +188,18 @@ Example of dotfiles that are known to cause failure:
 - `.condarc`
 - `.rvmrc`
 
-### `iptables` in job with docker results in `Permission denied (you must be root)`
+### `iptables` in job with Docker results in `Permission denied (you must be root)`
 
 You might be interested in dropping all network traffic in your container when running a job with the `docker` executor, by doing something like this:
 
-```sh
+```shell
 iptables -P INPUT DROP
 ```
 
-To your surprise you're faced with the error `iptables v1.6.1: can't initialize iptables table `filter': Permission denied (you must be root)`.
+To your surprise you're faced with the error `iptables v1.6.1: can't initialize iptables table 'filter': Permission denied (you must be root)`.
 In order to resolve this, you'll need to add the [`NET_ADMIN` capability](https://docs.docker.com/engine/reference/run/#runtime-privilege-and-linux-capabilities) to your container, by configuring your runner's `config.toml` like so:
 
-```toml
+```
 [runners.docker]
     ...
     cap_add = ["NET_ADMIN"]
