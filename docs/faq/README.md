@@ -199,10 +199,10 @@ iptables -P INPUT DROP
 To your surprise you're faced with the error `iptables v1.6.1: can't initialize iptables table 'filter': Permission denied (you must be root)`.
 In order to resolve this, you'll need to add the [`NET_ADMIN` capability](https://docs.docker.com/engine/reference/run/#runtime-privilege-and-linux-capabilities) to your container, by configuring your runner's `config.toml` like so:
 
-```
+```toml
 [runners.docker]
-    ...
-    cap_add = ["NET_ADMIN"]
+  ...
+  cap_add = ["NET_ADMIN"]
 ```
 
 ## Windows troubleshooting
