@@ -3,7 +3,7 @@ include:
 - template: Coverage-Fuzzing.gitlab-ci.yml
 - template: Security/SAST.gitlab-ci.yml
 - template: Security/Secret-Detection.gitlab-ci.yml
-- template: Security/License-Scanning.gitlab-ci.yml
+# - template: Security/License-Scanning.gitlab-ci.yml
 
 .merge_request_pipelines_rules: &merge_request_pipelines_rules
   - if: $CI_MERGE_REQUEST_ID
@@ -21,8 +21,8 @@ gemnasium-dependency_scanning:
 # Overriding 'License-Scanning.gitlab-ci.yml' template, because
 # we need to replace the rules with our own, the same
 # as in `.merge_request_pipelines` template.
-license_scanning:
-  rules: *merge_request_pipelines_rules
+# license_scanning:
+#   rules: *merge_request_pipelines_rules
 
 # Overriding 'SAST.gitlab-ci.yml' template, because
 # we need to replace the rules with our own, the same
