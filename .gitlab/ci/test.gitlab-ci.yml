@@ -1,5 +1,5 @@
 include:
-- template: Security/Dependency-Scanning.gitlab-ci.yml
+# - template: Security/Dependency-Scanning.gitlab-ci.yml
 - template: Coverage-Fuzzing.gitlab-ci.yml
 - template: Security/SAST.gitlab-ci.yml
 - template: Security/Secret-Detection.gitlab-ci.yml
@@ -12,11 +12,11 @@ include:
   - if: $CI_COMMIT_REF_NAME =~ /\Av[0-9]+\.[0-9]+\.[0-9]+(-rc[0-9]+)?\z/ && $CI_PROJECT_PATH == "gitlab-org/gitlab-runner"
   - if: $CI_COMMIT_REF_NAME =~ /\Av[0-9]+\.[0-9]+\.[0-9]+?\z/ && $CI_PROJECT_PATH == "gitlab-org/security/gitlab-runner"
 
-# Overriding 'Dependency-Scanning.gitlab-ci.yml' template, because
-# we need to replace the rules with our own, the same
-# as in `.merge_request_pipelines` template.
-gemnasium-dependency_scanning:
-  rules: *merge_request_pipelines_rules
+# # Overriding 'Dependency-Scanning.gitlab-ci.yml' template, because
+# # we need to replace the rules with our own, the same
+# # as in `.merge_request_pipelines` template.
+# gemnasium-dependency_scanning:
+#   rules: *merge_request_pipelines_rules
 
 # Overriding 'License-Scanning.gitlab-ci.yml' template, because
 # we need to replace the rules with our own, the same
