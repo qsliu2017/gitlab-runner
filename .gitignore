@@ -1,5 +1,6 @@
 *.iml
 config.toml
+config.yml
 config.toml.lock
 .project
 out

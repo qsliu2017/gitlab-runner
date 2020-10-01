@@ -15,6 +15,7 @@ import (
 	"github.com/BurntSushi/toml"
 	"github.com/docker/go-units"
 	"github.com/sirupsen/logrus"
+	"gopkg.in/yaml.v2"
 	api "k8s.io/api/core/v1"
 
 	"gitlab.com/gitlab-org/gitlab-runner/helpers"
@@ -200,86 +201,86 @@ func (p KubernetesPullPolicy) Get() (KubernetesPullPolicy, error) {
 
 //nolint:lll
 type KubernetesConfig struct {
-	Host                                    string                       `toml:"host" json:"host" long:"host" env:"KUBERNETES_HOST" description:"Optional Kubernetes master host URL (auto-discovery attempted if not specified)"`
-	CertFile                                string                       `toml:"cert_file,omitempty" json:"cert_file" long:"cert-file" env:"KUBERNETES_CERT_FILE" description:"Optional Kubernetes master auth certificate"`
-	KeyFile                                 string                       `toml:"key_file,omitempty" json:"key_file" long:"key-file" env:"KUBERNETES_KEY_FILE" description:"Optional Kubernetes master auth private key"`
-	CAFile                                  string                       `toml:"ca_file,omitempty" json:"ca_file" long:"ca-file" env:"KUBERNETES_CA_FILE" description:"Optional Kubernetes master auth ca certificate"`
-	BearerTokenOverwriteAllowed             bool                         `toml:"bearer_token_overwrite_allowed" json:"bearer_token_overwrite_allowed" long:"bearer_token_overwrite_allowed" env:"KUBERNETES_BEARER_TOKEN_OVERWRITE_ALLOWED" description:"Bool to authorize builds to specify their own bearer token for creation."`
-	BearerToken                             string                       `toml:"bearer_token,omitempty" json:"bearer_token" long:"bearer_token" env:"KUBERNETES_BEARER_TOKEN" description:"Optional Kubernetes service account token used to start build pods."`
-	Image                                   string                       `toml:"image" json:"image" long:"image" env:"KUBERNETES_IMAGE" description:"Default docker image to use for builds when none is specified"`
-	Namespace                               string                       `toml:"namespace" json:"namespace" long:"namespace" env:"KUBERNETES_NAMESPACE" description:"Namespace to run Kubernetes jobs in"`
-	NamespaceOverwriteAllowed               string                       `toml:"namespace_overwrite_allowed" json:"namespace_overwrite_allowed" long:"namespace_overwrite_allowed" env:"KUBERNETES_NAMESPACE_OVERWRITE_ALLOWED" description:"Regex to validate 'KUBERNETES_NAMESPACE_OVERWRITE' value"`
-	Privileged                              bool                         `toml:"privileged,omitzero" json:"privileged" long:"privileged" env:"KUBERNETES_PRIVILEGED" description:"Run all containers with the privileged flag enabled"`
-	CPULimit                                string                       `toml:"cpu_limit,omitempty" json:"cpu_limit" long:"cpu-limit" env:"KUBERNETES_CPU_LIMIT" description:"The CPU allocation given to build containers"`
-	CPULimitOverwriteMaxAllowed             string                       `toml:"cpu_limit_overwrite_max_allowed,omitempty" json:"cpu_limit_overwrite_max_allowed" long:"cpu-limit-overwrite-max-allowed" env:"KUBERNETES_CPU_LIMIT_OVERWRITE_MAX_ALLOWED" description:"If set, the max amount the cpu limit can be set to. Used with the KUBERNETES_CPU_LIMIT variable in the build."`
-	CPURequest                              string                       `toml:"cpu_request,omitempty" json:"cpu_request" long:"cpu-request" env:"KUBERNETES_CPU_REQUEST" description:"The CPU allocation requested for build containers"`
-	CPURequestOverwriteMaxAllowed           string                       `toml:"cpu_request_overwrite_max_allowed,omitempty" json:"cpu_request_overwrite_max_allowed" long:"cpu-request-overwrite-max-allowed" env:"KUBERNETES_CPU_REQUEST_OVERWRITE_MAX_ALLOWED" description:"If set, the max amount the cpu request can be set to. Used with the KUBERNETES_CPU_REQUEST variable in the build."`
-	MemoryLimit                             string                       `toml:"memory_limit,omitempty" json:"memory_limit" long:"memory-limit" env:"KUBERNETES_MEMORY_LIMIT" description:"The amount of memory allocated to build containers"`
-	MemoryLimitOverwriteMaxAllowed          string                       `toml:"memory_limit_overwrite_max_allowed,omitempty" json:"memory_limit_overwrite_max_allowed" long:"memory-limit-overwrite-max-allowed" env:"KUBERNETES_MEMORY_LIMIT_OVERWRITE_MAX_ALLOWED" description:"If set, the max amount the memory limit can be set to. Used with the KUBERNETES_MEMORY_LIMIT variable in the build."`
-	MemoryRequest                           string                       `toml:"memory_request,omitempty" json:"memory_request" long:"memory-request" env:"KUBERNETES_MEMORY_REQUEST" description:"The amount of memory requested from build containers"`
-	MemoryRequestOverwriteMaxAllowed        string                       `toml:"memory_request_overwrite_max_allowed,omitempty" json:"memory_request_overwrite_max_allowed" long:"memory-request-overwrite-max-allowed" env:"KUBERNETES_MEMORY_REQUEST_OVERWRITE_MAX_ALLOWED" description:"If set, the max amount the memory request can be set to. Used with the KUBERNETES_MEMORY_REQUEST variable in the build."`
-	ServiceCPULimit                         string                       `toml:"service_cpu_limit,omitempty" json:"service_cpu_limit" long:"service-cpu-limit" env:"KUBERNETES_SERVICE_CPU_LIMIT" description:"The CPU allocation given to build service containers"`
-	ServiceCPULimitOverwriteMaxAllowed      string                       `toml:"service_cpu_limit_overwrite_max_allowed,omitempty" json:"service_cpu_limit_overwrite_max_allowed" long:"service-cpu-limit-overwrite-max-allowed" env:"KUBERNETES_SERVICE_CPU_LIMIT_OVERWRITE_MAX_ALLOWED" description:"If set, the max amount the service cpu limit can be set to. Used with the KUBERNETES_SERVICE_CPU_LIMIT variable in the build."`
-	ServiceCPURequest                       string                       `toml:"service_cpu_request,omitempty" json:"service_cpu_request" long:"service-cpu-request" env:"KUBERNETES_SERVICE_CPU_REQUEST" description:"The CPU allocation requested for build service containers"`
-	ServiceCPURequestOverwriteMaxAllowed    string                       `toml:"service_cpu_request_overwrite_max_allowed,omitempty" json:"service_cpu_request_overwrite_max_allowed" long:"service-cpu-request-overwrite-max-allowed" env:"KUBERNETES_SERVICE_CPU_REQUEST_OVERWRITE_MAX_ALLOWED" description:"If set, the max amount the service cpu request can be set to. Used with the KUBERNETES_SERVICE_CPU_REQUEST variable in the build."`
-	ServiceMemoryLimit                      string                       `toml:"service_memory_limit,omitempty" json:"service_memory_limit" long:"service-memory-limit" env:"KUBERNETES_SERVICE_MEMORY_LIMIT" description:"The amount of memory allocated to build service containers"`
-	ServiceMemoryLimitOverwriteMaxAllowed   string                       `toml:"service_memory_limit_overwrite_max_allowed,omitempty" json:"service_memory_limit_overwrite_max_allowed" long:"service-memory-limit-overwrite-max-allowed" env:"KUBERNETES_SERVICE_MEMORY_LIMIT_OVERWRITE_MAX_ALLOWED" description:"If set, the max amount the service memory limit can be set to. Used with the KUBERNETES_SERVICE_MEMORY_LIMIT variable in the build."`
-	ServiceMemoryRequest                    string                       `toml:"service_memory_request,omitempty" json:"service_memory_request" long:"service-memory-request" env:"KUBERNETES_SERVICE_MEMORY_REQUEST" description:"The amount of memory requested for build service containers"`
-	ServiceMemoryRequestOverwriteMaxAllowed string                       `toml:"service_memory_request_overwrite_max_allowed,omitempty" json:"service_memory_request_overwrite_max_allowed" long:"service-memory-request-overwrite-max-allowed" env:"KUBERNETES_SERVICE_MEMORY_REQUEST_OVERWRITE_MAX_ALLOWED" description:"If set, the max amount the service memory request can be set to. Used with the KUBERNETES_SERVICE_MEMORY_REQUEST variable in the build."`
-	HelperCPULimit                          string                       `toml:"helper_cpu_limit,omitempty" json:"helper_cpu_limit" long:"helper-cpu-limit" env:"KUBERNETES_HELPER_CPU_LIMIT" description:"The CPU allocation given to build helper containers"`
-	HelperCPULimitOverwriteMaxAllowed       string                       `toml:"helper_cpu_limit_overwrite_max_allowed,omitempty" json:"helper_cpu_limit_overwrite_max_allowed" long:"helper-cpu-limit-overwrite-max-allowed" env:"KUBERNETES_HELPER_CPU_LIMIT_OVERWRITE_MAX_ALLOWED" description:"If set, the max amount the helper cpu limit can be set to. Used with the KUBERNETES_HELPER_CPU_LIMIT variable in the build."`
-	HelperCPURequest                        string                       `toml:"helper_cpu_request,omitempty" json:"helper_cpu_request" long:"helper-cpu-request" env:"KUBERNETES_HELPER_CPU_REQUEST" description:"The CPU allocation requested for build helper containers"`
-	HelperCPURequestOverwriteMaxAllowed     string                       `toml:"helper_cpu_request_overwrite_max_allowed,omitempty" json:"helper_cpu_request_overwrite_max_allowed" long:"helper-cpu-request-overwrite-max-allowed" env:"KUBERNETES_HELPER_CPU_REQUEST_OVERWRITE_MAX_ALLOWED" description:"If set, the max amount the helper cpu request can be set to. Used with the KUBERNETES_HELPER_CPU_REQUEST variable in the build."`
-	HelperMemoryLimit                       string                       `toml:"helper_memory_limit,omitempty" json:"helper_memory_limit" long:"helper-memory-limit" env:"KUBERNETES_HELPER_MEMORY_LIMIT" description:"The amount of memory allocated to build helper containers"`
-	HelperMemoryLimitOverwriteMaxAllowed    string                       `toml:"helper_memory_limit_overwrite_max_allowed,omitempty" json:"helper_memory_limit_overwrite_max_allowed" long:"helper-memory-limit-overwrite-max-allowed" env:"KUBERNETES_HELPER_MEMORY_LIMIT_OVERWRITE_MAX_ALLOWED" description:"If set, the max amount the helper memory limit can be set to. Used with the KUBERNETES_HELPER_MEMORY_LIMIT variable in the build."`
-	HelperMemoryRequest                     string                       `toml:"helper_memory_request,omitempty" json:"helper_memory_request" long:"helper-memory-request" env:"KUBERNETES_HELPER_MEMORY_REQUEST" description:"The amount of memory requested for build helper containers"`
-	HelperMemoryRequestOverwriteMaxAllowed  string                       `toml:"helper_memory_request_overwrite_max_allowed,omitempty" json:"helper_memory_request_overwrite_max_allowed" long:"helper-memory-request-overwrite-max-allowed" env:"KUBERNETES_HELPER_MEMORY_REQUEST_OVERWRITE_MAX_ALLOWED" description:"If set, the max amount the helper memory request can be set to. Used with the KUBERNETES_HELPER_MEMORY_REQUEST variable in the build."`
-	PullPolicy                              KubernetesPullPolicy         `toml:"pull_policy,omitempty" json:"pull_policy" long:"pull-policy" env:"KUBERNETES_PULL_POLICY" description:"Policy for if/when to pull a container image (never, if-not-present, always). The cluster default will be used if not set"`
-	NodeSelector                            map[string]string            `toml:"node_selector,omitempty" json:"node_selector" long:"node-selector" env:"KUBERNETES_NODE_SELECTOR" description:"A toml table/json object of key=value. Value is expected to be a string. When set this will create pods on k8s nodes that match all the key=value pairs."`
-	NodeTolerations                         map[string]string            `toml:"node_tolerations,omitempty" json:"node_tolerations" long:"node-tolerations" env:"KUBERNETES_NODE_TOLERATIONS" description:"A toml table/json object of key=value:effect. Value and effect are expected to be strings. When set, pods will tolerate the given taints. Only one toleration is supported through environment variable configuration."`
-	Affinity                                KubernetesAffinity           `toml:"affinity,omitempty" json:"affinity" long:"affinity" description:"Kubernetes Affinity setting that is used to select the node that spawns a pod"`
-	ImagePullSecrets                        []string                     `toml:"image_pull_secrets,omitempty" json:"image_pull_secrets" long:"image-pull-secrets" env:"KUBERNETES_IMAGE_PULL_SECRETS" description:"A list of image pull secrets that are used for pulling docker image"`
-	HelperImage                             string                       `toml:"helper_image,omitempty" json:"helper_image" long:"helper-image" env:"KUBERNETES_HELPER_IMAGE" description:"[ADVANCED] Override the default helper image used to clone repos and upload artifacts"`
-	TerminationGracePeriodSeconds           int64                        `toml:"terminationGracePeriodSeconds,omitzero" json:"terminationGracePeriodSeconds" long:"terminationGracePeriodSeconds" env:"KUBERNETES_TERMINATIONGRACEPERIODSECONDS" description:"Duration after the processes running in the pod are sent a termination signal and the time when the processes are forcibly halted with a kill signal."`
-	PollInterval                            int                          `toml:"poll_interval,omitzero" json:"poll_interval" long:"poll-interval" env:"KUBERNETES_POLL_INTERVAL" description:"How frequently, in seconds, the runner will poll the Kubernetes pod it has just created to check its status"`
-	PollTimeout                             int                          `toml:"poll_timeout,omitzero" json:"poll_timeout" long:"poll-timeout" env:"KUBERNETES_POLL_TIMEOUT" description:"The total amount of time, in seconds, that needs to pass before the runner will timeout attempting to connect to the pod it has just created (useful for queueing more builds that the cluster can handle at a time)"`
-	PodLabels                               map[string]string            `toml:"pod_labels,omitempty" json:"pod_labels" long:"pod-labels" description:"A toml table/json object of key-value. Value is expected to be a string. When set, this will create pods with the given pod labels. Environment variables will be substituted for values here."`
-	ServiceAccount                          string                       `toml:"service_account,omitempty" json:"service_account" long:"service-account" env:"KUBERNETES_SERVICE_ACCOUNT" description:"Executor pods will use this Service Account to talk to kubernetes API"`
-	ServiceAccountOverwriteAllowed          string                       `toml:"service_account_overwrite_allowed" json:"service_account_overwrite_allowed" long:"service_account_overwrite_allowed" env:"KUBERNETES_SERVICE_ACCOUNT_OVERWRITE_ALLOWED" description:"Regex to validate 'KUBERNETES_SERVICE_ACCOUNT' value"`
-	PodAnnotations                          map[string]string            `toml:"pod_annotations,omitempty" json:"pod_annotations" long:"pod-annotations" description:"A toml table/json object of key-value. Value is expected to be a string. When set, this will create pods with the given annotations. Can be overwritten in build with KUBERNETES_POD_ANNOTATION_* variables"`
-	PodAnnotationsOverwriteAllowed          string                       `toml:"pod_annotations_overwrite_allowed" json:"pod_annotations_overwrite_allowed" long:"pod_annotations_overwrite_allowed" env:"KUBERNETES_POD_ANNOTATIONS_OVERWRITE_ALLOWED" description:"Regex to validate 'KUBERNETES_POD_ANNOTATIONS_*' values"`
-	PodSecurityContext                      KubernetesPodSecurityContext `toml:"pod_security_context,omitempty" namespace:"pod-security-context" description:"A security context attached to each build pod"`
-	Volumes                                 KubernetesVolumes            `toml:"volumes"`
-	Services                                []Service                    `toml:"services,omitempty" json:"services" description:"Add service that is started with container"`
+	Host                                    string                       `yaml:"host" toml:"host" json:"host" long:"host" env:"KUBERNETES_HOST" description:"Optional Kubernetes master host URL (auto-discovery attempted if not specified)"`
+	CertFile                                string                       `yaml:"cert_file,omitempty" toml:"cert_file,omitempty" json:"cert_file" long:"cert-file" env:"KUBERNETES_CERT_FILE" description:"Optional Kubernetes master auth certificate"`
+	KeyFile                                 string                       `yaml:"key_file,omitempty" toml:"key_file,omitempty" json:"key_file" long:"key-file" env:"KUBERNETES_KEY_FILE" description:"Optional Kubernetes master auth private key"`
+	CAFile                                  string                       `yaml:"ca_file,omitempty" toml:"ca_file,omitempty" json:"ca_file" long:"ca-file" env:"KUBERNETES_CA_FILE" description:"Optional Kubernetes master auth ca certificate"`
+	BearerTokenOverwriteAllowed             bool                         `yaml:"bearer_token_overwrite_allowed" toml:"bearer_token_overwrite_allowed" json:"bearer_token_overwrite_allowed" long:"bearer_token_overwrite_allowed" env:"KUBERNETES_BEARER_TOKEN_OVERWRITE_ALLOWED" description:"Bool to authorize builds to specify their own bearer token for creation."`
+	BearerToken                             string                       `yaml:"bearer_token,omitempty" toml:"bearer_token,omitempty" json:"bearer_token" long:"bearer_token" env:"KUBERNETES_BEARER_TOKEN" description:"Optional Kubernetes service account token used to start build pods."`
+	Image                                   string                       `yaml:"image" toml:"image" json:"image" long:"image" env:"KUBERNETES_IMAGE" description:"Default docker image to use for builds when none is specified"`
+	Namespace                               string                       `yaml:"namespace" toml:"namespace" json:"namespace" long:"namespace" env:"KUBERNETES_NAMESPACE" description:"Namespace to run Kubernetes jobs in"`
+	NamespaceOverwriteAllowed               string                       `yaml:"namespace_overwrite_allowed" toml:"namespace_overwrite_allowed" json:"namespace_overwrite_allowed" long:"namespace_overwrite_allowed" env:"KUBERNETES_NAMESPACE_OVERWRITE_ALLOWED" description:"Regex to validate 'KUBERNETES_NAMESPACE_OVERWRITE' value"`
+	Privileged                              bool                         `yaml:"privileged,omitzero" toml:"privileged,omitzero" json:"privileged" long:"privileged" env:"KUBERNETES_PRIVILEGED" description:"Run all containers with the privileged flag enabled"`
+	CPULimit                                string                       `yaml:"cpu_limit,omitempty" toml:"cpu_limit,omitempty" json:"cpu_limit" long:"cpu-limit" env:"KUBERNETES_CPU_LIMIT" description:"The CPU allocation given to build containers"`
+	CPULimitOverwriteMaxAllowed             string                       `yaml:"cpu_limit_overwrite_max_allowed,omitempty" toml:"cpu_limit_overwrite_max_allowed,omitempty" json:"cpu_limit_overwrite_max_allowed" long:"cpu-limit-overwrite-max-allowed" env:"KUBERNETES_CPU_LIMIT_OVERWRITE_MAX_ALLOWED" description:"If set, the max amount the cpu limit can be set to. Used with the KUBERNETES_CPU_LIMIT variable in the build."`
+	CPURequest                              string                       `yaml:"cpu_request,omitempty" toml:"cpu_request,omitempty" json:"cpu_request" long:"cpu-request" env:"KUBERNETES_CPU_REQUEST" description:"The CPU allocation requested for build containers"`
+	CPURequestOverwriteMaxAllowed           string                       `yaml:"cpu_request_overwrite_max_allowed,omitempty" toml:"cpu_request_overwrite_max_allowed,omitempty" json:"cpu_request_overwrite_max_allowed" long:"cpu-request-overwrite-max-allowed" env:"KUBERNETES_CPU_REQUEST_OVERWRITE_MAX_ALLOWED" description:"If set, the max amount the cpu request can be set to. Used with the KUBERNETES_CPU_REQUEST variable in the build."`
+	MemoryLimit                             string                       `yaml:"memory_limit,omitempty" toml:"memory_limit,omitempty" json:"memory_limit" long:"memory-limit" env:"KUBERNETES_MEMORY_LIMIT" description:"The amount of memory allocated to build containers"`
+	MemoryLimitOverwriteMaxAllowed          string                       `yaml:"memory_limit_overwrite_max_allowed,omitempty" toml:"memory_limit_overwrite_max_allowed,omitempty" json:"memory_limit_overwrite_max_allowed" long:"memory-limit-overwrite-max-allowed" env:"KUBERNETES_MEMORY_LIMIT_OVERWRITE_MAX_ALLOWED" description:"If set, the max amount the memory limit can be set to. Used with the KUBERNETES_MEMORY_LIMIT variable in the build."`
+	MemoryRequest                           string                       `yaml:"memory_request,omitempty" toml:"memory_request,omitempty" json:"memory_request" long:"memory-request" env:"KUBERNETES_MEMORY_REQUEST" description:"The amount of memory requested from build containers"`
+	MemoryRequestOverwriteMaxAllowed        string                       `yaml:"memory_request_overwrite_max_allowed,omitempty" toml:"memory_request_overwrite_max_allowed,omitempty" json:"memory_request_overwrite_max_allowed" long:"memory-request-overwrite-max-allowed" env:"KUBERNETES_MEMORY_REQUEST_OVERWRITE_MAX_ALLOWED" description:"If set, the max amount the memory request can be set to. Used with the KUBERNETES_MEMORY_REQUEST variable in the build."`
+	ServiceCPULimit                         string                       `yaml:"service_cpu_limit,omitempty" toml:"service_cpu_limit,omitempty" json:"service_cpu_limit" long:"service-cpu-limit" env:"KUBERNETES_SERVICE_CPU_LIMIT" description:"The CPU allocation given to build service containers"`
+	ServiceCPULimitOverwriteMaxAllowed      string                       `yaml:"service_cpu_limit_overwrite_max_allowed,omitempty" toml:"service_cpu_limit_overwrite_max_allowed,omitempty" json:"service_cpu_limit_overwrite_max_allowed" long:"service-cpu-limit-overwrite-max-allowed" env:"KUBERNETES_SERVICE_CPU_LIMIT_OVERWRITE_MAX_ALLOWED" description:"If set, the max amount the service cpu limit can be set to. Used with the KUBERNETES_SERVICE_CPU_LIMIT variable in the build."`
+	ServiceCPURequest                       string                       `yaml:"service_cpu_request,omitempty" toml:"service_cpu_request,omitempty" json:"service_cpu_request" long:"service-cpu-request" env:"KUBERNETES_SERVICE_CPU_REQUEST" description:"The CPU allocation requested for build service containers"`
+	ServiceCPURequestOverwriteMaxAllowed    string                       `yaml:"service_cpu_request_overwrite_max_allowed,omitempty" toml:"service_cpu_request_overwrite_max_allowed,omitempty" json:"service_cpu_request_overwrite_max_allowed" long:"service-cpu-request-overwrite-max-allowed" env:"KUBERNETES_SERVICE_CPU_REQUEST_OVERWRITE_MAX_ALLOWED" description:"If set, the max amount the service cpu request can be set to. Used with the KUBERNETES_SERVICE_CPU_REQUEST variable in the build."`
+	ServiceMemoryLimit                      string                       `yaml:"service_memory_limit,omitempty" toml:"service_memory_limit,omitempty" json:"service_memory_limit" long:"service-memory-limit" env:"KUBERNETES_SERVICE_MEMORY_LIMIT" description:"The amount of memory allocated to build service containers"`
+	ServiceMemoryLimitOverwriteMaxAllowed   string                       `yaml:"service_memory_limit_overwrite_max_allowed,omitempty" toml:"service_memory_limit_overwrite_max_allowed,omitempty" json:"service_memory_limit_overwrite_max_allowed" long:"service-memory-limit-overwrite-max-allowed" env:"KUBERNETES_SERVICE_MEMORY_LIMIT_OVERWRITE_MAX_ALLOWED" description:"If set, the max amount the service memory limit can be set to. Used with the KUBERNETES_SERVICE_MEMORY_LIMIT variable in the build."`
+	ServiceMemoryRequest                    string                       `yaml:"service_memory_request,omitempty" toml:"service_memory_request,omitempty" json:"service_memory_request" long:"service-memory-request" env:"KUBERNETES_SERVICE_MEMORY_REQUEST" description:"The amount of memory requested for build service containers"`
+	ServiceMemoryRequestOverwriteMaxAllowed string                       `yaml:"service_memory_request_overwrite_max_allowed,omitempty" toml:"service_memory_request_overwrite_max_allowed,omitempty" json:"service_memory_request_overwrite_max_allowed" long:"service-memory-request-overwrite-max-allowed" env:"KUBERNETES_SERVICE_MEMORY_REQUEST_OVERWRITE_MAX_ALLOWED" description:"If set, the max amount the service memory request can be set to. Used with the KUBERNETES_SERVICE_MEMORY_REQUEST variable in the build."`
+	HelperCPULimit                          string                       `yaml:"helper_cpu_limit,omitempty" toml:"helper_cpu_limit,omitempty" json:"helper_cpu_limit" long:"helper-cpu-limit" env:"KUBERNETES_HELPER_CPU_LIMIT" description:"The CPU allocation given to build helper containers"`
+	HelperCPULimitOverwriteMaxAllowed       string                       `yaml:"helper_cpu_limit_overwrite_max_allowed,omitempty" toml:"helper_cpu_limit_overwrite_max_allowed,omitempty" json:"helper_cpu_limit_overwrite_max_allowed" long:"helper-cpu-limit-overwrite-max-allowed" env:"KUBERNETES_HELPER_CPU_LIMIT_OVERWRITE_MAX_ALLOWED" description:"If set, the max amount the helper cpu limit can be set to. Used with the KUBERNETES_HELPER_CPU_LIMIT variable in the build."`
+	HelperCPURequest                        string                       `yaml:"helper_cpu_request,omitempty" toml:"helper_cpu_request,omitempty" json:"helper_cpu_request" long:"helper-cpu-request" env:"KUBERNETES_HELPER_CPU_REQUEST" description:"The CPU allocation requested for build helper containers"`
+	HelperCPURequestOverwriteMaxAllowed     string                       `yaml:"helper_cpu_request_overwrite_max_allowed,omitempty" toml:"helper_cpu_request_overwrite_max_allowed,omitempty" json:"helper_cpu_request_overwrite_max_allowed" long:"helper-cpu-request-overwrite-max-allowed" env:"KUBERNETES_HELPER_CPU_REQUEST_OVERWRITE_MAX_ALLOWED" description:"If set, the max amount the helper cpu request can be set to. Used with the KUBERNETES_HELPER_CPU_REQUEST variable in the build."`
+	HelperMemoryLimit                       string                       `yaml:"helper_memory_limit,omitempty" toml:"helper_memory_limit,omitempty" json:"helper_memory_limit" long:"helper-memory-limit" env:"KUBERNETES_HELPER_MEMORY_LIMIT" description:"The amount of memory allocated to build helper containers"`
+	HelperMemoryLimitOverwriteMaxAllowed    string                       `yaml:"helper_memory_limit_overwrite_max_allowed,omitempty" toml:"helper_memory_limit_overwrite_max_allowed,omitempty" json:"helper_memory_limit_overwrite_max_allowed" long:"helper-memory-limit-overwrite-max-allowed" env:"KUBERNETES_HELPER_MEMORY_LIMIT_OVERWRITE_MAX_ALLOWED" description:"If set, the max amount the helper memory limit can be set to. Used with the KUBERNETES_HELPER_MEMORY_LIMIT variable in the build."`
+	HelperMemoryRequest                     string                       `yaml:"helper_memory_request,omitempty" toml:"helper_memory_request,omitempty" json:"helper_memory_request" long:"helper-memory-request" env:"KUBERNETES_HELPER_MEMORY_REQUEST" description:"The amount of memory requested for build helper containers"`
+	HelperMemoryRequestOverwriteMaxAllowed  string                       `yaml:"helper_memory_request_overwrite_max_allowed,omitempty" toml:"helper_memory_request_overwrite_max_allowed,omitempty" json:"helper_memory_request_overwrite_max_allowed" long:"helper-memory-request-overwrite-max-allowed" env:"KUBERNETES_HELPER_MEMORY_REQUEST_OVERWRITE_MAX_ALLOWED" description:"If set, the max amount the helper memory request can be set to. Used with the KUBERNETES_HELPER_MEMORY_REQUEST variable in the build."`
+	PullPolicy                              KubernetesPullPolicy         `yaml:"pull_policy,omitempty" toml:"pull_policy,omitempty" json:"pull_policy" long:"pull-policy" env:"KUBERNETES_PULL_POLICY" description:"Policy for if/when to pull a container image (never, if-not-present, always). The cluster default will be used if not set"`
+	NodeSelector                            map[string]string            `yaml:"node_selector,omitempty" toml:"node_selector,omitempty" json:"node_selector" long:"node-selector" env:"KUBERNETES_NODE_SELECTOR" description:"A toml table/json object of key=value. Value is expected to be a string. When set this will create pods on k8s nodes that match all the key=value pairs."`
+	NodeTolerations                         map[string]string            `yaml:"node_tolerations,omitempty" toml:"node_tolerations,omitempty" json:"node_tolerations" long:"node-tolerations" env:"KUBERNETES_NODE_TOLERATIONS" description:"A toml table/json object of key=value:effect. Value and effect are expected to be strings. When set, pods will tolerate the given taints. Only one toleration is supported through environment variable configuration."`
+	Affinity                                KubernetesAffinity           `yaml:"affinity,omitempty" toml:"affinity,omitempty" json:"affinity" long:"affinity" description:"Kubernetes Affinity setting that is used to select the node that spawns a pod"`
+	ImagePullSecrets                        []string                     `yaml:"image_pull_secrets,omitempty" toml:"image_pull_secrets,omitempty" json:"image_pull_secrets" long:"image-pull-secrets" env:"KUBERNETES_IMAGE_PULL_SECRETS" description:"A list of image pull secrets that are used for pulling docker image"`
+	HelperImage                             string                       `yaml:"helper_image,omitempty" toml:"helper_image,omitempty" json:"helper_image" long:"helper-image" env:"KUBERNETES_HELPER_IMAGE" description:"[ADVANCED] Override the default helper image used to clone repos and upload artifacts"`
+	TerminationGracePeriodSeconds           int64                        `yaml:"terminationGracePeriodSeconds,omitzero" toml:"terminationGracePeriodSeconds,omitzero" json:"terminationGracePeriodSeconds" long:"terminationGracePeriodSeconds" env:"KUBERNETES_TERMINATIONGRACEPERIODSECONDS" description:"Duration after the processes running in the pod are sent a termination signal and the time when the processes are forcibly halted with a kill signal."`
+	PollInterval                            int                          `yaml:"poll_interval,omitzero" toml:"poll_interval,omitzero" json:"poll_interval" long:"poll-interval" env:"KUBERNETES_POLL_INTERVAL" description:"How frequently, in seconds, the runner will poll the Kubernetes pod it has just created to check its status"`
+	PollTimeout                             int                          `yaml:"poll_timeout,omitzero" toml:"poll_timeout,omitzero" json:"poll_timeout" long:"poll-timeout" env:"KUBERNETES_POLL_TIMEOUT" description:"The total amount of time, in seconds, that needs to pass before the runner will timeout attempting to connect to the pod it has just created (useful for queueing more builds that the cluster can handle at a time)"`
+	PodLabels                               map[string]string            `yaml:"pod_labels,omitempty" toml:"pod_labels,omitempty" json:"pod_labels" long:"pod-labels" description:"A toml table/json object of key-value. Value is expected to be a string. When set, this will create pods with the given pod labels. Environment variables will be substituted for values here."`
+	ServiceAccount                          string                       `yaml:"service_account,omitempty" toml:"service_account,omitempty" json:"service_account" long:"service-account" env:"KUBERNETES_SERVICE_ACCOUNT" description:"Executor pods will use this Service Account to talk to kubernetes API"`
+	ServiceAccountOverwriteAllowed          string                       `yaml:"service_account_overwrite_allowed" toml:"service_account_overwrite_allowed" json:"service_account_overwrite_allowed" long:"service_account_overwrite_allowed" env:"KUBERNETES_SERVICE_ACCOUNT_OVERWRITE_ALLOWED" description:"Regex to validate 'KUBERNETES_SERVICE_ACCOUNT' value"`
+	PodAnnotations                          map[string]string            `yaml:"pod_annotations,omitempty" toml:"pod_annotations,omitempty" json:"pod_annotations" long:"pod-annotations" description:"A toml table/json object of key-value. Value is expected to be a string. When set, this will create pods with the given annotations. Can be overwritten in build with KUBERNETES_POD_ANNOTATION_* variables"`
+	PodAnnotationsOverwriteAllowed          string                       `yaml:"pod_annotations_overwrite_allowed" toml:"pod_annotations_overwrite_allowed" json:"pod_annotations_overwrite_allowed" long:"pod_annotations_overwrite_allowed" env:"KUBERNETES_POD_ANNOTATIONS_OVERWRITE_ALLOWED" description:"Regex to validate 'KUBERNETES_POD_ANNOTATIONS_*' values"`
+	PodSecurityContext                      KubernetesPodSecurityContext `yaml:"pod_security_context,omitempty" toml:"pod_security_context,omitempty" namespace:"pod-security-context" description:"A security context attached to each build pod"`
+	Volumes                                 KubernetesVolumes            `yaml:"volumes" toml:"volumes"`
+	Services                                []Service                    `yaml:"services,omitempty" toml:"services,omitempty" json:"services" description:"Add service that is started with container"`
 }
 
 type KubernetesVolumes struct {
-	HostPaths  []KubernetesHostPath  `toml:"host_path" description:"The host paths which will be mounted"`
-	PVCs       []KubernetesPVC       `toml:"pvc" description:"The persistent volume claims that will be mounted"`
-	ConfigMaps []KubernetesConfigMap `toml:"config_map" description:"The config maps which will be mounted as volumes"`
-	Secrets    []KubernetesSecret    `toml:"secret" description:"The secret maps which will be mounted"`
-	EmptyDirs  []KubernetesEmptyDir  `toml:"empty_dir" description:"The empty dirs which will be mounted"`
+	HostPaths  []KubernetesHostPath  `yaml:"host_path" toml:"host_path" description:"The host paths which will be mounted"`
+	PVCs       []KubernetesPVC       `yaml:"pvc" toml:"pvc" description:"The persistent volume claims that will be mounted"`
+	ConfigMaps []KubernetesConfigMap `yaml:"config_map" toml:"config_map" description:"The config maps which will be mounted as volumes"`
+	Secrets    []KubernetesSecret    `yaml:"secret" toml:"secret" description:"The secret maps which will be mounted"`
+	EmptyDirs  []KubernetesEmptyDir  `yaml:"empty_dir" toml:"empty_dir" description:"The empty dirs which will be mounted"`
 }
 
 //nolint:lll
 type KubernetesConfigMap struct {
-	Name      string            `toml:"name" json:"name" description:"The name of the volume and ConfigMap to use"`
-	MountPath string            `toml:"mount_path" description:"Path where volume should be mounted inside of container"`
-	ReadOnly  bool              `toml:"read_only,omitempty" description:"If this volume should be mounted read only"`
-	Items     map[string]string `toml:"items,omitempty" description:"Key-to-path mapping for keys from the config map that should be used."`
+	Name      string            `yaml:"name" toml:"name" json:"name" description:"The name of the volume and ConfigMap to use"`
+	MountPath string            `yaml:"mount_path" toml:"mount_path" description:"Path where volume should be mounted inside of container"`
+	ReadOnly  bool              `yaml:"read_only,omitempty" toml:"read_only,omitempty" description:"If this volume should be mounted read only"`
+	Items     map[string]string `yaml:"items,omitempty" toml:"items,omitempty" description:"Key-to-path mapping for keys from the config map that should be used."`
 }
 
 type KubernetesHostPath struct {
-	Name      string `toml:"name" json:"name" description:"The name of the volume"`
-	MountPath string `toml:"mount_path" description:"Path where volume should be mounted inside of container"`
-	ReadOnly  bool   `toml:"read_only,omitempty" description:"If this volume should be mounted read only"`
-	HostPath  string `toml:"host_path,omitempty" description:"Path from the host that should be mounted as a volume"`
+	Name      string `yaml:"name" toml:"name" json:"name" description:"The name of the volume"`
+	MountPath string `yaml:"mount_path" toml:"mount_path" description:"Path where volume should be mounted inside of container"`
+	ReadOnly  bool   `yaml:"read_only,omitempty" toml:"read_only,omitempty" description:"If this volume should be mounted read only"`
+	HostPath  string `yaml:"host_path,omitempty" toml:"host_path,omitempty" description:"Path from the host that should be mounted as a volume"`
 }
 
 type KubernetesPVC struct {
-	Name      string `toml:"name" json:"name" description:"The name of the volume and PVC to use"`
-	MountPath string `toml:"mount_path" description:"Path where volume should be mounted inside of container"`
-	ReadOnly  bool   `toml:"read_only,omitempty" description:"If this volume should be mounted read only"`
+	Name      string `yaml:"name" toml:"name" json:"name" description:"The name of the volume and PVC to use"`
+	MountPath string `yaml:"mount_path" toml:"mount_path" description:"Path where volume should be mounted inside of container"`
+	ReadOnly  bool   `yaml:"read_only,omitempty" toml:"read_only,omitempty" description:"If this volume should be mounted read only"`
 }
 
 //nolint:lll
@@ -351,7 +352,7 @@ func (s *Service) ToImageDefinition() Image {
 
 //nolint:lll
 type RunnerCredentials struct {
-	URL         string `toml:"url" json:"url" short:"u" long:"url" env:"CI_SERVER_URL" required:"true" description:"Runner URL"`
+	URL         string `yaml:"url" toml:"url" json:"url" short:"u" long:"url" env:"CI_SERVER_URL" required:"true" description:"Runner URL"`
 	Token       string `toml:"token" json:"token" short:"t" long:"token" env:"CI_SERVER_TOKEN" required:"true" description:"Runner token"`
 	TLSCAFile   string `toml:"tls-ca-file,omitempty" json:"tls-ca-file" long:"tls-ca-file" env:"CI_SERVER_TLS_CA_FILE" description:"File containing the certificates to verify the peer when using HTTPS"`
 	TLSCertFile string `toml:"tls-cert-file,omitempty" json:"tls-cert-file" long:"tls-cert-file" env:"CI_SERVER_TLS_CERT_FILE" description:"File containing certificate for TLS client auth when using HTTPS"`
@@ -429,19 +430,19 @@ type RunnerSettings struct {
 	Parallels  *ParallelsConfig  `toml:"parallels,omitempty" json:"parallels" group:"parallels executor" namespace:"parallels"`
 	VirtualBox *VirtualBoxConfig `toml:"virtualbox,omitempty" json:"virtualbox" group:"virtualbox executor" namespace:"virtualbox"`
 	Machine    *DockerMachine    `toml:"machine,omitempty" json:"machine" group:"docker machine provider" namespace:"machine"`
-	Kubernetes *KubernetesConfig `toml:"kubernetes,omitempty" json:"kubernetes" group:"kubernetes executor" namespace:"kubernetes"`
+	Kubernetes *KubernetesConfig `yaml:"kubernetes,omitempty" toml:"kubernetes,omitempty" json:"kubernetes" group:"kubernetes executor" namespace:"kubernetes"`
 	Custom     *CustomConfig     `toml:"custom,omitempty" json:"custom" group:"custom executor" namespace:"custom"`
 }
 
 //nolint:lll
 type RunnerConfig struct {
-	Name               string `toml:"name" json:"name" short:"name" long:"description" env:"RUNNER_NAME" description:"Runner name"`
-	Limit              int    `toml:"limit,omitzero" json:"limit" long:"limit" env:"RUNNER_LIMIT" description:"Maximum number of builds processed by this runner"`
-	OutputLimit        int    `toml:"output_limit,omitzero" long:"output-limit" env:"RUNNER_OUTPUT_LIMIT" description:"Maximum build trace size in kilobytes"`
-	RequestConcurrency int    `toml:"request_concurrency,omitzero" long:"request-concurrency" env:"RUNNER_REQUEST_CONCURRENCY" description:"Maximum concurrency for job requests"`
+	Name               string `yaml:"name" toml:"name" json:"name" short:"name" long:"description" env:"RUNNER_NAME" description:"Runner name"`
+	Limit              int    `yaml:"limit,omitempty" toml:"limit,omitzero" json:"limit" long:"limit" env:"RUNNER_LIMIT" description:"Maximum number of builds processed by this runner"`
+	OutputLimit        int    `yaml:"output_limit,omitempty" toml:"output_limit,omitzero" long:"output-limit" env:"RUNNER_OUTPUT_LIMIT" description:"Maximum build trace size in kilobytes"`
+	RequestConcurrency int    `yaml:"request_concurrency,omitempty" toml:"request_concurrency,omitzero" long:"request-concurrency" env:"RUNNER_REQUEST_CONCURRENCY" description:"Maximum concurrency for job requests"`
 
-	RunnerCredentials
-	RunnerSettings
+	RunnerCredentials `yaml:",inline"`
+	RunnerSettings    `yaml:",inline"`
 }
 
 //nolint:lll
@@ -461,7 +462,7 @@ type Config struct {
 	LogLevel      *string         `toml:"log_level" json:"log_level" description:"Define log level (one of: panic, fatal, error, warning, info, debug)"`
 	LogFormat     *string         `toml:"log_format" json:"log_format" description:"Define log format (one of: runner, text, json)"`
 	User          string          `toml:"user,omitempty" json:"user"`
-	Runners       []*RunnerConfig `toml:"runners" json:"runners"`
+	Runners       []*RunnerConfig `yaml:"runners" toml:"runners" json:"runners"`
 	SentryDSN     *string         `toml:"sentry_dsn"`
 	ModTime       time.Time       `toml:"-"`
 	Loaded        bool            `toml:"-"`
@@ -870,8 +871,23 @@ func (c *Config) LoadConfig(configFile string) error {
 		return err
 	}
 
-	if _, err = toml.DecodeFile(configFile, c); err != nil {
-		return err
+	ext := filepath.Ext(configFile)
+
+	switch ext {
+	case ".yml", ".yaml":
+		f, err := ioutil.ReadFile(configFile)
+		if err != nil {
+			return err
+		}
+
+		err = yaml.Unmarshal(f, c)
+		if err != nil {
+			return err
+		}
+	default:
+		if _, err = toml.DecodeFile(configFile, c); err != nil {
+			return err
+		}
 	}
 
 	for _, runner := range c.Runners {
