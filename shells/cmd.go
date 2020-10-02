@@ -273,7 +273,7 @@ func (b *CmdShell) GenerateScript(
 		disableDelayedErrorLevelExpansion: info.Build.IsFeatureFlagOn(featureflags.CmdDisableDelayedErrorLevelExpansion),
 	}
 
-	if buildStage == common.BuildStagePrepare {
+	if buildStage.Name == common.BuildStagePrepare.Name {
 		if info.Build.Hostname != "" {
 			w.Line("echo Running on %COMPUTERNAME% via " + batchEscape(info.Build.Hostname) + "...")
 		} else {

@@ -199,11 +199,11 @@ func (b *AbstractShell) downloadAllArtifacts(w ShellWriter, info common.ShellScr
 	return nil
 }
 
-func (b *AbstractShell) writePrepareScript(w ShellWriter, info common.ShellScriptInfo) error {
+func (b *AbstractShell) writePrepareScript(w ShellWriter, info common.ShellScriptInfo, buildStage common.BuildStage) error {
 	return nil
 }
 
-func (b *AbstractShell) writeGetSourcesScript(w ShellWriter, info common.ShellScriptInfo) error {
+func (b *AbstractShell) writeGetSourcesScript(w ShellWriter, info common.ShellScriptInfo, buildStage common.BuildStage) error {
 	b.writeExports(w, info)
 
 	if !info.Build.IsSharedEnv() {
@@ -437,7 +437,7 @@ func (b *AbstractShell) writeSubmoduleUpdateCmd(w ShellWriter, build *common.Bui
 	}
 }
 
-func (b *AbstractShell) writeRestoreCacheScript(w ShellWriter, info common.ShellScriptInfo) error {
+func (b *AbstractShell) writeRestoreCacheScript(w ShellWriter, info common.ShellScriptInfo, buildStage common.BuildStage) error {
 	b.writeExports(w, info)
 	b.writeCdBuildDir(w, info)
 
@@ -445,7 +445,7 @@ func (b *AbstractShell) writeRestoreCacheScript(w ShellWriter, info common.Shell
 	return b.cacheExtractor(w, info)
 }
 
-func (b *AbstractShell) writeDownloadArtifactsScript(w ShellWriter, info common.ShellScriptInfo) error {
+func (b *AbstractShell) writeDownloadArtifactsScript(w ShellWriter, info common.ShellScriptInfo, buildStage common.BuildStage) error {
 	b.writeExports(w, info)
 	b.writeCdBuildDir(w, info)
 
@@ -477,15 +477,7 @@ func (b *AbstractShell) writeUserScript(
 	info common.ShellScriptInfo,
 	buildStage common.BuildStage,
 ) error {
-	var scriptStep *common.Step
-	for _, step := range info.Build.Steps {
-		if common.StepToBuildStage(step) == buildStage {
-			scriptStep = &step
-			break
-		}
-	}
-
-	if scriptStep == nil {
+	if len(buildStage.Step.Script) == 0 {
 		return common.ErrSkipBuildStage
 	}
 
@@ -496,7 +488,7 @@ func (b *AbstractShell) writeUserScript(
 		b.writeCommands(w, info.PreBuildScript)
 	}
 
-	b.writeCommands(w, scriptStep.Script...)
+	b.writeCommands(w, buildStage.Step.Script...)
 
 	if info.PostBuildScript != "" {
 		b.writeCommands(w, info.PostBuildScript)
@@ -675,28 +667,7 @@ func (b *AbstractShell) writeUploadArtifacts(w ShellWriter, info common.ShellScr
 	return nil
 }
 
-func (b *AbstractShell) writeAfterScript(w ShellWriter, info common.ShellScriptInfo) error {
-	var afterScriptStep *common.Step
-	for _, step := range info.Build.Steps {
-		if step.Name == common.StepNameAfterScript {
-			afterScriptStep = &step
-			break
-		}
-	}
-
-	if afterScriptStep == nil || len(afterScriptStep.Script) == 0 {
-		return common.ErrSkipBuildStage
-	}
-
-	b.writeExports(w, info)
-	b.writeCdBuildDir(w, info)
-
-	w.Noticef("Running after script...")
-	b.writeCommands(w, afterScriptStep.Script...)
-	return nil
-}
-
-func (b *AbstractShell) writeArchiveCacheScript(w ShellWriter, info common.ShellScriptInfo) error {
+func (b *AbstractShell) writeArchiveCacheScript(w ShellWriter, info common.ShellScriptInfo, buildStage common.BuildStage) error {
 	b.writeExports(w, info)
 	b.writeCdBuildDir(w, info)
 
@@ -704,29 +675,30 @@ func (b *AbstractShell) writeArchiveCacheScript(w ShellWriter, info common.Shell
 	return b.cacheArchiver(w, info)
 }
 
-func (b *AbstractShell) writeUploadArtifactsOnSuccessScript(w ShellWriter, info common.ShellScriptInfo) error {
+func (b *AbstractShell) writeUploadArtifactsOnSuccessScript(w ShellWriter, info common.ShellScriptInfo, buildStage common.BuildStage) error {
 	return b.writeUploadArtifacts(w, info, true)
 }
 
-func (b *AbstractShell) writeUploadArtifactsOnFailureScript(w ShellWriter, info common.ShellScriptInfo) error {
+func (b *AbstractShell) writeUploadArtifactsOnFailureScript(w ShellWriter, info common.ShellScriptInfo, buildStage common.BuildStage) error {
 	return b.writeUploadArtifacts(w, info, false)
 }
 
 func (b *AbstractShell) writeScript(w ShellWriter, buildStage common.BuildStage, info common.ShellScriptInfo) error {
-	methods := map[common.BuildStage]func(ShellWriter, common.ShellScriptInfo) error{
-		common.BuildStagePrepare:                  b.writePrepareScript,
-		common.BuildStageGetSources:               b.writeGetSourcesScript,
-		common.BuildStageRestoreCache:             b.writeRestoreCacheScript,
-		common.BuildStageDownloadArtifacts:        b.writeDownloadArtifactsScript,
-		common.BuildStageAfterScript:              b.writeAfterScript,
-		common.BuildStageArchiveCache:             b.writeArchiveCacheScript,
-		common.BuildStageUploadOnSuccessArtifacts: b.writeUploadArtifactsOnSuccessScript,
-		common.BuildStageUploadOnFailureArtifacts: b.writeUploadArtifactsOnFailureScript,
+	methods := map[string]func(ShellWriter, common.ShellScriptInfo, common.BuildStage) error{
+		common.BuildStagePrepare.Name:                  b.writePrepareScript,
+		common.BuildStageGetSources.Name:               b.writeGetSourcesScript,
+		common.BuildStageRestoreCache.Name:             b.writeRestoreCacheScript,
+		common.BuildStageDownloadArtifacts.Name:        b.writeDownloadArtifactsScript,
+		common.BuildStageUserScript.Name:               b.writeUserScript,
+		common.BuildStageAfterScript.Name:              b.writeUserScript,
+		common.BuildStageArchiveCache.Name:             b.writeArchiveCacheScript,
+		common.BuildStageUploadOnSuccessArtifacts.Name: b.writeUploadArtifactsOnSuccessScript,
+		common.BuildStageUploadOnFailureArtifacts.Name: b.writeUploadArtifactsOnFailureScript,
 	}
 
-	fn, ok := methods[buildStage]
+	fn, ok := methods[buildStage.Name]
 	if !ok {
-		return b.writeUserScript(w, info, buildStage)
+		return fmt.Errorf("invalid stage %s", buildStage.Name)
 	}
-	return fn(w, info)
+	return fn(w, info, buildStage)
 }

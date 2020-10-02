@@ -337,7 +337,7 @@ func (b *PowerShell) GenerateScript(
 		TemporaryPath: info.Build.TmpProjectDir(),
 	}
 
-	if buildStage == common.BuildStagePrepare {
+	if buildStage.Name == common.BuildStagePrepare.Name {
 		if info.Build.Hostname != "" {
 			w.Linef(
 				`echo "Running on $([Environment]::MachineName) via %s..."`,

@@ -69,34 +69,6 @@ const (
 	BuildRunRuntimeTimedout   BuildRuntimeState = "timedout"
 )
 
-type BuildStage string
-
-const (
-	BuildStageResolveSecrets           BuildStage = "resolve_secrets"
-	BuildStagePrepareExecutor          BuildStage = "prepare_executor"
-	BuildStagePrepare                  BuildStage = "prepare_script"
-	BuildStageGetSources               BuildStage = "get_sources"
-	BuildStageRestoreCache             BuildStage = "restore_cache"
-	BuildStageDownloadArtifacts        BuildStage = "download_artifacts"
-	BuildStageAfterScript              BuildStage = "after_script"
-	BuildStageArchiveCache             BuildStage = "archive_cache"
-	BuildStageUploadOnSuccessArtifacts BuildStage = "upload_artifacts_on_success"
-	BuildStageUploadOnFailureArtifacts BuildStage = "upload_artifacts_on_failure"
-)
-
-// staticBuildStages is a list of BuildStages which are executed on every build
-// and are not dynamically generated from steps.
-var staticBuildStages = []BuildStage{
-	BuildStagePrepare,
-	BuildStageGetSources,
-	BuildStageRestoreCache,
-	BuildStageDownloadArtifacts,
-	BuildStageAfterScript,
-	BuildStageArchiveCache,
-	BuildStageUploadOnSuccessArtifacts,
-	BuildStageUploadOnFailureArtifacts,
-}
-
 const (
 	ExecutorJobSectionAttempts = "EXECUTOR_JOB_SECTION_ATTEMPTS"
 )
@@ -266,16 +238,19 @@ func (b *Build) TmpProjectDir() string {
 // BuildStages returns a list of all BuildStages which will be executed.
 // Not in the order of execution.
 func (b *Build) BuildStages() []BuildStage {
-	stages := make([]BuildStage, len(staticBuildStages))
-	copy(stages, staticBuildStages)
+	stages := make([]BuildStage, 0, len(prefixedBuildStages)+len(postfixBuildStages))
+	stages = append(stages, prefixedBuildStages...)
 
 	for _, s := range b.Steps {
+		stage := BuildStageUserScript
 		if s.Name == StepNameAfterScript {
-			continue
+			stage = BuildStageAfterScript
 		}
+		stage.Step = s
 
-		stages = append(stages, StepToBuildStage(s))
+		stages = append(stages, stage)
 	}
+	stages = append(stages, postfixBuildStages...)
 
 	return stages
 }
@@ -365,17 +340,17 @@ func (b *Build) executeStage(ctx context.Context, buildStage BuildStage, executo
 		Context:    ctx,
 		Script:     script,
 		Stage:      buildStage,
-		Predefined: getPredefinedEnv(buildStage),
+		Predefined: buildStage.PredefinedEnv,
 	}
 
 	section := helpers.BuildSection{
-		Name:        string(buildStage),
+		Name:        buildStage.Name,
 		SkipMetrics: !b.JobResponse.Features.TraceSections,
 		Run: func() error {
 			msg := fmt.Sprintf(
 				"%s%s%s",
 				helpers.ANSI_BOLD_CYAN,
-				GetStageDescription(buildStage),
+				buildStage.Description,
 				helpers.ANSI_RESET,
 			)
 			b.logger.Println(msg)
@@ -386,48 +361,6 @@ func (b *Build) executeStage(ctx context.Context, buildStage BuildStage, executo
 	return section.Execute(&b.logger)
 }
 
-// getPredefinedEnv returns whether a stage should be executed on
-//  the predefined environment that GitLab Runner provided.
-func getPredefinedEnv(buildStage BuildStage) bool {
-	env := map[BuildStage]bool{
-		BuildStagePrepare:                  true,
-		BuildStageGetSources:               true,
-		BuildStageRestoreCache:             true,
-		BuildStageDownloadArtifacts:        true,
-		BuildStageAfterScript:              false,
-		BuildStageArchiveCache:             true,
-		BuildStageUploadOnFailureArtifacts: true,
-		BuildStageUploadOnSuccessArtifacts: true,
-	}
-
-	predefined, ok := env[buildStage]
-	if !ok {
-		return false
-	}
-
-	return predefined
-}
-
-func GetStageDescription(stage BuildStage) string {
-	descriptions := map[BuildStage]string{
-		BuildStagePrepare:                  "Preparing environment",
-		BuildStageGetSources:               "Getting source from Git repository",
-		BuildStageRestoreCache:             "Restoring cache",
-		BuildStageDownloadArtifacts:        "Downloading artifacts",
-		BuildStageAfterScript:              "Running after_script",
-		BuildStageArchiveCache:             "Saving cache",
-		BuildStageUploadOnFailureArtifacts: "Uploading artifacts for failed job",
-		BuildStageUploadOnSuccessArtifacts: "Uploading artifacts for successful job",
-	}
-
-	description, ok := descriptions[stage]
-	if !ok {
-		return fmt.Sprintf("Executing %q stage of the job script", stage)
-	}
-
-	return description
-}
-
 func (b *Build) executeUploadArtifacts(ctx context.Context, state error, executor Executor) (err error) {
 	if state == nil {
 		return b.executeStage(ctx, BuildStageUploadOnSuccessArtifacts, executor)
@@ -436,17 +369,29 @@ func (b *Build) executeUploadArtifacts(ctx context.Context, state error, executo
 	return b.executeStage(ctx, BuildStageUploadOnFailureArtifacts, executor)
 }
 
-func (b *Build) executeSteps(ctx context.Context, executor Executor) error {
-	for _, s := range b.Steps {
-		// after_script has a separate BuildStage. See common.BuildStageAfterScript
-		if s.Name == StepNameAfterScript {
-			continue
-		}
-		err := b.executeStage(ctx, StepToBuildStage(s), executor)
-		if err != nil {
-			return err
-		}
-	}
+// func (b *Build) executeStep(ctx, abortCtx context.Context, step Step, state JobState, executor Executor) (JobState, error) {
+// 	// by default we use `ctx` that allows the operation to be canceled
+// 	usedCtx := ctx
+
+// 	err := b.executeStage(ctx, StepToBuildStage(step), executor)
+// 	if err != nil {
+// 		return err
+// 	}
+// }
+
+func (b *Build) executeSteps(ctx, abortCtx context.Context, executor Executor) error {
+	// // This does indicate that build got canceled, instead of aborted
+	// if ctx.Err() != nil && abortCtx.Err() == nil {
+	// 	err = errCanceledBuildError
+	// }
+
+	// // After script should be executed always regardless of `ctx` being canceled
+	// b.executeAfterScript(abortCtx, err, executor)
+
+	// jobState := Running
+
+	// for _, s := range b.Steps {
+	// }
 
 	return nil
 }
@@ -470,25 +415,17 @@ func (b *Build) executeScript(abortCtx context.Context, trace JobTrace, executor
 		)
 	}
 
-	err = b.attemptExecuteStage(ctx, BuildStageGetSources, executor, b.GetGetSourcesAttempts())
+	err = b.attemptExecuteStage(ctx, BuildStageGetSources, executor)
 
 	if err == nil {
-		err = b.attemptExecuteStage(ctx, BuildStageRestoreCache, executor, b.GetRestoreCacheAttempts())
+		err = b.attemptExecuteStage(ctx, BuildStageRestoreCache, executor)
 	}
 	if err == nil {
-		err = b.attemptExecuteStage(ctx, BuildStageDownloadArtifacts, executor, b.GetDownloadArtifactsAttempts())
+		err = b.attemptExecuteStage(ctx, BuildStageDownloadArtifacts, executor)
 	}
 
 	if err == nil {
-		err = b.executeSteps(ctx, executor)
-
-		// This does indicate that build got canceled, instead of aborted
-		if ctx.Err() != nil && abortCtx.Err() == nil {
-			err = errCanceledBuildError
-		}
-
-		// After script should be executed always regardless of `ctx` being canceled
-		b.executeAfterScript(abortCtx, err, executor)
+		err = b.executeSteps(ctx, abortCtx, executor)
 	}
 
 	// Execute post script (cache store, artifacts upload)
@@ -519,11 +456,6 @@ func (b *Build) executeAfterScript(ctx context.Context, err error, executor Exec
 	defer cancel()
 
 	_ = b.executeStage(ctx, BuildStageAfterScript, executor)
-}
-
-// StepToBuildStage returns the BuildStage corresponding to a step.
-func StepToBuildStage(s Step) BuildStage {
-	return BuildStage(fmt.Sprintf("step_%s", strings.ToLower(string(s.Name))))
 }
 
 func (b *Build) createReferees(executor Executor) {
@@ -567,8 +499,16 @@ func (b *Build) attemptExecuteStage(
 	ctx context.Context,
 	buildStage BuildStage,
 	executor Executor,
-	attempts int,
 ) (err error) {
+	attempts := 1
+
+	if buildStage.AttemptsKey != "" {
+		retries, err := strconv.Atoi(b.GetAllVariables().Get(buildStage.AttemptsKey))
+		if err == nil {
+			attempts = retries
+		}
+	}
+
 	if attempts < 1 || attempts > 10 {
 		return fmt.Errorf("number of attempts out of the range [1, 10] for stage: %s", buildStage)
 	}
@@ -917,7 +857,7 @@ func (b *Build) resolveSecrets() error {
 	b.Secrets.expandVariables(b.GetAllVariables())
 
 	section := helpers.BuildSection{
-		Name:        string(BuildStageResolveSecrets),
+		Name:        BuildStageResolveSecrets.Name,
 		SkipMetrics: !b.JobResponse.Features.TraceSections,
 		Run: func() error {
 			resolver, err := b.secretsResolver(&b.logger, GetSecretResolverRegistry())
@@ -947,7 +887,7 @@ func (b *Build) executeBuildSection(
 ) (Executor, error) {
 	var err error
 	section := helpers.BuildSection{
-		Name:        string(BuildStagePrepareExecutor),
+		Name:        BuildStagePrepareExecutor.Name,
 		SkipMetrics: !b.JobResponse.Features.TraceSections,
 		Run: func() error {
 			msg := fmt.Sprintf(
@@ -1253,30 +1193,6 @@ func (b *Build) IsDebugTraceEnabled() bool {
 
 func (b *Build) GetDockerAuthConfig() string {
 	return b.GetAllVariables().Get("DOCKER_AUTH_CONFIG")
-}
-
-func (b *Build) GetGetSourcesAttempts() int {
-	retries, err := strconv.Atoi(b.GetAllVariables().Get("GET_SOURCES_ATTEMPTS"))
-	if err != nil {
-		return DefaultGetSourcesAttempts
-	}
-	return retries
-}
-
-func (b *Build) GetDownloadArtifactsAttempts() int {
-	retries, err := strconv.Atoi(b.GetAllVariables().Get("ARTIFACT_DOWNLOAD_ATTEMPTS"))
-	if err != nil {
-		return DefaultArtifactDownloadAttempts
-	}
-	return retries
-}
-
-func (b *Build) GetRestoreCacheAttempts() int {
-	retries, err := strconv.Atoi(b.GetAllVariables().Get("RESTORE_CACHE_ATTEMPTS"))
-	if err != nil {
-		return DefaultRestoreCacheAttempts
-	}
-	return retries
 }
 
 func (b *Build) GetCacheRequestTimeout() int {

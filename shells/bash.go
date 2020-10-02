@@ -291,7 +291,7 @@ func (b *BashShell) ensurePrepareStageHostnameMessage(
 	buildStage common.BuildStage,
 	info common.ShellScriptInfo,
 ) {
-	if buildStage == common.BuildStagePrepare {
+	if buildStage.Name == common.BuildStagePrepare.Name {
 		if info.Build.Hostname != "" {
 			w.Line("echo " + strconv.Quote("Running on $(hostname) via "+info.Build.Hostname+"..."))
 		} else {

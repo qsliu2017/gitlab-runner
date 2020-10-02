@@ -87,6 +87,7 @@ type FeaturesInfo struct {
 	TraceChecksum           bool `json:"trace_checksum"`
 	VaultSecrets            bool `json:"vault_secrets"`
 	Cancelable              bool `json:"cancelable"`
+	MultiBuildStepsWithWhen bool `json:"multi_build_steps_with_when"`
 }
 
 type RegisterRunnerParameters struct {
