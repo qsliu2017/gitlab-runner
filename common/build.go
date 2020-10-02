@@ -587,7 +587,6 @@ func (b *Build) run(ctx context.Context, executor Executor) (err error) {
 	b.setCurrentState(BuildRunRuntimeRunning)
 
 	buildFinish := make(chan error, 1)
-	buildPanic := make(chan error, 1)
 
 	runContext, runCancel := context.WithCancel(context.Background())
 	defer runCancel()
@@ -604,7 +603,7 @@ func (b *Build) run(ctx context.Context, executor Executor) (err error) {
 	go func() {
 		defer func() {
 			if r := recover(); r != nil {
-				buildPanic <- &BuildError{FailureReason: RunnerSystemFailure, Inner: fmt.Errorf("panic: %s", r)}
+				buildFinish <- &BuildError{FailureReason: RunnerSystemFailure, Inner: fmt.Errorf("panic: %s", r)}
 			}
 		}()
 
@@ -630,10 +629,6 @@ func (b *Build) run(ctx context.Context, executor Executor) (err error) {
 		} else {
 			b.setCurrentState(BuildRunRuntimeSuccess)
 		}
-		return err
-
-	case err = <-buildPanic:
-		b.setCurrentState(BuildRunRuntimeTerminated)
 		return err
 	}
 
