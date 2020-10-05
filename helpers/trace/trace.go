@@ -1,6 +1,7 @@
 package trace
 
 import (
+	"errors"
 	"fmt"
 	"hash"
 	"hash/crc32"
@@ -13,13 +14,18 @@ import (
 	"golang.org/x/text/transform"
 )
 
+const defaultBytesLimit = 4 * 1024 * 1024 // 4MB in bytes
+
+var errLogLimitExceeded = errors.New("log limit exceeded")
+
 type Trace struct {
+	lock sync.RWMutex
+	lw   *limitWriter
+	w    io.WriteCloser
+
 	f        *os.File
-	lw       *limitWriter
-	w        io.WriteCloser
 	limit    int
 	checksum hash.Hash32
-	lock     sync.Mutex
 
 	transformers []transform.Transformer
 }
@@ -32,7 +38,7 @@ func New() (*Trace, error) {
 
 	buffer := &Trace{
 		f:        f,
-		limit:    4 * 1024 * 1024, // 4MB
+		limit:    defaultBytesLimit,
 		checksum: crc32.NewIEEE(),
 	}
 
@@ -54,7 +60,10 @@ func (b *Trace) Write(p []byte) (int, error) {
 	}
 
 	n, err := b.w.Write(p)
-	if err == io.ErrShortWrite {
+	// if we get a log limit exceeded error, we've written the log limit
+	// notice out to the log and will now silently not write any additional
+	// data.
+	if err == errLogLimitExceeded {
 		return n, nil
 	}
 	return n, err
@@ -65,8 +74,11 @@ func (b *Trace) Bytes(offset, n int) ([]byte, error) {
 }
 
 func (b *Trace) Finish() {
+	b.lock.RLock()
+	defer b.lock.RUnlock()
+
 	if b.w != nil {
-		b.w.Close()
+		_ = b.w.Close()
 	}
 }
 
@@ -80,6 +92,9 @@ func (b *Trace) SetLimit(size int) {
 }
 
 func (b *Trace) Size() int {
+	b.lock.RLock()
+	defer b.lock.RUnlock()
+
 	if b.lw == nil {
 		return 0
 	}
@@ -110,14 +125,14 @@ func (w *limitWriter) Write(p []byte) (int, error) {
 	capacity := w.limit - w.written
 
 	if w.written >= w.limit {
-		return 0, io.ErrShortWrite
+		return 0, errLogLimitExceeded
 	}
 
 	if int64(len(p)) >= capacity {
 		p = p[:capacity]
 		n, err := w.w.Write(p)
 		if err == nil {
-			err = io.ErrShortWrite
+			err = errLogLimitExceeded
 		}
 		w.written += int64(n)
 		w.writeLimitExceededMessage()

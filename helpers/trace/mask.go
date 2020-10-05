@@ -6,9 +6,30 @@ import (
 	"golang.org/x/text/transform"
 )
 
-const Mask = "[MASKED]"
+const (
+	// Mask is the string that replaces any found sensitive information
+	Mask = "[MASKED]"
 
-// NewPhaseTransform returns a transform.Transformer that replaces the phrase
+	// sensitiveURLMaxTokenSize is the max token size we consider for sensitive
+	// URL param values. This prevents missing tokens that appear on a boundary
+	// and ensures we always have sufficient data. Param values can get quite
+	// long.
+	sensitiveURLMaxTokenSize = 255
+)
+
+var (
+	// sensitiveURLTokens are the param tokens we search for and replace the
+	// values of to [MASKED].
+	sensitiveURLTokens = [][]byte{
+		[]byte("private_token"),
+		[]byte("authenticity_token"),
+		[]byte("rss_token"),
+		[]byte("x-amz-signature"),
+		[]byte("x-amz-credential"),
+	}
+)
+
+// NewPhaseTransform returns a transform.Transformer that replaces the `phrase`
 // with [MASKED]
 func NewPhraseTransform(phrase string) transform.Transformer {
 	return phraseTransform([]byte(phrase))
@@ -27,45 +48,34 @@ func (t phraseTransform) Transform(dst, src []byte, atEOF bool) (nDst, nSrc int,
 				break
 			}
 
-			n := copy(dst[nDst:], src[nSrc:nSrc+i])
-			nDst += n
-			nSrc += n
-			if n < i {
-				return nDst, nSrc, transform.ErrShortDst
+			err := copyn(dst, src, &nDst, &nSrc, i)
+			if err != nil {
+				return nDst, nSrc, err
 			}
 		}
 
 		// replace phrase
-		nDst, nSrc, err = replace(dst, nDst, nSrc, []byte(Mask), len(t))
+		err = replace(dst, &nDst, &nSrc, []byte(Mask), len(t))
 		if err != nil {
 			return nDst, nSrc, err
 		}
 	}
 
-	return safecopy(src, dst, atEOF, nSrc, nDst, len(t))
+	return safecopy(dst, src, atEOF, nDst, nSrc, len(t))
 }
 
-// NewURLParamTransform returns a transform.Transformer that replaces common
+// NewSensitiveURLParamTransform returns a transform.Transformer that replaces common
 // sensitive param values with [MASKED]
 func NewSensitiveURLParamTransform() transform.Transformer {
-	return sensitiveURLParamTransform{}
+	return sensitiveURLParamTransform(sensitiveURLTokens)
 }
 
-type sensitiveURLParamTransform struct {
-}
+type sensitiveURLParamTransform [][]byte
 
 func (sensitiveURLParamTransform) Reset() {}
 
-func (t sensitiveURLParamTransform) hasParam(query []byte) bool {
-	params := [][]byte{
-		[]byte("private_token"),
-		[]byte("authenticity_token"),
-		[]byte("rss_token"),
-		[]byte("x-amz-signature"),
-		[]byte("x-amz-credential"),
-	}
-
-	for _, param := range params {
+func (t sensitiveURLParamTransform) hasSensitiveParam(query []byte) bool {
+	for _, param := range t {
 		if bytes.EqualFold(query, param) {
 			return true
 		}
@@ -75,10 +85,6 @@ func (t sensitiveURLParamTransform) hasParam(query []byte) bool {
 
 //nolint:gocognit
 func (t sensitiveURLParamTransform) Transform(dst, src []byte, atEOF bool) (nDst, nSrc int, err error) {
-	// To prevent missing tokens that appear on a boundary, we need to ensure
-	// we have sufficient data. Tokens can be quite long.
-	const maxTokenSize = 255
-
 	for {
 		// copy up until ? or &, the start of a url parameter
 		idx := bytes.IndexAny(src[nSrc:], "?&")
@@ -100,54 +106,74 @@ func (t sensitiveURLParamTransform) Transform(dst, src []byte, atEOF bool) (nDst
 
 		// replace value
 		{
-			end := bytes.IndexAny(src[nSrc+idx:], "& ")
+			end := t.indexOfParamEnd(src[nSrc+idx:], atEOF)
 			if end == -1 {
-				if !atEOF {
-					break
-				}
-
-				// if we're atEOF, everything is the value
-				end = len(src[nSrc+idx:])
+				break
 			}
 
 			// copy everything up until the value
-			off := len(src[nSrc : nSrc+idx])
-			n := copy(dst[nDst:], src[nSrc:nSrc+idx])
-			nDst += n
-			nSrc += n
-			if n < off {
-				return nDst, nSrc, transform.ErrShortDst
+			err := copyn(dst, src, &nDst, &nSrc, idx)
+			if err != nil {
+				return nDst, nSrc, err
 			}
 
 			value := src[nSrc : nSrc+end]
-			if t.hasParam(key[1:]) {
+			if t.hasSensitiveParam(key[1:]) {
 				value = []byte("=" + Mask)
 			}
 
-			nDst, nSrc, err = replace(dst, nDst, nSrc, value, end)
+			err = replace(dst, &nDst, &nSrc, value, end)
 			if err != nil {
 				return nDst, nSrc, err
 			}
 		}
 	}
 
-	return safecopy(src, dst, atEOF, nSrc, nDst, maxTokenSize)
+	return safecopy(dst, src, atEOF, nDst, nSrc, sensitiveURLMaxTokenSize)
 }
 
-// replace copies a replacement into the dst buffer and advances the nSrc.
-func replace(dst []byte, nDst, nSrc int, replacement []byte, advance int) (int, int, error) {
-	n := copy(dst[nDst:], replacement)
-	if n < len(replacement) {
-		return nDst + n, nSrc, transform.ErrShortDst
+func (t sensitiveURLParamTransform) indexOfParamEnd(src []byte, atEOF bool) int {
+	end := bytes.IndexAny(src, "& ")
+	if end == -1 {
+		if !atEOF {
+			return -1
+		}
+
+		// if we're atEOF, everything is the value
+		end = len(src)
 	}
 
-	return nDst + n, nSrc + advance, nil
+	return end
+}
+
+// replace copies a replacement into the dst buffer and advances nDst and nSrc.
+func replace(dst []byte, nDst, nSrc *int, replacement []byte, advance int) error {
+	n := copy(dst[*nDst:], replacement)
+	*nDst += n
+	if n < len(replacement) {
+		return transform.ErrShortDst
+	}
+	*nSrc += advance
+
+	return nil
+}
+
+// copy copies data from src to dst for length n and advances nDst and nSrc.
+func copyn(dst, src []byte, nDst, nSrc *int, n int) error {
+	copied := copy(dst[*nDst:], src[*nSrc:*nSrc+n])
+	*nDst += copied
+	*nSrc += copied
+	if copied < n {
+		return transform.ErrShortDst
+	}
+
+	return nil
 }
 
 // safecopy copies the remaining data minus that of the token size, preventing
 // the accidental copy of the beginning of a token that should be replaced. If
 // atEOF is true, the full remaining data is copied.
-func safecopy(src, dst []byte, atEOF bool, nSrc, nDst int, tokenSize int) (int, int, error) {
+func safecopy(dst, src []byte, atEOF bool, nDst, nSrc int, tokenSize int) (int, int, error) {
 	var err error
 
 	remaining := len(src[nSrc:])
@@ -157,11 +183,9 @@ func safecopy(src, dst []byte, atEOF bool, nSrc, nDst int, tokenSize int) (int, 
 	}
 
 	if remaining > 0 {
-		n := copy(dst[nDst:], src[nSrc:nSrc+remaining])
-		nDst += n
-		nSrc += n
-		if n < remaining {
-			return nDst, nSrc, transform.ErrShortDst
+		err := copyn(dst, src, &nDst, &nSrc, remaining)
+		if err != nil {
+			return nDst, nSrc, err
 		}
 	}
 

@@ -108,7 +108,8 @@ func TestVariablesMaskingBoundary(t *testing.T) {
 
 				buffer.SetMasked(tc.values)
 
-				for _, part := range bytes.Split([]byte(tn), []byte{'|'}) {
+				parts := bytes.Split([]byte(tn), []byte{'|'})
+				for _, part := range parts {
 					_, err = buffer.Write(part)
 					require.NoError(t, err)
 				}

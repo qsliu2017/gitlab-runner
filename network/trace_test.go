@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"gitlab.com/gitlab-org/gitlab-runner/common"
+	"gitlab.com/gitlab-org/gitlab-runner/helpers"
 )
 
 var (
@@ -176,6 +177,7 @@ func TestSendPatchAbort(t *testing.T) {
 
 func TestJobOutputLimit(t *testing.T) {
 	traceMessage := "abcde"
+	traceMessageSize := 1024
 
 	mockNetwork := new(common.MockNetwork)
 	defer mockNetwork.AssertExpectations(t)
@@ -188,12 +190,20 @@ func TestJobOutputLimit(t *testing.T) {
 
 	updateMatcher := generateJobInfoMatcher(jobCredentials.ID, common.Success, "")
 
+	expectedLogLimitExceededMsg := fmt.Sprintf(
+		"\n%sJob's log exceeded limit of %v bytes.%s\n",
+		helpers.ANSI_BOLD_RED,
+		traceMessageSize,
+		helpers.ANSI_RESET,
+	)
+	expectedLogLength := jobOutputLimit.OutputLimit*traceMessageSize + len(expectedLogLimitExceededMsg)
+
 	receivedTrace := bytes.NewBuffer([]byte{})
 	mockNetwork.On("PatchTrace", jobOutputLimit, jobCredentials, mock.Anything, mock.Anything).
-		Return(common.NewPatchTraceResult(1077, common.PatchSucceeded, 0)).
+		Return(common.NewPatchTraceResult(expectedLogLength, common.PatchSucceeded, 0)).
 		Once().
 		Run(func(args mock.Arguments) {
-			// the 1077 == len(data)
+			// the expectedLogLength == len(data)
 			data := args.Get(2).([]byte)
 			receivedTrace.Write(data)
 		})
@@ -203,12 +213,10 @@ func TestJobOutputLimit(t *testing.T) {
 
 	b.start()
 	// Write 5k to the buffer
-	for i := 0; i < 1024; i++ {
+	for i := 0; i < traceMessageSize; i++ {
 		fmt.Fprint(b, traceMessage)
 	}
 	b.Success()
-
-	expectedLogLimitExceededMsg := "Job's log exceeded limit of"
 
 	assert.Contains(t, receivedTrace.String(), traceMessage)
 	assert.Contains(t, receivedTrace.String(), expectedLogLimitExceededMsg)
