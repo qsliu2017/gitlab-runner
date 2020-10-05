@@ -56,11 +56,15 @@ const (
 type BuildRuntimeState string
 
 const (
-	BuildRunStatePending      BuildRuntimeState = "pending"
-	BuildRunRuntimeRunning    BuildRuntimeState = "running"
-	BuildRunRuntimeSuccess    BuildRuntimeState = "success"
-	BuildRunRuntimeFailed     BuildRuntimeState = "failed"
+	BuildRunStatePending   BuildRuntimeState = "pending"
+	BuildRunRuntimeRunning BuildRuntimeState = "running"
+	BuildRunRuntimeSuccess BuildRuntimeState = "success"
+	BuildRunRuntimeFailed  BuildRuntimeState = "failed"
+	// This runtime state indicates that operation did finish
+	// which is not exactly true, canceled means that we can still
+	// be canceling job (running after_script)
 	BuildRunRuntimeCanceled   BuildRuntimeState = "canceled"
+	BuildRunRuntimeAborted    BuildRuntimeState = "aborted"
 	BuildRunRuntimeTerminated BuildRuntimeState = "terminated"
 	BuildRunRuntimeTimedout   BuildRuntimeState = "timedout"
 )
@@ -104,6 +108,18 @@ const (
 // ErrSkipBuildStage is returned when there's nothing to be executed for the
 // build stage.
 var ErrSkipBuildStage = errors.New("skip build stage")
+
+var (
+	errCanceledBuildError = &BuildError{
+		Inner:         errors.New("canceled"),
+		FailureReason: JobCanceled,
+	}
+
+	errAbortedBuildError = &BuildError{
+		Inner:         errors.New("aborted"),
+		FailureReason: JobAborted,
+	}
+)
 
 type invalidAttemptError struct {
 	key string
@@ -431,10 +447,29 @@ func (b *Build) executeArchiveCache(ctx context.Context, state error, executor E
 	return b.executeStage(ctx, BuildStageArchiveOnFailureCache, executor)
 }
 
-func (b *Build) executeScript(ctx context.Context, executor Executor) error {
+func (b *Build) executeSteps(ctx context.Context, executor Executor) error {
+	for _, s := range b.Steps {
+		// after_script has a separate BuildStage. See common.BuildStageAfterScript
+		if s.Name == StepNameAfterScript {
+			continue
+		}
+		err := b.executeStage(ctx, StepToBuildStage(s), executor)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (b *Build) executeScript(abortCtx context.Context, trace JobTrace, executor Executor) error {
 	// track job start and create referees
 	startTime := time.Now()
 	b.createReferees(executor)
+
+	ctx, cancel := context.WithCancel(abortCtx)
+	defer cancel()
+	trace.SetCancelFunc(cancel)
 
 	// Prepare stage
 	err := b.executeStage(ctx, BuildStagePrepare, executor)
@@ -456,18 +491,15 @@ func (b *Build) executeScript(ctx context.Context, executor Executor) error {
 	}
 
 	if err == nil {
-		for _, s := range b.Steps {
-			// after_script has a separate BuildStage. See common.BuildStageAfterScript
-			if s.Name == StepNameAfterScript {
-				continue
-			}
-			err = b.executeStage(ctx, StepToBuildStage(s), executor)
-			if err != nil {
-				break
-			}
+		err = b.executeSteps(ctx, executor)
+
+		// This does indicate that build got canceled, instead of aborted
+		if ctx.Err() != nil && abortCtx.Err() == nil {
+			err = errCanceledBuildError
 		}
 
-		b.executeAfterScript(ctx, err, executor)
+		// After script should be executed always regardless of `ctx` being canceled
+		b.executeAfterScript(abortCtx, err, executor)
 	}
 
 	archiveCacheErr := b.executeArchiveCache(ctx, err, executor)
@@ -475,8 +507,7 @@ func (b *Build) executeScript(ctx context.Context, executor Executor) error {
 	artifactUploadErr := b.executeUploadArtifacts(ctx, err, executor)
 
 	// track job end and execute referees
-	endTime := time.Now()
-	b.executeUploadReferees(ctx, startTime, endTime)
+	b.executeUploadReferees(ctx, startTime, time.Now())
 
 	b.removeFileBasedVariables(ctx, executor)
 
@@ -593,11 +624,16 @@ func (b *Build) handleError(err error) error {
 
 func (b *Build) runtimeStateAndError(err error) (BuildRuntimeState, error) {
 	switch err {
+	case errCanceledBuildError:
+		b.setCurrentState(BuildRunRuntimeCanceled)
+		return err
+
 	case context.Canceled:
-		return BuildRunRuntimeCanceled, &BuildError{
-			Inner:         errors.New("canceled"),
-			FailureReason: JobCanceled,
-		}
+		// This is not obvious:
+		// it tries to discover a `abortCtx` being canceled,
+		// thus having an abort outcome
+		b.setCurrentState(BuildRunRuntimeAborted)
+		return errAbortedBuildError
 
 	case context.DeadlineExceeded:
 		return BuildRunRuntimeTimedout, &BuildError{
@@ -613,7 +649,7 @@ func (b *Build) runtimeStateAndError(err error) (BuildRuntimeState, error) {
 	}
 }
 
-func (b *Build) run(ctx context.Context, executor Executor) (err error) {
+func (b *Build) run(ctx context.Context, trace JobTrace, executor Executor) (err error) {
 	b.setCurrentState(BuildRunRuntimeRunning)
 
 	buildFinish := make(chan error, 1)
@@ -638,7 +674,7 @@ func (b *Build) run(ctx context.Context, executor Executor) (err error) {
 			}
 		}()
 
-		buildFinish <- b.executeScript(runContext, executor)
+		buildFinish <- b.executeScript(runContext, trace, executor)
 	}()
 
 	// Wait for signals: cancel, timeout, abort or finish
@@ -856,6 +892,7 @@ func (b *Build) Run(globalConfig *Config, trace JobTrace) (err error) {
 	ctx, cancel := context.WithTimeout(context.Background(), b.GetBuildTimeout())
 	defer cancel()
 
+	// In early phases of build preparation a user-requested cancel is treated as an abort
 	trace.SetCancelFunc(cancel)
 	trace.SetAbortFunc(cancel)
 	trace.SetMasked(b.GetAllVariables().Masked())
@@ -874,7 +911,7 @@ func (b *Build) Run(globalConfig *Config, trace JobTrace) (err error) {
 	executor, err = b.executeBuildSection(executor, options, provider)
 
 	if err == nil {
-		err = b.run(ctx, executor)
+		err = b.run(ctx, trace, executor)
 		if errWait := b.waitForTerminal(ctx, globalConfig.SessionServer.GetSessionTimeout()); errWait != nil {
 			b.Log().WithError(errWait).Debug("Stopped waiting for terminal")
 		}
