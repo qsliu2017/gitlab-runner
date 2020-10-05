@@ -148,6 +148,12 @@ development servercore1909 helper docker image:
     PUBLISH_IMAGES: "false"
     PUSH_TO_DOCKER_HUB: "false"
 
+development servercore2004 helper docker image:
+  extends:
+  - .release_development
+  - .windows2004
+  - .release_windows_docker_images
+
 bleeding edge S3:
   extends:
   - .release_s3
@@ -197,6 +203,17 @@ bleeding edge servercore1909 docker images:
   - .release_windows_docker_images
   environment:
     name: bleeding_edge/docker_images/windows1909
+    url: https://hub.docker.com/r/gitlab/gitlab-runner/tags/
+
+bleeding edge servercore2004 docker images:
+  extends:
+  - .release_bleeding_edge
+  - .windows2004
+  - .release_windows_docker_images
+  variables:
+    PUSH_TO_DOCKER_HUB: "true"
+  environment:
+    name: bleeding_edge/docker_images/windows2004
     url: https://hub.docker.com/r/gitlab/gitlab-runner/tags/
 
 stable S3:
@@ -259,6 +276,17 @@ stable servercore1909 docker images:
   - .release_windows_docker_images
   environment:
     name: stable/docker_images/windows1909
+    url: https://hub.docker.com/r/gitlab/gitlab-runner/tags/
+
+stable servercore2004 docker images:
+  extends:
+  - .release_stable
+  - .windows2004
+  - .release_windows_docker_images
+  variables:
+    PUSH_TO_DOCKER_HUB: "true"
+  environment:
+    name: stable/docker_images/windows2004
     url: https://hub.docker.com/r/gitlab/gitlab-runner/tags/
 
 static QA:
