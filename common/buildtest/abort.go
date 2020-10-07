@@ -29,29 +29,53 @@ func RunBuildWithCancel(t *testing.T, config *common.RunnerConfig, setup BuildSe
 	}
 
 	tests := map[string]struct {
-		onUserStep    func(*common.Build, common.JobTrace)
+		stage         string
+		onStage       func(*common.Build, common.JobTrace)
 		includesStage []common.BuildStage
 		excludesStage []common.BuildStage
 		expectedErr   error
 	}{
-		"system interrupt": {
-			onUserStep: func(build *common.Build, _ common.JobTrace) {
+		"system interrupt at user stage": {
+			stage: "step_",
+			onStage: func(build *common.Build, _ common.JobTrace) {
 				build.SystemInterrupt <- os.Interrupt
 			},
 			includesStage: abortIncludeStages,
 			excludesStage: abortExcludeStages,
 			expectedErr:   &common.BuildError{FailureReason: common.RunnerSystemFailure},
 		},
-		"job is aborted": {
-			onUserStep: func(_ *common.Build, trace common.JobTrace) {
+		"job is aborted at user stage": {
+			stage: "step_",
+			onStage: func(_ *common.Build, trace common.JobTrace) {
 				trace.Abort()
 			},
 			includesStage: abortIncludeStages,
 			excludesStage: abortExcludeStages,
 			expectedErr:   &common.BuildError{FailureReason: common.JobAborted},
 		},
-		"job is canceling": {
-			onUserStep: func(_ *common.Build, trace common.JobTrace) {
+		"job is canceling at prepare stage": {
+			stage: string(common.BuildStagePrepare),
+			onStage: func(_ *common.Build, trace common.JobTrace) {
+				trace.Cancel()
+			},
+			includesStage: []common.BuildStage{
+				common.BuildStagePrepare,
+			},
+			excludesStage: []common.BuildStage{
+				common.BuildStageGetSources,
+				common.BuildStageAfterScript,
+				common.BuildStageRestoreCache,
+				common.BuildStageDownloadArtifacts,
+				common.BuildStageArchiveOnSuccessCache,
+				common.BuildStageUploadOnFailureArtifacts,
+				common.BuildStageUploadOnFailureArtifacts,
+				common.BuildStageUploadOnSuccessArtifacts,
+			},
+			expectedErr: &common.BuildError{FailureReason: common.JobCanceled},
+		},
+		"job is canceling at user stage": {
+			stage: "step_",
+			onStage: func(_ *common.Build, trace common.JobTrace) {
 				trace.Cancel()
 			},
 			includesStage: []common.BuildStage{
@@ -81,11 +105,10 @@ func RunBuildWithCancel(t *testing.T, config *common.RunnerConfig, setup BuildSe
 			}
 			buf := new(bytes.Buffer)
 			trace := &common.Trace{Writer: buf}
-			done := OnUserStage(build, func() {
-				tc.onUserStep(build, trace)
-			})
-			defer done()
 
+			defer OnStage(build, tc.stage, func() {
+				tc.onStage(build, trace)
+			})()
 			if setup != nil {
 				setup(build)
 			}
