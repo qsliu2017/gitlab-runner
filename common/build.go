@@ -462,7 +462,7 @@ func (b *Build) executeSteps(ctx context.Context, executor Executor) error {
 	return nil
 }
 
-func (b *Build) executeScript(abortCtx context.Context, trace JobTrace, executor Executor) error {
+func (b *Build) executeScript(abortCtx context.Context, trace JobTrace, executor Executor) (err error) {
 	// track job start and create referees
 	startTime := time.Now()
 	b.createReferees(executor)
@@ -471,8 +471,14 @@ func (b *Build) executeScript(abortCtx context.Context, trace JobTrace, executor
 	defer cancel()
 	trace.SetCancelFunc(cancel)
 
+	defer func() {
+		if ctx.Err() != nil && abortCtx.Err() == nil {
+			err = errCanceledBuildError
+		}
+	}()
+
 	// Prepare stage
-	err := b.executeStage(ctx, BuildStagePrepare, executor)
+	err = b.executeStage(ctx, BuildStagePrepare, executor)
 	if err != nil {
 		return fmt.Errorf(
 			"prepare environment: %w. "+
