@@ -42,7 +42,7 @@ dispatch alert notifications.
 
 ## Available metrics
 
-The best way to find a full list of all available metrics is to `curl` the metrics endpoint after it is configured and enabled. E.g., for a local runner configured with listening port 9252 (HELP line contains a brief description)
+To find a full list of all available metrics, `curl` the metrics endpoint after it is configured and enabled. For example, for a local runner configured with listening port `9252`:
 
 ```shell
 $ curl -s http://localhost:9252/metrics | grep -E "# HELP" 
