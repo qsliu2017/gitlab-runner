@@ -15,6 +15,7 @@ import (
 	"github.com/docker/cli/cli/config/credentials"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/pkg/homedir"
+	"github.com/sirupsen/logrus"
 
 	"gitlab.com/gitlab-org/gitlab-runner/common"
 )
@@ -47,6 +48,9 @@ func ResolveConfigForImage(
 	imageName, dockerAuthConfig, username string,
 	credentials []common.Credentials,
 ) (*RegistryInfo, error) {
+	log := logrus.WithField("image", imageName)
+	log.Debug("[docker auth] Resolving auth configs for the image")
+
 	authConfigs, err := ResolveConfigs(dockerAuthConfig, username, credentials)
 	if len(authConfigs) == 0 || err != nil {
 		return nil, err
@@ -55,8 +59,14 @@ func ResolveConfigForImage(
 	indexName, _ := splitDockerImageName(imageName)
 	info, ok := authConfigs[indexName]
 	if !ok {
+		log.Debug("[docker auth] Registry info for the image is not found")
 		return nil, nil
 	}
+
+	log.WithFields(logrus.Fields{
+		"source":   info.Source,
+		"username": info.AuthConfig.Username,
+	}).Debug("[docker auth] Found registry info")
 
 	return &info, nil
 }
@@ -92,12 +102,24 @@ func ResolveConfigs(
 
 		for registry, conf := range configs {
 			registryHostname := convertToHostname(registry)
+			log := logrus.WithFields(logrus.Fields{
+				"registry":                   registry,
+				"normalizedRegistryHostname": registryHostname,
+				"source":                     source,
+				"username":                   conf.Username,
+			})
+
 			if _, ok := res[registryHostname]; !ok {
+				log.Debug("[docker auth] Adding registry info to the list")
 				res[registryHostname] = RegistryInfo{
 					Source:     source,
 					AuthConfig: conf,
 				}
+
+				continue
 			}
+
+			log.Debug("[docker auth] Info for this registry is already on the list, skipping this one")
 		}
 	}
 
