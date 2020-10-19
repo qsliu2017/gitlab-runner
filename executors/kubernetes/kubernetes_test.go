@@ -305,6 +305,12 @@ func testVolumeMountsFeatureFlag(t *testing.T, featureFlagName string, featureFl
 							PVCs: []common.KubernetesPVC{
 								{Name: "PVC", MountPath: "/path/to/whatever"},
 							},
+							ConfigMaps: []common.KubernetesConfigMap{
+								{Name: "configMap", MountPath: "/path/to/config/map"},
+							},
+							Secrets: []common.KubernetesSecret{
+								{Name: "secret", MountPath: "/path/to/secret"},
+							},
 							EmptyDirs: []common.KubernetesEmptyDir{
 								{Name: "emptyDir", MountPath: "/path/to/empty/dir"},
 							},
@@ -319,6 +325,8 @@ func testVolumeMountsFeatureFlag(t *testing.T, featureFlagName string, featureFl
 				{Name: "repo"},
 				{Name: "docker", MountPath: "/var/run/docker.sock"},
 				{Name: "PVC", MountPath: "/path/to/whatever"},
+				{Name: "configMap", MountPath: "/path/to/config/map"},
+				{Name: "secret", MountPath: "/path/to/secret"},
 				{Name: "emptyDir", MountPath: "/path/to/empty/dir"},
 			},
 		},
@@ -356,6 +364,48 @@ func testVolumeMountsFeatureFlag(t *testing.T, featureFlagName string, featureFl
 				{Name: "docker", MountPath: "/var/run/docker.sock"},
 				{Name: "secret", MountPath: "/path/to/secret", ReadOnly: true},
 				{Name: "configMap", MountPath: "/path/to/configmap", ReadOnly: true},
+			},
+		},
+		"custom volumes with subpath defined": {
+			GlobalConfig: &common.Config{},
+			RunnerConfig: common.RunnerConfig{
+				RunnerSettings: common.RunnerSettings{
+					Kubernetes: &common.KubernetesConfig{
+						Volumes: common.KubernetesVolumes{
+							HostPaths: []common.KubernetesHostPath{
+								{
+									Name:      "hostPath",
+									MountPath: "/path/to/host/file",
+									HostPath:  "/path/to/host/file",
+									SubPath:   "file",
+								},
+							},
+							PVCs: []common.KubernetesPVC{
+								{Name: "PVC", MountPath: "/path/to/whatever", SubPath: "whatever"},
+							},
+							ConfigMaps: []common.KubernetesConfigMap{
+								{Name: "configMap", MountPath: "/path/to/config/map", SubPath: "map"},
+							},
+							Secrets: []common.KubernetesSecret{
+								{Name: "secret", MountPath: "/path/to/secret", SubPath: "secret"},
+							},
+							EmptyDirs: []common.KubernetesEmptyDir{
+								{Name: "emptyDir", MountPath: "/path/to/empty/dir", SubPath: "dir"},
+							},
+						},
+					},
+				},
+			},
+			Build: &common.Build{
+				Runner: &common.RunnerConfig{},
+			},
+			Expected: []api.VolumeMount{
+				{Name: "repo"},
+				{Name: "hostPath", MountPath: "/path/to/host/file", SubPath: "file"},
+				{Name: "PVC", MountPath: "/path/to/whatever", SubPath: "whatever"},
+				{Name: "configMap", MountPath: "/path/to/config/map", SubPath: "map"},
+				{Name: "secret", MountPath: "/path/to/secret", SubPath: "secret"},
+				{Name: "emptyDir", MountPath: "/path/to/empty/dir", SubPath: "dir"},
 			},
 		},
 	}

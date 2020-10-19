@@ -281,6 +281,7 @@ type KubernetesVolumes struct {
 type KubernetesConfigMap struct {
 	Name      string            `toml:"name" json:"name" description:"The name of the volume and ConfigMap to use"`
 	MountPath string            `toml:"mount_path" description:"Path where volume should be mounted inside of container"`
+	SubPath   string            `toml:"sub_path" description:"Subpath of the referenced module that should be mounted here"`
 	ReadOnly  bool              `toml:"read_only,omitempty" description:"If this volume should be mounted read only"`
 	Items     map[string]string `toml:"items,omitempty" description:"Key-to-path mapping for keys from the config map that should be used."`
 }
@@ -288,6 +289,7 @@ type KubernetesConfigMap struct {
 type KubernetesHostPath struct {
 	Name      string `toml:"name" json:"name" description:"The name of the volume"`
 	MountPath string `toml:"mount_path" description:"Path where volume should be mounted inside of container"`
+	SubPath   string `toml:"sub_path" description:"Subpath of the referenced module that should be mounted here"`
 	ReadOnly  bool   `toml:"read_only,omitempty" description:"If this volume should be mounted read only"`
 	HostPath  string `toml:"host_path,omitempty" description:"Path from the host that should be mounted as a volume"`
 }
@@ -295,6 +297,7 @@ type KubernetesHostPath struct {
 type KubernetesPVC struct {
 	Name      string `toml:"name" json:"name" description:"The name of the volume and PVC to use"`
 	MountPath string `toml:"mount_path" description:"Path where volume should be mounted inside of container"`
+	SubPath   string `toml:"sub_path" description:"Subpath of the referenced module that should be mounted here"`
 	ReadOnly  bool   `toml:"read_only,omitempty" description:"If this volume should be mounted read only"`
 }
 
@@ -302,6 +305,7 @@ type KubernetesPVC struct {
 type KubernetesSecret struct {
 	Name      string            `toml:"name" json:"name" description:"The name of the volume and Secret to use"`
 	MountPath string            `toml:"mount_path" description:"Path where volume should be mounted inside of container"`
+	SubPath   string            `toml:"sub_path" description:"Subpath of the referenced module that should be mounted here"`
 	ReadOnly  bool              `toml:"read_only,omitempty" description:"If this volume should be mounted read only"`
 	Items     map[string]string `toml:"items,omitempty" description:"Key-to-path mapping for keys from the secret that should be used."`
 }
@@ -309,6 +313,7 @@ type KubernetesSecret struct {
 type KubernetesEmptyDir struct {
 	Name      string `toml:"name" json:"name" description:"The name of the volume and EmptyDir to use"`
 	MountPath string `toml:"mount_path" description:"Path where volume should be mounted inside of container"`
+	SubPath   string `toml:"sub_path" description:"Subpath of the referenced module that should be mounted here"`
 	Medium    string `toml:"medium,omitempty" description:"Set to 'Memory' to have a tmpfs"`
 }
 
