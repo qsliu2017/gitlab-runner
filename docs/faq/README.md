@@ -188,6 +188,10 @@ Example of dotfiles that are known to cause failure:
 - `.condarc`
 - `.rvmrc`
 
+### `WARNING: Uploading artifacts as "archive" to coordinator... failed responseStatus=308 Permanent Redirect FATAL: invalid argument`
+
+This is typically caused by an incorrect `gitlabUrl`. Please verify that your gitlabUrl in your values.yml is configured correctly. For GitLab.com users, this must be configured to `https://gitlab.com` as using `https://www.gitlab.com` will cause this error.
+
 ## Windows troubleshooting
 
 The following relate to Runner troubleshooting on Windows.
