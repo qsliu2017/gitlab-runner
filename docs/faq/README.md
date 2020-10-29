@@ -188,7 +188,7 @@ Example of dotfiles that are known to cause failure:
 - `.condarc`
 - `.rvmrc`
 
-### `WARNING: Uploading artifacts as "archive" to coordinator... failed responseStatus=308 Permanent Redirect FATAL: invalid argument`
+### `WARNING: Uploading artifacts as "archive" to coordinator... FATAL: invalid argument`
 
 You may get an error that states: `WARNING: Uploading artifacts as "archive" to coordinator... failed responseStatus=308 Permanent Redirect FATAL: invalid argument`.
 
