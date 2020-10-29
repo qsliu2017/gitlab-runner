@@ -190,7 +190,14 @@ Example of dotfiles that are known to cause failure:
 
 ### `WARNING: Uploading artifacts as "archive" to coordinator... failed responseStatus=308 Permanent Redirect FATAL: invalid argument`
 
-This is typically caused by an incorrect `gitlabUrl`. Please verify that your gitlabUrl in your values.yml is configured correctly. For GitLab.com users, this must be configured to `https://gitlab.com` as using `https://www.gitlab.com` will cause this error.
+You may get an error that states: `WARNING: Uploading artifacts as "archive" to coordinator... failed responseStatus=308 Permanent Redirect FATAL: invalid argument`.
+
+This error occurs when you
+[install GitLab Runner in Kubernetes by using the Helm Chart](../install/kubernetes.md#required-configuration). 
+
+To fix this issue, verify that the `gitlabUrl` in your `values.yml` file is configured correctly.
+For GitLab.com users, this URL must be `https://gitlab.com`. If you use `https://www.gitlab.com`,
+you will get this error.
 
 ## Windows troubleshooting
 
