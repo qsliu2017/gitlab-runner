@@ -36,7 +36,7 @@ in the chart repository.
 In order for GitLab Runner to function, your configuration file **must** specify the following:
 
 - `gitlabUrl` - the GitLab server full URL (e.g., `https://gitlab.example.com`) to register the Runner against.
-  - For users on GitLab.com, please enter `https://gitlab.com`
+  - For users on GitLab.com, use `https://gitlab.com`.
 - `runnerRegistrationToken` - The registration token for adding new Runners to
   GitLab. This must be [retrieved from your GitLab instance](https://docs.gitlab.com/ee/ci/runners/).
 
