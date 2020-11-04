@@ -1,4 +1,4 @@
-FROM golang:1.13.8
+FROM golang:1.15.3
 
 # Install required dependencies
 # hadolint ignore=DL3008,DL3015
