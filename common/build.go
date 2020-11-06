@@ -625,15 +625,13 @@ func (b *Build) handleError(err error) error {
 func (b *Build) runtimeStateAndError(err error) (BuildRuntimeState, error) {
 	switch err {
 	case errCanceledBuildError:
-		b.setCurrentState(BuildRunRuntimeCanceled)
-		return err
+		return BuildRunRuntimeCanceled, err
 
 	case context.Canceled:
 		// This is not obvious:
 		// it tries to discover a `abortCtx` being canceled,
 		// thus having an abort outcome
-		b.setCurrentState(BuildRunRuntimeAborted)
-		return errAbortedBuildError
+		return BuildRunRuntimeAborted, errAbortedBuildError
 
 	case context.DeadlineExceeded:
 		return BuildRunRuntimeTimedout, &BuildError{
