@@ -64,6 +64,8 @@ RELEASE_INDEX_GEN_VERSION ?= latest
 RELEASE_INDEX_GENERATOR ?= .tmp/release-index-gen-$(RELEASE_INDEX_GEN_VERSION)
 GITLAB_CHANGELOG_VERSION ?= latest
 GITLAB_CHANGELOG = .tmp/gitlab-changelog-$(GITLAB_CHANGELOG_VERSION)
+GO_RACE_REPORT_PARSER_VERSION ?= master
+goRaceReportParser = .tmp/go-race-report-parser-$(GO_RACE_REPORT_PARSER_VERSION)
 
 .PHONY: all
 all: deps runner-and-helper-bin
@@ -121,8 +123,12 @@ lint: $(GOLANGLINT)
 lint-docs:
 	@scripts/lint-docs
 
-check_race_conditions:
-	@./scripts/check_race_conditions $(OUR_PACKAGES)
+check_race_conditions: RACE_LIMIT := 24
+check_race_conditions: $(goRaceReportParser)
+	# The limit $(RACE_LIMIT) is the number of race conditions detected on master.
+	# This number is not allowed to increase, and it has to be lowered when we
+	# fix an existing race conditions
+	@$(goRaceReportParser) parse --limit $(RACE_LIMIT) .testoutput/*.race.output.txt
 
 .PHONY: test
 test: helper-dockerarchive-host development_setup simple-test
@@ -380,6 +386,14 @@ $(GITLAB_CHANGELOG):
 	@mkdir -p $(shell dirname $(GITLAB_CHANGELOG))
 	@curl -sL "$(DOWNLOAD_URL)" -o "$(GITLAB_CHANGELOG)"
 	@chmod +x "$(GITLAB_CHANGELOG)"
+
+$(goRaceReportParser): OS_TYPE ?= $(shell uname -s | tr '[:upper:]' '[:lower:]')
+$(goRaceReportParser): DOWNLOAD_URL = "https://artifacts.maczukin.pl/go-race-report-parser/$(GO_RACE_REPORT_PARSER_VERSION)/go-race-report-parser-$(OS_TYPE)-amd64"
+$(goRaceReportParser):
+	# Installing $(DOWNLOAD_URL) as $(goRaceReportParser)
+	@mkdir -p $(shell dirname $(goRaceReportParser))
+	@curl -sL "$(DOWNLOAD_URL)" -o "$(goRaceReportParser)"
+	@chmod +x "$(goRaceReportParser)"
 
 .PHONY: clean
 clean:
