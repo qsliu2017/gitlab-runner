@@ -192,16 +192,16 @@ type KubernetesPullPolicy string
 
 // Get returns one of the predefined values in kubernetes notation
 // or returns an error if the value can't match the predefined
-func (p KubernetesPullPolicy) Get() (KubernetesPullPolicy, error) {
+func (p KubernetesPullPolicy) Get() (api.PullPolicy, error) {
 	switch {
 	case p == "":
 		return "", nil
 	case p == PullPolicyAlways:
-		return "Always", nil
+		return api.PullAlways, nil
 	case p == PullPolicyNever:
-		return "Never", nil
+		return api.PullNever, nil
 	case p == PullPolicyIfNotPresent:
-		return "IfNotPresent", nil
+		return api.PullIfNotPresent, nil
 	}
 	return "", fmt.Errorf("unsupported kubernetes-pull-policy %q", p)
 }

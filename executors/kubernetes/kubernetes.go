@@ -109,7 +109,7 @@ type executor struct {
 	services    []api.Service
 
 	configurationOverwrites *overwrites
-	pullPolicy              common.KubernetesPullPolicy
+	pullPolicy              api.PullPolicy
 
 	helperImageInfo helperimage.Info
 
@@ -325,7 +325,7 @@ func (s *executor) buildLogPermissionsInitContainer() api.Container {
 		Image:           "busybox",
 		Command:         []string{"sh", "-c", chmod},
 		VolumeMounts:    s.getVolumeMounts(),
-		ImagePullPolicy: api.PullPolicy(s.pullPolicy),
+		ImagePullPolicy: s.pullPolicy,
 	}
 }
 
@@ -503,7 +503,7 @@ func (s *executor) buildContainer(
 	return api.Container{
 		Name:            name,
 		Image:           image,
-		ImagePullPolicy: api.PullPolicy(s.pullPolicy),
+		ImagePullPolicy: s.pullPolicy,
 		Command:         command,
 		Args:            args,
 		Env:             buildVariables(s.Build.GetAllVariables().PublicOrInternal()),
