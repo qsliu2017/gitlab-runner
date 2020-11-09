@@ -390,6 +390,76 @@ func TestConfigParse(t *testing.T) {
 				assert.Equal(t, api.DNSClusterFirst, dnsPolicy)
 			},
 		},
+		"setting pull policy to never": {
+			config: `
+				[[runners]]
+					[runners.kubernetes]
+						pull_policy = 'never'
+			`,
+			validateConfig: func(t *testing.T, config *Config) {
+				require.Len(t, config.Runners, 1)
+
+				pullPolicy, err := config.Runners[0].Kubernetes.PullPolicy.Get()
+				assert.NoError(t, err)
+				assert.Equal(t, api.PullNever, pullPolicy)
+			},
+		},
+		"setting pull policy to always": {
+			config: `
+				[[runners]]
+					[runners.kubernetes]
+						pull_policy = 'always'
+			`,
+			validateConfig: func(t *testing.T, config *Config) {
+				require.Len(t, config.Runners, 1)
+
+				pullPolicy, err := config.Runners[0].Kubernetes.PullPolicy.Get()
+				assert.NoError(t, err)
+				assert.Equal(t, api.PullAlways, pullPolicy)
+			},
+		},
+		"setting pull policy to if-not-present": {
+			config: `
+				[[runners]]
+					[runners.kubernetes]
+						pull_policy = 'if-not-present'
+			`,
+			validateConfig: func(t *testing.T, config *Config) {
+				require.Len(t, config.Runners, 1)
+
+				pullPolicy, err := config.Runners[0].Kubernetes.PullPolicy.Get()
+				assert.NoError(t, err)
+				assert.Equal(t, api.PullIfNotPresent, pullPolicy)
+			},
+		},
+		"setting pull policy to invalid value": {
+			config: `
+				[[runners]]
+					[runners.kubernetes]
+						pull_policy = 'invalid-value'
+			`,
+			validateConfig: func(t *testing.T, config *Config) {
+				require.Len(t, config.Runners, 1)
+
+				pullPolicy, err := config.Runners[0].Kubernetes.PullPolicy.Get()
+				assert.Error(t, err)
+				assert.Empty(t, pullPolicy)
+			},
+		},
+		"setting pull policy to empty value returns empty value": {
+			config: `
+				[[runners]]
+					[runners.kubernetes]
+						pull_policy = ''
+			`,
+			validateConfig: func(t *testing.T, config *Config) {
+				require.Len(t, config.Runners, 1)
+
+				pullPolicy, err := config.Runners[0].Kubernetes.PullPolicy.Get()
+				assert.NoError(t, err)
+				assert.Empty(t, pullPolicy)
+			},
+		},
 	}
 
 	for tn, tt := range tests {
