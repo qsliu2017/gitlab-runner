@@ -14,7 +14,7 @@ Vagrant.configure('2') do |config|
     cfg.vm.box = 'StefanScherer/windows_2019_docker'
     cfg.vm.communicator = 'winrm'
 
-    cfg.vm.synced_folder '.', 'C:\GitLab-Runner'
+    cfg.vm.synced_folder '.', 'C:\\GitLab-Runner'
 
     cfg.vm.provision 'shell', path: 'scripts/vagrant/provision/base.ps1'
     cfg.vm.provision 'shell', path: 'scripts/vagrant/provision/install_PSWindowsUpdate.ps1'
@@ -26,17 +26,19 @@ Vagrant.configure('2') do |config|
     cfg.vm.provision :reload
 
     cfg.vm.provision 'shell', path: 'scripts/vagrant/provision/enable_sshd.ps1'
+    cfg.vm.provision 'shell', path: 'scripts/vagrant/provision/fix_symlink.ps1'
   end
 
   config.vm.define 'windows_10', autostart: false do |cfg|
     cfg.vm.box = 'StefanScherer/windows_10'
     cfg.vm.communicator = 'winrm'
 
-    cfg.vm.synced_folder '.', 'C:\GitLab-Runner'
+    cfg.vm.synced_folder '.', 'C:\\GitLab-Runner'
 
     cfg.vm.provision 'shell', path: 'scripts/vagrant/provision/base.ps1'
     cfg.vm.provision 'shell', path: 'scripts/vagrant/provision/enable_developer_mode.ps1'
     cfg.vm.provision 'shell', path: 'scripts/vagrant/provision/enable_sshd.ps1'
+    cfg.vm.provision 'shell', path: 'scripts/vagrant/provision/fix_symlink.ps1'
   end
 
   config.vm.provider 'virtualbox' do |vb|
