@@ -60,16 +60,16 @@ _docker_buildx build \
     --platform "${platform}" \
     --no-cache \
     --output "type=tar,dest=$TARGET_FILE" \
-    --tag "gitlab/gitlab-runner-helper:$TARGET_ARCH-$REVISION" \
-    dockerfiles/runner-helper
+    --tag "gitlab/gitlab-runner-helper-ubi:$TARGET_ARCH-$REVISION" \
+    -f dockerfiles/runner-helper/Dockerfile.OCP \
+    dockerfiles/runner-helper/
 
 _docker_buildx build \
     --platform "${platform}" \
     --no-cache \
     --output "type=tar,dest=$TARGET_FILE" \
-    --tag "gitlab/gitlab-runner-helper-ubi:$TARGET_ARCH-$REVISION" \
-    -f dockerfiles/runner-helper/Dockerfile.OCP
-    dockerfiles/runner-helper/
+    --tag "gitlab/gitlab-runner-helper:$TARGET_ARCH-$REVISION" \
+    dockerfiles/runner-helper
 
 trap - ERR SIGINT SIGTERM
 cleanup_docker_context
