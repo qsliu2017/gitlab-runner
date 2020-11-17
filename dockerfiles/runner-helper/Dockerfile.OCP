@@ -6,8 +6,8 @@ RUN dnf --disableplugin=subscription-manager install -yb --nodocs \
     perl
 
 # TODO: COPY ./git-lfs /usr/local/bin/git-lfs
-# TODO: COPY ./helpers/entrypoint.OCP /usr/local/bin/gitlab-runner-build
-COPY ./binaries/gitlab-runner-helper /usr/local/bin/gitlab-runner-helper
+COPY ./helpers/gitlab-runner-build /usr/local/bin/gitlab-runner-build
+COPY ./binaries/gitlab-runner-helper.x86_64 /usr/local/bin/gitlab-runner-helper
 
 RUN chmod +x /usr/local/bin/gitlab-runner-helper
 
