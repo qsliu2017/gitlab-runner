@@ -63,6 +63,9 @@ helper-dockerarchive-host: ${BASE_TAR_PATH}-$(shell uname -m).tar.xz
 		--change "ENTRYPOINT [\"/usr/bin/dumb-init\", \"/entrypoint\"]" \
 		gitlab/gitlab-runner-helper:$(shell uname -m)-$(REVISION)
 
+	docker import ${BASE_TAR_PATH}-$(shell uname -m).tar.xz \
+    		gitlab/gitlab-runner-helper-ubi:$(shell uname -m)-$(REVISION)
+
 # Build the Runner Helper tar files for all supported platforms.
 .PHONY: helper-dockerarchive
 helper-dockerarchive: $(TAR_XZ)
