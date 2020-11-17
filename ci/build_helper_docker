@@ -62,7 +62,7 @@ _docker_buildx build \
     --output "type=tar,dest=$TARGET_FILE" \
     --tag "gitlab/gitlab-runner-helper-ubi:$TARGET_ARCH-$REVISION" \
     -f dockerfiles/runner-helper/Dockerfile.OCP \
-    dockerfiles/runner-helper/
+    dockerfiles/runner-helper/ || echo "buildx ubi failed"
 
 _docker_buildx build \
     --platform "${platform}" \
