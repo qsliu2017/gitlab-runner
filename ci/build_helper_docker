@@ -56,13 +56,16 @@ echo -e "Building helper image for: ${GRN}${platform}${RST}"
 trap cleanup_docker_context_trap ERR SIGINT SIGTERM
 setup_docker_context
 
+TARGET_FILE_UBI=${TARGET_FILE/prebuilt-/ubi-prebuilt-}
 _docker_buildx build \
     --platform "${platform}" \
     --no-cache \
-    --output "type=tar,dest=${TARGET_FILE/prebuilt-/ubi-prebuilt-}" \
+    --output "type=tar,dest=${TARGET_FILE_UBI}" \
     --tag "gitlab/gitlab-runner-helper-ubi:$TARGET_ARCH-$REVISION" \
     -f dockerfiles/runner-helper/Dockerfile.OCP \
     dockerfiles/runner-helper/ || echo "buildx ubi failed for platform ${platform}"
+
+xz -f -9 "${TARGET_FILE_UBI}" || echo "couldn't compress ubi ${TARGET_FILE_UBI}"
 
 _docker_buildx build \
     --platform "${platform}" \
