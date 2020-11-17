@@ -124,20 +124,6 @@ buildx() {
         "${buildxFlags[@]}" \
         "${contextPath}"
 
-    login "${CI_REGISTRY_USER}" "${CI_REGISTRY_PASSWORD}" "${CI_REGISTRY}"
-    _docker_buildx build \
-        --build-arg DOCKER_MACHINE_VERSION="${DOCKER_MACHINE_VERSION}" \
-        --build-arg DUMB_INIT_VERSION="${DUMB_INIT_VERSION}" \
-        --build-arg GIT_LFS_VERSION="${GIT_LFS_VERSION}" \
-        --platform "linux/amd64" \
-        --no-cache \
-        --push \
-        --tag registry.gitlab.com/gitlab-org/gitlab-runner/gitlab-runner-helper-ubi:linux-amd64-"$CI_COMMIT_SHORT_SHA" \
-        -f dockerfiles/runner-helper/Dockerfile.OCP \
-        dockerfiles/runner-helper
-
-    logout "${CI_REGISTRY}"
-
     trap - ERR SIGINT SIGTERM
     cleanup_docker_context
 
@@ -261,6 +247,13 @@ add_tags() {
         fi
     fi
 }
+
+echo "PUSHING UBI HELPER IMAGE"
+ubi_helper_image_x86_64="registry.gitlab.com/gitlab-org/gitlab-runner/gitlab-runner-helper-ubi:x86_64-${REVISION}"
+import out/helper-images/ubiprebuilt-x86_64.tar.xz "${ubi_helper_image_x86_64}"
+login "${CI_REGISTRY_USER}" "${CI_REGISTRY_PASSWORD}" "${CI_REGISTRY}"
+push "${ubi_helper_image_x86_64}"
+logout "${CI_REGISTRY}"
 
 [ "${#TARGET_ARCHS[@]}" -eq 0 ] && TARGET_ARCHS=("$(_docker version -f '{{.Server.Arch}}')")
 
