@@ -250,7 +250,7 @@ add_tags() {
 
 echo "PUSHING UBI HELPER IMAGE"
 ubi_helper_image_x86_64="registry.gitlab.com/gitlab-org/gitlab-runner/gitlab-runner-helper-ubi:x86_64-${REVISION}"
-import out/helper-images/ubi-prebuilt-x86_64.tar.xz "${ubi_helper_image_x86_64}"
+import out/helper-images/prebuilt-ubi-x86_64.tar.xz "${ubi_helper_image_x86_64}"
 login "${CI_REGISTRY_USER}" "${CI_REGISTRY_PASSWORD}" "${CI_REGISTRY}"
 push "${ubi_helper_image_x86_64}"
 logout "${CI_REGISTRY}"
