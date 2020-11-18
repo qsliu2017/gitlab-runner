@@ -56,7 +56,8 @@ echo -e "Building helper image for: ${GRN}${platform}${RST}"
 trap cleanup_docker_context_trap ERR SIGINT SIGTERM
 setup_docker_context
 
-if [[ "$platform" = "linux/x86_64" ]]; then
+echo "--------${platform}"
+if [[ "$platform" = "x86_64" ]]; then
   TARGET_FILE_UBI=${TARGET_FILE/prebuilt-}/prebuilt-ubi-}
   _docker_buildx build \
       --platform "${platform}" \
