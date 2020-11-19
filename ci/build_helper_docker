@@ -57,17 +57,15 @@ trap cleanup_docker_context_trap ERR SIGINT SIGTERM
 setup_docker_context
 
 if [[ "$platform" = "linux/amd64" ]]; then
-  IMAGE="gitlab/gitlab-runner-helper-ubi:$TARGET_ARCH-$REVISION"
+  IMAGE="registry.gitlab.com/gitlab-org/gitlab-runner/gitlab-runner-helper-ubi:x86_64-${REVISION}"
   docker build \
     -t "$IMAGE" \
-    --build-arg ARCH="$TARGET_ARCH" \
     -f dockerfiles/runner-helper/Dockerfile.OCP \
     dockerfiles/runner-helper/
 
-  TARGET_FILE_UBI=${TARGET_FILE/prebuilt-/prebuilt-ubi-}
-  docker image save \
-    -o "$TARGET_FILE_UBI" \
-    "$IMAGE"
+  docker login "${CI_REGISTRY_USER}" "${CI_REGISTRY_PASSWORD}" "${CI_REGISTRY}"
+  docker push "$IMAGE"
+  docker logout "${CI_REGISTRY}"
 
 #  _docker_buildx build \
 #      --platform "${platform}" \
