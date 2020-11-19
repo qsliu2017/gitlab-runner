@@ -1,4 +1,4 @@
-FROM registry.access.redhat.com/ubi8/ubi:8.1
+FROM registry.access.redhat.com/ubi8/ubi@sha256:f6648a87c8c52099bacd19b112beb3b65407ae6d3441f9b559ba53c4112c57a4
 
 RUN dnf --disableplugin=subscription-manager install -yb --nodocs \
     git \
