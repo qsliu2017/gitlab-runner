@@ -63,14 +63,14 @@ if [[ "$platform" = "linux/amd64" ]]; then
 #    -f dockerfiles/runner-helper/Dockerfile.OCP \
 #    dockerfiles/runner-helper/
 
+  echo "${CI_REGISTRY_PASSWORD}" | docker login --username "${CI_REGISTRY_USER}" --password-stdin "${CI_REGISTRY}"
   _docker_buildx build \
       --platform "${platform}" \
       --no-cache \
       --tag "$IMAGE" \
+      --push \
       -f dockerfiles/runner-helper/Dockerfile.OCP \
       dockerfiles/runner-helper/ || echo "buildx ubi failed for platform ${platform}"
-  echo "${CI_REGISTRY_PASSWORD}" | docker login --username "${CI_REGISTRY_USER}" --password-stdin "${CI_REGISTRY}"
-  docker push "$IMAGE"
   docker logout "${CI_REGISTRY}"
 
   if test -f "$TARGET_FILE_UBI"; then
