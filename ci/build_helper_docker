@@ -66,7 +66,7 @@ if [[ "$platform" = "linux/amd64" ]]; then
 
   TARGET_FILE_UBI=${TARGET_FILE/prebuilt-/prebuilt-ubi-}
   docker image save \
-    -o "$TARGET_FILE_UBI"
+    -o "$TARGET_FILE_UBI" \
     "$IMAGE"
 
 #  _docker_buildx build \
