@@ -71,11 +71,17 @@ if [[ "$platform" = "linux/amd64" ]]; then
       --push \
       -f dockerfiles/runner-helper/Dockerfile.OCP \
       dockerfiles/runner-helper/ || echo "buildx ubi failed for platform ${platform}"
-  docker logout "${CI_REGISTRY}"
 
-  if test -f "$TARGET_FILE_UBI"; then
-      xz -f -9 "${TARGET_FILE_UBI}" || echo "couldn't compress ubi ${TARGET_FILE_UBI}"
-  fi
+  IMAGE1="registry.gitlab.com/gitlab-org/gitlab-runner/gitlab-runner-helper:x86_64-${REVISION}"
+  _docker_buildx build \
+      --platform "${platform}" \
+      --no-cache \
+      --tag "$IMAGE1" \
+      --push \
+      -f dockerfiles/runner-helper/Dockerfile \
+      dockerfiles/runner-helper/ || echo "buildx failed for platform ${platform}"
+
+  docker logout "${CI_REGISTRY}"
 fi
 
 _docker_buildx build \
