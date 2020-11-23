@@ -153,6 +153,8 @@ development servercore2004 helper docker image:
   - .release_development
   - .windows2004
   - .release_windows_docker_images
+  variables:
+    PUSH_TO_DOCKER_HUB: "false"
 
 bleeding edge S3:
   extends:

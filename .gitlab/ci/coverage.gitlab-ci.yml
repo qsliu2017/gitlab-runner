@@ -117,6 +117,5 @@ check windows 2004 test failures:
   extends:
   - .check windows test failures
   - .windows2004_variables
-  - .runner_master
   needs:
   - windows 2004 tests

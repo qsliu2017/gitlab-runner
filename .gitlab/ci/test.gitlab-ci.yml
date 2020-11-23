@@ -219,7 +219,6 @@ windows 2004 tests:
   extends:
   - .windows test
   - .windows2004
-  - .runner_master
 
 git 1.7.1:
   extends:
