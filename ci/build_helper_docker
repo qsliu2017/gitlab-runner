@@ -58,30 +58,31 @@ setup_docker_context
 
 if [[ "$platform" = "linux/amd64" ]]; then
   IMAGE="registry.gitlab.com/gitlab-org/gitlab-runner/gitlab-runner-helper-ubi:x86_64-${REVISION}"
-#  docker build \
-#    -t "$IMAGE" \
-#    -f dockerfiles/runner-helper/Dockerfile.OCP \
-#    dockerfiles/runner-helper/
+  docker build \
+    -t "$IMAGE" \
+    -f dockerfiles/runner-helper/Dockerfile.OCP \
+    dockerfiles/runner-helper/
+  docker image export $IMAGE out/helper-images/prebuilt-ubi-x86_64.tar.xz
 
-  echo "${CI_REGISTRY_PASSWORD}" | docker login --username "${CI_REGISTRY_USER}" --password-stdin "${CI_REGISTRY}"
-  _docker_buildx build \
-      --platform "${platform}" \
-      --no-cache \
-      --tag "$IMAGE" \
-      --push \
-      -f dockerfiles/runner-helper/Dockerfile.OCP \
-      dockerfiles/runner-helper/ || echo "buildx ubi failed for platform ${platform}"
+#  echo "${CI_REGISTRY_PASSWORD}" | docker login --username "${CI_REGISTRY_USER}" --password-stdin "${CI_REGISTRY}"
+#  _docker_buildx build \
+#      --platform "${platform}" \
+#      --no-cache \
+#      --tag "$IMAGE" \
+#      --push \
+#      -f dockerfiles/runner-helper/Dockerfile.OCP \
+#      dockerfiles/runner-helper/ || echo "buildx ubi failed for platform ${platform}"
+#
+#  IMAGE1="registry.gitlab.com/gitlab-org/gitlab-runner/gitlab-runner-helper:x86_64-${REVISION}"
+#  _docker_buildx build \
+#      --platform "${platform}" \
+#      --no-cache \
+#      --tag "$IMAGE1" \
+#      --push \
+#      -f dockerfiles/runner-helper/Dockerfile \
+#      dockerfiles/runner-helper/ || echo "buildx failed for platform ${platform}"
 
-  IMAGE1="registry.gitlab.com/gitlab-org/gitlab-runner/gitlab-runner-helper:x86_64-${REVISION}"
-  _docker_buildx build \
-      --platform "${platform}" \
-      --no-cache \
-      --tag "$IMAGE1" \
-      --push \
-      -f dockerfiles/runner-helper/Dockerfile \
-      dockerfiles/runner-helper/ || echo "buildx failed for platform ${platform}"
-
-  docker logout "${CI_REGISTRY}"
+#  docker logout "${CI_REGISTRY}"
 fi
 
 _docker_buildx build \
