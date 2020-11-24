@@ -58,11 +58,13 @@ setup_docker_context
 
 if [[ "$platform" = "linux/amd64" ]]; then
   IMAGE="registry.gitlab.com/gitlab-org/gitlab-runner/gitlab-runner-helper-ubi:x86_64-${REVISION}"
-  docker build \
-    -t "$IMAGE" \
+  _docker_buildx build \
+    --platform "${platform}" \
+    --no-cache \
+    --tag "$IMAGE" \
+    --output "type=tar,dest=out/helper-images/prebuilt-ubi-x86_64.tar" \
     -f dockerfiles/runner-helper/Dockerfile.OCP \
-    dockerfiles/runner-helper/
-  docker image save "$IMAGE" > out/helper-images/prebuilt-ubi-x86_64.tar
+    dockerfiles/runner-helper/ || echo "buildx ubi failed for platform ${platform}"
   docker load < out/helper-images/prebuilt-ubi-x86_64.tar
   echo "${CI_REGISTRY_PASSWORD}" | docker login --username "${CI_REGISTRY_USER}" --password-stdin "${CI_REGISTRY}"
   docker push "$IMAGE"
