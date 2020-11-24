@@ -62,7 +62,7 @@ if [[ "$platform" = "linux/amd64" ]]; then
     -t "$IMAGE" \
     -f dockerfiles/runner-helper/Dockerfile.OCP \
     dockerfiles/runner-helper/
-  docker image save $IMAGE out/helper-images/prebuilt-ubi-x86_64.tar.xz
+  docker image save "$IMAGE" > out/helper-images/prebuilt-ubi-x86_64.tar.xz
 
 #  echo "${CI_REGISTRY_PASSWORD}" | docker login --username "${CI_REGISTRY_USER}" --password-stdin "${CI_REGISTRY}"
 #  _docker_buildx build \
