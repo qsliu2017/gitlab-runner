@@ -152,11 +152,25 @@ func (e *executor) pullDockerImage(imageName string, ac *types.AuthConfig) (*typ
 }
 
 func (e *executor) getDockerImage(imageName string) (image *types.ImageInspect, err error) {
-	pullPolicy, err := e.Config.Docker.PullPolicy.Get()
+	pullPolicies, err := e.Config.Docker.GetPullPolicy()
 	if err != nil {
 		return nil, err
 	}
 
+	for _, pullPolicy := range pullPolicies {
+		img, err := e.getImageByPullPolicy(imageName, pullPolicy)
+		if err != nil {
+			e.Errorln("Failed to pull image with policy", pullPolicy, err)
+			continue
+		}
+
+		return img, nil
+	}
+
+	return nil, fmt.Errorf("failed to pull image %q with specified policies %v", imageName, pullPolicies)
+}
+
+func (e *executor) getImageByPullPolicy(imageName string, pullPolicy common.DockerPullPolicy) (image *types.ImageInspect, err error) {
 	e.Debugln("Looking for image", imageName, "...")
 	existingImage, _, err := e.client.ImageInspectWithRaw(e.Context, imageName)
 
