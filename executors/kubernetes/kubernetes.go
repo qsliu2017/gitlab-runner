@@ -320,6 +320,10 @@ func (s *executor) ensurePodsConfigured(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("waiting for pod running: %w", err)
 	}
+	// If it failed because of pull policy try again
+	// How to go back?
+	//  Delete pods
+	//  s.setupBuildPod again but with different policy
 
 	if status != api.PodRunning {
 		return fmt.Errorf("pod failed to enter running state: %s", status)
