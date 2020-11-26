@@ -1,3 +1,7 @@
+# You can override the included template(s) by including variable overrides
+# See https://docs.gitlab.com/ee/user/application_security/sast/#customizing-the-sast-settings
+# Note that environment variables can be set in several places
+# See https://docs.gitlab.com/ee/ci/variables/#priority-of-environment-variables
 stages:
 - prepare
 - prebuild
@@ -8,15 +12,19 @@ stages:
 - release
 - postrelease
 - docs
-
 include:
-- local: /.gitlab/ci/_common.gitlab-ci.yml
-- local: /.gitlab/ci/prepare.gitlab-ci.yml
-- local: /.gitlab/ci/prebuild.gitlab-ci.yml
-- local: /.gitlab/ci/test.gitlab-ci.yml
-- local: /.gitlab/ci/coverage.gitlab-ci.yml
-- local: /.gitlab/ci/build.gitlab-ci.yml
-- local: /.gitlab/ci/package.gitlab-ci.yml
-- local: /.gitlab/ci/release.gitlab-ci.yml
-- local: /.gitlab/ci/postrelease.gitlab-ci.yml
-- local: /.gitlab/ci/docs.gitlab-ci.yml
+- local: "/.gitlab/ci/_common.gitlab-ci.yml"
+- local: "/.gitlab/ci/prepare.gitlab-ci.yml"
+- local: "/.gitlab/ci/prebuild.gitlab-ci.yml"
+- local: "/.gitlab/ci/test.gitlab-ci.yml"
+- local: "/.gitlab/ci/coverage.gitlab-ci.yml"
+- local: "/.gitlab/ci/build.gitlab-ci.yml"
+- local: "/.gitlab/ci/package.gitlab-ci.yml"
+- local: "/.gitlab/ci/release.gitlab-ci.yml"
+- local: "/.gitlab/ci/postrelease.gitlab-ci.yml"
+- local: "/.gitlab/ci/docs.gitlab-ci.yml"
+- template: Security/SAST.gitlab-ci.yml
+sast:
+  variables:
+    SAST_EXCLUDED_PATHS: spec,test,tests,tmp,vendor
+  stage: test
