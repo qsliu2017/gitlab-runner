@@ -146,6 +146,7 @@ computeCoverageReport() {
     local sourceFile="${reportDirectory}/coverprofile.${output}.source.txt"
     local htmlReportFile="${reportDirectory}/coverprofile.${output}.html"
     local textReportFile="${reportDirectory}/coverprofile.${output}.txt"
+    local xmlReportFile="${reportDirectory}/coverprofile.${output}.xml"
 
     mkdir -p "${reportDirectory}"
 
@@ -156,6 +157,8 @@ computeCoverageReport() {
     go tool cover -o ${htmlReportFile} -html=${sourceFile}
     printMessage "Generating TXT coverage report"
     go tool cover -o ${textReportFile} -func=${sourceFile}
+    printMessage "Generating Cobertura XML coverage report"
+    gocover-cobertura < ${sourceFile} > ${xmlReportFile}
 
     printMessage "General coverage percentage:"
     local total

@@ -19,6 +19,8 @@ test coverage report:
     - out/coverage/
     expire_in: 7d
     expose_as: 'Code Coverage'
+    reports:
+      cobertura: out/coverage/coverprofile.regular.xml
 
 test junit report:
   extends:

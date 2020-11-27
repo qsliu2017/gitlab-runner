@@ -60,3 +60,4 @@ WORKDIR /tmp
 RUN make deps package-deps packagecloud-deps
 
 RUN go get -u github.com/jstemmer/go-junit-report
+RUN go get -u github.com/t-yuki/gocover-cobertura
