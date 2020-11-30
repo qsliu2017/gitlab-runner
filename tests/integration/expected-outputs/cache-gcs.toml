@@ -1,0 +1,21 @@
+concurrent = 1
+check_interval = 0
+
+[session_server]
+  session_timeout = 1800
+
+[[runners]]
+  name = "cache"
+  url = "http://localhost:8080"
+  token = "badf00d"
+  executor = "shell"
+  [runners.custom_build_dir]
+  [runners.cache]
+    Type = "gcs"
+    Path = "our-cache"
+    [runners.cache.s3]
+    [runners.cache.gcs]
+      AccessID = "runner-id"
+      PrivateKey = "private.key"
+      CredentialsFile = "credentials.file"
+      BucketName = "gcs-cache-bucket"

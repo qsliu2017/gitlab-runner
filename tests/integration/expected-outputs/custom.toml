@@ -1,0 +1,29 @@
+concurrent = 1
+check_interval = 0
+
+[session_server]
+  session_timeout = 1800
+
+[[runners]]
+  name = "custom"
+  url = "http://localhost:8080"
+  token = "badf00d"
+  executor = "custom"
+  [runners.custom_build_dir]
+  [runners.cache]
+    [runners.cache.s3]
+    [runners.cache.gcs]
+  [runners.custom]
+    config_exec = "/bin/config"
+    config_args = ["foo,bar"]
+    config_exec_timeout = 300
+    prepare_exec = "/bin/prepare"
+    prepare_args = ["baz,buz"]
+    prepare_exec_timeout = 600
+    run_exec = "/bin/run"
+    run_args = ["aaa,bbb"]
+    cleanup_exec = "/bin/tidyup"
+    cleanup_args = ["cc,dd"]
+    cleanup_exec_timeout = 180
+    graceful_kill_timeout = 30
+    force_kill_timeout = 60

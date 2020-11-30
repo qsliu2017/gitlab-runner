@@ -1,0 +1,24 @@
+concurrent = 1
+check_interval = 0
+
+[session_server]
+  session_timeout = 1800
+
+[[runners]]
+  name = "cache"
+  url = "http://localhost:8080"
+  token = "badf00d"
+  executor = "shell"
+  [runners.custom_build_dir]
+  [runners.cache]
+    Type = "s3"
+    Path = "our-cache"
+    Shared = true
+    [runners.cache.s3]
+      ServerAddress = "s3-host:123"
+      AccessKey = "s3AccessKey"
+      SecretKey = "s3SecretKey"
+      BucketName = "cache-bucket"
+      BucketLocation = "us-east-1"
+      Insecure = true
+    [runners.cache.gcs]

@@ -1,0 +1,60 @@
+concurrent = 1
+check_interval = 0
+
+[session_server]
+  session_timeout = 1800
+
+[[runners]]
+  name = "docker-advanced"
+  output_limit = 4321
+  url = "http://localhost:8080"
+  token = "badf00d"
+  executor = "docker"
+  [runners.custom_build_dir]
+  [runners.cache]
+    [runners.cache.s3]
+    [runners.cache.gcs]
+  [runners.docker]
+    host = "localhost"
+    tls_cert_path = "foo/bar"
+    tls_verify = true
+    hostname = "docker-hostname"
+    image = "ubuntu:latest"
+    runtime = "test-runtime"
+    memory = "2g"
+    memory_swap = "512m"
+    memory_reservation = "4096k"
+    cpuset_cpus = "16"
+    cpus = "8"
+    cpu_shares = 2
+    dns = ["8.8.8.8,8.8.4.4"]
+    dns_search = ["gitlab.com"]
+    privileged = true
+    disable_entrypoint_overwrite = true
+    userns_mode = "foonamespace"
+    cap_add = ["NET_ADMIN"]
+    cap_drop = ["DAC_OVERRIDE"]
+    oom_kill_disable = true
+    oom_score_adjust = 42
+    security_opt = ["supersecure"]
+    devices = ["/dev/kvm"]
+    disable_cache = true
+    volumes = ["/volumnes/foo"]
+    volume_driver = "ext3"
+    cache_dir = "./foo/cache/dir/"
+    extra_hosts = ["registry.local:172.16.90.37"]
+    volumes_from = ["/volumnes/inherited"]
+    network_mode = "test-network"
+    links = ["mysql_container:mysql"]
+    wait_for_services_timeout = 60
+    allowed_images = ["ruby:*,python:*php:*"]
+    allowed_services = ["postgres:9,redis:*,mysql:*"]
+    pull_policy = "if-not-present"
+    shm_size = 1024
+    helper_image = "helpme"
+    [runners.docker.tmpfs]
+      "/var/lib/mysql" = "rw,noexec"
+    [runners.docker.services_tmpfs]
+      "/var/lib/mysql" = "rw,noexec"
+    [runners.docker.sysctls]
+      "net.ipv4.ip_forward" = "1"

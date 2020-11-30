@@ -1,0 +1,22 @@
+concurrent = 1
+check_interval = 0
+
+[session_server]
+  session_timeout = 1800
+
+[[runners]]
+  name = "parallels-advanced"
+  url = "http://localhost:8080"
+  token = "badf00d"
+  executor = "parallels"
+  [runners.custom_build_dir]
+  [runners.cache]
+    [runners.cache.s3]
+    [runners.cache.gcs]
+  [runners.ssh]
+    host = "localhost"
+  [runners.parallels]
+    base_name = "windows-10-base"
+    template_name = "windows-10-templ"
+    disable_snapshots = true
+    time_server = "localhost.ntp"
