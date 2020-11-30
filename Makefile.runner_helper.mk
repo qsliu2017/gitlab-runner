@@ -73,3 +73,4 @@ ${BASE_TAR_PATH}-%.tar.xz: ${BASE_TAR_PATH}-%.tar
 ${BASE_TAR_PATH}-%.tar: ${BASE_BINARY_PATH}.%
 	@mkdir -p $$(dirname $@_)
 	@./ci/build_helper_docker $* $@
+	@./ci/build_helper_docker $* $@ "ubi"

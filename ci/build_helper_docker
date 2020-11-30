@@ -18,6 +18,7 @@ fi
 
 TARGET_ARCH=$1
 TARGET_FILE=$2
+UBI=$3
 
 if [ -z "${TARGET_ARCH}" ] || [ -z "${TARGET_FILE}" ] ; then
     echo -e "${RED}Missing required arguments. Usage: build_helper_docker TARGET_ARCH TARGET_FILE${RST}"
@@ -38,6 +39,18 @@ case "${TARGET_ARCH}" in
         ;;
 esac;
 
+if [[ -n "$UBI" ]]; then
+    case "$platform_arch" in
+      # If the platform we are building for isn't supported buy the
+      # redhat ubi image exit the script
+      "amd64"|"arm64"|"s390x")
+        ;;
+      *)
+        exit 0
+        ;;
+    esac;
+fi
+
 binary_file="out/binaries/gitlab-runner-helper/gitlab-runner-helper.${TARGET_ARCH}"
 
 if [ ! -f "$binary_file" ]; then
@@ -51,16 +64,27 @@ chmod +x dockerfiles/runner-helper/binaries/gitlab-runner-helper
 os=$(_docker version -f '{{.Server.Os}}')
 platform="${os}/${platform_arch}"
 
-echo -e "Building helper image for: ${GRN}${platform}${RST}"
+if [[ -z "$UBI" ]]; then
+  echo -e "Building helper image for: ${GRN}${platform}${RST}"
+else
+  echo -e "Building UBI helper image for: ${GRN}${platform}${RST}"
+fi
 
 trap cleanup_docker_context_trap ERR SIGINT SIGTERM
 setup_docker_context
+
+DOCKERFILE="dockerfiles/runner-helper/Dockerfile"
+if [[ -n "$UBI" ]]; then
+  DOCKERFILE="dockerfiles/runner-helper/Dockerfile.ubi"
+  TARGET_FILE=${TARGET_FILE/prebuilt-/prebuilt-ubi-}
+fi
 
 _docker_buildx build \
     --platform "${platform}" \
     --no-cache \
     --output "type=tar,dest=$TARGET_FILE" \
     --tag "gitlab/gitlab-runner-helper:$TARGET_ARCH-$REVISION" \
+    --file "$DOCKERFILE" \
     dockerfiles/runner-helper
 
 trap - ERR SIGINT SIGTERM
