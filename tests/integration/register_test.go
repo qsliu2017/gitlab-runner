@@ -5,13 +5,13 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"gitlab.com/gitlab-org/gitlab-runner/tests/integration/mock_gitlab"
+	"gitlab.com/gitlab-org/gitlab-runner/tests/integration/gitlab_stub"
 )
 
 const TestConfig = "test-config.toml"
 
 func TestMain(m *testing.M) {
-	go mock_gitlab.Start()
+	go gitlab_stub.Start()
 	os.Exit(m.Run())
 }
 
@@ -75,23 +75,23 @@ func TestConfigFileGeneration(t *testing.T) {
 
 func TestBools(t *testing.T) {
 	cleanUp()
-	mock_gitlab.ClearExpectations()
-	mock_gitlab.SetExpectation("run_untagged", "true")
-	mock_gitlab.SetExpectation("locked", "true")
-	mock_gitlab.SetExpectation("active", "false")
+	gitlab_stub.ClearExpectations()
+	gitlab_stub.SetExpectation("run_untagged", "true")
+	gitlab_stub.SetExpectation("locked", "true")
+	gitlab_stub.SetExpectation("active", "false")
 
 	err := registerRunner("--non-interactive --url=http://localhost:8080 --config " + TestConfig + " --name bools-true --registration-token 1234567890 --executor shell --custom_build_dir-enabled --paused --locked --leave-runner --run-untagged")
 	assert.NoError(t, err)
 	assert.NoError(t, diffConfigs(expectedFileNameFromTestname(t.Name())))
 
-	mock_gitlab.ClearExpectations()
+	gitlab_stub.ClearExpectations()
 	cleanUp()
 }
 
 func TestRunUntagged(t *testing.T) {
 	cleanUp()
-	mock_gitlab.ClearExpectations()
-	mock_gitlab.SetExpectation("run_untagged", "true")
+	gitlab_stub.ClearExpectations()
+	gitlab_stub.SetExpectation("run_untagged", "true")
 
 	const commonFlags = "--non-interactive --url=http://localhost:8080 --config test-config.toml --registration-token 1234567890 --executor shell "
 	err := registerRunner(commonFlags + "--name run-untagged-1  --run-untagged --tag-list foo,bar")
@@ -101,10 +101,10 @@ func TestRunUntagged(t *testing.T) {
 	err = registerRunner(commonFlags + "--name run-untagged-3")
 	assert.NoError(t, err)
 
-	mock_gitlab.SetExpectation("run_untagged", "false")
+	gitlab_stub.SetExpectation("run_untagged", "false")
 	err = registerRunner(commonFlags + "--name run-untagged-4 --tag-list foo,bar")
 	assert.NoError(t, err)
 
-	mock_gitlab.ClearExpectations()
+	gitlab_stub.ClearExpectations()
 	cleanUp()
 }

@@ -1,4 +1,4 @@
-package mock_gitlab
+package gitlab_stub
 
 import (
 	"encoding/json"
