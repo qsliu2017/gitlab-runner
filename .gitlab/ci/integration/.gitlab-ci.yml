@@ -1,0 +1,5 @@
+image: alpine:latest
+
+hello-k8s:
+    script:
+        - echo hello kubernetes
