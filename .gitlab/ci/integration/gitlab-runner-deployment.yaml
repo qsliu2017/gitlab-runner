@@ -10,7 +10,7 @@ spec:
       labels:
         name: gitlab-runner
     spec:
-      serviceAccountName: gitlab-admin
+      serviceAccountName: gitlab-test
       containers:
         - args:
           - run

@@ -2,4 +2,9 @@ image: alpine:latest
 
 hello-k8s:
     script:
-        - echo hello kubernetes
+        - echo "hello kubernetes"
+
+# build runner
+# instantiate k3s service
+# deploy
+# check

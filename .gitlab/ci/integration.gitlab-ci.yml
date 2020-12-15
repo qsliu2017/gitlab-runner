@@ -1,3 +1,5 @@
+# future home of integration child pipeline kickoff ...
+
 .merge_request_pipelines_rules:
   rules: &merge_request_pipelines_rules
   - if: $CI_MERGE_REQUEST_SOURCE_BRANCH_NAME =~ /(^docs[\/-].*|.*-docs$)/

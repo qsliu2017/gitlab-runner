@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# TODO: deprecate this script entirely, replacing with k3s service
+# and config chgs in pipline script tags, with actual assertions
+
 if [ "$1" == "" ]
 then
     echo Need to specificy a cluster name
