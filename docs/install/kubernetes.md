@@ -58,6 +58,11 @@ runners:
     [[runners]]
       [runners.kubernetes]
         image = "ubuntu:16.04"
+      [runners.kubernetes.volumes]      
+        [[runners.kubernetes.volumes.empty_dir]]
+          name = "empty_dir"
+          mount_path = "/path/to/empty_dir"
+          medium = "Memory"
 ```
 
 The rest of the configuration [is documented in the `values.yaml`](https://gitlab.com/gitlab-org/charts/gitlab-runner/blob/master/values.yaml).
