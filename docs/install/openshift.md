@@ -24,7 +24,7 @@ First you must install the OpenShift Operator.
 1. On the GitLab Runner Operator summary page, click **Install**.
 1. On the Install Operator page, under **Installed Namespace**, select the desired namespace and click **Install**.
 
-   ![GitLab Operator Install Page](img/openshift_installoperator_v13_3.png)
+   ![GitLab Operator Install Page](img/openshift_installoperator_v13_7.png)
 
 On the Installed Operators page, when the GitLab Operator is ready, the status changes to **Succeeded**.
 
