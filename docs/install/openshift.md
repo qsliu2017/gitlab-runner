@@ -18,7 +18,7 @@ First you must install the OpenShift Operator.
 1. In the left pane, click **Operators**, then **OperatorHub**.
 1. In the main pane, below **All Items**, search for the keyword `GitLab`.
 
-   ![GitLab Operator](img/openshift_allitems_v13_3.png)
+   ![GitLab Operator](img/openshift_allitems_v13_7.png)
 
 1. To install, click the GitLab Runner Operator.
 1. On the GitLab Runner Operator summary page, click **Install**.
