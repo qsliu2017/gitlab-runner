@@ -28,7 +28,7 @@ First you must install the OpenShift Operator.
 
 On the Installed Operators page, when the GitLab Operator is ready, the status changes to **Succeeded**.
 
-![GitLab Operator Install Status](img/openshift_success_v13_3.png)
+![GitLab Operator Install Status](img/openshift_success_v13_7.png)
 
 #### Install GitLab Runner
 
