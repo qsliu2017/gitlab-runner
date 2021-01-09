@@ -2062,7 +2062,7 @@ func TestExecuteStageWithAdditionalEnv(t *testing.T) {
 					if tt.expectedCreds {
 						assert.Equal(t, 2, len(vars))
 					} else {
-						assert.Equal(t, 0, len(vars))
+						assert.Empty(t, vars)
 					}
 
 					return nil
