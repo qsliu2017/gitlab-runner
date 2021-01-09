@@ -205,7 +205,7 @@ func TestCacheOperation_GetGoCloudURL(t *testing.T) {
 			require.NoError(t, err)
 
 			url := adapter.GetGoCloudURL()
-			assert.NotNil(t, url)
+			require.NotNil(t, url)
 			assert.Equal(t, "s3", url.Scheme)
 			assert.Equal(t, tt.s3.BucketName, url.Host)
 			assert.Equal(t, objectName, url.Path)

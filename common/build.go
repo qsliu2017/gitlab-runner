@@ -424,13 +424,13 @@ func (b *Build) GetCacheHelperVariables() JobVariables {
 }
 
 func (b *Build) getAdditionalEnv(buildStage BuildStage) JobVariables {
-	if buildStage != BuildStageRestoreCache &&
-		buildStage != BuildStageArchiveOnSuccessCache &&
-		buildStage != BuildStageArchiveOnFailureCache {
-		return JobVariables{}
+	switch buildStage {
+	case BuildStageRestoreCache, BuildStageArchiveOnSuccessCache, BuildStageArchiveOnFailureCache:
+		return b.GetCacheHelperVariables()
 	}
 
-	return b.GetCacheHelperVariables()
+	return JobVariables{}
+
 }
 
 func GetStageDescription(stage BuildStage) string {
