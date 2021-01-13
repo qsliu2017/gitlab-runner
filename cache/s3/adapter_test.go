@@ -17,9 +17,8 @@ import (
 	"gitlab.com/gitlab-org/gitlab-runner/common"
 )
 
-var defaultTimeout = 1 * time.Hour
-
 const (
+	defaultTimeout = 1 * time.Hour
 	bucketName     = "test"
 	objectName     = "key"
 	bucketLocation = "location"
