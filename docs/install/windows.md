@@ -110,13 +110,6 @@ This is the case for both the [Windows binaries](#installation) that we
 distribute, and also for the [Docker
 executor](../executors/docker.md#supported-windows-versions).
 
-NOTE:
-The Docker executor for Windows containers has strict version
-requirements, because containers have to match the version of the host
-OS. See the [list of supported Windows
-containers](../executors/docker.md#supported-windows-versions) for more
-information.
-
 After a Windows version no longer receives mainstream support from
 Microsoft, we officially [deprecate the
 version](https://about.gitlab.com/handbook/product/#deprecated) and
@@ -131,6 +124,14 @@ GitLab 13.0.
 As a single source of truth we use
 <https://docs.microsoft.com/en-us/lifecycle/products/> which specifies
 both the release and mainstream support dates.
+
+NOTE:
+For Docker executor for Windows containers, please see the [list of supported 
+Windows versions](../executors/docker.md#supported-windows-versions) which may 
+differ from the list below. Docker executor for Windows containers has strict version
+requirements, because containers have to match the version of the host
+OS.
+
 
 Below is a list of versions that are commonly used and their end of life
 date:
