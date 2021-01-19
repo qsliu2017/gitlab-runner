@@ -1,0 +1,12 @@
+register linux-amd64:
+  image: golang:1.13.8-alpine
+  stage: integration
+  extends:
+    - .merge_request_pipelines
+  script:
+    - apk update
+    - apk add build-base
+    - apk add diffutils
+    - cp /out/binaries/gitlab-runner-linux-amd64 /usr/local/bin/gitlab-runner
+    - chmod +x /usr/local/bin/gitlab-runner
+    - go test /builds/gitlab-org/gitlab-runner/tests/integration

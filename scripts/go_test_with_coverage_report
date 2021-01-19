@@ -34,6 +34,11 @@ prepareTestCommands() {
     [[ ! -f ${testsDefinitions} ]] || rm ${testsDefinitions}
 
     for pkg in $(go list ./...); do
+        # exclude integration tests
+        if [[ $pkg == *tests/integration* ]]; then
+            continue
+        fi
+
         local testIndex=0
         local runTests=()
 
