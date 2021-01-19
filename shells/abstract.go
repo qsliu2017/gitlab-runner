@@ -230,6 +230,15 @@ func (b *AbstractShell) writeExports(w ShellWriter, info common.ShellScriptInfo)
 	}
 }
 
+func (b *AbstractShell) writeCacheArchiverExports(w ShellWriter, info common.ShellScriptInfo) {
+	for _, variable := range info.Build.GetAllVariables() {
+		// Exclude user-defined variables since they may conflict with cache credentials
+		if variable.Internal {
+			w.Variable(variable)
+		}
+	}
+}
+
 func (b *AbstractShell) writeGitSSLConfig(w ShellWriter, build *common.Build, where []string) {
 	repoURL, err := url.Parse(build.GetRemoteURL())
 	if err != nil {
@@ -518,7 +527,7 @@ func (b *AbstractShell) writeUserScript(
 }
 
 func (b *AbstractShell) cacheArchiver(w ShellWriter, info common.ShellScriptInfo, onSuccess bool) error {
-	b.writeExports(w, info)
+	b.writeCacheArchiverExports(w, info)
 	b.writeCdBuildDir(w, info)
 
 	skipArchiveCache, err := b.archiveCache(w, info, onSuccess)
