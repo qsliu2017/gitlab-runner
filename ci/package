@@ -78,7 +78,7 @@ create_deb() {
     options+=("--depends ca-certificates")
     options+=("--category admin")
     options+=("--deb-priority optional")
-    options+=("--deb-compression bzip2")
+    options+=("--deb-compression xz")
     options+=("--deb-suggests docker-engine")
 
     create_package deb "${options[@]}"
@@ -94,7 +94,7 @@ create_deb() {
 
 create_rpm() {
     local options=()
-    options+=("--rpm-compression bzip2")
+    options+=("--rpm-compression xz")
     options+=("--rpm-os linux")
 
     create_package rpm "${options[@]}"
