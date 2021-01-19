@@ -1,6 +1,8 @@
 register linux-amd64:
   image: golang:1.13.8-alpine
   stage: integration
+  dependencies:
+    - binaries linux/386 linux/amd64 linux/arm linux/arm64 linux/s390x
   extends:
     - .merge_request_pipelines
   script:
