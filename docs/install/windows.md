@@ -126,12 +126,10 @@ As a single source of truth we use
 both the release and mainstream support dates.
 
 NOTE:
-For Docker executor for Windows containers, please see the [list of supported 
-Windows versions](../executors/docker.md#supported-windows-versions) which may 
-differ from the list below. Docker executor for Windows containers has strict version
-requirements, because containers have to match the version of the host
-OS.
-
+For the Docker executor for Windows running in containers, view the [list of supported 
+Windows versions](../executors/docker.md#supported-windows-versions). This list may 
+differ from the list below. Docker executor for Windows in containers has strict version
+requirements, because containers have to match the version of the host OS.
 
 Below is a list of versions that are commonly used and their end of life
 date:
