@@ -13,7 +13,7 @@ test coverage report:
   - unit test
   script:
   - source ci/touch_make_dependencies
-  - make parallel_test_coverage_report cobertura_report
+  #- make parallel_test_coverage_report cobertura_report
   artifacts:
     reports:
       cobertura: out/cobertura/cobertura-coverage.xml
@@ -30,7 +30,7 @@ test junit report:
   - unit test
   script:
   - source ci/touch_make_dependencies
-  - make parallel_test_junit_report
+  #- make parallel_test_junit_report
   artifacts:
     reports:
       junit: out/junit/report.xml

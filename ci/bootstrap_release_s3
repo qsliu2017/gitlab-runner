@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+
+set -eox pipefail
+
+# Reshape the out/binaries folder structure to match the usual structure in S3 (using a temp directory)
+tmpDir="$(mktemp -d 'runner-s3-upload-XXXX' -p "${TEMP:-/tmp}")"
+trap 'rm -rf "${tmpDir}"' ERR INT
+cp -r out/* "${tmpDir}"
+  find "${tmpDir}"
+mv "${tmpDir}"/binaries/runner-helper "${tmpDir}/binaries/gitlab-runner-helper"
+mv "${tmpDir}"/binaries/runner/* "${tmpDir}/binaries/"
+rm -rf "${tmpDir}"/binaries/runner
+  find "${tmpDir}"
+
+make _release_s3 TARGET_DIR="${tmpDir}"

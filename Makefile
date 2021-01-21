@@ -33,7 +33,7 @@ PKG = gitlab.com/gitlab-org/$(PACKAGE_NAME)
 COMMON_PACKAGE_NAMESPACE = $(PKG)/common
 
 BUILD_DIR := $(CURDIR)
-TARGET_DIR := $(BUILD_DIR)/out
+TARGET_DIR ?= $(BUILD_DIR)/out
 
 export MAIN_PACKAGE ?= gitlab.com/gitlab-org/gitlab-runner
 
@@ -268,25 +268,30 @@ release_packagecloud:
 	# Releasing to https://packages.gitlab.com/runner/
 	@./ci/release_packagecloud "$$CI_JOB_NAME"
 
-release_s3: prepare_windows_zip prepare_zoneinfo prepare_index
+_release_s3: export TARGET_DIR ?= $(TARGET_DIR)
+_release_s3: prepare_windows_zip prepare_zoneinfo prepare_index
 	# Releasing to S3
 	@./ci/release_s3
 
-out/binaries/runner/gitlab-runner-windows-%.zip: out/binaries/runner/gitlab-runner-windows-%.exe
-	zip --junk-paths $@ $<
-	cd out/ && zip -r ../$@ helper-images
+release_s3:
+	# Releasing to S3
+	@./ci/bootstrap_release_s3
 
-prepare_windows_zip: out/binaries/runner/gitlab-runner-windows-386.zip out/binaries/runner/gitlab-runner-windows-amd64.zip
+${TARGET_DIR}/binaries/runner/gitlab-runner-windows-%.zip: ${TARGET_DIR}/binaries/runner/gitlab-runner-windows-%.exe
+	zip --junk-paths $@ $<
+	cd $(TARGET_DIR)/ && zip -r ../$@ helper-images
+
+prepare_windows_zip: ${TARGET_DIR}/binaries/runner/gitlab-runner-windows-386.zip ${TARGET_DIR}/binaries/runner/gitlab-runner-windows-amd64.zip
 
 prepare_zoneinfo:
 	# preparing the zoneinfo file
-	@cp $$GOROOT/lib/time/zoneinfo.zip out/
+	@cp $$GOROOT/lib/time/zoneinfo.zip $(TARGET_DIR)/
 
 prepare_index: export CI_COMMIT_REF_NAME ?= $(BRANCH)
 prepare_index: export CI_COMMIT_SHA ?= $(REVISION)
 prepare_index: $(RELEASE_INDEX_GENERATOR)
 	# Preparing index file
-	@$(RELEASE_INDEX_GENERATOR) -working-directory out/ \
+	@$(RELEASE_INDEX_GENERATOR) -working-directory $(TARGET_DIR)/ \
 								-project-version $(VERSION) \
 								-project-git-ref $(CI_COMMIT_REF_NAME) \
 								-project-git-revision $(CI_COMMIT_SHA) \
