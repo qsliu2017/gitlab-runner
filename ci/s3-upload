@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+
+set -eo pipefail
+
+export ARTIFACTS_DEST=artifacts
+curl -sL https://raw.githubusercontent.com/travis-ci/artifacts/master/install | bash
+
+# Reshape the out/binaries folder structure to match the usual structure in S3 (using a temp directory)
+tmpDir="$(mktemp -d 'runner-s3-upload-XXXX')"
+trap 'rm -rf "${tmpDir}"' ERR INT
+cp -r out/ "${tmpDir}"
+mv "${tmpDir}"/binaries/runner-helper "${tmpDir}/binaries/gitlab-runner-helper"
+mv "${tmpDir}"/binaries/runner/* "${tmpDir}/binaries/"
+rm -rf "${tmpDir}"/binaries/{runner,runner,runner-helper}/
+
+./artifacts upload \
+  --permissions public-read \
+  --working-dir "${tmpDir}" \
+  --target-paths "${S3_UPLOAD_PATH}/" \
+  --max-size $(du -bs "${tmpDir}" | cut -f1) \
+  $(
+    cd "${tmpDir}"
+    find . -type f
+  )
+@echo "\n\033[1m==> Download index file: \033[36mhttps://${ARTIFACTS_S3_BUCKET}.s3.amazonaws.com/${S3_UPLOAD_PATH}/index.html\033[0m\n"

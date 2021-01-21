@@ -262,14 +262,7 @@ else
 endif
 
 s3-upload:
-	export ARTIFACTS_DEST=artifacts; curl -sL https://raw.githubusercontent.com/travis-ci/artifacts/master/install | bash
-	./artifacts upload \
-		--permissions public-read \
-		--working-dir out \
-		--target-paths "$(S3_UPLOAD_PATH)/" \
-		--max-size $(shell du -bs out/ | cut -f1) \
-		$(shell cd out/; find . -type f)
-	@echo "\n\033[1m==> Download index file: \033[36mhttps://$$ARTIFACTS_S3_BUCKET.s3.amazonaws.com/$$S3_UPLOAD_PATH/index.html\033[0m\n"
+	@./ci/s3-upload
 
 release_packagecloud:
 	# Releasing to https://packages.gitlab.com/runner/
