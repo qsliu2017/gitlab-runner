@@ -1,14 +1,15 @@
-# register linux-amd64:
-#   image: golang:1.13.8-alpine
-#   stage: test
-#   needs: 
-#   - 'binaries linux/386 linux/amd64 linux/arm linux/arm64 linux/s390x'
-#   dependencies:
-#   - binaries linux/386 linux/amd64 linux/arm linux/arm64 linux/s390x
-#   script:
-#   - apk update
-#   - apk add build-base
-#   - apk add diffutils
-#   - cp /out/binaries/gitlab-runner-linux-amd64 /usr/local/bin/gitlab-runner
-#   - chmod +x /usr/local/bin/gitlab-runner
-#   - go test /builds/gitlab-org/gitlab-runner/tests/integration
+register linux-amd64:
+  image: golang:1.13.8-alpine
+  stage: test
+  needs: 
+  - 'binaries linux/386 linux/amd64 linux/arm linux/arm64 linux/s390x'
+  dependencies:
+  - binaries linux/386 linux/amd64 linux/arm linux/arm64 linux/s390x
+  before_script:
+  - apk update
+  - apk add build-base
+  - apk add diffutils
+  - cp /out/binaries/gitlab-runner-linux-amd64 /usr/local/bin/gitlab-runner
+  - chmod +x /usr/local/bin/gitlab-runner
+  script:
+  - go test /builds/gitlab-org/gitlab-runner/tests/integration
