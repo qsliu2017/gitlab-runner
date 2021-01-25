@@ -13,6 +13,7 @@ check_interval = 0
   [runners.cache]
     [runners.cache.s3]
     [runners.cache.gcs]
+    [runners.cache.azure]
   [runners.custom]
     config_exec = "/bin/config"
     config_args = ["foo,bar"]

@@ -16,3 +16,4 @@ check_interval = 0
   [runners.cache]
     [runners.cache.s3]
     [runners.cache.gcs]
+    [runners.cache.azure]

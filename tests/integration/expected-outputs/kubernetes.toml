@@ -13,6 +13,7 @@ check_interval = 0
   [runners.cache]
     [runners.cache.s3]
     [runners.cache.gcs]
+    [runners.cache.azure]
   [runners.kubernetes]
     host = "k8s.host"
     cert_file = "cert.file"
@@ -25,16 +26,16 @@ check_interval = 0
     namespace_overwrite_allowed = "ci-${CI_COMMIT_REF_SLUG}"
     privileged = true
     cpu_limit = "1.0"
-    memory_limit = "2g"
-    service_cpu_limit = "1"
-    service_memory_limit = "512m"
-    helper_cpu_limit = "1"
-    helper_memory_limit = "256m"
     cpu_request = "1"
+    memory_limit = "2g"
     memory_request = "256m"
+    service_cpu_limit = "1"
     service_cpu_request = "1"
+    service_memory_limit = "512m"
     service_memory_request = "256m"
+    helper_cpu_limit = "1"
     helper_cpu_request = "2"
+    helper_memory_limit = "256m"
     helper_memory_request = "1g"
     pull_policy = "always"
     image_pull_secrets = ["secret1,secret2"]
@@ -61,3 +62,4 @@ check_interval = 0
       run_as_user = 1
       supplemental_groups = [5]
     [runners.kubernetes.volumes]
+    [runners.kunernetes.dns_config]

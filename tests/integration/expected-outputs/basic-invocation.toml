@@ -14,6 +14,7 @@ check_interval = 0
   [runners.cache]
     [runners.cache.s3]
     [runners.cache.gcs]
+    [runners.cache.azure]
   [runners.docker]
     tls_verify = false
     image = "alpine:latest"

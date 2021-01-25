@@ -22,3 +22,4 @@ check_interval = 0
       BucketLocation = "us-east-1"
       Insecure = true
     [runners.cache.gcs]
+    [runners.cache.azure]

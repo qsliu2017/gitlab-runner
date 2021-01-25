@@ -19,3 +19,4 @@ check_interval = 0
       PrivateKey = "private.key"
       CredentialsFile = "credentials.file"
       BucketName = "gcs-cache-bucket"
+    [runners.cache.azure]
