@@ -62,4 +62,4 @@ check_interval = 0
       run_as_user = 1
       supplemental_groups = [5]
     [runners.kubernetes.volumes]
-    [runners.kunernetes.dns_config]
+    [runners.kubernetes.dns_config]
