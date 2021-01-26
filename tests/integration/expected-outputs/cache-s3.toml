@@ -8,6 +8,7 @@ check_interval = 0
   name = "cache"
   url = "http://localhost:8080"
   token = "badf00d"
+  tls-ca-file = "/builds/gitlab-org/gitlab-runner.tmp/CI_SERVER_TLS_CA_FILE"
   executor = "shell"
   [runners.custom_build_dir]
   [runners.cache]

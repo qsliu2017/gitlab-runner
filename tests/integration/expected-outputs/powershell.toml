@@ -8,6 +8,7 @@ check_interval = 0
   name = "powershell"
   url = "http://localhost:8080"
   token = "badf00d"
+  tls-ca-file = "/builds/gitlab-org/gitlab-runner.tmp/CI_SERVER_TLS_CA_FILE"
   executor = "shell"
   builds_dir = "/my/builds"
   cache_dir = "/my/cache"
