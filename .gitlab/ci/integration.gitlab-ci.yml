@@ -9,10 +9,8 @@ register linux-amd64:
   - apk update
   - apk add build-base
   - apk add diffutils
-  - cd /builds/gitlab-org/gitlab-runner/out/
-  # - cp /out/binaries/gitlab-runner-linux-amd64 /usr/local/bin/gitlab-runner
-  # - chmod +x /usr/local/bin/gitlab-runner
+  - cp /builds/gitlab-org/gitlab-runner/out/binaries/gitlab-runner-linux-amd64 /usr/local/bin/gitlab-runner
+  - chmod +x /usr/local/bin/gitlab-runner
   script:
-  - find . -type f
-  # - go test /builds/gitlab-org/gitlab-runner/tests/integration
+  - go test /builds/gitlab-org/gitlab-runner/tests/integration
   allow_failure: true
