@@ -25,7 +25,7 @@ type dockerLinuxSetter struct {
 func NewDockerLinuxSetter(c docker.Client, logger logrus.FieldLogger, helperImage *types.ImageInspect) Setter {
 	return &dockerLinuxSetter{
 		client:      c,
-		waiter:      wait.NewDockerKillWaiter(c),
+		waiter:      wait.NewDockerWaiter(c),
 		logger:      logger,
 		helperImage: helperImage,
 	}

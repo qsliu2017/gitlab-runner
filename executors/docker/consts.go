@@ -4,7 +4,7 @@ import "time"
 
 const prebuiltImageExtension = ".tar.xz"
 
-const dockerCleanupTimeout = 5 * time.Minute
+const dockerCleanupTimeout = 10 * time.Minute
 
 const waitForContainerTimeout = 15 * time.Second
 

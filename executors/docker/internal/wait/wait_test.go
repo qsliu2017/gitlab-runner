@@ -66,7 +66,7 @@ func TestDockerWaiter_Wait(t *testing.T) {
 				Return((<-chan container.ContainerWaitOKBody)(bodyCh), (<-chan error)(errCh)).
 				Times(tt.attempts)
 
-			waiter := NewDockerKillWaiter(mClient)
+			waiter := NewDockerWaiter(mClient)
 
 			err := waiter.Wait(context.Background(), "id")
 			assert.ErrorIs(t, err, tt.expectedErr)
@@ -93,7 +93,7 @@ func TestDockerWaiter_KillWait(t *testing.T) {
 		Return(nil).
 		Twice()
 
-	waiter := NewDockerKillWaiter(mClient)
+	waiter := NewDockerWaiter(mClient)
 
 	go func() {
 		wg.Wait()
@@ -106,6 +106,75 @@ func TestDockerWaiter_KillWait(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestDockerWaiter_RemoveWait(t *testing.T) {
+	testErr := errors.New("testErr")
+
+	tests := map[string]struct {
+		containerOKBody container.ContainerWaitOKBody
+		waitErr         error
+		attempts        int
+		expectedErr     error
+	}{
+		"container removed successfully": {
+			containerOKBody: container.ContainerWaitOKBody{
+				StatusCode: 0,
+			},
+			waitErr:     nil,
+			attempts:    1,
+			expectedErr: nil,
+		},
+		"container remove failed": {
+			containerOKBody: container.ContainerWaitOKBody{},
+			waitErr:         testErr,
+			attempts:        5,
+			expectedErr:     testErr,
+		},
+		"container not found": {
+			containerOKBody: container.ContainerWaitOKBody{},
+			waitErr:         new(test.NotFoundError),
+			attempts:        1,
+			expectedErr:     nil,
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			mClient := new(docker.MockClient)
+			defer mClient.AssertExpectations(t)
+
+			bodyCh := make(chan container.ContainerWaitOKBody, 1)
+			errCh := make(chan error, tt.attempts)
+
+			if tt.expectedErr != nil {
+				for i := 0; i < tt.attempts; i++ {
+					errCh <- tt.waitErr
+				}
+			} else {
+				bodyCh <- tt.containerOKBody
+			}
+
+			mClient.On("ContainerWait", mock.Anything, mock.Anything, container.WaitConditionRemoved).
+				Return((<-chan container.ContainerWaitOKBody)(bodyCh), (<-chan error)(errCh)).
+				Times(tt.attempts)
+
+			var wg sync.WaitGroup
+
+			wg.Add(tt.attempts)
+			mClient.On("ContainerRemove", mock.Anything, mock.Anything, mock.Anything).
+				Run(func(mock.Arguments) {
+					wg.Done()
+				}).
+				Return(nil).
+				Times(tt.attempts)
+
+			waiter := NewDockerWaiter(mClient)
+
+			err := waiter.RemoveWait(context.Background(), "id")
+			assert.ErrorIs(t, err, tt.expectedErr)
+		})
+	}
+}
+
 func TestDockerWaiter_WaitContextCanceled(t *testing.T) {
 	mClient := new(docker.MockClient)
 	defer mClient.AssertExpectations(t)
@@ -113,7 +182,7 @@ func TestDockerWaiter_WaitContextCanceled(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 
-	waiter := NewDockerKillWaiter(mClient)
+	waiter := NewDockerWaiter(mClient)
 
 	err := waiter.Wait(ctx, "id")
 	assert.ErrorIs(t, err, context.Canceled)
@@ -133,7 +202,7 @@ func TestDockerWaiter_WaitNonZeroExitCode(t *testing.T) {
 	mClient.On("ContainerWait", mock.Anything, mock.Anything, container.WaitConditionNotRunning).
 		Return((<-chan container.ContainerWaitOKBody)(bodyCh), nil)
 
-	waiter := NewDockerKillWaiter(mClient)
+	waiter := NewDockerWaiter(mClient)
 
 	err := waiter.Wait(context.Background(), "id")
 

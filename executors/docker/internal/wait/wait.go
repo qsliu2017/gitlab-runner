@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"gitlab.com/gitlab-org/gitlab-runner/common"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers/docker"
@@ -21,11 +22,17 @@ type KillWaiter interface {
 	KillWait(ctx context.Context, containerID string) error
 }
 
+type KillRemoveWaiter interface {
+	KillWaiter
+
+	RemoveWait(ctx context.Context, containerID string) error
+}
+
 type dockerWaiter struct {
 	client docker.Client
 }
 
-func NewDockerKillWaiter(c docker.Client) KillWaiter {
+func NewDockerWaiter(c docker.Client) KillRemoveWaiter {
 	return &dockerWaiter{
 		client: c,
 	}
@@ -33,7 +40,7 @@ func NewDockerKillWaiter(c docker.Client) KillWaiter {
 
 // Wait blocks until the container specified has stopped.
 func (d *dockerWaiter) Wait(ctx context.Context, containerID string) error {
-	return d.retryWait(ctx, containerID, nil)
+	return d.retryWait(ctx, containerID, nil, container.WaitConditionNotRunning)
 }
 
 // KillWait blocks (periodically attempting to kill the container) until the
@@ -41,14 +48,37 @@ func (d *dockerWaiter) Wait(ctx context.Context, containerID string) error {
 func (d *dockerWaiter) KillWait(ctx context.Context, containerID string) error {
 	return d.retryWait(ctx, containerID, func() {
 		_ = d.client.ContainerKill(ctx, containerID, "SIGKILL")
-	})
+	}, container.WaitConditionNotRunning)
 }
 
-func (d *dockerWaiter) retryWait(ctx context.Context, containerID string, stopFn func()) error {
+// RemoveWait blocks (periodically attempting to remove the container) until the
+// specified container has been removed. If the container cannot be found, no
+// error is returned, with the assumption that it has previously been removed.
+func (d *dockerWaiter) RemoveWait(ctx context.Context, containerID string) error {
+	err := d.retryWait(ctx, containerID, func() {
+		_ = d.client.ContainerRemove(ctx, containerID, types.ContainerRemoveOptions{
+			RemoveVolumes: true,
+			Force:         true,
+		})
+	}, container.WaitConditionRemoved)
+
+	if docker.IsErrNotFound(err) {
+		return nil
+	}
+
+	return err
+}
+
+func (d *dockerWaiter) retryWait(
+	ctx context.Context,
+	containerID string,
+	requestFn func(),
+	condition container.WaitCondition,
+) error {
 	retries := 0
 
 	for ctx.Err() == nil {
-		err := d.wait(ctx, containerID, stopFn)
+		err := d.wait(ctx, containerID, requestFn, condition)
 		if err == nil {
 			return nil
 		}
@@ -65,29 +95,34 @@ func (d *dockerWaiter) retryWait(ctx context.Context, containerID string, stopFn
 	return ctx.Err()
 }
 
-// wait waits until the container has stopped.
+// wait waits until the container has reached the condition specified.
 //
-// The passed `stopFn` function is periodically called (to ensure that the
+// The passed `requestFn` function is periodically called (to ensure that the
 // daemon absolutely receives the request) and is used to stop the container.
-func (d *dockerWaiter) wait(ctx context.Context, containerID string, stopFn func()) error {
-	statusCh, errCh := d.client.ContainerWait(ctx, containerID, container.WaitConditionNotRunning)
+func (d *dockerWaiter) wait(
+	ctx context.Context,
+	containerID string,
+	requestFn func(),
+	condition container.WaitCondition,
+) error {
+	statusCh, errCh := d.client.ContainerWait(ctx, containerID, condition)
 
-	if stopFn != nil {
-		stopFn()
+	if requestFn != nil {
+		requestFn()
 	}
 
 	for {
 		select {
 		case <-time.After(time.Second):
-			if stopFn != nil {
-				stopFn()
+			if requestFn != nil {
+				requestFn()
 			}
 
 		case err := <-errCh:
 			return err
 
 		case status := <-statusCh:
-			if status.StatusCode != 0 {
+			if condition == container.WaitConditionNotRunning && status.StatusCode != 0 {
 				return &common.BuildError{
 					Inner:    fmt.Errorf("exit code %d", status.StatusCode),
 					ExitCode: int(status.StatusCode),

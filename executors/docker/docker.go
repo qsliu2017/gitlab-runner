@@ -71,7 +71,7 @@ type executor struct {
 	volumeParser              parser.Parser
 	newVolumePermissionSetter func() (permission.Setter, error)
 	info                      types.Info
-	waiter                    wait.KillWaiter
+	waiter                    wait.KillRemoveWaiter
 
 	temporary []string // IDs of containers that should be removed
 
@@ -838,7 +838,7 @@ func (e *executor) connectDocker() error {
 		return err
 	}
 
-	e.waiter = wait.NewDockerKillWaiter(e.client)
+	e.waiter = wait.NewDockerWaiter(e.client)
 
 	return err
 }
@@ -1035,8 +1035,12 @@ func (e *executor) Cleanup() {
 	remove := func(id string) {
 		wg.Add(1)
 		go func() {
-			_ = e.removeContainer(ctx, id)
-			wg.Done()
+			defer wg.Done()
+
+			err := e.waiter.RemoveWait(ctx, id)
+			if err != nil {
+				logrus.Errorln("Cleanup unable to remove docker container: ", err)
+			}
 		}()
 	}
 

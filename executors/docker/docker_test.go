@@ -31,6 +31,7 @@ import (
 	"gitlab.com/gitlab-org/gitlab-runner/executors/docker/internal/pull"
 	"gitlab.com/gitlab-org/gitlab-runner/executors/docker/internal/volumes"
 	"gitlab.com/gitlab-org/gitlab-runner/executors/docker/internal/volumes/parser"
+	"gitlab.com/gitlab-org/gitlab-runner/executors/docker/internal/wait"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers/container/helperimage"
 	service_test "gitlab.com/gitlab-org/gitlab-runner/helpers/container/services/test"
@@ -381,7 +382,7 @@ type volumesTestCase struct {
 	gitStrategy              string
 	adjustConfiguration      func(e *executor)
 	volumesManagerAssertions func(*volumes.MockManager)
-	clientAssertions         func(*docker.MockClient)
+	clientAssertions         func(*docker.MockClient, *wait.MockKillRemoveWaiter)
 	createVolumeManager      bool
 	expectedError            error
 }
@@ -394,6 +395,7 @@ func getExecutorForVolumesTests(t *testing.T, test volumesTestCase) (*executor, 
 
 	clientMock := new(docker.MockClient)
 	clientMock.On("Close").Return(nil).Once()
+	waiterMock := new(wait.MockKillRemoveWaiter)
 
 	volumesManagerMock := new(volumes.MockManager)
 	if !errors.Is(test.expectedError, errVolumesManagerUndefined) {
@@ -408,6 +410,7 @@ func getExecutorForVolumesTests(t *testing.T, test volumesTestCase) (*executor, 
 
 		volumesManagerMock.AssertExpectations(t)
 		clientMock.AssertExpectations(t)
+		waiterMock.AssertExpectations(t)
 	}
 
 	createVolumesManager = func(_ *executor) (volumes.Manager, error) {
@@ -419,7 +422,7 @@ func getExecutorForVolumesTests(t *testing.T, test volumesTestCase) (*executor, 
 	}
 
 	if test.clientAssertions != nil {
-		test.clientAssertions(clientMock)
+		test.clientAssertions(clientMock, waiterMock)
 	}
 
 	c := common.RunnerConfig{
@@ -456,6 +459,7 @@ func getExecutorForVolumesTests(t *testing.T, test volumesTestCase) (*executor, 
 		},
 	}
 	e.client = clientMock
+	e.waiter = waiterMock
 	e.info = types.Info{
 		OSType: helperimage.OSTypeLinux,
 	}
@@ -795,7 +799,7 @@ func TestCreateDependencies(t *testing.T) {
 				}).
 				Once()
 		},
-		clientAssertions: func(c *docker.MockClient) {
+		clientAssertions: func(c *docker.MockClient, waiter *wait.MockKillRemoveWaiter) {
 			hostConfigMatcher := mock.MatchedBy(func(conf *container.HostConfig) bool {
 				return assert.Equal(t, []string{"/volume", "/builds"}, conf.Binds)
 			})
@@ -805,11 +809,11 @@ func TestCreateDependencies(t *testing.T) {
 				Once()
 			c.On("NetworkList", mock.Anything, mock.Anything).
 				Return(nil, nil).
-				Times(2)
+				Times(1)
 			c.On("ContainerRemove", mock.Anything, containerNameMatcher, mock.Anything).
 				Return(nil).
 				Once()
-			c.On("ContainerRemove", mock.Anything, containerID, mock.Anything).
+			waiter.On("RemoveWait", mock.Anything, containerID).
 				Return(nil).
 				Once()
 			c.On(
@@ -1365,6 +1369,7 @@ func getExecutorForNetworksTests(t *testing.T, test networksTestCase) (*executor
 	t.Helper()
 
 	clientMock := new(docker.MockClient)
+	waiterMock := new(wait.MockKillRemoveWaiter)
 	networksManagerMock := new(networks.MockManager)
 
 	oldCreateNetworksManager := createNetworksManager
@@ -1373,6 +1378,7 @@ func getExecutorForNetworksTests(t *testing.T, test networksTestCase) (*executor
 
 		networksManagerMock.AssertExpectations(t)
 		clientMock.AssertExpectations(t)
+		waiterMock.AssertExpectations(t)
 	}
 
 	createNetworksManager = func(_ *executor) (networks.Manager, error) {
@@ -1416,6 +1422,7 @@ func getExecutorForNetworksTests(t *testing.T, test networksTestCase) (*executor
 			},
 		},
 		client: clientMock,
+		waiter: waiterMock,
 		info: types.Info{
 			OSType: helperimage.OSTypeLinux,
 		},
