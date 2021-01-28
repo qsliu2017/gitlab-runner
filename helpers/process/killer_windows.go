@@ -3,6 +3,8 @@ package process
 import (
 	"os/exec"
 	"strconv"
+
+	"golang.org/x/sys/windows"
 )
 
 type windowsKiller struct {
@@ -17,15 +19,13 @@ func newKiller(logger Logger, cmd Commander) killer {
 	}
 }
 
-// Terminate on windows sends a taskkill to the command and it's child processes
-// forcefully `/F` since most time the process can't be killed and ends up
-// erroring out.
+// https://docs.microsoft.com/en-us/windows/console/generateconsolectrlevent
 func (pk *windowsKiller) Terminate() {
 	if pk.cmd.Process() == nil {
 		return
 	}
 
-	err := taskKill(pk.cmd.Process().Pid)
+	err := windows.GenerateConsoleCtrlEvent(windows.CTRL_BREAK_EVENT, uint32(pk.cmd.Process().Pid))
 	if err != nil {
 		pk.logger.Warn("Failed to terminate process:", err)
 
