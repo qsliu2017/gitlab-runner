@@ -774,7 +774,7 @@ func testKubernetesGarbageCollection(t *testing.T, featureFlagName string, featu
 		"pod deletion during prepare stage in custom namespace": {
 			namespace: generateRandomNamespace("gc"),
 			init: func(t *testing.T, build *common.Build, client *k8s.Clientset, namespace string) {
-				err := retry.New(newNamespaceManager(client, createNamespace, namespace)).Run()
+				err := retry.NewBackoff(newNamespaceManager(client, createNamespace, namespace)).Run()
 				require.NoError(t, err)
 
 				credentials, err := getSecrets(client, namespace, "")
@@ -786,7 +786,7 @@ func testKubernetesGarbageCollection(t *testing.T, featureFlagName string, featu
 				assert.Empty(t, configMaps)
 			},
 			finalize: func(t *testing.T, client *k8s.Clientset, namespace string) {
-				err := retry.New(newNamespaceManager(client, deleteNamespace, namespace)).Run()
+				err := retry.NewBackoff(newNamespaceManager(client, deleteNamespace, namespace)).Run()
 				require.NoError(t, err)
 			},
 		},

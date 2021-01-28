@@ -1605,7 +1605,7 @@ func (s *executor) runInContainer(name string, command []string) <-chan error {
 			Executor: &DefaultRemoteExecutor{},
 		}
 
-		retryable := retry.New(retry.WithBuildLog(&attach, &s.BuildLogger))
+		retryable := retry.NewBackoff(retry.WithBuildLog(&attach, &s.BuildLogger))
 		err := retryable.Run()
 		if err != nil {
 			errCh <- err
@@ -1660,7 +1660,7 @@ func (s *executor) runInContainerWithExecLegacy(
 			Executor:      &DefaultRemoteExecutor{},
 		}
 
-		retryable := retry.New(retry.WithBuildLog(&exec, &s.BuildLogger))
+		retryable := retry.NewBackoff(retry.WithBuildLog(&exec, &s.BuildLogger))
 		errCh <- retryable.Run()
 	}()
 

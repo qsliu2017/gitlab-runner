@@ -189,7 +189,7 @@ func (c *ArtifactsUploaderCommand) Execute(*cli.Context) {
 
 	// If the upload fails, exit with a non-zero exit code to indicate an issue?
 	logger := logrus.WithField("context", "artifacts-uploader")
-	retryable := retry.New(retry.WithLogrus(c, logger))
+	retryable := retry.NewBackoff(retry.WithLogrus(c, logger))
 	err = retryable.Run()
 	if err != nil {
 		logrus.Fatalln(err)

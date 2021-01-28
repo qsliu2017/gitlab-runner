@@ -1,17 +1,9 @@
 package retry
 
 import (
-	"time"
-
-	"github.com/jpillora/backoff"
 	"github.com/sirupsen/logrus"
 
 	"gitlab.com/gitlab-org/gitlab-runner/common"
-)
-
-const (
-	defaultRetryMinBackoff = 1 * time.Second
-	defaultRetryMaxBackoff = 5 * time.Second
 )
 
 type Retryable interface {
@@ -19,37 +11,13 @@ type Retryable interface {
 	ShouldRetry(tries int, err error) bool
 }
 
-type Retry struct {
-	retryable Retryable
-	backoff   *backoff.Backoff
+type Retry interface {
+	Run() error
 }
 
-func New(retry Retryable) *Retry {
-	return &Retry{
-		retryable: retry,
-		backoff:   &backoff.Backoff{Min: defaultRetryMinBackoff, Max: defaultRetryMaxBackoff},
-	}
-}
-
-func (r *Retry) Run() error {
-	var err error
-	var tries int
-	for {
-		tries++
-		err = r.retryable.Run()
-		if err == nil || !r.retryable.ShouldRetry(tries, err) {
-			break
-		}
-
-		time.Sleep(r.backoff.Duration())
-	}
-
-	return err
-}
-
-func WithLogrus(retry Retryable, log *logrus.Entry) Retryable {
-	return newRetryableDecorator(retry.Run, func(tries int, err error) bool {
-		shouldRetry := retry.ShouldRetry(tries, err)
+func WithLogrus(retryable Retryable, log *logrus.Entry) Retryable {
+	return NewRetryableDecorator(retryable.Run, func(tries int, err error) bool {
+		shouldRetry := retryable.ShouldRetry(tries, err)
 		if shouldRetry {
 			log.WithError(err).Warningln("Retrying...")
 		}
@@ -58,9 +26,9 @@ func WithLogrus(retry Retryable, log *logrus.Entry) Retryable {
 	})
 }
 
-func WithBuildLog(retry Retryable, log *common.BuildLogger) Retryable {
-	return newRetryableDecorator(retry.Run, func(tries int, err error) bool {
-		shouldRetry := retry.ShouldRetry(tries, err)
+func WithBuildLog(retryable Retryable, log *common.BuildLogger) Retryable {
+	return NewRetryableDecorator(retryable.Run, func(tries int, err error) bool {
+		shouldRetry := retryable.ShouldRetry(tries, err)
 		if shouldRetry {
 			logger := log.WithFields(logrus.Fields{logrus.ErrorKey: err})
 			logger.Warningln("Retrying...")
@@ -70,22 +38,22 @@ func WithBuildLog(retry Retryable, log *common.BuildLogger) Retryable {
 	})
 }
 
-type retryableDecorator struct {
+type RetryableDecorator struct {
 	run         func() error
 	shouldRetry func(tries int, err error) bool
 }
 
-func newRetryableDecorator(run func() error, shouldRetry func(tries int, err error) bool) *retryableDecorator {
-	return &retryableDecorator{
+func NewRetryableDecorator(run func() error, shouldRetry func(tries int, err error) bool) *RetryableDecorator {
+	return &RetryableDecorator{
 		run:         run,
 		shouldRetry: shouldRetry,
 	}
 }
 
-func (d *retryableDecorator) Run() error {
+func (d *RetryableDecorator) Run() error {
 	return d.run()
 }
 
-func (d *retryableDecorator) ShouldRetry(tries int, err error) bool {
+func (d *RetryableDecorator) ShouldRetry(tries int, err error) bool {
 	return d.shouldRetry(tries, err)
 }
