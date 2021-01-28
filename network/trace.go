@@ -2,12 +2,23 @@ package network
 
 import (
 	"context"
+	"errors"
 	"sync"
 	"time"
 
 	"gitlab.com/gitlab-org/gitlab-runner/common"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers/featureflags"
+	"gitlab.com/gitlab-org/gitlab-runner/helpers/retry"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers/trace"
+)
+
+const (
+	defaultFinalUpdateTriesCount = 10
+)
+
+var (
+	ErrInvalidPatchTraceResponse = errors.New("received invalid patch trace response")
+	ErrInvalidUpdateJobResponse  = errors.New("received invalid job update response")
 )
 
 type clientJobTrace struct {
@@ -34,18 +45,20 @@ type clientJobTrace struct {
 
 	failuresCollector common.FailuresCollector
 	exitCode          int
+
+	finalUpdateTriesCount int
 }
 
 func (c *clientJobTrace) Success() {
-	c.complete(nil, common.JobFailureData{})
+	_ = c.complete(nil, common.JobFailureData{})
 }
 
-func (c *clientJobTrace) complete(err error, failureData common.JobFailureData) {
+func (c *clientJobTrace) complete(err error, failureData common.JobFailureData) error {
 	c.lock.Lock()
 
 	if c.state != common.Running {
 		c.lock.Unlock()
-		return
+		return nil
 	}
 
 	if err == nil {
@@ -55,11 +68,12 @@ func (c *clientJobTrace) complete(err error, failureData common.JobFailureData) 
 	}
 
 	c.lock.Unlock()
-	c.finish()
+
+	return c.finish()
 }
 
 func (c *clientJobTrace) Fail(err error, failureData common.JobFailureData) {
-	c.complete(err, failureData)
+	_ = c.complete(err, failureData)
 }
 
 func (c *clientJobTrace) Write(data []byte) (n int, err error) {
@@ -157,56 +171,80 @@ func (c *clientJobTrace) start() {
 	go c.watch()
 }
 
-func (c *clientJobTrace) ensureAllTraceSent() {
-	for c.anyTraceToSend() {
-		switch c.sendPatch().State {
-		case common.PatchSucceeded:
-			// we continue sending till we succeed
-			continue
-		case common.PatchAbort:
-			return
-		case common.PatchNotFound:
-			return
-		case common.PatchRangeMismatch:
-			time.Sleep(c.getUpdateInterval())
-		case common.PatchFailed:
-			time.Sleep(c.getUpdateInterval())
+func (c *clientJobTrace) ensureAllTraceSent() error {
+	return c.newRetryableRun(func() error {
+		for c.anyTraceToSend() {
+			switch c.sendPatch().State {
+			case common.PatchSucceeded:
+				// we continue sending till we succeed
+				continue
+			case common.PatchAbort:
+				return nil
+			case common.PatchNotFound:
+				return nil
+			case common.PatchRangeMismatch:
+				time.Sleep(c.getUpdateInterval())
+			case common.PatchFailed:
+				time.Sleep(c.getUpdateInterval())
+				return ErrInvalidPatchTraceResponse
+			}
 		}
-	}
+
+		return nil
+	})
 }
 
-func (c *clientJobTrace) finalUpdate() {
+func (c *clientJobTrace) newRetryableRun(run func() error) error {
+	r := retry.NewSimple(retry.NewRetryableDecorator(
+		run,
+		func(tries int, err error) bool {
+			return tries < c.finalUpdateTriesCount
+		},
+	))
+
+	return r.Run()
+}
+
+func (c *clientJobTrace) finalUpdate() error {
 	// On final-update we want the Runner to fallback
 	// to default interval and make Rails to override it
 	c.setUpdateInterval(common.DefaultUpdateInterval)
 
-	for {
-		// Before sending update to ensure that trace is sent
-		// as `sendUpdate()` can force Runner to rewind trace
-		c.ensureAllTraceSent()
+	return c.newRetryableRun(func() error {
+		for {
+			// Before sending update to ensure that trace is sent
+			// as `sendUpdate()` can force Runner to rewind trace
+			err := c.ensureAllTraceSent()
+			if err != nil {
+				return err
+			}
 
-		switch c.sendUpdate() {
-		case common.UpdateSucceeded:
-			return
-		case common.UpdateAbort:
-			return
-		case common.UpdateNotFound:
-			return
-		case common.UpdateAcceptedButNotCompleted:
-			time.Sleep(c.getUpdateInterval())
-		case common.UpdateTraceValidationFailed:
-			time.Sleep(c.getUpdateInterval())
-		case common.UpdateFailed:
-			time.Sleep(c.getUpdateInterval())
+			switch c.sendUpdate() {
+			case common.UpdateSucceeded:
+				return nil
+			case common.UpdateAbort:
+				return nil
+			case common.UpdateNotFound:
+				return nil
+			case common.UpdateAcceptedButNotCompleted:
+				time.Sleep(c.getUpdateInterval())
+			case common.UpdateTraceValidationFailed:
+				time.Sleep(c.getUpdateInterval())
+			case common.UpdateFailed:
+				time.Sleep(c.getUpdateInterval())
+				return ErrInvalidUpdateJobResponse
+			}
 		}
-	}
+	})
 }
 
-func (c *clientJobTrace) finish() {
+func (c *clientJobTrace) finish() error {
 	c.buffer.Finish()
 	c.finished <- true
-	c.finalUpdate()
+	err := c.finalUpdate()
 	c.buffer.Close()
+
+	return err
 }
 
 // incrementalUpdate returns a flag if jobs is supposed
@@ -412,13 +450,14 @@ func newJobTrace(
 	}
 
 	return &clientJobTrace{
-		client:            client,
-		config:            config,
-		buffer:            buffer,
-		jobCredentials:    jobCredentials,
-		id:                jobCredentials.ID,
-		maxTracePatchSize: common.DefaultTracePatchLimit,
-		updateInterval:    common.DefaultUpdateInterval,
-		forceSendInterval: common.MinTraceForceSendInterval,
+		client:                client,
+		config:                config,
+		buffer:                buffer,
+		jobCredentials:        jobCredentials,
+		id:                    jobCredentials.ID,
+		maxTracePatchSize:     common.DefaultTracePatchLimit,
+		updateInterval:        common.DefaultUpdateInterval,
+		forceSendInterval:     common.MinTraceForceSendInterval,
+		finalUpdateTriesCount: defaultFinalUpdateTriesCount,
 	}, nil
 }

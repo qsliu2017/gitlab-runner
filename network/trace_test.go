@@ -18,6 +18,7 @@ import (
 
 	"gitlab.com/gitlab-org/gitlab-runner/common"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers/featureflags"
+	"gitlab.com/gitlab-org/gitlab-runner/helpers/retry"
 )
 
 var (
@@ -432,18 +433,21 @@ func TestJobFinishStatusUpdateRetry(t *testing.T) {
 	b, err := newTestJobTrace(mockNetwork, jobConfig)
 	require.NoError(t, err)
 
+	repeatFailures := 5
+	b.finalUpdateTriesCount = repeatFailures + 2
+
 	ignoreOptionalTouchJob(mockNetwork)
 
-	// fail job 5 times
+	// fail request 5 times
 	mockNetwork.On("UpdateJob", jobConfig, jobCredentials, updateMatcher).
 		Return(common.UpdateJobResult{State: common.UpdateFailed}).
 		Run(func(args mock.Arguments) {
 			// Ensure that short interval is used on retry to speed-up test
 			b.setUpdateInterval(time.Microsecond)
 		}).
-		Times(5)
+		Times(repeatFailures)
 
-	// accept job
+	// accept request
 	mockNetwork.On("UpdateJob", jobConfig, jobCredentials, updateMatcher).
 		Return(common.UpdateJobResult{State: common.UpdateSucceeded}).Once()
 
@@ -915,6 +919,7 @@ func TestDynamicForceSendUpdate(t *testing.T) {
 func TestFinalUpdateInfiniteLoops(t *testing.T) {
 	traceContent := "some test trace"
 	updateInterval := 1 * time.Millisecond
+	finalUpdateTriesCount := 3
 
 	patchTraceSuccess := func(m *common.MockNetwork, trace *clientJobTrace) {
 		m.On("PatchTrace", jobConfig, jobCredentials, mock.Anything, mock.Anything).
@@ -938,6 +943,9 @@ func TestFinalUpdateInfiniteLoops(t *testing.T) {
 						NewUpdateInterval: updateInterval,
 					})
 			},
+			assertError: func(t *testing.T, err error) {
+				assert.NoError(t, err)
+			},
 		},
 		"ensureAllTraceSent loop finished but infinite finalUpdate() loop": {
 			prepareNetworkMock: func(m *common.MockNetwork, trace *clientJobTrace) {
@@ -948,6 +956,11 @@ func TestFinalUpdateInfiniteLoops(t *testing.T) {
 						NewUpdateInterval: updateInterval,
 					})
 			},
+			assertError: func(t *testing.T, err error) {
+				assert.ErrorIs(t, err, ErrInvalidUpdateJobResponse)
+				var e *retry.ErrRetriesExceeded
+				assert.ErrorAs(t, err, &e)
+			},
 		},
 		"infinite ensureAllTraceSent() loop": {
 			prepareNetworkMock: func(m *common.MockNetwork, trace *clientJobTrace) {
@@ -956,6 +969,11 @@ func TestFinalUpdateInfiniteLoops(t *testing.T) {
 						State:             common.PatchFailed,
 						NewUpdateInterval: updateInterval,
 					})
+			},
+			assertError: func(t *testing.T, err error) {
+				assert.ErrorIs(t, err, ErrInvalidPatchTraceResponse)
+				var e *retry.ErrRetriesExceeded
+				assert.ErrorAs(t, err, &e)
 			},
 		},
 	}
@@ -969,6 +987,7 @@ func TestFinalUpdateInfiniteLoops(t *testing.T) {
 			require.NoError(t, err)
 
 			trace.updateInterval = updateInterval
+			trace.finalUpdateTriesCount = finalUpdateTriesCount
 
 			_, err = fmt.Fprint(trace, traceContent)
 			require.NoError(t, err)
@@ -977,15 +996,15 @@ func TestFinalUpdateInfiniteLoops(t *testing.T) {
 
 			trace.start()
 
-			done := make(chan struct{})
+			done := make(chan error)
 			go func() {
-				defer close(done)
-				trace.complete(nil, common.JobFailureData{})
+				done <- trace.complete(nil, common.JobFailureData{})
 			}()
 
 			select {
-			case <-done:
-			case <-time.After(2 * time.Second):
+			case err := <-done:
+				tt.assertError(t, err)
+			case <-time.After(1 * time.Second):
 				assert.FailNow(t, "trace completion timed out; probably in infinite loop")
 			}
 		})
