@@ -911,3 +911,83 @@ func TestDynamicForceSendUpdate(t *testing.T) {
 		})
 	}
 }
+
+func TestFinalUpdateInfiniteLoops(t *testing.T) {
+	traceContent := "some test trace"
+	updateInterval := 1 * time.Millisecond
+
+	patchTraceSuccess := func(m *common.MockNetwork, trace *clientJobTrace) {
+		m.On("PatchTrace", jobConfig, jobCredentials, mock.Anything, mock.Anything).
+			Return(common.PatchTraceResult{
+				State:             common.PatchSucceeded,
+				SentOffset:        trace.buffer.Size(),
+				NewUpdateInterval: updateInterval,
+			})
+	}
+
+	tests := map[string]struct {
+		prepareNetworkMock func(m *common.MockNetwork, trace *clientJobTrace)
+		assertError        func(t *testing.T, err error)
+	}{
+		"both loops finished": {
+			prepareNetworkMock: func(m *common.MockNetwork, trace *clientJobTrace) {
+				patchTraceSuccess(m, trace)
+				m.On("UpdateJob", jobConfig, jobCredentials, mock.Anything).
+					Return(common.UpdateJobResult{
+						State:             common.UpdateSucceeded,
+						NewUpdateInterval: updateInterval,
+					})
+			},
+		},
+		"ensureAllTraceSent loop finished but infinite finalUpdate() loop": {
+			prepareNetworkMock: func(m *common.MockNetwork, trace *clientJobTrace) {
+				patchTraceSuccess(m, trace)
+				m.On("UpdateJob", jobConfig, jobCredentials, mock.Anything).
+					Return(common.UpdateJobResult{
+						State:             common.UpdateFailed,
+						NewUpdateInterval: updateInterval,
+					})
+			},
+		},
+		"infinite ensureAllTraceSent() loop": {
+			prepareNetworkMock: func(m *common.MockNetwork, trace *clientJobTrace) {
+				m.On("PatchTrace", jobConfig, jobCredentials, mock.Anything, mock.Anything).
+					Return(common.PatchTraceResult{
+						State:             common.PatchFailed,
+						NewUpdateInterval: updateInterval,
+					})
+			},
+		},
+	}
+
+	for tn, tt := range tests {
+		t.Run(tn, func(t *testing.T) {
+			networkMock := new(common.MockNetwork)
+			defer networkMock.AssertExpectations(t)
+
+			trace, err := newJobTrace(networkMock, jobConfig, jobCredentials)
+			require.NoError(t, err)
+
+			trace.updateInterval = updateInterval
+
+			_, err = fmt.Fprint(trace, traceContent)
+			require.NoError(t, err)
+
+			tt.prepareNetworkMock(networkMock, trace)
+
+			trace.start()
+
+			done := make(chan struct{})
+			go func() {
+				defer close(done)
+				trace.complete(nil, common.JobFailureData{})
+			}()
+
+			select {
+			case <-done:
+			case <-time.After(2 * time.Second):
+				assert.FailNow(t, "trace completion timed out; probably in infinite loop")
+			}
+		})
+	}
+}
