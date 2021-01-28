@@ -388,7 +388,7 @@ func TestJobFailure(t *testing.T) {
 	trace.On("SetCancelFunc", mock.Anything).Once()
 	trace.On("SetAbortFunc", mock.Anything).Once()
 	trace.On("SetMasked", mock.Anything).Once()
-	trace.On("Fail", thrownErr, JobFailureData{Reason: ScriptFailure, ExitCode: 1}).Once()
+	trace.On("Fail", thrownErr, JobFailureData{Reason: ScriptFailure, ExitCode: 1}).Return(nil).Once()
 
 	err = build.Run(&Config{}, trace)
 
@@ -425,7 +425,7 @@ func TestJobFailureOnExecutionTimeout(t *testing.T) {
 	trace.On("SetMasked", mock.Anything).Once()
 	trace.On("Fail", mock.Anything, JobFailureData{Reason: JobExecutionTimeout}).Run(func(arguments mock.Arguments) {
 		assert.Error(t, arguments.Get(0).(error))
-	}).Once()
+	}).Return(nil).Once()
 
 	err := build.Run(&Config{}, trace)
 
@@ -1981,7 +1981,7 @@ func TestBuildSupportedFailureReasons(t *testing.T) {
 					Reason:   tc.expectedReason,
 					ExitCode: 0,
 				},
-			).Once()
+			).Return(nil).Once()
 
 			b.setTraceStatus(trace, err)
 		})
@@ -1996,25 +1996,25 @@ func TestSetTraceStatus(t *testing.T) {
 		"nil error is successful": {
 			err: nil,
 			assert: func(t *testing.T, mt *MockJobTrace, err error) {
-				mt.On("Success").Once()
+				mt.On("Success").Return(nil).Once()
 			},
 		},
 		"build error, script failure": {
 			err: &BuildError{FailureReason: ScriptFailure},
 			assert: func(t *testing.T, mt *MockJobTrace, err error) {
-				mt.On("Fail", err, JobFailureData{Reason: ScriptFailure}).Once()
+				mt.On("Fail", err, JobFailureData{Reason: ScriptFailure}).Return(nil).Once()
 			},
 		},
 		"build error, wrapped script failure": {
 			err: fmt.Errorf("wrapped: %w", &BuildError{FailureReason: ScriptFailure}),
 			assert: func(t *testing.T, mt *MockJobTrace, err error) {
-				mt.On("Fail", err, JobFailureData{Reason: ScriptFailure}).Once()
+				mt.On("Fail", err, JobFailureData{Reason: ScriptFailure}).Return(nil).Once()
 			},
 		},
 		"non-build error": {
 			err: fmt.Errorf("some error"),
 			assert: func(t *testing.T, mt *MockJobTrace, err error) {
-				mt.On("Fail", err, JobFailureData{Reason: RunnerSystemFailure}).Once()
+				mt.On("Fail", err, JobFailureData{Reason: RunnerSystemFailure}).Return(nil).Once()
 			},
 		},
 	}

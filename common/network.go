@@ -559,8 +559,8 @@ type FailuresCollector interface {
 
 type JobTrace interface {
 	io.Writer
-	Success()
-	Fail(err error, failureData JobFailureData)
+	Success() error
+	Fail(err error, failureData JobFailureData) error
 	SetCancelFunc(cancelFunc context.CancelFunc)
 	Cancel() bool
 	SetAbortFunc(abortFunc context.CancelFunc)

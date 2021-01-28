@@ -87,8 +87,10 @@ func TestIgnoreStatusChange(t *testing.T) {
 	require.NoError(t, err)
 
 	b.start()
-	b.Success()
-	b.Fail(errors.New("test"), common.JobFailureData{Reason: "script_failure"})
+	err = b.Success()
+	assert.NoError(t, err)
+	err = b.Fail(errors.New("test"), common.JobFailureData{Reason: "script_failure"})
+	assert.NoError(t, err)
 }
 
 func TestTouchJobAbort(t *testing.T) {
@@ -122,7 +124,8 @@ func TestTouchJobAbort(t *testing.T) {
 	b.start()
 	assert.NotNil(t, <-abortCtx.Done(), "should abort the job")
 	assert.Nil(t, cancelCtx.Err(), "should not cancel job")
-	b.Success()
+	err = b.Success()
+	assert.NoError(t, err)
 }
 
 func TestTouchJobCancel(t *testing.T) {
@@ -156,7 +159,8 @@ func TestTouchJobCancel(t *testing.T) {
 	b.start()
 	assert.NotNil(t, <-cancelCtx.Done(), "should cancel the job")
 	assert.NoError(t, abortCtx.Err())
-	b.Success()
+	err = b.Success()
+	assert.NoError(t, err)
 }
 
 func TestSendPatchAbort(t *testing.T) {
@@ -189,7 +193,8 @@ func TestSendPatchAbort(t *testing.T) {
 	fmt.Fprint(b, "Trace\n")
 	b.start()
 	assert.NotNil(t, <-ctx.Done(), "should abort the job")
-	b.Success()
+	err = b.Success()
+	assert.NoError(t, err)
 }
 
 func TestJobOutputLimit(t *testing.T) {
@@ -230,9 +235,10 @@ func TestJobOutputLimit(t *testing.T) {
 	b.start()
 	// Write 5k to the buffer
 	for i := 0; i < traceMessageSize; i++ {
-		fmt.Fprint(b, traceMessage)
+		_, _ = fmt.Fprint(b, traceMessage)
 	}
-	b.Success()
+	err = b.Success()
+	assert.NoError(t, err)
 
 	assert.Contains(t, receivedTrace.String(), traceMessage)
 	assert.Contains(t, receivedTrace.String(), expectedLogLimitExceededMsg)
@@ -262,7 +268,8 @@ func TestJobMasking(t *testing.T) {
 
 	_, err = jobTrace.Write([]byte(traceMessage))
 	require.NoError(t, err)
-	jobTrace.Success()
+	err = jobTrace.Success()
+	assert.NoError(t, err)
 }
 
 func TestJobFinishTraceUpdateRetry(t *testing.T) {
@@ -310,8 +317,9 @@ func TestJobFinishTraceUpdateRetry(t *testing.T) {
 		Once()
 
 	b.start()
-	fmt.Fprint(b, "My trace send")
-	b.Success()
+	_, _ = fmt.Fprint(b, "My trace send")
+	err = b.Success()
+	assert.NoError(t, err)
 }
 
 func TestJobDelayedTraceProcessingWithRejection(t *testing.T) {
@@ -386,8 +394,9 @@ func TestJobDelayedTraceProcessingWithRejection(t *testing.T) {
 	b.maxTracePatchSize = 10
 
 	b.start()
-	fmt.Fprint(b, "My trace send")
-	b.Success()
+	_, _ = fmt.Fprint(b, "My trace send")
+	err = b.Success()
+	assert.NoError(t, err)
 }
 
 func TestJobMaxTracePatchSize(t *testing.T) {
@@ -420,8 +429,9 @@ func TestJobMaxTracePatchSize(t *testing.T) {
 	b.maxTracePatchSize = 5
 
 	b.start()
-	fmt.Fprint(b, "My trace send")
-	b.Success()
+	_, _ = fmt.Fprint(b, "My trace send")
+	err = b.Success()
+	assert.NoError(t, err)
 }
 
 func TestJobFinishStatusUpdateRetry(t *testing.T) {
@@ -452,7 +462,8 @@ func TestJobFinishStatusUpdateRetry(t *testing.T) {
 		Return(common.UpdateJobResult{State: common.UpdateSucceeded}).Once()
 
 	b.start()
-	b.Success()
+	err = b.Success()
+	assert.NoError(t, err)
 }
 
 func TestJobIncrementalPatchSend(t *testing.T) {
@@ -484,7 +495,8 @@ func TestJobIncrementalPatchSend(t *testing.T) {
 	b.start()
 	fmt.Fprint(b, "123456789\n")
 	wg.Wait()
-	b.Success()
+	err = b.Success()
+	assert.NoError(t, err)
 }
 
 func TestJobIncrementalStatusRefresh(t *testing.T) {
@@ -522,7 +534,8 @@ func TestJobIncrementalStatusRefresh(t *testing.T) {
 	b.lock.Unlock()
 
 	wg.Wait()
-	b.finish()
+	err = b.finish()
+	assert.NoError(t, err)
 }
 
 func TestCancelingJobIncrementalUpdate(t *testing.T) {
@@ -592,7 +605,8 @@ func TestCancelingJobIncrementalUpdate(t *testing.T) {
 			b.start()
 			fmt.Fprint(b, "123456789\n987654321\n")
 			wg.Wait()
-			b.Success()
+			err = b.Success()
+			assert.NoError(t, err)
 		})
 	}
 }
@@ -722,7 +736,8 @@ func TestUpdateIntervalChanges(t *testing.T) {
 					10*time.Millisecond,
 				)
 
-				trace.Success()
+				err = trace.Success()
+				assert.NoError(t, err)
 			})
 
 			t.Run("touchJob", func(t *testing.T) {
@@ -764,7 +779,8 @@ func TestUpdateIntervalChanges(t *testing.T) {
 					10*time.Millisecond,
 				)
 
-				trace.Success()
+				err = trace.Success()
+				assert.NoError(t, err)
 			})
 
 			t.Run("finalStatusUpdate", func(t *testing.T) {
@@ -793,7 +809,8 @@ func TestUpdateIntervalChanges(t *testing.T) {
 
 				trace.start()
 				assert.Equal(t, tt.initialUpdateInterval, trace.getUpdateInterval())
-				trace.Success()
+				err = trace.Success()
+				assert.NoError(t, err)
 
 				waitForFinalUpdate.Wait()
 				assert.Equal(t, tt.afterFinalUpdateInterval, trace.getUpdateInterval())
@@ -841,7 +858,8 @@ func TestJobChecksum(t *testing.T) {
 
 	_, err = jobTrace.Write([]byte(traceMessage))
 	require.NoError(t, err)
-	jobTrace.Success()
+	err = jobTrace.Success()
+	assert.NoError(t, err)
 }
 
 func TestJobBytesize(t *testing.T) {
@@ -876,7 +894,8 @@ func TestJobBytesize(t *testing.T) {
 
 	_, err = jobTrace.Write([]byte(traceMessage))
 	require.NoError(t, err)
-	jobTrace.Success()
+	err = jobTrace.Success()
+	assert.NoError(t, err)
 }
 
 func TestDynamicForceSendUpdate(t *testing.T) {

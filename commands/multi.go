@@ -530,10 +530,21 @@ func (mr *RunCommand) processRunner(
 
 func (mr *RunCommand) traceOutcome(trace common.JobTrace, err error) {
 	if err != nil {
-		fmt.Fprintln(trace, err.Error())
-		trace.Fail(err, common.JobFailureData{Reason: common.RunnerSystemFailure})
-	} else {
-		trace.Success()
+		_, _ = fmt.Fprintln(trace, err.Error())
+
+		err = trace.Fail(err, common.JobFailureData{Reason: common.RunnerSystemFailure})
+		logTerminationError(mr.log(), "Fail", err)
+
+		return
+	}
+
+	err = trace.Success()
+	logTerminationError(mr.log(), "Success", err)
+}
+
+func logTerminationError(logger logrus.FieldLogger, name string, err error) {
+	if err != nil {
+		logger.WithError(err).Errorf("Job trace termination %q failed", name)
 	}
 }
 

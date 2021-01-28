@@ -107,7 +107,10 @@ func (r *RunSingleCommand) processBuild(data common.ExecutorData, abortSignal ch
 		return err
 	}
 
-	defer trace.Success()
+	defer func() {
+		err := trace.Success()
+		logTerminationError(logrus.StandardLogger(), "Success", err)
+	}()
 
 	err = newBuild.Run(config, trace)
 
