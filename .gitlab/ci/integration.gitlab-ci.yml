@@ -6,11 +6,9 @@ register linux-amd64:
   needs: 
   - 'binaries linux/386 linux/amd64 linux/arm linux/arm64 linux/s390x'
   before_script:
-  - apk update
-  - apk add build-base
-  - apk add diffutils
+  - apk update -y
+  - apk add -y build-base diffutils
   - cp /builds/gitlab-org/gitlab-runner/out/binaries/gitlab-runner-linux-amd64 /usr/local/bin/gitlab-runner
   - chmod +x /usr/local/bin/gitlab-runner
   script:
   - go test /builds/gitlab-org/gitlab-runner/tests/integration
-  allow_failure: true
