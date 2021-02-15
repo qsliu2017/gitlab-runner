@@ -32,12 +32,12 @@ type Buffer struct {
 }
 
 func (b *Buffer) SetMasked(values []string) {
-	b.lock.RLock()
-	defer b.lock.RUnlock()
+	b.lock.Lock()
+	defer b.lock.Unlock()
 
-	// changes cannot be made after the first call to Write()
+	// close existing writer to flush data
 	if b.w != nil {
-		return
+		b.w.Close()
 	}
 
 	b.transformers = make([]transform.Transformer, 0, len(values))
@@ -45,18 +45,15 @@ func (b *Buffer) SetMasked(values []string) {
 	for _, value := range values {
 		b.transformers = append(b.transformers, NewPhraseTransform(value))
 	}
+
+	b.w = transform.NewWriter(b.lw, transform.Chain(b.transformers...))
 }
 
 func (b *Buffer) SetLimit(size int) {
-	b.lock.RLock()
-	defer b.lock.RUnlock()
+	b.lock.Lock()
+	defer b.lock.Unlock()
 
-	// changes cannot be made after the first call to Write()
-	if b.w != nil {
-		return
-	}
-
-	b.bytesLimit = size
+	b.lw.limit = int64(size)
 }
 
 func (b *Buffer) Size() int {
@@ -76,16 +73,6 @@ func (b *Buffer) Bytes(offset, n int) ([]byte, error) {
 func (b *Buffer) Write(p []byte) (int, error) {
 	b.lock.Lock()
 	defer b.lock.Unlock()
-
-	if b.w == nil {
-		b.lw = &limitWriter{
-			w:       io.MultiWriter(b.logFile, b.checksum),
-			written: 0,
-			limit:   int64(b.bytesLimit),
-		}
-
-		b.w = transform.NewWriter(b.lw, transform.Chain(b.transformers...))
-	}
 
 	n, err := b.w.Write(p)
 	// if we get a log limit exceeded error, we've written the log limit
@@ -171,6 +158,14 @@ func New() (*Buffer, error) {
 		logFile:    logFile,
 		checksum:   crc32.NewIEEE(),
 	}
+
+	buffer.lw = &limitWriter{
+		w:       io.MultiWriter(buffer.logFile, buffer.checksum),
+		written: 0,
+		limit:   defaultBytesLimit,
+	}
+
+	buffer.SetMasked(nil)
 
 	return buffer, nil
 }

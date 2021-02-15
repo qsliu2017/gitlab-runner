@@ -65,6 +65,46 @@ func TestTraceLimit(t *testing.T) {
 	assert.Equal(t, expectedContent, string(content))
 }
 
+func TestDelayedMask(t *testing.T) {
+	buffer, err := New()
+	require.NoError(t, err)
+	defer buffer.Close()
+
+	buffer.Write([]byte("data before mask\n"))
+	buffer.SetMasked([]string{"mask_me"})
+	buffer.Write([]byte("data mask_me masked\n"))
+
+	buffer.Finish()
+
+	content, err := buffer.Bytes(0, 1000)
+	require.NoError(t, err)
+
+	expectedContent := "data before mask\ndata [MASKED] masked\n"
+	assert.Equal(t, len(expectedContent), buffer.Size(), "unexpected buffer size")
+	assert.Equal(t, "crc32:690f62e1", buffer.Checksum())
+	assert.Equal(t, expectedContent, string(content))
+}
+
+func TestDelayedLimit(t *testing.T) {
+	buffer, err := New()
+	require.NoError(t, err)
+	defer buffer.Close()
+
+	buffer.Write([]byte("data before limit\n"))
+	buffer.SetLimit(20)
+	buffer.Write([]byte("data after limit\n"))
+
+	buffer.Finish()
+
+	content, err := buffer.Bytes(0, 1000)
+	require.NoError(t, err)
+
+	expectedContent := "data before limit\nda\n\x1b[31;1mJob's log exceeded limit of 20 bytes.\x1b[0;m\n"
+	assert.Equal(t, len(expectedContent), buffer.Size(), "unexpected buffer size")
+	assert.Equal(t, "crc32:faa63b66", buffer.Checksum())
+	assert.Equal(t, expectedContent, string(content))
+}
+
 func TestTraceRace(t *testing.T) {
 	buffer, err := New()
 	require.NoError(t, err)
