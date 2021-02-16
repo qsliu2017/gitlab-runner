@@ -32,6 +32,46 @@
 .if-security-runner-release: &if-security-runner-release
   if: $CI_COMMIT_REF_NAME =~ /\Av[0-9]+\.[0-9]+\.[0-9]+?\z/ && $CI_PROJECT_PATH == "gitlab-org/security/gitlab-runner"
 
+.if-merge-request-pipelines-runner-only: &if-merge-request-pipelines-runner-only
+  if: $CI_PIPELINE_SOURCE == "merge_request_event" && $CI_PROJECT_PATH == "gitlab-org/gitlab-runner"
+
+####################
+# Changes patterns #
+####################
+
+.prepare-ci-image-patterns: &prepare-ci-image-patterns
+  - dockerfiles/ci/*
+  - .gitlab/ci/_common.gitlab-ci.yml
+  - .gitlab/ci/prepare.gitlab-ci.yml
+
+.prepare-alpine-no-root-image-patterns: &prepare-alpine-no-root-image-patterns
+  - tests/dockerfiles/alpine-no-root/*
+  - .gitlab/ci/prepare.gitlab-ci.yml
+
+#######################
+# Prepare stage rules #
+#######################
+
+.rules:image_builder:
+  rules:
+  - <<: *if-docs-branch
+    when: never
+  - <<: *if-merge-request-pipelines-runner-only
+
+.rules:prepare_ci_image:
+  rules:
+  - <<: *if-docs-branch
+    when: never
+  - <<: *if-merge-request-pipeline
+    changes: *prepare-ci-image-patterns
+
+.rules:prepare_alpine-no-root_image:
+  rules:
+  - <<: *if-docs-branch
+    when: never
+  - <<: *if-merge-request-pipeline
+    changes: *prepare-alpine-no-root-image-patterns
+
 #######################
 # Merge Request rules #
 #######################

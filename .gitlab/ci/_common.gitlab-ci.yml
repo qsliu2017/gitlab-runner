@@ -48,8 +48,6 @@ before_script:
   - .no_dependencies
 
 .docker:
-  extends:
-  - .except_docs
   services:
   - docker:${DOCKER_VERSION}-dind
   variables:
@@ -60,6 +58,11 @@ before_script:
     DOCKER_CERT_PATH: "/certs/client"
   tags:
   - gitlab-org-docker
+
+.docker-for-now:
+  except:
+    variables:
+    - $CI_MERGE_REQUEST_SOURCE_BRANCH_NAME =~ /(^docs[\/-].*|.*-docs$)/
 
 .docker_qemu-before_script: &docker_qemu-before_script
 - docker run --rm --privileged docker/binfmt:a7996909642ee92942dcd6cff44b9b95f08dad64

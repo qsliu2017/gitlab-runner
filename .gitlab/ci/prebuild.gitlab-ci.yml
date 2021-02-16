@@ -1,6 +1,6 @@
 helper images:
   extends:
-  - .merge_request_pipelines
+  - .rules:merge_request_pipelines:no_docs
   - .docker
   - .go-cache-docker-qemu
   stage: prebuild

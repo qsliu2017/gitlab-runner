@@ -25,10 +25,11 @@
   - source ci/touch_make_dependencies
   - make release_docker_images
   retry: 2
+  except:
+    variables:
+    - $CI_MERGE_REQUEST_SOURCE_BRANCH_NAME =~ /(^docs[\/-].*|.*-docs$)/
 
 .release_windows_docker_images:
-  extends:
-  - .except_docs
   stage: release
   variables:
     PUSH_TO_DOCKER_HUB: "true"
@@ -46,14 +47,18 @@
   script:
   - .\ci\build_release_windows_images.ps1
   retry: 2
+  except:
+    variables:
+    - $CI_MERGE_REQUEST_SOURCE_BRANCH_NAME =~ /(^docs[\/-].*|.*-docs$)/
 
 .release:
-  extends:
-  - .except_docs
   stage: release
   before_script:
   - unset GPG_KEY
   - source ci/touch_make_dependencies
+  except:
+    variables:
+    - $CI_MERGE_REQUEST_SOURCE_BRANCH_NAME =~ /(^docs[\/-].*|.*-docs$)/
 
 .release:with-rules:
   extends:
