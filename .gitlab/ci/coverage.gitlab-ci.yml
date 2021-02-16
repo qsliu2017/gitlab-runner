@@ -75,8 +75,7 @@ check windows 1809 panic test failures:
 
 .check windows test failures:
   extends:
-  - .merge_request_pipelines
-  - .except_docs
+  - .rules:merge_request_pipelines:no_docs
   stage: coverage
   script:
   - ./scripts/check_windows_failures
@@ -96,7 +95,6 @@ check windows 1903 test failures:
   extends:
   - .check windows test failures
   - .windows1903_variables
-  - .runner_master
   needs:
   - windows 1903 tests
 
@@ -104,7 +102,6 @@ check windows 1909 test failures:
   extends:
   - .check windows test failures
   - .windows1909_variables
-  - .runner_master
   needs:
   - windows 1909 tests
 
@@ -112,6 +109,5 @@ check windows 2004 test failures:
   extends:
   - .check windows test failures
   - .windows2004_variables
-  - .runner_master
   needs:
   - windows 2004 tests

@@ -105,9 +105,3 @@
   except:
     variables:
     - $CI_MERGE_REQUEST_SOURCE_BRANCH_NAME =~ /(^docs[\/-].*|.*-docs$)/
-
-.runner_master:
-  only:
-    refs:
-    - master@gitlab-org/gitlab-runner
-    - master@gitlab-org/security/gitlab-runner

@@ -180,8 +180,7 @@ fuzz variable mask:
 
 .windows test:
   extends:
-  - .merge_request_pipelines
-  - .except_docs
+  - .rules:merge_request_pipelines:no_docs
   - .go-cache-windows
   stage: test
   needs:
@@ -216,19 +215,16 @@ windows 1903 tests:
   extends:
   - .windows test
   - .windows1903
-  - .runner_master
 
 windows 1909 tests:
   extends:
   - .windows test
   - .windows1909
-  - .runner_master
 
 windows 2004 tests:
   extends:
   - .windows test
   - .windows2004
-  - .runner_master
 
 git 1.8.3.1:
   extends:
