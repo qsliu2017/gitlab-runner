@@ -7,3 +7,16 @@ trigger UBI images build:
     refs:
     - master@gitlab-org/gitlab-runner
     - /\Av[0-9]+\.[0-9]+\.[0-9]+(-rc[0-9]+)?\Z/@gitlab-org/gitlab-runner
+
+multiarch helper images:
+  stage: postrelease
+  variables:
+    PUBLISH_MULTIARCH_MANIFEST: "true"
+    PUSH_TO_DOCKER_HUB: "true"
+    PUSH_TO_ECR_PUBLIC: "true"
+  script:
+  - ./ci/release_multiarch_helper_manifest
+  only:
+    refs:
+    - master@gitlab-org/gitlab-runner
+    - /\Av[0-9]+\.[0-9]+\.[0-9]+(-rc[0-9]+)?\Z/@gitlab-org/gitlab-runner

@@ -1,0 +1,100 @@
+#!/usr/bin/env bash
+
+set -eEo pipefail
+
+CI_COMMIT_TAG=${CI_COMMIT_TAG:-}
+CI_REGISTRY=${CI_REGISTRY:-}
+CI_REGISTRY_IMAGE=${CI_REGISTRY_IMAGE:-}
+CI_REGISTRY_USER=${CI_REGISTRY_USER:-}
+CI_REGISTRY_PASSWORD=${CI_REGISTRY_PASSWORD:-}
+DOCKER_HUB_NAMESPACE=${DOCKER_HUB_NAMESPACE:-'gitlab'}
+DOCKER_HUB_USER=${DOCKER_HUB_USER:-}
+DOCKER_HUB_PASSWORD=${DOCKER_HUB_PASSWORD:-}
+ECR_PUBLIC_REGISTRY=${ECR_PUBLIC_REGISTRY:-'public.ecr.aws/gitlab'}
+ECR_PUBLIC_USER='AWS'
+ECR_PUBLIC_PASSWORD=${ECR_PUBLIC_PASSWORD:-}
+PUBLISH_MULTIARCH_MANIFEST=${PUBLISH_MULTIARCH_MANIFEST:-false}
+PUSH_TO_DOCKER_HUB=${PUSH_TO_DOCKER_HUB:-false}
+PUSH_TO_ECR_PUBLIC=${PUSH_TO_ECR_PUBLIC:-false}
+
+ref_tag="${CI_COMMIT_TAG}"
+if [[ -z "${ref_tag}" ]]; then
+    ref_tag=${CI_COMMIT_REF_SLUG:-master}
+fi
+
+if [[ "${ref_tag}" == "master" ]]; then
+    ref_tag=bleeding
+fi
+
+REVISION=${REVISION:-}
+if [[ -z "${REVISION}" ]]; then
+    REVISION=$(git rev-parse --short=8 HEAD || echo "unknown")
+fi
+
+create_push_manifest() {
+    docker manifest create --amend $1 $2
+    docker manifest push --purge $1
+}
+
+publish_multiarch_helper_manifest() {
+    all=$(curl --silent "https://$CI_REGISTRY/v2/repositories/$1/gitlab-runner-helper/tags/?page_size=100&name=${REVISION}&ordering=last_updated" | jq -r -c ".results[] | \"$1/gitlab-runner-helper:\" + .name")
+
+    # pwsh tagged images
+    # shellcheck disable=SC2068
+    pwsh=$(for i in ${all[@]} ; do echo $i; done | grep "\-pwsh") || true
+
+    # servercore tagged images
+    # shellcheck disable=SC2068
+    servercore=$(for i in ${all[@]} ; do echo $i ; done | grep "servercore") || true
+
+    # regular tagged images
+    # shellcheck disable=SC2068
+    base=$(for i in ${all[@]} ; do echo $i ; done | grep -v "\-pwsh" | grep -v "servercore") || true
+    
+    # create and push pwsh manifest
+    if [[ -n "$pwsh" ]] ; then
+        echo create_push_manifest $CI_REGISTRY:$1/gitlab-runner-helper:multi-${REVISION}-pwsh "$pwsh"
+        echo create_push_manifest $CI_REGISTRY:$1/gitlab-runner-helper:multi-${ref_tag}-pwsh "$pwsh"
+        echo create_push_manifest $CI_REGISTRY:$1/gitlab-runner-helper:multi-latest-pwsh "$pwsh"
+    fi
+
+    # create and push servercore manifest
+    if [[ -n "$servercore" ]] ; then
+        echo create_push_manifest $CI_REGISTRY:$1/gitlab-runner-helper:multi-${REVISION}-servercore "$servercore"
+        echo create_push_manifest $CI_REGISTRY:$1/gitlab-runner-helper:multi-${ref_tag}-servercore "$servercore"
+        echo create_push_manifest $CI_REGISTRY:$1/gitlab-runner-helper:multi-latest-servercore "$servercore"
+    fi
+
+    # create and push non-pwsh manifest
+    if [[ -n "$pwsh" ]] ; then
+        echo create_push_manifest $CI_REGISTRY:$1/gitlab-runner-helper:multi-${REVISION} "$base"
+        echo create_push_manifest $CI_REGISTRY:$1/gitlab-runner-helper:multi-${ref_tag} "$base"
+        echo create_push_manifest $CI_REGISTRY:$1/gitlab-runner-helper:multi-latest "$base"
+    fi
+}
+
+# Publish multiarch manifest for helper images
+# This collects pushed tags from all OSs/archs (including Windows) and creates a grouped registry manifest.
+if [[ -n "${CI_REGISTRY_USER}" ]] && [[ -n "${CI_REGISTRY_PASSWORD}" && "${PUBLISH_MULTIARCH_MANIFEST}" == "true" ]]; then
+    login "${CI_REGISTRY_USER}" "${CI_REGISTRY_PASSWORD}" "${CI_REGISTRY}"
+
+    publish_multiarch_helper_manifest "${CI_REGISTRY_IMAGE}"
+
+    logout "${CI_REGISTRY}"
+fi
+
+if [[ "${PUBLISH_MULTIARCH_MANIFEST}" == "true" ]] && [[ "${PUSH_TO_DOCKER_HUB}" == "true" ]]; then
+    login "${DOCKER_HUB_USER}" "${DOCKER_HUB_PASSWORD}"
+
+    publish_multiarch_helper_manifest "${CI_REGISTRY_IMAGE}"
+
+    logout
+fi
+
+if [[ "${PUBLISH_MULTIARCH_MANIFEST}" == "true" ]] && [[ "${PUSH_TO_ECR_PUBLIC}" == "true" ]]; then
+    login "${ECR_PUBLIC_USER}" "${ECR_PUBLIC_PASSWORD}" "${ECR_PUBLIC_REGISTRY}"
+
+    publish_multiarch_helper_manifest "${CI_REGISTRY_IMAGE}"
+
+    logout "${ECR_PUBLIC_REGISTRY}"
+fi
