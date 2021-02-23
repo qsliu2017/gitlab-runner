@@ -38,6 +38,8 @@ clone test repo:
   extends:
   - .rules:merge_request_pipelines:no_docs
   - .go-cache
+  variables:
+    PARALLEL_TESTS_LIMIT: 8
   stage: prebuild
   script:
   - apt-get update
@@ -46,7 +48,7 @@ clone test repo:
   - make parallel_test_prepare
   artifacts:
     paths:
-    - testsdefinitions.txt
+    - testsdefinitions-*
     expire_in: 7d
 
 unit test definitions:

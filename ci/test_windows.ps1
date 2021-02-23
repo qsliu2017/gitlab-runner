@@ -1,5 +1,5 @@
 param(
-    [string]$testsDefinitionsFile = ".\testsdefinitions.txt"
+    [string]$testsDefinitionsFile = ".\testsdefinitions-" + $env:CI_NODE_INDEX
 )
 
 $InformationPreference = "Continue"
@@ -9,9 +9,6 @@ function Get-Line([string]$file) {
 }
 
 $numberOfDefinitions = Get-Line -file $testsDefinitionsFile
-$executionSize = [int]($numberOfDefinitions / $env:CI_NODE_TOTAL)
-$nodeIndex = $env:CI_NODE_INDEX - 1
-$executionOffset = ($nodeIndex * $executionSize)
 
 Write-Information "Number of definitions: $numberOfDefinitions"
 Write-Information "Suite size: $env:CI_NODE_TOTAL"
@@ -28,8 +25,9 @@ if ($env:TESTFLAGS.Contains('!integration')) {
 New-Item -ItemType "directory" -Path ".\" -Name ".testoutput\${type}"
 
 $failed = @()
-Get-Content $testsDefinitionsFile | Select-Object -skip $executionOffset -first $executionSize | ForEach-Object {
-    $pkg, $index, $tests = $_.Split(" ", 3)
+Get-Content $testsDefinitionsFile | ForEach-Object {
+    $pkg, $tests = $_.Split(" ", 2)
+    $index = $env:CI_NODE_INDEX
     $pkgSlug = ((Write-Output $pkg | ForEach-Object { $_ -replace "[^a-z0-9_]","_" }))
 
     Write-Information "`r`n`r`n--- Starting part $index of go $type tests of '$pkg' package:`r`n`r`n"

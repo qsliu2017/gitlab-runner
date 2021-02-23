@@ -22,7 +22,7 @@ tmp/gitlab-test
 .editorconfig
 !/.editorconfig
 
-testsdefinitions.txt
+testsdefinitions-*
 /.testoutput/
 /.cover/
 
