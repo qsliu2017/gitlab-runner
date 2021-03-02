@@ -125,3 +125,99 @@ func TestKiller(t *testing.T) {
 		})
 	}
 }
+
+func TestCommandContextCancel(t *testing.T) {
+	sleepBinary := prepareTestBinary(t)
+	defer func() {
+		err := os.RemoveAll(filepath.Dir(sleepBinary))
+		if err != nil {
+			t.Logf("Failed to cleanup files %q: %v", filepath.Dir(sleepBinary), err)
+		}
+	}()
+
+	tests := map[string]struct {
+		args          []string
+		delayCancel   time.Duration
+		expectedError map[string]string
+	}{
+		"exits on its own": {
+			args: []string{"1ms"},
+		},
+		"exits gracefully after being signaled": {
+			args:        []string{"1s"},
+			delayCancel: 100 * time.Millisecond,
+			expectedError: map[string]string{
+				"windows": "",
+				"unix":    "exit status 1",
+			},
+		},
+		"ignores graceful termination, exits on its own": {
+			args:        []string{"1s", "skip-terminate-signals"},
+			delayCancel: 100 * time.Millisecond,
+		},
+		"ignores graceful termination, is forced to exit": {
+			args:        []string{"2s", "skip-terminate-signals"},
+			delayCancel: 100 * time.Millisecond,
+			expectedError: map[string]string{
+				"windows": "",
+				"unix":    "signal: killed",
+			},
+		},
+		"exits on its own, but then canceled": {
+			args:        []string{"1s", "skip-terminate-signals"},
+			delayCancel: 2 * time.Second,
+		},
+	}
+
+	for tn, tc := range tests {
+		t.Run(tn, func(t *testing.T) {
+			logger := new(MockLogger)
+			logger.
+				On("WithFields", mock.Anything).
+				Return(logger).
+				Maybe()
+
+			defer logger.AssertExpectations(t)
+
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			command := NewOSCmd(ctx, sleepBinary, tc.args, CommandOptions{
+				Logger:              logger,
+				GracefulKillTimeout: 1500 * time.Millisecond,
+				ForceKillTimeout:    time.Millisecond,
+				Stderr:              os.Stderr,
+				Stdout:              os.Stdout,
+			})
+
+			err := command.Start()
+			require.NoError(t, err)
+
+			waitCh := make(chan error)
+			go func() {
+				waitCh <- command.Wait()
+			}()
+
+			done := make(chan struct{})
+			if tc.delayCancel > 0 {
+				time.AfterFunc(tc.delayCancel, func() {
+					cancel()
+					done <- struct{}{}
+				})
+				defer func() { <-done }()
+			}
+
+			err = <-waitCh
+			if len(tc.expectedError) == 0 {
+				assert.NoError(t, err)
+				return
+			}
+
+			os := "unix"
+			if runtime.GOOS == "windows" {
+				os = "windows"
+			}
+			assert.EqualError(t, err, tc.expectedError[os])
+		})
+	}
+}

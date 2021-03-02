@@ -1,6 +1,7 @@
 package shell
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -22,7 +23,6 @@ import (
 	"gitlab.com/gitlab-org/gitlab-runner/helpers/process"
 )
 
-var newProcessKillWaiter = process.NewOSKillWait
 var newCommander = process.NewOSCmd
 
 type executor struct {
@@ -163,11 +163,15 @@ func (s *executor) shellScriptArgs(cmd common.ExecutorCommand, args []string) (i
 
 func (s *executor) run(cmd common.ExecutorCommand) error {
 	s.BuildLogger.Debugln("Using new shell command execution")
+
 	cmdOpts := process.CommandOptions{
 		Env:                             append(os.Environ(), s.BuildShell.Environment...),
 		Stdout:                          s.Trace,
 		Stderr:                          s.Trace,
 		UseWindowsLegacyProcessStrategy: s.Build.IsFeatureFlagOn(featureflags.UseWindowsLegacyProcessStrategy),
+		Logger:                          common.NewProcessLoggerAdapter(s.BuildLogger),
+		GracefulKillTimeout:             s.Config.GetForceKillTimeout(),
+		ForceKillTimeout:                s.Config.GetGracefulKillTimeout(),
 	}
 
 	args := s.BuildShell.Arguments
@@ -179,8 +183,11 @@ func (s *executor) run(cmd common.ExecutorCommand) error {
 
 	cmdOpts.Stdin = stdin
 
+	ctx, cancel := context.WithCancel(cmd.Context)
+	defer cancel()
+
 	// Create execution command
-	c := newCommander(s.BuildShell.Command, args, cmdOpts)
+	c := newCommander(ctx, s.BuildShell.Command, args, cmdOpts)
 
 	// Start a process
 	err = c.Start()
@@ -188,26 +195,13 @@ func (s *executor) run(cmd common.ExecutorCommand) error {
 		return fmt.Errorf("failed to start process: %w", err)
 	}
 
-	// Wait for process to finish
-	waitCh := make(chan error)
-	go func() {
-		waitErr := c.Wait()
-		var exitErr *exec.ExitError
-		if errors.As(waitErr, &exitErr) {
-			waitErr = &common.BuildError{Inner: waitErr, ExitCode: exitErr.ExitCode()}
-		}
-		waitCh <- waitErr
-	}()
-
-	// Support process abort
-	select {
-	case err = <-waitCh:
-		return err
-	case <-cmd.Context.Done():
-		logger := common.NewProcessLoggerAdapter(s.BuildLogger)
-		return newProcessKillWaiter(logger, s.Config.GetGracefulKillTimeout(), s.Config.GetForceKillTimeout()).
-			KillAndWait(c, waitCh)
+	waitErr := c.Wait()
+	var exitErr *exec.ExitError
+	if errors.As(waitErr, &exitErr) {
+		waitErr = &common.BuildError{Inner: waitErr, ExitCode: exitErr.ExitCode()}
 	}
+
+	return waitErr
 }
 
 func init() {

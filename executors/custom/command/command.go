@@ -6,7 +6,6 @@ import (
 	"os"
 	"os/exec"
 	"strconv"
-	"time"
 
 	"gitlab.com/gitlab-org/gitlab-runner/common"
 	"gitlab.com/gitlab-org/gitlab-runner/executors/custom/api"
@@ -22,19 +21,10 @@ type Command interface {
 	Run() error
 }
 
-var newProcessKillWaiter = process.NewOSKillWait
 var newCommander = process.NewOSCmd
 
 type command struct {
-	context context.Context
-	cmd     process.Commander
-
-	waitCh chan error
-
-	logger process.Logger
-
-	gracefulKillTimeout time.Duration
-	forceKillTimeout    time.Duration
+	cmd process.Commander
 }
 
 func New(ctx context.Context, executable string, args []string, options process.CommandOptions) Command {
@@ -51,12 +41,7 @@ func New(ctx context.Context, executable string, args []string, options process.
 	options.Env = append(env, options.Env...)
 
 	return &command{
-		context:             ctx,
-		cmd:                 newCommander(executable, args, options),
-		waitCh:              make(chan error),
-		logger:              options.Logger,
-		gracefulKillTimeout: options.GracefulKillTimeout,
-		forceKillTimeout:    options.ForceKillTimeout,
+		cmd: newCommander(ctx, executable, args, options),
 	}
 }
 
@@ -66,24 +51,7 @@ func (c *command) Run() error {
 		return fmt.Errorf("failed to start command: %w", err)
 	}
 
-	go c.waitForCommand()
-
-	select {
-	case err = <-c.waitCh:
-		return err
-
-	case <-c.context.Done():
-		return newProcessKillWaiter(c.logger, c.gracefulKillTimeout, c.forceKillTimeout).
-			KillAndWait(c.cmd, c.waitCh)
-	}
-}
-
-var getExitCode = func(err *exec.ExitError) int {
-	return err.ExitCode()
-}
-
-func (c *command) waitForCommand() {
-	err := c.cmd.Wait()
+	err = c.cmd.Wait()
 
 	eerr, ok := err.(*exec.ExitError)
 	if ok {
@@ -96,5 +64,9 @@ func (c *command) waitForCommand() {
 		}
 	}
 
-	c.waitCh <- err
+	return err
+}
+
+var getExitCode = func(err *exec.ExitError) int {
+	return err.ExitCode()
 }

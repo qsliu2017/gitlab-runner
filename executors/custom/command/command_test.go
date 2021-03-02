@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 
 	"gitlab.com/gitlab-org/gitlab-runner/common"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers/process"
@@ -22,32 +21,24 @@ func newCommand(
 	t *testing.T,
 	executable string,
 	options process.CommandOptions,
-) (*process.MockCommander, *process.MockKillWaiter, Command, func()) {
+) (*process.MockCommander, Command, func()) {
 	commanderMock := new(process.MockCommander)
-	processKillWaiterMock := new(process.MockKillWaiter)
 
 	oldNewCmd := newCommander
-	oldNewProcessKillWaiter := newProcessKillWaiter
 
 	cleanup := func() {
 		newCommander = oldNewCmd
-		newProcessKillWaiter = oldNewProcessKillWaiter
 
 		commanderMock.AssertExpectations(t)
-		processKillWaiterMock.AssertExpectations(t)
 	}
 
-	newCommander = func(string, []string, process.CommandOptions) process.Commander {
+	newCommander = func(context.Context, string, []string, process.CommandOptions) process.Commander {
 		return commanderMock
-	}
-
-	newProcessKillWaiter = func(process.Logger, time.Duration, time.Duration) process.KillWaiter {
-		return processKillWaiterMock
 	}
 
 	c := New(ctx, executable, []string{}, options)
 
-	return commanderMock, processKillWaiterMock, c, cleanup
+	return commanderMock, c, cleanup
 }
 
 func TestCommand_Run(t *testing.T) {
@@ -106,7 +97,7 @@ func TestCommand_Run(t *testing.T) {
 				ForceKillTimeout:    100 * time.Millisecond,
 			}
 
-			commanderMock, processKillWaiterMock, c, cleanup := newCommand(ctx, t, "exec", options)
+			commanderMock, c, cleanup := newCommand(ctx, t, "exec", options)
 			defer cleanup()
 
 			commanderMock.On("Start").
@@ -114,6 +105,9 @@ func TestCommand_Run(t *testing.T) {
 			commanderMock.On("Wait").
 				Return(func() error {
 					<-time.After(500 * time.Millisecond)
+					if tt.contextClosed {
+						return testErr
+					}
 					return tt.cmdWaitErr
 				}).
 				Maybe()
@@ -128,10 +122,6 @@ func TestCommand_Run(t *testing.T) {
 
 			if tt.contextClosed {
 				ctxCancel()
-				processKillWaiterMock.
-					On("KillAndWait", commanderMock, mock.Anything).
-					Return(testErr).
-					Once()
 			}
 
 			err := c.Run()
