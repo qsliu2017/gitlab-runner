@@ -84,10 +84,12 @@ Notes:
     -----END CERTIFICATE-----
     ```
 
+- Since the runner reads the system certs by default, You only need to add the custom certificates to `tls-ca-file`. If your `tls-ca-file` is too large, GitLab will not be able to parse the whole file and you will see an _"argument list too long"_ error in the pipeline.
 - If you are updating the certificate for an existing Runner, [restart it](../commands/README.md#gitlab-runner-restart).
 - As a temporary and insecure workaround, to skip the verification of certificates,
 in the `variables:` section of your `.gitlab-ci.yml` file, set the CI variable `GIT_SSL_NO_VERIFY` to `true`.
 - If you are using GitLab Runner Helm chart, you will need to configure certificates according to the doc [Providing a custom certificate for accessing GitLab](../install/kubernetes.md#providing-a-custom-certificate-for-accessing-gitlab).
+
 
 ### Git cloning
 
