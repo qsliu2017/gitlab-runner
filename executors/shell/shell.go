@@ -53,7 +53,7 @@ func (s *executor) Prepare(options common.ExecutorPrepareOptions) error {
 	s.DefaultCacheDir = os.Expand(s.DefaultCacheDir, mapping)
 
 	// Pass control to executor
-	err = s.AbstractExecutor.Prepare(options)
+	err = s.AbstractExecutor.Prepare(options, nil)
 	if err != nil {
 		return err
 	}

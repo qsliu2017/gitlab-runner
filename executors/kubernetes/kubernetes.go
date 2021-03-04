@@ -130,7 +130,7 @@ type serviceCreateResponse struct {
 }
 
 func (s *executor) Prepare(options common.ExecutorPrepareOptions) (err error) {
-	if err = s.AbstractExecutor.Prepare(options); err != nil {
+	if err = s.AbstractExecutor.Prepare(options, nil); err != nil {
 		return fmt.Errorf("prepare AbstractExecutor: %w", err)
 	}
 

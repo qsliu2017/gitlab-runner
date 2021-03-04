@@ -77,26 +77,26 @@ type executor struct {
 }
 
 func (e *executor) Prepare(options common.ExecutorPrepareOptions) error {
-	e.AbstractExecutor.PrepareConfiguration(options)
+	err := e.AbstractExecutor.Prepare(options, func() error {
+		err := e.prepareConfig()
+		if err != nil {
+			return err
+		}
 
-	err := e.prepareConfig()
-	if err != nil {
-		return err
-	}
+		e.tempDir, err = ioutil.TempDir("", "custom-executor")
+		if err != nil {
+			return err
+		}
 
-	e.tempDir, err = ioutil.TempDir("", "custom-executor")
-	if err != nil {
-		return err
-	}
+		err = e.dynamicConfig()
+		if err != nil {
+			return err
+		}
 
-	err = e.dynamicConfig()
-	if err != nil {
-		return err
-	}
+		e.logStartupMessage()
 
-	e.logStartupMessage()
-
-	err = e.AbstractExecutor.PrepareBuildAndShell()
+		return nil
+	})
 	if err != nil {
 		return err
 	}

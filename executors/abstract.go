@@ -98,13 +98,20 @@ func (e *AbstractExecutor) Shell() *common.ShellScriptInfo {
 	return &e.ExecutorOptions.Shell
 }
 
-func (e *AbstractExecutor) Prepare(options common.ExecutorPrepareOptions) error {
-	e.PrepareConfiguration(options)
+func (e *AbstractExecutor) Prepare(options common.ExecutorPrepareOptions, setup func() error) error {
+	e.prepareConfiguration(options)
 
-	return e.PrepareBuildAndShell()
+	if setup != nil {
+		err := setup()
+		if err != nil {
+			return err
+		}
+	}
+
+	return e.prepareBuildAndShell()
 }
 
-func (e *AbstractExecutor) PrepareConfiguration(options common.ExecutorPrepareOptions) {
+func (e *AbstractExecutor) prepareConfiguration(options common.ExecutorPrepareOptions) {
 	e.SetCurrentStage(common.ExecutorStagePrepare)
 	e.Context = options.Context
 	e.Config = *options.Config
@@ -114,7 +121,7 @@ func (e *AbstractExecutor) PrepareConfiguration(options common.ExecutorPrepareOp
 	e.ProxyPool = proxy.NewPool()
 }
 
-func (e *AbstractExecutor) PrepareBuildAndShell() error {
+func (e *AbstractExecutor) prepareBuildAndShell() error {
 	err := e.startBuild()
 	if err != nil {
 		return err

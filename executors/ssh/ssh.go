@@ -15,7 +15,7 @@ type executor struct {
 }
 
 func (s *executor) Prepare(options common.ExecutorPrepareOptions) error {
-	err := s.AbstractExecutor.Prepare(options)
+	err := s.AbstractExecutor.Prepare(options, nil)
 	if err != nil {
 		return fmt.Errorf("prearing AbstractExecutor: %w", err)
 	}

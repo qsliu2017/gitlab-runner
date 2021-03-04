@@ -980,24 +980,19 @@ func (e *executor) Prepare(options common.ExecutorPrepareOptions) error {
 		return errors.New("missing docker configuration")
 	}
 
-	e.AbstractExecutor.PrepareConfiguration(options)
+	err := e.AbstractExecutor.Prepare(options, func() error {
+		err := e.connectDocker()
+		if err != nil {
+			return err
+		}
 
-	err := e.connectDocker()
-	if err != nil {
-		return err
-	}
+		e.helperImageInfo, err = e.prepareHelperImage()
+		if err != nil {
+			return err
+		}
 
-	e.helperImageInfo, err = e.prepareHelperImage()
-	if err != nil {
-		return err
-	}
-
-	err = e.prepareBuildsDir(options)
-	if err != nil {
-		return err
-	}
-
-	err = e.AbstractExecutor.PrepareBuildAndShell()
+		return e.prepareBuildsDir(options)
+	})
 	if err != nil {
 		return err
 	}

@@ -169,7 +169,7 @@ func (s *executor) updateGuestTime() error {
 }
 
 func (s *executor) Prepare(options common.ExecutorPrepareOptions) error {
-	err := s.AbstractExecutor.Prepare(options)
+	err := s.AbstractExecutor.Prepare(options, nil)
 	if err != nil {
 		return err
 	}
