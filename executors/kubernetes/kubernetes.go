@@ -471,6 +471,8 @@ func (s *executor) cleanupResources() {
 		if err != nil {
 			s.Errorln(fmt.Sprintf("Error cleaning up secrets: %s", err.Error()))
 		}
+	} else {
+		s.Debugln(fmt.Sprintf("No build secrets found to clean up for pod: %+v", s.pod))
 	}
 	if s.configMap != nil {
 		err := s.kubeClient.CoreV1().
@@ -816,6 +818,7 @@ func (s *executor) setupCredentials() error {
 	}
 
 	if len(authConfigs) == 0 {
+		s.Debugln("Pod credential setup resolved no authentication configs within it")
 		return nil
 	}
 
@@ -1161,6 +1164,36 @@ func (s *executor) runInContainerWithExecLegacy(
 		defer close(errCh)
 
 		status, err := waitForPodRunning(ctx, s.kubeClient, s.pod, s.Trace, s.Config.Kubernetes)
+
+		// If we've failed with an access forbidden message, dump out more information
+		if status == api.PodUnknown && err != nil && strings.Contains(err.Error(), "access forbidden") {
+			s.Debugln(fmt.Sprintf("Pod image pull secrets dump: %+v", s.pod.Spec.ImagePullSecrets))
+
+			s.Debugln(
+				fmt.Sprintf(
+					"Build credential details: authConfig: %+v user: %+v creds: %+v",
+					s.Build.GetDockerAuthConfig(),
+					s.Shell().User,
+					s.Build.Credentials,
+				),
+			)
+
+			localResolveDupe, localResolveErr := auth.ResolveConfigs(
+				s.Build.GetDockerAuthConfig(),
+				s.Shell().User,
+				s.Build.Credentials,
+			)
+			if localResolveErr != nil {
+				s.Debugln(
+					fmt.Sprintf(
+						"Resolved auth configs (with above): %+v",
+						localResolveDupe,
+					),
+				)
+			} else {
+				s.Debugln(fmt.Sprintf("Error during dupe resolve: %+v", localResolveErr))
+			}
+		}
 
 		if err != nil {
 			errCh <- err
