@@ -180,7 +180,15 @@ func (s *executor) run(cmd common.ExecutorCommand) error {
 	cmdOpts.Stdin = stdin
 
 	// Create execution command
-	c := newCommander(s.BuildShell.Command, args, cmdOpts)
+	var c process.Commander
+
+	if cmd.Predefined && s.Build.IsFeatureFlagOn(featureflags.UseRunnerShell) {
+		c = newCommander(s.ExecutorOptions.Shell.RunnerCommand, []string{"runnershell"}, cmdOpts)
+	}
+
+	if c == nil {
+		c = newCommander(s.BuildShell.Command, args, cmdOpts)
+	}
 
 	// Start a process
 	err = c.Start()

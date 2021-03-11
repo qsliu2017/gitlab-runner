@@ -139,6 +139,10 @@ func (s *commandExecutor) requestNewPredefinedContainer() (*types.ContainerJSON,
 }
 
 func (s *commandExecutor) getHelperImageCmd() []string {
+	if s.Build.IsFeatureFlagOn(featureflags.UseRunnerShell) {
+		return []string{s.ExecutorOptions.Shell.RunnerCommand, "runnershell"}
+	}
+
 	if s.isUmaskDisabled() {
 		return []string{"/bin/bash"}
 	}

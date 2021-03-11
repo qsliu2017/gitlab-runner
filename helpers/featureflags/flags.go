@@ -21,6 +21,7 @@ const (
 	EnableBashExitCodeCheck                     string = "FF_ENABLE_BASH_EXIT_CODE_CHECK"
 	UseWindowsLegacyProcessStrategy             string = "FF_USE_WINDOWS_LEGACY_PROCESS_STRATEGY"
 	SkipDockerMachineProvisionOnCreationFailure string = "FF_SKIP_DOCKER_MACHINE_PROVISION_ON_CREATION_FAILURE"
+	UseRunnerShell                              string = "FF_USE_RUNNER_SHELL"
 )
 
 type FeatureFlag struct {
@@ -159,6 +160,13 @@ var flags = []FeatureFlag{
 			"not created, `docker-machine provision` runs for X amount of times. When " +
 			"this feature flag is set to `true`, it skips `docker-machine provision` " +
 			"removes the machine, and creates another machine instead.",
+	},
+	{
+		Name:            UseRunnerShell,
+		DefaultValue:    true,
+		Deprecated:      false,
+		ToBeRemovedWith: "",
+		Description:     "When enabled, an integrated runner shell is used to execute predefined scripts.",
 	},
 }
 

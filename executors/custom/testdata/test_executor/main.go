@@ -213,6 +213,10 @@ func createCommand(shell string, script string, stage string) *exec.Cmd {
 			command: "cmd",
 			args:    []string{"/C"},
 		},
+		"runnershell": {
+			command: "gitlab-runner",
+			args:    []string{"runnershell"},
+		},
 	}
 
 	shellConfig, ok := shellConfigs[shell]

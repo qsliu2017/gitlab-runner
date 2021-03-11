@@ -315,6 +315,6 @@ func (b *BashShell) IsDefault() bool {
 }
 
 func init() {
-	common.RegisterShell(&BashShell{Shell: "sh"})
-	common.RegisterShell(&BashShell{Shell: "bash"})
+	common.RegisterShell(WrapShell(&BashShell{Shell: "sh"}))
+	common.RegisterShell(WrapShell(&BashShell{Shell: "bash"}))
 }

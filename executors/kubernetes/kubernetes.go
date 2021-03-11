@@ -232,7 +232,7 @@ func (s *executor) runWithExecLegacy(cmd common.ExecutorCommand) error {
 	containerCommand := s.BuildShell.DockerCommand
 	if cmd.Predefined {
 		containerName = helperContainerName
-		containerCommand = s.helperImageInfo.Cmd
+		containerCommand = s.getHelperImageCmd()
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -283,7 +283,7 @@ func (s *executor) runWithAttach(cmd common.ExecutorCommand) error {
 		// to the shell it executes, so we technically pass the script to the stdin of the underlying shell
 		// translates roughly to "gitlab-runner-build <<< /stage/script/path.sh"
 		containerCommand = append(
-			s.helperImageInfo.Cmd,
+			s.getHelperImageCmd(),
 			"<<<",
 			s.buildCommandForStage(cmd.Stage),
 		)
@@ -1362,6 +1362,14 @@ func (s *executor) checkDefaults() error {
 	s.Println("Using Kubernetes namespace:", s.configurationOverwrites.namespace)
 
 	return nil
+}
+
+func (s *executor) getHelperImageCmd() []string {
+	if s.Build.IsFeatureFlagOn(featureflags.UseRunnerShell) {
+		return []string{s.ExecutorOptions.Shell.RunnerCommand, "runnershell"}
+	}
+
+	return s.helperImageInfo.Cmd
 }
 
 func isKubernetesPodNotFoundError(err error) bool {

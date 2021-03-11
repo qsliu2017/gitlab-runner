@@ -276,7 +276,12 @@ func (e *executor) Run(cmd common.ExecutorCommand) error {
 		stage = "build_script"
 	}
 
-	args := append(e.config.RunArgs, scriptFile, string(stage))
+	var args []string
+	if cmd.Predefined && e.Build.IsFeatureFlagOn(featureflags.UseRunnerShell) {
+		args = append([]string{"runnershell", "run"}, scriptFile, string(stage))
+	} else {
+		args = append(e.config.RunArgs, scriptFile, string(stage))
+	}
 
 	opts := prepareCommandOpts{
 		executable: e.config.RunExec,

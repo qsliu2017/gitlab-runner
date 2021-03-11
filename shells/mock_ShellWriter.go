@@ -12,20 +12,6 @@ type MockShellWriter struct {
 	mock.Mock
 }
 
-// Absolute provides a mock function with given fields: path
-func (_m *MockShellWriter) Absolute(path string) string {
-	ret := _m.Called(path)
-
-	var r0 string
-	if rf, ok := ret.Get(0).(func(string) string); ok {
-		r0 = rf(path)
-	} else {
-		r0 = ret.Get(0).(string)
-	}
-
-	return r0
-}
-
 // Cd provides a mock function with given fields: path
 func (_m *MockShellWriter) Cd(path string) {
 	_m.Called(path)

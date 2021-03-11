@@ -293,5 +293,5 @@ func (b *CmdShell) IsDefault() bool {
 }
 
 func init() {
-	common.RegisterShell(&CmdShell{})
+	common.RegisterShell(WrapShell(&CmdShell{}))
 }

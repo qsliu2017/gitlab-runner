@@ -1,0 +1,91 @@
+{
+	"trace": true,
+	"actions": [
+		{
+			"if": {
+				"cmd": {
+					"args": [
+						"if command",
+						"is",
+						"successful"
+					]
+				},
+				"actions": [
+					{
+						"cd": "then cd into this directory"
+					},
+					{
+						"if": {
+							"directory": "and if this directory exists",
+							"cmd": {},
+							"actions": [
+								{
+									"if": {
+										"cmd": {
+											"args": [
+												"run another command and display the output"
+											],
+											"output": true
+										},
+										"actions": [
+											{
+												"print": "\u001b[0;mthat command with output succeeded\u001b[0;m"
+											}
+										],
+										"else": [
+											{
+												"print": "\u001b[0;mthat command with output failed\u001b[0;m"
+											}
+										]
+									}
+								},
+								{
+									"print": "\u001b[32;1mremoving stuff...\u001b[0;m"
+								},
+								{
+									"if": {
+										"file": "if it has a file",
+										"cmd": {},
+										"actions": [
+											{
+												"rm": "remove a file"
+											}
+										]
+									}
+								},
+								{
+									"rm": "delete the directory"
+								}
+							],
+							"else": [
+								{
+									"cmd": {
+										"args": [
+											"run a command"
+										],
+										"output": true
+									}
+								},
+								{
+									"mkdir": "maybe make directory"
+								},
+								{
+									"print": "\u001b[31;1mand this else statement has multiple actions\u001b[0;m"
+								}
+							]
+						}
+					},
+					{
+						"print": "\u001b[0;33mwe've finished\u001b[0;m"
+					},
+					{
+						"line": "echo run a script line"
+					},
+					{
+						"line": "echo inside a subshell"
+					}
+				]
+			}
+		}
+	]
+}

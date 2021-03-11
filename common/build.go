@@ -353,7 +353,7 @@ func (b *Build) executeStage(ctx context.Context, buildStage BuildStage, executo
 		Context:    ctx,
 		Script:     script,
 		Stage:      buildStage,
-		Predefined: getPredefinedEnv(buildStage),
+		Predefined: GetPredefinedEnv(buildStage),
 	}
 
 	section := helpers.BuildSection{
@@ -374,9 +374,9 @@ func (b *Build) executeStage(ctx context.Context, buildStage BuildStage, executo
 	return section.Execute(&b.logger)
 }
 
-// getPredefinedEnv returns whether a stage should be executed on
+// GetPredefinedEnv returns whether a stage should be executed on
 //  the predefined environment that GitLab Runner provided.
-func getPredefinedEnv(buildStage BuildStage) bool {
+func GetPredefinedEnv(buildStage BuildStage) bool {
 	env := map[BuildStage]bool{
 		BuildStagePrepare:                  true,
 		BuildStageGetSources:               true,
