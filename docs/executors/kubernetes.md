@@ -545,7 +545,11 @@ check_interval = 30
 This feature is available in Kubernetes 1.7+.
 
 [Host aliases](https://kubernetes.io/docs/concepts/services-networking/add-entries-to-pod-etc-hosts-with-host-aliases/) configuration
-instructs Kubernetes to add entries to `/etc/hosts` file inside of the container. The host aliases can be configured with the following options:
+instructs Kubernetes to add entries to `/etc/hosts` file inside of the container. 
+
+Be aware that due to the [bug in go versions < 1.16](https://github.com/golang/go/issues/35305) the GitLab Runner will ignore `/etc/hosts` file if `/etc/nsswitch.conf` file is not present. As a workaround create `/etc/nsswitch.conf` and add `hosts: files dns` to it. We are currently [planning to switch to go version 1.16.x](https://gitlab.com/gitlab-org/gitlab-runner/-/issues/27568) which will resolve this problem.
+
+The host aliases can be configured with the following options:
 
 | Option     | Type     | Required | Description |
 |------------|----------|----------|-------------|
