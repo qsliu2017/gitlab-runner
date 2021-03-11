@@ -20,6 +20,7 @@ import (
 	"gitlab.com/gitlab-org/gitlab-runner/helpers"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers/dns"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers/featureflags"
+	"gitlab.com/gitlab-org/gitlab-runner/helpers/gitlab_release"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers/tls"
 	"gitlab.com/gitlab-org/gitlab-runner/referees"
 	"gitlab.com/gitlab-org/gitlab-runner/session"
@@ -76,6 +77,7 @@ const (
 	BuildStageRestoreCache             BuildStage = "restore_cache"
 	BuildStageDownloadArtifacts        BuildStage = "download_artifacts"
 	BuildStageAfterScript              BuildStage = "after_script"
+	BuildStagePublishRelease           BuildStage = "publish_release"
 	BuildStageArchiveOnSuccessCache    BuildStage = "archive_cache"
 	BuildStageArchiveOnFailureCache    BuildStage = "archive_cache_on_failure"
 	BuildStageUploadOnSuccessArtifacts BuildStage = "upload_artifacts_on_success"
@@ -436,6 +438,50 @@ func (b *Build) executeArchiveCache(ctx context.Context, state error, executor E
 	return b.executeStage(ctx, BuildStageArchiveOnFailureCache, executor)
 }
 
+func (b *Build) publishRelease(ctx context.Context, state error, _ Executor) error {
+	if state != nil {
+		return state
+	}
+
+	if b.Release == nil {
+		return nil
+	}
+
+	section := helpers.BuildSection{
+		Name:        string(BuildStagePublishRelease),
+		SkipMetrics: !b.JobResponse.Features.TraceSections,
+		Run: func() error {
+			msg := fmt.Sprintf(
+				"%sPublishing GitLab release%s",
+				helpers.ANSI_BOLD_CYAN,
+				helpers.ANSI_RESET,
+			)
+			b.logger.Println(msg)
+
+			r := gitlab_release.New(b.Runner.URL, b.Token, b.JobInfo.ProjectID)
+
+			b.Release.Name = fmt.Sprintf("%s-%d", b.Release.Name, time.Now().Unix())
+			b.Release.expandVariables(b.GetAllVariables())
+
+			response, err := r.Do(ctx, b.Release.CreateReleaseRequest)
+			if err != nil {
+				return err
+			}
+
+			projectURL := strings.TrimSuffix(b.RepoCleanURL(), ".git")
+			b.logger.Println(fmt.Sprintf(
+				"Release created at: %s/-/releases/%s\n",
+				projectURL,
+				response.TagName,
+			))
+
+			return nil
+		},
+	}
+
+	return section.Execute(&b.logger)
+}
+
 func (b *Build) executeScript(ctx context.Context, executor Executor) error {
 	// track job start and create referees
 	startTime := time.Now()
@@ -466,6 +512,11 @@ func (b *Build) executeScript(ctx context.Context, executor Executor) error {
 			if s.Name == StepNameAfterScript {
 				continue
 			}
+
+			if s.Name == StepNameRelease {
+				continue
+			}
+
 			err = b.executeStage(ctx, StepToBuildStage(s), executor)
 			if err != nil {
 				break
@@ -474,6 +525,8 @@ func (b *Build) executeScript(ctx context.Context, executor Executor) error {
 
 		b.executeAfterScript(ctx, err, executor)
 	}
+
+	err = b.publishRelease(ctx, err, executor)
 
 	archiveCacheErr := b.executeArchiveCache(ctx, err, executor)
 

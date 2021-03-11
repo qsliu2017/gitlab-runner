@@ -291,6 +291,9 @@ github.com/urfave/cli
 gitlab.com/ayufan/golang-cli-helpers
 # gitlab.com/gitlab-org/gitlab-terminal v0.0.0-20210104151801-2a71b03b4462
 gitlab.com/gitlab-org/gitlab-terminal
+# gitlab.com/gitlab-org/release-cli v0.6.1-0.20210311164600-f3714e1be8a3
+gitlab.com/gitlab-org/release-cli/gitlab
+gitlab.com/gitlab-org/release-cli/internal/flags
 # go.opencensus.io v0.22.5
 go.opencensus.io
 go.opencensus.io/internal

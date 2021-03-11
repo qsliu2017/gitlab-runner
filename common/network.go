@@ -6,6 +6,8 @@ import (
 	"io"
 	"time"
 
+	"gitlab.com/gitlab-org/release-cli/gitlab"
+
 	url_helpers "gitlab.com/gitlab-org/gitlab-runner/helpers/url"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers/vault/auth_methods"
 )
@@ -175,6 +177,7 @@ type StepName string
 
 const (
 	StepNameScript      StepName = "script"
+	StepNameRelease     StepName = "release"
 	StepNameAfterScript StepName = "after_script"
 )
 
@@ -350,6 +353,7 @@ type JobResponse struct {
 	Dependencies  Dependencies   `json:"dependencies"`
 	Features      GitlabFeatures `json:"features"`
 	Secrets       Secrets        `json:"secrets,omitempty"`
+	Release       *Release       `json:"release,omitempty"`
 
 	TLSCAChain  string `json:"-"`
 	TLSAuthCert string `json:"-"`
@@ -447,6 +451,31 @@ func (s *VaultSecret) SecretField() string {
 
 func (j *JobResponse) RepoCleanURL() string {
 	return url_helpers.CleanURL(j.GitInfo.RepoURL)
+}
+
+type Release struct {
+	*gitlab.CreateReleaseRequest
+}
+
+func (r *Release) expandVariables(vars JobVariables) {
+	r.Name = vars.ExpandValue(r.Name)
+	r.Description = vars.ExpandValue(r.Description)
+	r.Ref = vars.ExpandValue(r.Ref)
+	r.TagName = vars.ExpandValue(r.TagName)
+	if r.Assets == nil {
+		return
+	}
+
+	for _, link := range r.Assets.Links {
+		if link == nil {
+			continue
+		}
+
+		link.Name = vars.ExpandValue(link.Name)
+		link.URL = vars.ExpandValue(link.URL)
+		link.Filepath = vars.ExpandValue(link.Filepath)
+		link.LinkType = vars.ExpandValue(link.LinkType)
+	}
 }
 
 type UpdateJobRequest struct {
