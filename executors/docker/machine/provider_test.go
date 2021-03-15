@@ -657,7 +657,11 @@ func TestMachineMaxBuilds(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, d)
 
-	_, nd, err := p.Use(config, d)
+	b := &common.Build{
+		ExecutorData: d,
+	}
+
+	_, nd, err := p.Use(config, b)
 	assert.NoError(t, err)
 	assert.Nil(t, nd, "we passed the data, we should not get the data now")
 
@@ -699,21 +703,21 @@ func TestMachineUseOnDemand(t *testing.T) {
 
 	p, _ := testMachineProvider()
 
-	_, nd, err := p.Use(machineDefaultConfig, nil)
+	_, nd, err := p.Use(machineDefaultConfig, &common.Build{ExecutorData: nil})
 	assert.NoError(t, err, "it create a new machine")
 	assert.NotNil(t, nd)
 	assertTotalMachines(t, p, 1, "it creates one machine")
 
-	_, nd2, err := p.Use(machineDefaultConfig, nil)
+	_, nd2, err := p.Use(machineDefaultConfig, &common.Build{ExecutorData: nil})
 	assert.NoError(t, err, "it create a new machine")
 	assert.NotNil(t, nd2)
 	assertTotalMachines(t, p, 2, "it creates two machines")
 
-	_, _, err = p.Use(machineProvisionFail, nil)
+	_, _, err = p.Use(machineProvisionFail, &common.Build{ExecutorData: nil})
 	assert.Error(t, err, "fail to create a new machine")
 	assertTotalMachines(t, p, 2, "it fails to create a third machine")
 
-	_, _, err = p.Use(machineNoConnect, nil)
+	_, _, err = p.Use(machineNoConnect, &common.Build{ExecutorData: nil})
 	assert.Error(t, err, "fail to create a new machine on connect")
 	assertTotalMachines(t, p, 3, "it fails on no-connect, but we leave the machine created")
 }
@@ -721,7 +725,7 @@ func TestMachineUseOnDemand(t *testing.T) {
 func TestMachineReleaseIfInvalidDataArePassed(t *testing.T) {
 	p, _ := testMachineProvider()
 
-	_, nd, err := p.Use(machineDefaultConfig, nil)
+	_, nd, err := p.Use(machineDefaultConfig, &common.Build{ExecutorData: nil})
 	assert.NoError(t, err, "it create a new machine")
 	assert.NotNil(t, nd)
 	assertTotalMachines(t, p, 1, "it creates one machine")
@@ -732,7 +736,7 @@ func TestMachineReleaseIfInvalidDataArePassed(t *testing.T) {
 func TestMachineCreationIfFailedToConnect(t *testing.T) {
 	p, _ := testMachineProvider()
 
-	_, nd, err := p.Use(machineNoConnect, nil)
+	_, nd, err := p.Use(machineNoConnect, &common.Build{ExecutorData: nil})
 	assert.Error(t, err, "it create a new machine")
 	assert.Nil(t, nd)
 }

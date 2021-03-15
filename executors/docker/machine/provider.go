@@ -3,13 +3,16 @@ package machine
 import (
 	"errors"
 	"fmt"
+	"net/http"
 	"sync"
 	"time"
 
+	"github.com/gorilla/mux"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sirupsen/logrus"
 
 	"gitlab.com/gitlab-org/gitlab-runner/common"
+	"gitlab.com/gitlab-org/gitlab-runner/helpers/debug"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers/docker"
 )
 
@@ -491,10 +494,14 @@ func (m *machineProvider) Acquire(config *common.RunnerConfig) (common.ExecutorD
 //nolint:nakedret
 func (m *machineProvider) Use(
 	config *common.RunnerConfig,
-	data common.ExecutorData,
+	build *common.Build,
 ) (newConfig common.RunnerConfig, newData common.ExecutorData, err error) {
+	if build == nil {
+		return newConfig, newData, errors.New("missing build data")
+	}
+
 	// Find a new machine
-	details, _ := data.(*machineDetails)
+	details, _ := build.ExecutorData.(*machineDetails)
 	if details == nil || !details.canBeUsed() || !m.machine.CanConnect(details.Name, true) {
 		details, err = m.retryUseMachine(config)
 		if err != nil {
@@ -527,6 +534,7 @@ func (m *machineProvider) Use(
 	details.State = machineStateUsed
 	details.Used = time.Now()
 	details.UsedCount++
+	details.UsedBy = build.JobURL()
 	m.totalActions.WithLabelValues("used").Inc()
 	return
 }
@@ -544,6 +552,8 @@ func (m *machineProvider) Release(config *common.RunnerConfig, data common.Execu
 		details.Used = time.Now()
 	}
 	m.lock.Unlock()
+
+	details.UsedBy = ""
 
 	// Remove machine if we already used it
 	if config != nil && config.Machine != nil &&
@@ -592,6 +602,23 @@ func (m *machineProvider) Create() common.Executor {
 	return &machineExecutor{
 		provider: m,
 	}
+}
+
+func (m *machineProvider) ServeDebugHTTP(router *mux.Router) {
+	router.Path("/machines").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		m.lock.Lock()
+		defer m.lock.Unlock()
+
+		details := make([]*machineDetails, len(m.details))
+
+		index := 0
+		for _, detail := range m.details {
+			details[index] = detail
+			index++
+		}
+
+		debug.SendJSON(w, http.StatusOK, details)
+	})
 }
 
 func newMachineProvider(name, executor string) *machineProvider {

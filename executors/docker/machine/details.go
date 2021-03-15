@@ -11,14 +11,15 @@ import (
 )
 
 type machineDetails struct {
-	Name       string
-	Created    time.Time `yaml:"-"`
-	Used       time.Time `yaml:"-"`
-	UsedCount  int
-	State      machineState
-	Reason     string
-	RetryCount int
-	LastSeen   time.Time
+	Name       string       `json:"name"`
+	Created    time.Time    `json:"created" yaml:"-"`
+	Used       time.Time    `json:"used" yaml:"-"`
+	UsedCount  int          `json:"used_count"`
+	State      machineState `json:"state"`
+	Reason     string       `json:"reason"`
+	RetryCount int          `json:"retry_count"`
+	LastSeen   time.Time    `json:"last_seen"`
+	UsedBy     string       `json:"used_by"`
 }
 
 func (m *machineDetails) isPersistedOnDisk() bool {

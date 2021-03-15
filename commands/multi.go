@@ -316,6 +316,9 @@ func (mr *RunCommand) serveDebugData(mux *http.ServeMux) {
 	server := debug.NewServer(mux)
 	jobs := server.RegisterJobsEndpoint()
 	jobs.RegisterJobsListEndpoint(&mr.buildsHelper)
+
+	runnersDebugEndpoint := server.RegisterRunnersEndpoint()
+	runnersDebugEndpoint.SetRunners(mr.config.Runners)
 }
 
 func (mr *RunCommand) setupSessionServer() {

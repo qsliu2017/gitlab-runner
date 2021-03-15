@@ -7,11 +7,37 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
 	"gitlab.com/gitlab-org/gitlab-runner/common"
+	_ "gitlab.com/gitlab-org/gitlab-runner/executors/shell"
 )
+
+type fakeExecutorProvider struct {
+	*common.MockExecutorProvider
+}
+
+func (fep *fakeExecutorProvider) ServeDebugHTTP(router *mux.Router) {
+	router.Path("/test-1").HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusTeapot)
+	})
+	router.Path("/test-2").HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusUnavailableForLegalReasons)
+	})
+}
+
+func newFakeExecutorProvider() *fakeExecutorProvider {
+	fep := new(fakeExecutorProvider)
+	fep.MockExecutorProvider = new(common.MockExecutorProvider)
+
+	fep.On("GetDefaultShell").Return("bash").Once()
+	fep.On("CanCreate").Return(true).Once()
+	fep.On("GetFeatures", mock.Anything).Return(nil).Once()
+
+	return fep
+}
 
 func TestRequests(t *testing.T) {
 	m := http.NewServeMux()
@@ -48,6 +74,9 @@ func TestRequests(t *testing.T) {
 		},
 	}).Once()
 
+	fakeExecutor := "fake"
+	common.RegisterExecutorProvider(fakeExecutor, newFakeExecutorProvider())
+
 	runners := server.RegisterRunnersEndpoint()
 	runners.SetRunners([]*common.RunnerConfig{
 		{
@@ -69,7 +98,7 @@ func TestRequests(t *testing.T) {
 				Token: "TOKEN_2",
 			},
 			RunnerSettings: common.RunnerSettings{
-				Executor: "docker",
+				Executor: fakeExecutor,
 			},
 		},
 	})
@@ -88,4 +117,39 @@ func TestRequests(t *testing.T) {
 	require.NoError(t, err)
 	t.Log(string(b))
 	t.Log(r.Header)
+
+	r, err = http.Get(url + "/debug/runners/")
+	require.NoError(t, err)
+	t.Log(r.StatusCode)
+	b, err = ioutil.ReadAll(r.Body)
+	require.NoError(t, err)
+	t.Log(string(b))
+
+	r, err = http.Get(url + "/debug/runners/TOKEN_1_/config")
+	require.NoError(t, err)
+	t.Log(r.StatusCode)
+	b, err = ioutil.ReadAll(r.Body)
+	require.NoError(t, err)
+	t.Log(string(b))
+
+	r, err = http.Get(url + "/debug/runners/TOKEN_1_/executor-provider")
+	require.NoError(t, err)
+	t.Log(r.StatusCode)
+	b, err = ioutil.ReadAll(r.Body)
+	require.NoError(t, err)
+	t.Log(string(b))
+
+	r, err = http.Get(url + "/debug/runners/TOKEN_2/executor-provider/test-1")
+	require.NoError(t, err)
+	t.Log(r.StatusCode)
+	b, err = ioutil.ReadAll(r.Body)
+	require.NoError(t, err)
+	t.Log(string(b))
+
+	r, err = http.Get(url + "/debug/runners/TOKEN_2/executor-provider/test-2")
+	require.NoError(t, err)
+	t.Log(r.StatusCode)
+	b, err = ioutil.ReadAll(r.Body)
+	require.NoError(t, err)
+	t.Log(string(b))
 }
