@@ -190,7 +190,7 @@ func TestBuildsHelperFindSessionByURL(t *testing.T) {
 	assert.Nil(t, foundSession)
 }
 
-func TestBuildsHelper_ListJobsHandler(t *testing.T) {
+func TestBuildsHelper_LegacyListJobsHandler(t *testing.T) {
 	tests := map[string]struct {
 		build          *common.Build
 		expectedOutput []string
@@ -222,7 +222,7 @@ func TestBuildsHelper_ListJobsHandler(t *testing.T) {
 
 			b := newBuildsHelper()
 			b.addBuild(test.build)
-			b.ListJobsHandler(writer, req)
+			b.LegacyListJobsHandler(writer, req)
 
 			resp := writer.Result()
 			defer resp.Body.Close()

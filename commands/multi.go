@@ -22,6 +22,7 @@ import (
 	"gitlab.com/gitlab-org/gitlab-runner/common"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers/certificate"
+	"gitlab.com/gitlab-org/gitlab-runner/helpers/debug"
 	prometheus_helper "gitlab.com/gitlab-org/gitlab-runner/helpers/prometheus"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers/sentry"
 	service_helpers "gitlab.com/gitlab-org/gitlab-runner/helpers/service"
@@ -267,8 +268,8 @@ func (mr *RunCommand) setupMetricsAndDebugServer() {
 	}()
 
 	mr.serveMetrics(mux)
-	mr.serveDebugData(mux)
 	mr.servePprof(mux)
+	mr.serveDebugData(mux)
 
 	mr.log().
 		WithField("address", listenAddress).
@@ -303,16 +304,18 @@ func (mr *RunCommand) serveMetrics(mux *http.ServeMux) {
 	mux.Handle("/metrics", promhttp.HandlerFor(registry, promhttp.HandlerOpts{}))
 }
 
-func (mr *RunCommand) serveDebugData(mux *http.ServeMux) {
-	mux.HandleFunc("/debug/jobs/list", mr.buildsHelper.ListJobsHandler)
-}
-
 func (mr *RunCommand) servePprof(mux *http.ServeMux) {
 	mux.HandleFunc("/debug/pprof/", pprof.Index)
 	mux.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
 	mux.HandleFunc("/debug/pprof/profile", pprof.Profile)
 	mux.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
 	mux.HandleFunc("/debug/pprof/trace", pprof.Trace)
+}
+
+func (mr *RunCommand) serveDebugData(mux *http.ServeMux) {
+	server := debug.NewServer(mux)
+	jobs := server.RegisterJobsEndpoint()
+	jobs.RegisterJobsListEndpoint(&mr.buildsHelper)
 }
 
 func (mr *RunCommand) setupSessionServer() {

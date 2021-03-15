@@ -298,8 +298,9 @@ func (b *buildsHelper) Collect(ch chan<- prometheus.Metric) {
 	b.jobDurationHistogram.Collect(ch)
 }
 
-func (b *buildsHelper) ListJobsHandler(w http.ResponseWriter, r *http.Request) {
+func (b *buildsHelper) LegacyListJobsHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Add("X-List-Version", "2")
+	w.Header().Add("X-Deprecated", "This endpoint is deprecated! Please use /debug/jobs/ instead")
 	w.Header().Add("Content-Type", "text/plain")
 	w.WriteHeader(http.StatusOK)
 
@@ -314,6 +315,10 @@ func (b *buildsHelper) ListJobsHandler(w http.ResponseWriter, r *http.Request) {
 			job.Duration(),
 		)
 	}
+}
+
+func (b *buildsHelper) ListJobs() []*common.Build {
+	return b.builds
 }
 
 func newBuildsHelper() buildsHelper {
