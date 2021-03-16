@@ -12,7 +12,6 @@ import (
 	"gitlab.com/gitlab-org/gitlab-runner/common"
 )
 
-//nolint:funlen
 func RunBuildWithCancel(t *testing.T, config *common.RunnerConfig, setup buildSetupFn) {
 	cancelIncludeStages := []common.BuildStage{
 		common.BuildStagePrepare,

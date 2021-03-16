@@ -83,7 +83,6 @@ linters:
   - deadcode
   - dogsled
   - errcheck
-  - funlen
   - goargs
   - gocognit
   - goconst
@@ -137,7 +136,6 @@ issues:
   - path: ".*_test.go"
     linters:
     - bodyclose
-    - funlen
     - gocognit
     - goconst
   - path: ".*_test.go"

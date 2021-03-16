@@ -115,7 +115,6 @@ type overwrites struct {
 	helperRequests  api.ResourceList
 }
 
-//nolint:funlen
 func createOverwrites(
 	config *common.KubernetesConfig,
 	variables common.JobVariables,
