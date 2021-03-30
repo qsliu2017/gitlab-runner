@@ -113,3 +113,7 @@ in the [Red Hat Ecosystem Catalog container list](https://catalog.redhat.com/sof
    NAME                             READY   STATUS    RESTARTS   AGE
    gitlab-runner-bf9894bdb-wplxn    1/1     Running   0          5m
    ```
+   
+#### Configuration
+
+Refer to the [Configuring GitLab Runner on OpenShift](../configuration/configuring_runner_openshift.md) page.
