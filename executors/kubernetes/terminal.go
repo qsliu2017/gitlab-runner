@@ -13,7 +13,7 @@ import (
 )
 
 func (s *executor) Connect() (terminalsession.Conn, error) {
-	settings, err := s.getTerminalSettings()
+	settings, err := s.getTerminalSettings(s.buildResources)
 	if err != nil {
 		return nil, err
 	}
@@ -42,13 +42,13 @@ func (t terminalConn) Close() error {
 	return nil
 }
 
-func (s *executor) getTerminalSettings() (*terminal.TerminalSettings, error) {
+func (s *executor) getTerminalSettings(br *buildResources) (*terminal.TerminalSettings, error) {
 	config, err := getKubeClientConfig(s.Config.Kubernetes, s.configurationOverwrites)
 	if err != nil {
 		return nil, err
 	}
 
-	wsURL := s.getTerminalWebSocketURL()
+	wsURL := s.getTerminalWebSocketURL(br)
 	if err != nil {
 		return nil, err
 	}
@@ -73,11 +73,11 @@ func (s *executor) getTerminalSettings() (*terminal.TerminalSettings, error) {
 	return term, nil
 }
 
-func (s *executor) getTerminalWebSocketURL() *url.URL {
+func (s *executor) getTerminalWebSocketURL(br *buildResources) *url.URL {
 	wsURL := s.kubeClient.CoreV1().RESTClient().Post().
-		Namespace(s.pod.Namespace).
+		Namespace(br.pod.Namespace).
 		Resource("pods").
-		Name(s.pod.Name).
+		Name(br.pod.Name).
 		SubResource("exec").
 		VersionedParams(&api.PodExecOptions{
 			Stdin:     true,

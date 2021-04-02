@@ -51,7 +51,7 @@ func (s *executor) ProxyRequest(
 		return
 	}
 
-	if !s.servicesRunning() {
+	if !s.servicesRunning(s.buildResources) {
 		logger.Errorf("services are not ready yet")
 		http.Error(w, http.StatusText(http.StatusServiceUnavailable), http.StatusServiceUnavailable)
 		return
@@ -65,8 +65,8 @@ func (s *executor) ProxyRequest(
 	proxyHTTPRequest(s, w, r, requestedURI, portSettings, settings, logger)
 }
 
-func (s *executor) servicesRunning() bool {
-	pod, err := s.kubeClient.CoreV1().Pods(s.pod.Namespace).Get(s.pod.Name, metav1.GetOptions{})
+func (s *executor) servicesRunning(br *buildResources) bool {
+	pod, err := s.kubeClient.CoreV1().Pods(br.pod.Namespace).Get(br.pod.Name, metav1.GetOptions{})
 	if err != nil || pod.Status.Phase != runningState {
 		return false
 	}
@@ -81,6 +81,7 @@ func (s *executor) servicesRunning() bool {
 }
 
 func (s *executor) serviceEndpointRequest(
+	br *buildResources,
 	verb, serviceName, requestedURI string,
 	port proxy.Port,
 ) (*rest.Request, error) {
@@ -90,7 +91,7 @@ func (s *executor) serviceEndpointRequest(
 	}
 
 	result := s.kubeClient.CoreV1().RESTClient().Verb(verb).
-		Namespace(s.pod.Namespace).
+		Namespace(br.pod.Namespace).
 		Resource("services").
 		SubResource("proxy").
 		Name(k8net.JoinSchemeNamePort(scheme, serviceName, strconv.Itoa(port.Number))).
@@ -112,14 +113,14 @@ func proxyWSRequest(
 	// we should refactor the library "gitlab.com/gitlab-org/gitlab-terminal"
 	// and make it more generic, not so terminal focused, with a broader
 	// terminology. (https://gitlab.com/gitlab-org/gitlab-runner/issues/4059)
-	settings, err := s.getTerminalSettings()
+	settings, err := s.getTerminalSettings(s.buildResources)
 	if err != nil {
 		logger.WithError(err).Errorf("service proxy: error getting WS settings")
 		http.Error(w, http.StatusText(http.StatusServiceUnavailable), http.StatusServiceUnavailable)
 		return
 	}
 
-	req, err := s.serviceEndpointRequest(r.Method, proxySettings.ServiceName, requestedURI, port)
+	req, err := s.serviceEndpointRequest(s.buildResources, r.Method, proxySettings.ServiceName, requestedURI, port)
 	if err != nil {
 		logger.WithError(err).Errorf("service proxy: error proxying WS request")
 		http.Error(w, http.StatusText(http.StatusServiceUnavailable), http.StatusServiceUnavailable)
@@ -144,7 +145,7 @@ func proxyHTTPRequest(
 	proxy *proxy.Settings,
 	logger *logrus.Entry,
 ) {
-	req, err := s.serviceEndpointRequest(r.Method, proxy.ServiceName, requestedURI, port)
+	req, err := s.serviceEndpointRequest(s.buildResources, r.Method, proxy.ServiceName, requestedURI, port)
 	if err != nil {
 		logger.WithError(err).Errorf("service proxy: error proxying HTTP request")
 		http.Error(w, http.StatusText(http.StatusServiceUnavailable), http.StatusServiceUnavailable)

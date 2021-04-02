@@ -99,22 +99,19 @@ type kubernetesOptions struct {
 type executor struct {
 	executors.AbstractExecutor
 
-	kubeClient  *kubernetes.Clientset
-	kubeConfig  *restclient.Config
-	pod         *api.Pod
-	configMap   *api.ConfigMap
-	credentials *api.Secret
-	options     *kubernetesOptions
-	services    []api.Service
+	kubeClient     *kubernetes.Clientset
+	kubeConfig     *restclient.Config
+	options        *kubernetesOptions
+	buildResources *buildResources
 
 	configurationOverwrites *overwrites
 	pullPolicy              common.KubernetesPullPolicy
 
 	helperImageInfo helperimage.Info
 
-	featureChecker featureChecker
-
+	featureChecker  featureChecker
 	newLogProcessor func() logProcessor
+	podsPool        podsPool
 
 	remoteProcessTerminated chan shells.TrapCommandExitStatus
 }
@@ -168,15 +165,57 @@ func (s *executor) Prepare(options common.ExecutorPrepareOptions) (err error) {
 	}
 
 	s.featureChecker = &kubeClientFeatureChecker{kubeClient: s.kubeClient}
+	s.preparePodsPool()
 
 	imageName := s.Build.GetAllVariables().ExpandValue(s.options.Image.Name)
 
 	s.Println("Using Kubernetes executor with image", imageName, "...")
-	if !s.Build.IsFeatureFlagOn(featureflags.UseLegacyKubernetesExecutionStrategy) {
+	if !s.legacyExecution() {
 		s.Println("Using attach strategy to execute scripts...")
 	}
 
 	return nil
+}
+
+func (s *executor) preparePodsPool() {
+	s.podsPool = podsPool{
+		idleCount: 2,
+		idleTime:  int(time.Minute.Seconds()),
+		creator:   s.createBuildResources,
+	}
+	go s.podsPool.loop()
+}
+
+func (s *executor) createBuildResources() (*buildResources, error) {
+	br := &buildResources{}
+
+	var err error
+	br.credentials, err = s.setupCredentials()
+	if err != nil {
+		return nil, fmt.Errorf("setting up credentials: %w", err)
+	}
+
+	br.configMap, err = s.setupScriptsConfigMap()
+	if err != nil {
+		return nil, fmt.Errorf("setting up scripts configMap: %w", err)
+	}
+
+	logPermissionsInitContainer := s.buildLogPermissionsInitContainer(br)
+	br.pod, err = s.setupBuildPod(br, []api.Container{logPermissionsInitContainer})
+	if err != nil {
+		return nil, fmt.Errorf("setting up build pod: %w", err)
+	}
+
+	br.services, err = s.setupBuildPodProxyServices(br)
+	if err != nil {
+		return nil, fmt.Errorf("setting up proxy services: %w", err)
+	}
+
+	return br, nil
+}
+
+func (s *executor) legacyExecution() bool {
+	return s.Build.IsFeatureFlagOn(featureflags.UseLegacyKubernetesExecutionStrategy)
 }
 
 func (s *executor) prepareHelperImage() (helperimage.Info, error) {
@@ -189,7 +228,7 @@ func (s *executor) prepareHelperImage() (helperimage.Info, error) {
 }
 
 func (s *executor) Run(cmd common.ExecutorCommand) error {
-	if s.Build.IsFeatureFlagOn(featureflags.UseLegacyKubernetesExecutionStrategy) {
+	if s.legacyExecution() {
 		s.Debugln("Starting Kubernetes command...")
 		return s.runWithExecLegacy(cmd)
 	}
@@ -199,16 +238,21 @@ func (s *executor) Run(cmd common.ExecutorCommand) error {
 }
 
 func (s *executor) runWithExecLegacy(cmd common.ExecutorCommand) error {
-	if s.pod == nil {
-		err := s.setupCredentials()
+	br := s.buildResources
+	if s.buildResources == nil {
+		br = &buildResources{}
+		var err error
+		br.credentials, err = s.setupCredentials()
 		if err != nil {
 			return err
 		}
 
-		err = s.setupBuildPod(nil)
+		br.pod, err = s.setupBuildPod(br, nil)
 		if err != nil {
 			return err
 		}
+
+		s.buildResources = br
 	}
 
 	containerName := buildContainerName
@@ -229,7 +273,7 @@ func (s *executor) runWithExecLegacy(cmd common.ExecutorCommand) error {
 	))
 
 	select {
-	case err := <-s.runInContainerWithExecLegacy(ctx, containerName, containerCommand, cmd.Script):
+	case err := <-s.runInContainerWithExecLegacy(br, ctx, containerName, containerCommand, cmd.Script):
 		s.Debugln(fmt.Sprintf("Container %q exited with error: %v", containerName, err))
 		var exitError exec.CodeExitError
 		if err != nil && errors.As(err, &exitError) {
@@ -243,7 +287,7 @@ func (s *executor) runWithExecLegacy(cmd common.ExecutorCommand) error {
 }
 
 func (s *executor) runWithAttach(cmd common.ExecutorCommand) error {
-	err := s.ensurePodsConfigured(cmd.Context)
+	br, err := s.ensurePodsConfigured(cmd.Context)
 	if err != nil {
 		return err
 	}
@@ -279,10 +323,10 @@ func (s *executor) runWithAttach(cmd common.ExecutorCommand) error {
 		cmd.Script,
 	))
 
-	podStatusCh := s.watchPodStatus(ctx)
+	podStatusCh := s.watchPodStatus(br, ctx)
 
 	select {
-	case err := <-s.runInContainer(containerName, containerCommand):
+	case err := <-s.runInContainer(br, containerName, containerCommand):
 		s.Debugln(fmt.Sprintf("Container %q exited with error: %v", containerName, err))
 		var terminatedError *commandTerminatedError
 		if err != nil && errors.As(err, &terminatedError) {
@@ -301,41 +345,32 @@ func (s *executor) runWithAttach(cmd common.ExecutorCommand) error {
 	}
 }
 
-func (s *executor) ensurePodsConfigured(ctx context.Context) error {
-	if s.pod != nil {
-		return nil
+func (s *executor) ensurePodsConfigured(ctx context.Context) (*buildResources, error) {
+	if s.buildResources != nil {
+		return s.buildResources, nil
 	}
 
-	err := s.setupCredentials()
+	var err error
+	s.buildResources, err = s.createBuildResources()
 	if err != nil {
-		return fmt.Errorf("setting up credentials: %w", err)
+		return nil, err
 	}
 
-	err = s.setupScriptsConfigMap()
+	status, err := waitForPodRunning(ctx, s.kubeClient, s.buildResources.pod, s.Trace, s.Config.Kubernetes)
 	if err != nil {
-		return fmt.Errorf("setting up scripts configMap: %w", err)
-	}
-
-	err = s.setupBuildPod([]api.Container{s.buildLogPermissionsInitContainer()})
-	if err != nil {
-		return fmt.Errorf("setting up build pod: %w", err)
-	}
-
-	status, err := waitForPodRunning(ctx, s.kubeClient, s.pod, s.Trace, s.Config.Kubernetes)
-	if err != nil {
-		return fmt.Errorf("waiting for pod running: %w", err)
+		return nil, fmt.Errorf("waiting for pod running: %w", err)
 	}
 
 	if status != api.PodRunning {
-		return fmt.Errorf("pod failed to enter running state: %s", status)
+		return nil, fmt.Errorf("pod failed to enter running state: %s", status)
 	}
 
 	go s.processLogs(ctx)
 
-	return nil
+	return s.buildResources, nil
 }
 
-func (s *executor) buildLogPermissionsInitContainer() api.Container {
+func (s *executor) buildLogPermissionsInitContainer(br *buildResources) api.Container {
 	// Since we mount the logs an emptyDir volume, the directory is owned by root.
 	// This makes it impossible for other users to write to the shared log without
 	// explicitly giving them permissions. More info at https://github.com/kubernetes/kubernetes/issues/2630
@@ -345,7 +380,7 @@ func (s *executor) buildLogPermissionsInitContainer() api.Container {
 		Name:            "change-logs-permissions",
 		Image:           s.getHelperImage(),
 		Command:         []string{"sh", "-c", chmod},
-		VolumeMounts:    s.getVolumeMounts(),
+		VolumeMounts:    s.getVolumeMounts(br),
 		ImagePullPolicy: api.PullPolicy(s.pullPolicy),
 	}
 }
@@ -372,7 +407,7 @@ func (s *executor) processLogs(ctx context.Context) {
 	}
 }
 
-func (s *executor) setupScriptsConfigMap() error {
+func (s *executor) setupScriptsConfigMap() (*api.ConfigMap, error) {
 	s.Debugln("Setting up scripts config map")
 
 	// After issue https://gitlab.com/gitlab-org/gitlab-runner/issues/10342 is resolved and
@@ -380,29 +415,27 @@ func (s *executor) setupScriptsConfigMap() error {
 	// in the exec options
 	bashShell, ok := common.GetShell(s.Shell().Shell).(*shells.BashShell)
 	if !ok {
-		return fmt.Errorf("kubernetes executor incorrect shell type")
+		return nil, fmt.Errorf("kubernetes executor incorrect shell type")
 	}
 
 	trapShell := &shells.BashTrapShell{BashShell: bashShell, LogFile: s.logFile()}
 	scripts, err := s.generateScripts(trapShell)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	configMap := &api.ConfigMap{
+	configMap, err := s.kubeClient.CoreV1().ConfigMaps(s.configurationOverwrites.namespace).Create(&api.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
 			GenerateName: fmt.Sprintf("%s-scripts", s.Build.ProjectUniqueName()),
 			Namespace:    s.configurationOverwrites.namespace,
 		},
 		Data: scripts,
-	}
-
-	s.configMap, err = s.kubeClient.CoreV1().ConfigMaps(s.configurationOverwrites.namespace).Create(configMap)
+	})
 	if err != nil {
-		return fmt.Errorf("generating scripts config map: %w", err)
+		return nil, fmt.Errorf("generating scripts config map: %w", err)
 	}
 
-	return nil
+	return configMap, nil
 }
 
 func (s *executor) generateScripts(shell common.Shell) (map[string]string, error) {
@@ -427,7 +460,7 @@ func (s *executor) Finish(err error) {
 	if isKubernetesPodNotFoundError(err) {
 		// Avoid an additional error message when trying to
 		// cleanup a pod that we know no longer exists
-		s.pod = nil
+		s.buildResources.pod = nil
 	}
 
 	s.AbstractExecutor.Finish(err)
@@ -443,9 +476,9 @@ func (s *executor) Cleanup() {
 func (s *executor) cleanupServices() {
 	ch := make(chan serviceDeleteResponse)
 	var wg sync.WaitGroup
-	wg.Add(len(s.services))
+	wg.Add(len(s.buildResources.services))
 
-	for _, service := range s.services {
+	for _, service := range s.buildResources.services {
 		go s.deleteKubernetesService(service.ObjectMeta.Name, ch, &wg)
 	}
 
@@ -471,24 +504,29 @@ func (s *executor) deleteKubernetesService(serviceName string, ch chan<- service
 }
 
 func (s *executor) cleanupResources() {
-	if s.pod != nil {
-		err := s.kubeClient.CoreV1().Pods(s.pod.Namespace).Delete(s.pod.Name, &metav1.DeleteOptions{})
+	pod := s.buildResources.pod
+	if pod != nil {
+		err := s.kubeClient.CoreV1().Pods(pod.Namespace).Delete(pod.Name, &metav1.DeleteOptions{})
 		if err != nil {
 			s.Errorln(fmt.Sprintf("Error cleaning up pod: %s", err.Error()))
 		}
 	}
-	if s.credentials != nil {
+
+	credentials := s.buildResources.credentials
+	if credentials != nil {
 		err := s.kubeClient.CoreV1().
 			Secrets(s.configurationOverwrites.namespace).
-			Delete(s.credentials.Name, &metav1.DeleteOptions{})
+			Delete(credentials.Name, &metav1.DeleteOptions{})
 		if err != nil {
 			s.Errorln(fmt.Sprintf("Error cleaning up secrets: %s", err.Error()))
 		}
 	}
-	if s.configMap != nil {
+
+	configMap := s.buildResources.configMap
+	if configMap != nil {
 		err := s.kubeClient.CoreV1().
 			ConfigMaps(s.configurationOverwrites.namespace).
-			Delete(s.configMap.Name, &metav1.DeleteOptions{})
+			Delete(configMap.Name, &metav1.DeleteOptions{})
 		if err != nil {
 			s.Errorln(fmt.Sprintf("Error cleaning up configmap: %s", err.Error()))
 		}
@@ -496,6 +534,7 @@ func (s *executor) cleanupResources() {
 }
 
 func (s *executor) buildContainer(
+	br *buildResources,
 	name, image string,
 	imageDefinition common.Image,
 	requests, limits api.ResourceList,
@@ -543,7 +582,7 @@ func (s *executor) buildContainer(
 			Requests: requests,
 		},
 		Ports:        containerPorts,
-		VolumeMounts: s.getVolumeMounts(),
+		VolumeMounts: s.getVolumeMounts(br),
 		SecurityContext: &api.SecurityContext{
 			Privileged:               &privileged,
 			AllowPrivilegeEscalation: allowPrivilegeEscalation,
@@ -586,7 +625,7 @@ func (s *executor) scriptPath(stage common.BuildStage) string {
 	return path.Join(s.scriptsDir(), string(stage))
 }
 
-func (s *executor) getVolumeMounts() []api.VolumeMount {
+func (s *executor) getVolumeMounts(br *buildResources) []api.VolumeMount {
 	var mounts []api.VolumeMount
 
 	mounts = append(mounts, api.VolumeMount{
@@ -595,7 +634,7 @@ func (s *executor) getVolumeMounts() []api.VolumeMount {
 	})
 
 	// The configMap is nil when using legacy execution
-	if s.configMap != nil {
+	if br.configMap != nil {
 		mounts = append(
 			mounts,
 			api.VolumeMount{
@@ -672,7 +711,7 @@ func (s *executor) getVolumeMountsForConfig() []api.VolumeMount {
 	return mounts
 }
 
-func (s *executor) getVolumes() []api.Volume {
+func (s *executor) getVolumes(br *buildResources) []api.Volume {
 	volumes := s.getVolumesForConfig()
 	volumes = append(volumes, api.Volume{
 		Name: "repo",
@@ -682,7 +721,7 @@ func (s *executor) getVolumes() []api.Volume {
 	})
 
 	// The configMap is nil when using legacy execution
-	if s.configMap == nil {
+	if br.configMap == nil {
 		return volumes
 	}
 
@@ -695,7 +734,7 @@ func (s *executor) getVolumes() []api.Volume {
 			VolumeSource: api.VolumeSource{
 				ConfigMap: &api.ConfigMapVolumeSource{
 					LocalObjectReference: api.LocalObjectReference{
-						Name: s.configMap.Name,
+						Name: br.configMap.Name,
 					},
 					DefaultMode: &mode,
 					Optional:    &optional,
@@ -849,16 +888,16 @@ func (s *executor) getVolumesForCSIs() []api.Volume {
 	return volumes
 }
 
-func (s *executor) setupCredentials() error {
+func (s *executor) setupCredentials() (*api.Secret, error) {
 	s.Debugln("Setting up secrets")
 
 	authConfigs, err := auth.ResolveConfigs(s.Build.GetDockerAuthConfig(), s.Shell().User, s.Build.Credentials)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	if len(authConfigs) == 0 {
-		return nil
+		return nil, nil
 	}
 
 	dockerCfgs := make(map[string]types.AuthConfig)
@@ -868,7 +907,7 @@ func (s *executor) setupCredentials() error {
 
 	dockerCfgContent, err := json.Marshal(dockerCfgs)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	secret := api.Secret{}
@@ -880,11 +919,10 @@ func (s *executor) setupCredentials() error {
 
 	creds, err := s.kubeClient.CoreV1().Secrets(s.configurationOverwrites.namespace).Create(&secret)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	s.credentials = creds
-	return nil
+	return creds, nil
 }
 
 func (s *executor) getHostAliases() ([]api.HostAlias, error) {
@@ -902,7 +940,7 @@ func (s *executor) getHostAliases() ([]api.HostAlias, error) {
 	return createHostAliases(s.options.Services, s.Config.Kubernetes.GetHostAliases())
 }
 
-func (s *executor) setupBuildPod(initContainers []api.Container) error {
+func (s *executor) setupBuildPod(br *buildResources, initContainers []api.Container) (*api.Pod, error) {
 	s.Debugln("Setting up build pod")
 
 	podServices := make([]api.Container, len(s.options.Services))
@@ -910,6 +948,7 @@ func (s *executor) setupBuildPod(initContainers []api.Container) error {
 	for i, service := range s.options.Services {
 		resolvedImage := s.Build.GetAllVariables().ExpandValue(service.Name)
 		podServices[i] = s.buildContainer(
+			br,
 			fmt.Sprintf("svc-%d", i),
 			resolvedImage,
 			service,
@@ -935,33 +974,28 @@ func (s *executor) setupBuildPod(initContainers []api.Container) error {
 		imagePullSecrets = append(imagePullSecrets, api.LocalObjectReference{Name: imagePullSecret})
 	}
 
-	if s.credentials != nil {
-		imagePullSecrets = append(imagePullSecrets, api.LocalObjectReference{Name: s.credentials.Name})
+	if br.credentials != nil {
+		imagePullSecrets = append(imagePullSecrets, api.LocalObjectReference{Name: br.credentials.Name})
 	}
 
 	hostAliases, err := s.getHostAliases()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	podConfig := s.preparePodConfig(labels, annotations, podServices, imagePullSecrets, hostAliases, initContainers)
+	podConfig := s.preparePodConfig(br, labels, annotations, podServices, imagePullSecrets, hostAliases, initContainers)
 
 	s.Debugln("Creating build pod")
 	pod, err := s.kubeClient.CoreV1().Pods(s.configurationOverwrites.namespace).Create(&podConfig)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	s.pod = pod
-	s.services, err = s.makePodProxyServices()
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return pod, nil
 }
 
 func (s *executor) preparePodConfig(
+	br *buildResources,
 	labels, annotations map[string]string,
 	services []api.Container,
 	imagePullSecrets []api.LocalObjectReference,
@@ -978,7 +1012,7 @@ func (s *executor) preparePodConfig(
 			Annotations:  annotations,
 		},
 		Spec: api.PodSpec{
-			Volumes:            s.getVolumes(),
+			Volumes:            s.getVolumes(br),
 			ServiceAccountName: s.configurationOverwrites.serviceAccount,
 			RestartPolicy:      api.RestartPolicyNever,
 			NodeSelector:       s.Config.Kubernetes.NodeSelector,
@@ -987,6 +1021,7 @@ func (s *executor) preparePodConfig(
 			Containers: append([]api.Container{
 				// TODO use the build and helper template here
 				s.buildContainer(
+					br,
 					buildContainerName,
 					buildImage,
 					s.options.Image,
@@ -995,6 +1030,7 @@ func (s *executor) preparePodConfig(
 					s.BuildShell.DockerCommand...,
 				),
 				s.buildContainer(
+					br,
 					helperContainerName,
 					s.getHelperImage(),
 					common.Image{},
@@ -1036,7 +1072,7 @@ func (s *executor) getHelperImage() string {
 	return s.helperImageInfo.String()
 }
 
-func (s *executor) makePodProxyServices() ([]api.Service, error) {
+func (s *executor) setupBuildPodProxyServices(br *buildResources) ([]api.Service, error) {
 	s.Debugln("Creating pod proxy services")
 
 	ch := make(chan serviceCreateResponse)
@@ -1057,7 +1093,7 @@ func (s *executor) makePodProxyServices() ([]api.Service, error) {
 		}
 
 		serviceConfig := s.prepareServiceConfig(serviceName, servicePorts)
-		go s.createKubernetesService(&serviceConfig, serviceProxy.Settings, ch, &wg)
+		go s.createKubernetesService(br, &serviceConfig, serviceProxy.Settings, ch, &wg)
 	}
 
 	go func() {
@@ -1095,6 +1131,7 @@ func (s *executor) prepareServiceConfig(name string, ports []api.ServicePort) ap
 }
 
 func (s *executor) createKubernetesService(
+	br *buildResources,
 	service *api.Service,
 	proxySettings *proxy.Settings,
 	ch chan<- serviceCreateResponse,
@@ -1102,7 +1139,7 @@ func (s *executor) createKubernetesService(
 ) {
 	defer wg.Done()
 
-	service, err := s.kubeClient.CoreV1().Services(s.pod.Namespace).Create(service)
+	service, err := s.kubeClient.CoreV1().Services(br.pod.Namespace).Create(service)
 	if err == nil {
 		// Updating the internal service name reference and activating the proxy
 		proxySettings.ServiceName = service.Name
@@ -1111,7 +1148,7 @@ func (s *executor) createKubernetesService(
 	ch <- serviceCreateResponse{service: service, err: err}
 }
 
-func (s *executor) watchPodStatus(ctx context.Context) <-chan error {
+func (s *executor) watchPodStatus(br *buildResources, ctx context.Context) <-chan error {
 	// Buffer of 1 in case the context is cancelled while the timer tick case is being executed
 	// and the consumer is no longer reading from the channel while we try to write to it
 	ch := make(chan error, 1)
@@ -1127,7 +1164,7 @@ func (s *executor) watchPodStatus(ctx context.Context) <-chan error {
 			case <-ctx.Done():
 				return
 			case <-t.C:
-				err := s.checkPodStatus()
+				err := s.checkPodStatus(br)
 				if err != nil {
 					ch <- err
 					return
@@ -1139,8 +1176,8 @@ func (s *executor) watchPodStatus(ctx context.Context) <-chan error {
 	return ch
 }
 
-func (s *executor) checkPodStatus() error {
-	pod, err := s.kubeClient.CoreV1().Pods(s.pod.Namespace).Get(s.pod.Name, metav1.GetOptions{})
+func (s *executor) checkPodStatus(br *buildResources) error {
+	pod, err := s.kubeClient.CoreV1().Pods(br.pod.Namespace).Get(br.pod.Name, metav1.GetOptions{})
 	if isKubernetesPodNotFoundError(err) {
 		return err
 	}
@@ -1153,7 +1190,7 @@ func (s *executor) checkPodStatus() error {
 
 	if pod.Status.Phase != api.PodRunning {
 		return &podPhaseError{
-			name:  s.pod.Name,
+			name:  br.pod.Name,
 			phase: pod.Status.Phase,
 		}
 	}
@@ -1161,14 +1198,14 @@ func (s *executor) checkPodStatus() error {
 	return nil
 }
 
-func (s *executor) runInContainer(name string, command []string) <-chan error {
+func (s *executor) runInContainer(br *buildResources, name string, command []string) <-chan error {
 	errCh := make(chan error, 1)
 	go func() {
 		defer close(errCh)
 
 		attach := AttachOptions{
-			PodName:       s.pod.Name,
-			Namespace:     s.pod.Namespace,
+			PodName:       br.pod.Name,
+			Namespace:     br.pod.Namespace,
 			ContainerName: name,
 			Command:       command,
 
@@ -1196,6 +1233,7 @@ func (s *executor) runInContainer(name string, command []string) <-chan error {
 }
 
 func (s *executor) runInContainerWithExecLegacy(
+	br *buildResources,
 	ctx context.Context,
 	name string,
 	command []string,
@@ -1205,7 +1243,7 @@ func (s *executor) runInContainerWithExecLegacy(
 	go func() {
 		defer close(errCh)
 
-		status, err := waitForPodRunning(ctx, s.kubeClient, s.pod, s.Trace, s.Config.Kubernetes)
+		status, err := waitForPodRunning(ctx, s.kubeClient, br.pod, s.Trace, s.Config.Kubernetes)
 
 		if err != nil {
 			errCh <- err
@@ -1218,8 +1256,8 @@ func (s *executor) runInContainerWithExecLegacy(
 		}
 
 		exec := ExecOptions{
-			PodName:       s.pod.Name,
-			Namespace:     s.pod.Namespace,
+			PodName:       br.pod.Name,
+			Namespace:     br.pod.Namespace,
 			ContainerName: name,
 			Command:       command,
 			In:            strings.NewReader(script),
@@ -1316,8 +1354,8 @@ func newExecutor() *executor {
 			&backoff.Backoff{Min: time.Second, Max: 30 * time.Second},
 			e.Build.Log(),
 			kubernetesLogProcessorPodConfig{
-				namespace:          e.pod.Namespace,
-				pod:                e.pod.Name,
+				namespace:          e.buildResources.pod.Namespace,
+				pod:                e.buildResources.pod.Name,
 				container:          helperContainerName,
 				logPath:            e.logFile(),
 				waitLogFileTimeout: waitLogFileTimeout,
