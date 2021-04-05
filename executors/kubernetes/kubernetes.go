@@ -346,7 +346,11 @@ func (s *executor) ensurePodsConfigured(ctx context.Context) (*buildResources, e
 	}
 
 	var err error
-	s.buildResources, err = s.createBuildResources(buildResourceOptions{})
+	if s.podsManager != nil {
+		s.buildResources, err = s.podsManager.get(s)
+	} else {
+		s.buildResources, err = s.createBuildResources(buildResourceOptions{})
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -1003,6 +1007,20 @@ func (s *executor) preparePodConfig(
 ) api.Pod {
 	buildImage := s.Build.GetAllVariables().ExpandValue(s.options.Image.Name)
 
+	helperContainerCmd := []string{
+		"gitlab-runner-helper",
+		"entry",
+		"--idle=true",
+		"--idle-time=" + fmt.Sprint(s.Config.Kubernetes.IdleTime),
+		"--detect-shell-script-path=" + s.scriptPath(detectShellScriptName),
+		"--project-dir=" + s.Build.FullProjectDir(),
+	}
+
+	//buildContainerCmd := []string{"sh", "-c", fmt.Sprintf("echo OVERWRITE && %q", s.BuildShell.DockerCommand[2])}
+	//buildContainerCmd = []string{
+	//	"sh", "-c", strings.Replace(detectShellScript, "$@", "<<< "),
+	//}
+
 	pod := api.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			GenerateName: s.Build.ProjectUniqueName(),
@@ -1035,7 +1053,8 @@ func (s *executor) preparePodConfig(
 					common.Image{},
 					s.configurationOverwrites.helperRequests,
 					s.configurationOverwrites.helperLimits,
-					s.BuildShell.DockerCommand...,
+					helperContainerCmd...,
+				//s.BuildShell.DockerCommand...,
 				),
 			}, services...),
 			TerminationGracePeriodSeconds: &s.Config.Kubernetes.TerminationGracePeriodSeconds,
