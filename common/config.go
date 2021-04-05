@@ -330,6 +330,8 @@ type KubernetesConfig struct {
 	CapDrop                                           []string                     `toml:"cap_drop" json:"cap_drop" long:"cap-drop" env:"KUBERNETES_CAP_DROP" description:"Drop Linux capabilities"`
 	DNSPolicy                                         KubernetesDNSPolicy          `toml:"dns_policy,omitempty" json:"dns_policy" long:"dns-policy" env:"KUBERNETES_DNS_POLICY" description:"How Kubernetes should try to resolve DNS from the created pods. If unset, Kubernetes will use the default 'ClusterFirst'. Valid values are: none, default, cluster-first, cluster-first-with-host-net"`
 	DNSConfig                                         KubernetesDNSConfig          `toml:"dns_config" json:"dns_config" description:"Pod DNS config"`
+	IdleCount                                         int                          `toml:"idle_count"`
+	IdleTime                                          int                          `toml:"idle_time"`
 }
 
 //nolint:lll

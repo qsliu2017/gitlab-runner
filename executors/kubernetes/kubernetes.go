@@ -111,7 +111,7 @@ type executor struct {
 
 	featureChecker  featureChecker
 	newLogProcessor func() logProcessor
-	podsPool        podsPool
+	podsManager     *podsManager
 
 	remoteProcessTerminated chan shells.TrapCommandExitStatus
 }
@@ -165,7 +165,11 @@ func (s *executor) Prepare(options common.ExecutorPrepareOptions) (err error) {
 	}
 
 	s.featureChecker = &kubeClientFeatureChecker{kubeClient: s.kubeClient}
-	s.preparePodsPool()
+	podsManager, ok := s.Build.ExecutorData.(*podsManager)
+	if ok {
+		s.podsManager = podsManager
+		s.podsManager.createIdle(s)
+	}
 
 	imageName := s.Build.GetAllVariables().ExpandValue(s.options.Image.Name)
 
@@ -177,16 +181,7 @@ func (s *executor) Prepare(options common.ExecutorPrepareOptions) (err error) {
 	return nil
 }
 
-func (s *executor) preparePodsPool() {
-	s.podsPool = podsPool{
-		idleCount: 2,
-		idleTime:  int(time.Minute.Seconds()),
-		creator:   s.createBuildResources,
-	}
-	go s.podsPool.loop()
-}
-
-func (s *executor) createBuildResources() (*buildResources, error) {
+func (s *executor) createBuildResources(opts buildResourceOptions) (*buildResources, error) {
 	br := &buildResources{}
 
 	var err error
@@ -201,7 +196,7 @@ func (s *executor) createBuildResources() (*buildResources, error) {
 	}
 
 	logPermissionsInitContainer := s.buildLogPermissionsInitContainer(br)
-	br.pod, err = s.setupBuildPod(br, []api.Container{logPermissionsInitContainer})
+	br.pod, err = s.setupBuildPod(opts, br, []api.Container{logPermissionsInitContainer})
 	if err != nil {
 		return nil, fmt.Errorf("setting up build pod: %w", err)
 	}
@@ -247,7 +242,7 @@ func (s *executor) runWithExecLegacy(cmd common.ExecutorCommand) error {
 			return err
 		}
 
-		br.pod, err = s.setupBuildPod(br, nil)
+		br.pod, err = s.setupBuildPod(buildResourceOptions{}, br, nil)
 		if err != nil {
 			return err
 		}
@@ -351,7 +346,7 @@ func (s *executor) ensurePodsConfigured(ctx context.Context) (*buildResources, e
 	}
 
 	var err error
-	s.buildResources, err = s.createBuildResources()
+	s.buildResources, err = s.createBuildResources(buildResourceOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -467,18 +462,18 @@ func (s *executor) Finish(err error) {
 }
 
 func (s *executor) Cleanup() {
-	s.cleanupResources()
-	s.cleanupServices()
+	s.cleanupResources(s.buildResources)
+	s.cleanupServices(s.buildResources)
 	closeKubeClient(s.kubeClient)
 	s.AbstractExecutor.Cleanup()
 }
 
-func (s *executor) cleanupServices() {
+func (s *executor) cleanupServices(br *buildResources) {
 	ch := make(chan serviceDeleteResponse)
 	var wg sync.WaitGroup
-	wg.Add(len(s.buildResources.services))
+	wg.Add(len(br.services))
 
-	for _, service := range s.buildResources.services {
+	for _, service := range br.services {
 		go s.deleteKubernetesService(service.ObjectMeta.Name, ch, &wg)
 	}
 
@@ -503,8 +498,8 @@ func (s *executor) deleteKubernetesService(serviceName string, ch chan<- service
 	ch <- serviceDeleteResponse{serviceName: serviceName, err: err}
 }
 
-func (s *executor) cleanupResources() {
-	pod := s.buildResources.pod
+func (s *executor) cleanupResources(br *buildResources) {
+	pod := br.pod
 	if pod != nil {
 		err := s.kubeClient.CoreV1().Pods(pod.Namespace).Delete(pod.Name, &metav1.DeleteOptions{})
 		if err != nil {
@@ -512,7 +507,7 @@ func (s *executor) cleanupResources() {
 		}
 	}
 
-	credentials := s.buildResources.credentials
+	credentials := br.credentials
 	if credentials != nil {
 		err := s.kubeClient.CoreV1().
 			Secrets(s.configurationOverwrites.namespace).
@@ -522,7 +517,7 @@ func (s *executor) cleanupResources() {
 		}
 	}
 
-	configMap := s.buildResources.configMap
+	configMap := br.configMap
 	if configMap != nil {
 		err := s.kubeClient.CoreV1().
 			ConfigMaps(s.configurationOverwrites.namespace).
@@ -940,7 +935,7 @@ func (s *executor) getHostAliases() ([]api.HostAlias, error) {
 	return createHostAliases(s.options.Services, s.Config.Kubernetes.GetHostAliases())
 }
 
-func (s *executor) setupBuildPod(br *buildResources, initContainers []api.Container) (*api.Pod, error) {
+func (s *executor) setupBuildPod(opts buildResourceOptions, br *buildResources, initContainers []api.Container) (*api.Pod, error) {
 	s.Debugln("Setting up build pod")
 
 	podServices := make([]api.Container, len(s.options.Services))
@@ -961,6 +956,10 @@ func (s *executor) setupBuildPod(br *buildResources, initContainers []api.Contai
 	// by the services, to link each service to the pod
 	labels := map[string]string{"pod": s.Build.ProjectUniqueName()}
 	for k, v := range s.Build.Runner.Kubernetes.PodLabels {
+		labels[k] = s.Build.Variables.ExpandValue(v)
+	}
+
+	for k, v := range opts.labels {
 		labels[k] = s.Build.Variables.ExpandValue(v)
 	}
 
@@ -1339,7 +1338,13 @@ func isKubernetesPodNotFoundError(err error) bool {
 		statusErr.ErrStatus.Details.Kind == "pods"
 }
 
-func newExecutor() *executor {
+type kubernetesExecutorProvider struct{}
+
+func (k *kubernetesExecutorProvider) CanCreate() bool {
+	return true
+}
+
+func (k *kubernetesExecutorProvider) Create() common.Executor {
 	e := &executor{
 		AbstractExecutor: executors.AbstractExecutor{
 			ExecutorOptions: executorOptions,
@@ -1366,7 +1371,29 @@ func newExecutor() *executor {
 	return e
 }
 
-func featuresFn(features *common.FeaturesInfo) {
+func (k *kubernetesExecutorProvider) Acquire(config *common.RunnerConfig) (common.ExecutorData, error) {
+	if config.Kubernetes.IdleCount == 0 {
+		return nil, nil
+	}
+
+	manager := getPodsManager(&podsManagerOptions{
+		provider: k,
+		config:   *config,
+		creator: func(e *executor, opts buildResourceOptions) (*buildResources, error) {
+			return e.createBuildResources(opts)
+		},
+		cleaner: func(e *executor, resources *buildResources) {
+			e.cleanupResources(resources)
+		},
+	})
+
+	return manager, nil
+}
+
+func (k *kubernetesExecutorProvider) Release(config *common.RunnerConfig, data common.ExecutorData) {
+}
+
+func (k *kubernetesExecutorProvider) GetFeatures(features *common.FeaturesInfo) error {
 	features.Variables = true
 	features.Image = true
 	features.Services = true
@@ -1375,14 +1402,13 @@ func featuresFn(features *common.FeaturesInfo) {
 	features.Session = true
 	features.Terminal = true
 	features.Proxy = true
+	return nil
+}
+
+func (k *kubernetesExecutorProvider) GetDefaultShell() string {
+	return executorOptions.Shell.Shell
 }
 
 func init() {
-	common.RegisterExecutorProvider("kubernetes", executors.DefaultExecutorProvider{
-		Creator: func() common.Executor {
-			return newExecutor()
-		},
-		FeaturesUpdater:  featuresFn,
-		DefaultShellName: executorOptions.Shell.Shell,
-	})
+	common.RegisterExecutorProvider("kubernetes", &kubernetesExecutorProvider{})
 }
