@@ -32,8 +32,6 @@ github.com/Azure/go-autorest/tracing
 github.com/BurntSushi/toml
 # github.com/Microsoft/go-winio v0.4.12
 github.com/Microsoft/go-winio
-# github.com/Nvveen/Gotty v0.0.0-20120604004816-cd527374f1e5
-github.com/Nvveen/Gotty
 # github.com/aws/aws-sdk-go v1.36.1
 github.com/aws/aws-sdk-go/aws
 github.com/aws/aws-sdk-go/aws/arn
