@@ -408,25 +408,29 @@ func getPredefinedEnv(buildStage BuildStage) bool {
 	return predefined
 }
 
-func (b *Build) getAdditionalEnv(buildStage BuildStage) []string {
+func (b *Build) GetCacheHelperVariables() JobVariables {
 	if b.cacheCredentialsProvider == nil {
-		return []string{}
-	}
-
-	if buildStage != BuildStageRestoreCache &&
-		buildStage != BuildStageArchiveOnSuccessCache &&
-		buildStage != BuildStageArchiveOnFailureCache {
-		return []string{}
+		return JobVariables{}
 	}
 
 	creds := b.cacheCredentialsProvider.GetCredentials()
-	var env []string
+	var env JobVariables
 
 	for key, value := range creds {
-		env = append(env, fmt.Sprintf("%s=%s", key, value))
+		env = append(env, JobVariable{Key: key, Value: value, Internal: true})
 	}
 
 	return env
+}
+
+func (b *Build) getAdditionalEnv(buildStage BuildStage) JobVariables {
+	if buildStage != BuildStageRestoreCache &&
+		buildStage != BuildStageArchiveOnSuccessCache &&
+		buildStage != BuildStageArchiveOnFailureCache {
+		return JobVariables{}
+	}
+
+	return b.GetCacheHelperVariables()
 }
 
 func GetStageDescription(stage BuildStage) string {

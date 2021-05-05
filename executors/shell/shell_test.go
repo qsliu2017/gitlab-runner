@@ -130,9 +130,12 @@ func TestExecutor_Run(t *testing.T) {
 				ctx, cancelJob := context.WithCancel(context.Background())
 				defer cancelJob()
 
-				var env []string
+				var env common.JobVariables
 				if tt.useAdditionalEnv {
-					env = []string{"ABC=123", "XYZ=987"}
+					env = common.JobVariables{
+						{Key: "ABC", Value: "123"},
+						{Key: "XYZ", Value: "987"},
+					}
 				}
 
 				cmd := common.ExecutorCommand{

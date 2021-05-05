@@ -35,8 +35,9 @@ import (
 )
 
 const (
-	buildContainerName  = "build"
-	helperContainerName = "helper"
+	buildContainerName       = "build"
+	helperContainerName      = "helper"
+	cacheHelperContainerName = "cache-helper"
 
 	detectShellScriptName = "detect_shell_script"
 
@@ -268,6 +269,15 @@ func (s *executor) Run(cmd common.ExecutorCommand) error {
 	}
 }
 
+func getHelperContainerName(cmd common.ExecutorCommand) string {
+	switch cmd.Stage {
+	case common.BuildStageRestoreCache, common.BuildStageArchiveOnSuccessCache, common.BuildStageArchiveOnFailureCache:
+		return cacheHelperContainerName
+	default:
+		return helperContainerName
+	}
+}
+
 func (s *executor) runWithExecLegacy(cmd common.ExecutorCommand) error {
 	if s.pod == nil {
 		err := s.setupCredentials()
@@ -284,7 +294,7 @@ func (s *executor) runWithExecLegacy(cmd common.ExecutorCommand) error {
 	containerName := buildContainerName
 	containerCommand := s.BuildShell.DockerCommand
 	if cmd.Predefined {
-		containerName = helperContainerName
+		containerName = getHelperContainerName(cmd)
 		containerCommand = s.helperImageInfo.Cmd
 	}
 
@@ -675,6 +685,7 @@ func (s *executor) buildContainer(
 	name, image string,
 	imageDefinition common.Image,
 	requests, limits api.ResourceList,
+	env []api.EnvVar,
 	containerCommand ...string,
 ) (api.Container, error) {
 	// check if the image/service is allowed
@@ -740,7 +751,7 @@ func (s *executor) buildContainer(
 		ImagePullPolicy: pullPolicy,
 		Command:         command,
 		Args:            args,
-		Env:             buildVariables(s.Build.GetAllVariables().PublicOrInternal()),
+		Env:             env,
 		Resources: api.ResourceRequirements{
 			Limits:   limits,
 			Requests: requests,
@@ -1155,6 +1166,8 @@ func (s *executor) setupBuildPod(initContainers []api.Container) error {
 
 	podServices := make([]api.Container, len(s.options.Services))
 
+	env := buildVariables(s.Build.GetAllVariables().PublicOrInternal())
+
 	for i, service := range s.options.Services {
 		resolvedImage := s.Build.GetAllVariables().ExpandValue(service.Name)
 		var err error
@@ -1164,6 +1177,7 @@ func (s *executor) setupBuildPod(initContainers []api.Container) error {
 			service,
 			s.configurationOverwrites.serviceRequests,
 			s.configurationOverwrites.serviceLimits,
+			env,
 		)
 		if err != nil {
 			return err
@@ -1229,15 +1243,9 @@ func (s *executor) setupBuildPod(initContainers []api.Container) error {
 	return nil
 }
 
-//nolint:funlen
-func (s *executor) preparePodConfig(
-	labels, annotations map[string]string,
-	services []api.Container,
-	imagePullSecrets []api.LocalObjectReference,
-	hostAliases []api.HostAlias,
-	initContainers []api.Container,
-) (api.Pod, error) {
+func (s *executor) getPodContainers() ([]api.Container, error) {
 	buildImage := s.Build.GetAllVariables().ExpandValue(s.options.Image.Name)
+	standardEnv := buildVariables(s.Build.GetAllVariables().PublicOrInternal())
 
 	buildContainer, err := s.buildContainer(
 		buildContainerName,
@@ -1245,10 +1253,11 @@ func (s *executor) preparePodConfig(
 		s.options.Image,
 		s.configurationOverwrites.buildRequests,
 		s.configurationOverwrites.buildLimits,
+		standardEnv,
 		s.BuildShell.DockerCommand...,
 	)
 	if err != nil {
-		return api.Pod{}, fmt.Errorf("building build container: %w", err)
+		return []api.Container{}, fmt.Errorf("building build container: %w", err)
 	}
 
 	helperContainer, err := s.buildContainer(
@@ -1257,10 +1266,40 @@ func (s *executor) preparePodConfig(
 		common.Image{},
 		s.configurationOverwrites.helperRequests,
 		s.configurationOverwrites.helperLimits,
+		standardEnv,
 		s.BuildShell.DockerCommand...,
 	)
 	if err != nil {
-		return api.Pod{}, fmt.Errorf("building helper container: %w", err)
+		return []api.Container{}, fmt.Errorf("building helper container: %w", err)
+	}
+
+	cacheHelperContainer, err := s.buildContainer(
+		cacheHelperContainerName,
+		s.getHelperImage(),
+		common.Image{},
+		s.configurationOverwrites.helperRequests,
+		s.configurationOverwrites.helperLimits,
+		buildVariables(s.Build.GetCacheHelperVariables()),
+		s.BuildShell.DockerCommand...,
+	)
+	if err != nil {
+		return []api.Container{}, fmt.Errorf("building cache helper container: %w", err)
+	}
+
+	return []api.Container{buildContainer, helperContainer, cacheHelperContainer}, nil
+}
+
+//nolint:funlen
+func (s *executor) preparePodConfig(
+	labels, annotations map[string]string,
+	services []api.Container,
+	imagePullSecrets []api.LocalObjectReference,
+	hostAliases []api.HostAlias,
+	initContainers []api.Container,
+) (api.Pod, error) {
+	containers, err := s.getPodContainers()
+	if err != nil {
+		return api.Pod{}, err
 	}
 
 	pod := api.Pod{
@@ -1271,16 +1310,13 @@ func (s *executor) preparePodConfig(
 			Annotations:  annotations,
 		},
 		Spec: api.PodSpec{
-			Volumes:            s.getVolumes(),
-			ServiceAccountName: s.configurationOverwrites.serviceAccount,
-			RestartPolicy:      api.RestartPolicyNever,
-			NodeSelector:       s.Config.Kubernetes.NodeSelector,
-			Tolerations:        s.Config.Kubernetes.GetNodeTolerations(),
-			InitContainers:     initContainers,
-			Containers: append([]api.Container{
-				buildContainer,
-				helperContainer,
-			}, services...),
+			Volumes:                       s.getVolumes(),
+			ServiceAccountName:            s.configurationOverwrites.serviceAccount,
+			RestartPolicy:                 api.RestartPolicyNever,
+			NodeSelector:                  s.Config.Kubernetes.NodeSelector,
+			Tolerations:                   s.Config.Kubernetes.GetNodeTolerations(),
+			InitContainers:                initContainers,
+			Containers:                    append(containers, services...),
 			TerminationGracePeriodSeconds: &s.Config.Kubernetes.TerminationGracePeriodSeconds,
 			ImagePullSecrets:              imagePullSecrets,
 			SecurityContext:               s.Config.Kubernetes.GetPodSecurityContext(),

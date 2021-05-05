@@ -19,7 +19,7 @@ type ExecutorCommand struct {
 	Stage         BuildStage
 	Predefined    bool
 	Context       context.Context
-	AdditionalEnv []string
+	AdditionalEnv JobVariables
 }
 
 // ExecutorStage represents a stage of build execution in the executor scope.
