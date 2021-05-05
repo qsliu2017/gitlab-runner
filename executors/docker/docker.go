@@ -610,6 +610,7 @@ func (e *executor) createContainer(
 	imageDefinition common.Image,
 	cmd []string,
 	allowedInternalImages []string,
+	additionalEnv []string,
 ) (*types.ContainerJSON, error) {
 	if e.volumesManager == nil {
 		return nil, errVolumesManagerUndefined
@@ -629,7 +630,7 @@ func (e *executor) createContainer(
 	containerIndex := len(e.builds)
 	containerName := e.getProjectUniqRandomizedName() + "-" + containerType + "-" + strconv.Itoa(containerIndex)
 
-	config := e.createContainerConfig(containerType, imageDefinition, image.ID, hostname, cmd)
+	config := e.createContainerConfig(containerType, imageDefinition, image.ID, hostname, cmd, additionalEnv)
 
 	hostConfig, err := e.createHostConfig()
 	if err != nil {
@@ -668,7 +669,13 @@ func (e *executor) createContainerConfig(
 	imageID string,
 	hostname string,
 	cmd []string,
+	additionalEnv []string,
 ) *container.Config {
+	env := append(e.Build.GetAllVariables().StringList(), e.BuildShell.Environment...)
+	// These variables should take precedence since they are private environment variables
+	// for specific build stages.
+	env = append(env, additionalEnv...)
+
 	config := &container.Config{
 		Image:        imageID,
 		Hostname:     hostname,
@@ -680,7 +687,7 @@ func (e *executor) createContainerConfig(
 		AttachStderr: true,
 		OpenStdin:    true,
 		StdinOnce:    true,
-		Env:          append(e.Build.GetAllVariables().StringList(), e.BuildShell.Environment...),
+		Env:          env,
 	}
 	config.Entrypoint = e.overwriteEntrypoint(&imageDefinition)
 

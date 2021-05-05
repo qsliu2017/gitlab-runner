@@ -25,6 +25,7 @@ import (
 
 	"gitlab.com/gitlab-org/gitlab-runner/common"
 	"gitlab.com/gitlab-org/gitlab-runner/executors"
+	"gitlab.com/gitlab-org/gitlab-runner/executors/docker/internal/labels"
 	"gitlab.com/gitlab-org/gitlab-runner/executors/docker/internal/networks"
 	"gitlab.com/gitlab-org/gitlab-runner/executors/docker/internal/pull"
 	"gitlab.com/gitlab-org/gitlab-runner/executors/docker/internal/user"
@@ -133,6 +134,33 @@ func TestBindDeviceRequests(t *testing.T) {
 			require.Equal(t, tt.expectedDeviceRequest, e.deviceRequests)
 		})
 	}
+}
+
+func TestCreateContainerConfig(t *testing.T) {
+	e := new(executor)
+	e.Build = &common.Build{
+		ProjectRunnerID: 0,
+		Runner:          &common.RunnerConfig{},
+	}
+	e.BuildShell = &common.ShellConfiguration{
+		Environment: []string{},
+	}
+	e.labeler = labels.NewLabeler(e.Build)
+
+	config := e.createContainerConfig(
+		"build",
+		common.Image{Name: common.TestAlpineImage},
+		"alpine-test",
+		"host",
+		[]string{"/bin/sh"},
+		[]string{"ABC=123", "XYZ=987"},
+	)
+
+	require.NotNil(t, config)
+	assert.Contains(t, config.Env, "CI_SERVER=yes")
+	assert.Contains(t, config.Env, "CI_JOB_STATUS=running")
+	assert.Contains(t, config.Env, "ABC=123")
+	assert.Contains(t, config.Env, "XYZ=987")
 }
 
 type testAllowedImageDescription struct {
@@ -956,7 +984,8 @@ func testDockerConfigurationWithJobContainer(
 	err = e.createPullManager()
 	require.NoError(t, err)
 
-	_, err = e.createContainer("build", common.Image{Name: "alpine"}, []string{"/bin/sh"}, []string{})
+	_, err = e.createContainer("build", common.Image{Name: "alpine"}, []string{"/bin/sh"}, []string{}, []string{})
+
 	assert.NoError(t, err, "Should create container without errors")
 }
 

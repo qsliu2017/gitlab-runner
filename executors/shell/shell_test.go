@@ -18,6 +18,8 @@ import (
 	"gitlab.com/gitlab-org/gitlab-runner/shells/shellstest"
 )
 
+type initCommandCallback func(options process.CommandOptions)
+
 func TestExecutor_Run(t *testing.T) {
 	var testErr = errors.New("test error")
 	var exitErr = &exec.ExitError{}
@@ -26,6 +28,7 @@ func TestExecutor_Run(t *testing.T) {
 		commanderAssertions     func(*process.MockCommander, chan time.Time)
 		processKillerAssertions func(*process.MockKillWaiter, chan time.Time)
 		cancelJob               bool
+		useAdditionalEnv        bool
 		expectedErr             error
 	}{
 		"canceled job uses new process termination": {
@@ -43,6 +46,20 @@ func TestExecutor_Run(t *testing.T) {
 			},
 			cancelJob:   true,
 			expectedErr: nil,
+		},
+		"job uses custom environment variables": {
+			commanderAssertions: func(mCmd *process.MockCommander, waitCalled chan time.Time) {
+				mCmd.On("Start").Return(nil).Once()
+				mCmd.On("Wait").Run(func(args mock.Arguments) {
+					close(waitCalled)
+				}).Return(nil).Once()
+			},
+			processKillerAssertions: func(mProcessKillWaiter *process.MockKillWaiter, waitCalled chan time.Time) {
+
+			},
+			cancelJob:        false,
+			expectedErr:      nil,
+			useAdditionalEnv: true,
 		},
 		"cmd fails to start": {
 			commanderAssertions: func(mCmd *process.MockCommander, _ chan time.Time) {
@@ -90,7 +107,8 @@ func TestExecutor_Run(t *testing.T) {
 	for name, tt := range tests {
 		t.Run(name, func(t *testing.T) {
 			shellstest.OnEachShell(t, func(t *testing.T, shell string) {
-				mProcessKillWaiter, mCmd, cleanup := setupProcessMocks(t)
+				cmdCallback := getCommanderCallback(t, tt.useAdditionalEnv)
+				mProcessKillWaiter, mCmd, cleanup := setupProcessMocks(t, cmdCallback)
 				defer cleanup()
 
 				waitCalled := make(chan time.Time)
@@ -112,10 +130,16 @@ func TestExecutor_Run(t *testing.T) {
 				ctx, cancelJob := context.WithCancel(context.Background())
 				defer cancelJob()
 
+				var env []string
+				if tt.useAdditionalEnv {
+					env = []string{"ABC=123", "XYZ=987"}
+				}
+
 				cmd := common.ExecutorCommand{
-					Script:     "echo hello",
-					Predefined: false,
-					Context:    ctx,
+					Script:        "echo hello",
+					Predefined:    false,
+					Context:       ctx,
+					AdditionalEnv: env,
 				}
 
 				if tt.cancelJob {
@@ -129,7 +153,10 @@ func TestExecutor_Run(t *testing.T) {
 	}
 }
 
-func setupProcessMocks(t *testing.T) (*process.MockKillWaiter, *process.MockCommander, func()) {
+func setupProcessMocks(
+	t *testing.T,
+	newCommandCallback initCommandCallback,
+) (*process.MockKillWaiter, *process.MockCommander, func()) {
 	mProcessKillWaiter := new(process.MockKillWaiter)
 	defer mProcessKillWaiter.AssertExpectations(t)
 	mCmd := new(process.MockCommander)
@@ -147,6 +174,10 @@ func setupProcessMocks(t *testing.T) (*process.MockKillWaiter, *process.MockComm
 	}
 
 	newCommander = func(executable string, args []string, options process.CommandOptions) process.Commander {
+		if newCommandCallback != nil {
+			newCommandCallback(options)
+		}
+
 		return mCmd
 	}
 
@@ -154,4 +185,60 @@ func setupProcessMocks(t *testing.T) (*process.MockKillWaiter, *process.MockComm
 		newProcessKillWaiter = oldNewProcessKillWaiter
 		newCommander = oldCmd
 	}
+}
+
+func getCommanderCallback(t *testing.T, useAdditionalEnv bool) initCommandCallback {
+	if useAdditionalEnv {
+		return func(options process.CommandOptions) {
+			assert.Contains(t, options.Env, "ABC=123")
+			assert.Contains(t, options.Env, "XYZ=987")
+		}
+	}
+
+	return func(options process.CommandOptions) {
+		assert.NotContains(t, options.Env, "ABC=123")
+		assert.NotContains(t, options.Env, "XYZ=987")
+	}
+}
+
+// TODO: Remove in 14.0 https://gitlab.com/gitlab-org/gitlab-runner/issues/6413
+func TestProcessTermination_Legacy(t *testing.T) {
+	shellstest.OnEachShell(t, func(t *testing.T, shell string) {
+		// cmd is deprecated and exec.Cmd#Wait does not propagate the correct
+		// error on batch so skip this test. batch is being deprecated in 13.0
+		// as well https://gitlab.com/gitlab-org/gitlab-runner/issues/6099
+		if shell == "cmd" {
+			return
+		}
+
+		executor := executor{
+			AbstractExecutor: executors.AbstractExecutor{
+				Build: &common.Build{
+					JobResponse: common.JobResponse{
+						Variables: common.JobVariables{
+							common.JobVariable{Key: featureflags.ShellExecutorUseLegacyProcessKill, Value: "true"},
+						},
+					},
+					Runner: &common.RunnerConfig{},
+				},
+				BuildShell: &common.ShellConfiguration{
+					Command: shell,
+				},
+			},
+		}
+
+		ctx, cancelJob := context.WithCancel(context.Background())
+
+		cmd := common.ExecutorCommand{
+			Script:     "echo hello",
+			Predefined: false,
+			Context:    ctx,
+		}
+
+		cancelJob()
+
+		err := executor.Run(cmd)
+		var buildErr *common.BuildError
+		assert.ErrorAs(t, err, &buildErr)
+	})
 }

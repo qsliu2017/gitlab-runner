@@ -42,6 +42,8 @@ const (
 	DNSPolicyDefault                 KubernetesDNSPolicy = "default"
 	DNSPolicyClusterFirst            KubernetesDNSPolicy = "cluster-first"
 	DNSPolicyClusterFirstWithHostNet KubernetesDNSPolicy = "cluster-first-with-host-net"
+
+	DefaultAWSServer = "s3.amazonaws.com"
 )
 
 // InvalidTimePeriodsError represents that the time period specified is not valid.
@@ -761,6 +763,20 @@ func (c *CacheS3Config) AuthType() S3AuthType {
 	}
 
 	return S3AuthTypeAccessKey
+}
+
+func (c *CacheS3Config) GetEndpoint() string {
+	addr := DefaultAWSServer
+	if c.ServerAddress != "" {
+		addr = c.ServerAddress
+	}
+
+	scheme := "https"
+	if c.Insecure {
+		scheme = "http"
+	}
+
+	return fmt.Sprintf("%s://%s", scheme, addr)
 }
 
 func (c *CacheConfig) GetPath() string {

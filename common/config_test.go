@@ -141,6 +141,46 @@ func TestCacheS3Config_AuthType(t *testing.T) {
 	}
 }
 
+func TestCacheS3Config_GetEndpoint(t *testing.T) {
+	tests := map[string]struct {
+		s3               CacheS3Config
+		expectedEndpoint string
+	}{
+		"Everything is empty": {
+			s3: CacheS3Config{
+				ServerAddress: "",
+			},
+			expectedEndpoint: "https://s3.amazonaws.com",
+		},
+		"Insecure mode is used": {
+			s3: CacheS3Config{
+				ServerAddress: "",
+				Insecure:      true,
+			},
+			expectedEndpoint: "http://s3.amazonaws.com",
+		},
+		"Custom server is used": {
+			s3: CacheS3Config{
+				ServerAddress: "minio.example.com",
+			},
+			expectedEndpoint: "https://minio.example.com",
+		},
+		"Insecure custom server is used": {
+			s3: CacheS3Config{
+				ServerAddress: "minio.example.com",
+				Insecure:      true,
+			},
+			expectedEndpoint: "http://minio.example.com",
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			assert.Equal(t, tt.expectedEndpoint, tt.s3.GetEndpoint())
+		})
+	}
+}
+
 func TestConfigParse(t *testing.T) {
 	httpHeaders := []KubernetesLifecycleHTTPGetHeader{
 		{Name: "header_name_1", Value: "header_value_1"},
