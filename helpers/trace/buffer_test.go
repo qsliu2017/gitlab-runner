@@ -9,8 +9,6 @@ import (
 	"testing"
 	"unicode/utf8"
 
-	url_helpers "gitlab.com/gitlab-org/gitlab-runner/helpers/url"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -239,6 +237,7 @@ func TestTraceRace(t *testing.T) {
 		func() { buffer.SetLimit(1000) },
 		func() { buffer.Checksum() },
 		func() { buffer.Size() },
+		func() { _, _ = buffer.Bytes(0, 1000) },
 	}
 
 	var wg sync.WaitGroup
@@ -289,7 +288,7 @@ const logLineStr = "hello world, this is a lengthy log line including secrets su
 
 var logLineByte = []byte(logLineStr)
 
-func BenchmarkBuffer10k(b *testing.B) {
+func benchmarkBuffer10k(b *testing.B, line []byte) {
 	for i := 0; i < b.N; i++ {
 		func() {
 			buffer, err := New()
@@ -301,32 +300,21 @@ func BenchmarkBuffer10k(b *testing.B) {
 
 			const N = 10000
 			b.ReportAllocs()
-			b.SetBytes(int64(len(logLineByte) * N))
+			b.SetBytes(int64(len(line) * N))
 			for i := 0; i < N; i++ {
-				_, _ = buffer.Write(logLineByte)
+				_, _ = buffer.Write(line)
 			}
 			buffer.Finish()
 		}()
 	}
 }
 
-func BenchmarkBuffer10kWithURLScrub(b *testing.B) {
-	for i := 0; i < b.N; i++ {
-		func() {
-			buffer, err := New(WithURLParamMasking(false))
-			require.NoError(b, err)
-			defer buffer.Close()
+func BenchmarkBuffer10k(b *testing.B) {
+	b.Run("10k-logline", func(b *testing.B) {
+		benchmarkBuffer10k(b, logLineByte)
+	})
 
-			buffer.SetLimit(math.MaxInt64)
-			buffer.SetMasked([]string{"hello"})
-
-			const N = 10000
-			b.ReportAllocs()
-			b.SetBytes(int64(len(logLineByte) * N))
-			for i := 0; i < N; i++ {
-				_, _ = buffer.Write([]byte(url_helpers.ScrubSecrets(logLineStr)))
-			}
-			buffer.Finish()
-		}()
-	}
+	b.Run("10k-small", func(b *testing.B) {
+		benchmarkBuffer10k(b, []byte("hello"))
+	})
 }
