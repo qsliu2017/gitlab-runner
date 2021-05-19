@@ -1,7 +1,6 @@
 package network
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -478,33 +477,30 @@ func (n *GitLabClient) createUpdateJobResult(
 func (n *GitLabClient) PatchTrace(
 	config common.RunnerConfig,
 	jobCredentials *common.JobCredentials,
-	content []byte,
-	startOffset int,
+	r io.Reader,
+	startOffset, length int,
 ) common.PatchTraceResult {
 	id := jobCredentials.ID
 
 	baseLog := config.Log().WithField("job", id)
-	if len(content) == 0 {
+	if length == 0 {
 		baseLog.Debugln("Appending trace to coordinator...", "skipped due to empty patch")
 		return common.NewPatchTraceResult(startOffset, common.PatchSucceeded, 0)
 	}
 
-	endOffset := startOffset + len(content)
+	endOffset := startOffset + length
 	contentRange := fmt.Sprintf("%d-%d", startOffset, endOffset-1)
 
 	headers := make(http.Header)
 	headers.Set("Content-Range", contentRange)
 	headers.Set("JOB-TOKEN", jobCredentials.Token)
 
-	uri := fmt.Sprintf("jobs/%d/trace", id)
-	request := bytes.NewReader(content)
-
 	response, err := n.doRaw(
 		context.Background(),
 		&config.RunnerCredentials,
 		"PATCH",
-		uri,
-		request,
+		fmt.Sprintf("jobs/%d/trace", id),
+		r,
 		"text/plain",
 		headers,
 	)

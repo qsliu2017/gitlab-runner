@@ -1,6 +1,7 @@
 package buildtest
 
 import (
+	"io/ioutil"
 	"os"
 	"strings"
 	"testing"
@@ -56,8 +57,11 @@ var jobOutputLimitExceededTestCases = map[string]jobOutputLimitExceededTestCase{
 		},
 		handleTrace: func(t *testing.T, done chan struct{}, traceBuffer *trace.Buffer, trace common.JobTrace) {
 			for {
-				b, berr := traceBuffer.Bytes(0, 1024*1024)
+				r, berr := traceBuffer.Reader(0, 1024*1024)
 				require.NoError(t, berr)
+
+				b, rerr := ioutil.ReadAll(r)
+				require.NoError(t, rerr)
 
 				if strings.Contains(string(b), "Job's log exceeded limit of") {
 					trace.Cancel()
@@ -119,10 +123,13 @@ func runBuildWithJobOutputLimitExceededCase(t *testing.T, tt jobOutputLimitExcee
 
 	err = RunBuildWithTrace(t, build, jobTrace)
 
-	b, berr := traceBuffer.Bytes(0, 1024*1024)
+	r, berr := traceBuffer.Reader(0, 1024*1024)
 	require.NoError(t, berr)
 
-	log := string(b)
+	data, rerr := ioutil.ReadAll(r)
+	require.NoError(t, rerr)
+	log := string(data)
+
 	assert.Contains(t, log, "Running")
 	assert.NotContains(t, log, "with gitlab-runner")
 	assert.Contains(t, log, "Job's log exceeded limit of 12 bytes.")

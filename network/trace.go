@@ -249,19 +249,24 @@ func (c *clientJobTrace) anyTraceToSend() bool {
 
 func (c *clientJobTrace) sendPatch() common.PatchTraceResult {
 	c.lock.RLock()
-	content, err := c.buffer.Bytes(c.sentTrace, c.maxTracePatchSize)
 	sentTrace := c.sentTrace
 	c.lock.RUnlock()
 
+	available := c.buffer.Size() - sentTrace
+	if available > c.maxTracePatchSize {
+		available = c.maxTracePatchSize
+	}
+
+	if available == 0 {
+		return common.PatchTraceResult{State: common.PatchSucceeded}
+	}
+
+	r, err := c.buffer.Reader(sentTrace, available)
 	if err != nil {
 		return common.PatchTraceResult{State: common.PatchFailed}
 	}
 
-	if len(content) == 0 {
-		return common.PatchTraceResult{State: common.PatchSucceeded}
-	}
-
-	result := c.client.PatchTrace(c.config, c.jobCredentials, content, sentTrace)
+	result := c.client.PatchTrace(c.config, c.jobCredentials, r, sentTrace, available)
 
 	c.setUpdateInterval(result.NewUpdateInterval)
 

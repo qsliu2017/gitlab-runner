@@ -4,6 +4,8 @@
 package trace
 
 import (
+	"io"
+	"io/ioutil"
 	"math"
 	"sync"
 	"testing"
@@ -12,6 +14,15 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func getBytes(b *Buffer) ([]byte, error) {
+	r, err := b.Reader(0, 1000)
+	if err != nil {
+		return nil, err
+	}
+
+	return ioutil.ReadAll(r)
+}
 
 func TestVariablesMasking(t *testing.T) {
 	//nolint:lll
@@ -43,7 +54,7 @@ func TestVariablesMasking(t *testing.T) {
 
 	buffer.Finish()
 
-	content, err := buffer.Bytes(0, 1000)
+	content, err := getBytes(buffer)
 	require.NoError(t, err)
 
 	//nolint:lll
@@ -68,7 +79,7 @@ func TestTraceLimit(t *testing.T) {
 
 	buffer.Finish()
 
-	content, err := buffer.Bytes(0, 1000)
+	content, err := getBytes(buffer)
 	require.NoError(t, err)
 
 	expectedContent := "This is th\n" +
@@ -188,7 +199,7 @@ func TestDelayedMask(t *testing.T) {
 
 	buffer.Finish()
 
-	content, err := buffer.Bytes(0, 1000)
+	content, err := getBytes(buffer)
 	require.NoError(t, err)
 
 	expectedContent := "data before mask\ndata [MASKED] masked\n"
@@ -214,7 +225,7 @@ func TestDelayedLimit(t *testing.T) {
 
 	buffer.Finish()
 
-	content, err := buffer.Bytes(0, 1000)
+	content, err := getBytes(buffer)
 	require.NoError(t, err)
 
 	expectedContent := "data before limit\nda\n\x1b[33;1mJob's log exceeded limit of 20 bytes.\n" +
@@ -237,7 +248,7 @@ func TestTraceRace(t *testing.T) {
 		func() { buffer.SetLimit(1000) },
 		func() { buffer.Checksum() },
 		func() { buffer.Size() },
-		func() { _, _ = buffer.Bytes(0, 1000) },
+		func() { _, _ = buffer.Reader(0, 1000) },
 	}
 
 	var wg sync.WaitGroup
@@ -256,7 +267,7 @@ func TestTraceRace(t *testing.T) {
 
 	buffer.Finish()
 
-	_, err = buffer.Bytes(0, 1000)
+	_, err = getBytes(buffer)
 	require.NoError(t, err)
 }
 
@@ -274,7 +285,7 @@ func TestFixupInvalidUTF8(t *testing.T) {
 	_, err = buffer.Write([]byte("hello a\xfeb a\xffb\n"))
 	require.NoError(t, err)
 
-	content, err := buffer.Bytes(0, 1000)
+	content, err := getBytes(buffer)
 	require.NoError(t, err)
 
 	assert.True(t, utf8.ValidString(string(content)))
@@ -284,7 +295,7 @@ func TestFixupInvalidUTF8(t *testing.T) {
 const logLineStr = "hello world, this is a lengthy log line including secrets such as 'hello', and " +
 	"https://example.com/?rss_token=foo&rss_token=bar and http://example.com/?authenticity_token=deadbeef and " +
 	"https://example.com/?rss_token=foobar. it's longer than most log lines, but probably a good test for " +
-	"anything that's benchmarking how fast it is to write log lines."
+	"anything that's benchmarking how fast it is to write log lines.\n"
 
 var logLineByte = []byte(logLineStr)
 
@@ -315,6 +326,32 @@ func BenchmarkBuffer10k(b *testing.B) {
 	})
 
 	b.Run("10k-small", func(b *testing.B) {
-		benchmarkBuffer10k(b, []byte("hello"))
+		benchmarkBuffer10k(b, []byte("hello\n"))
 	})
+}
+
+func BenchmarkBufferReadWriteWorkload(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		func() {
+			buffer, err := New()
+			require.NoError(b, err)
+			defer buffer.Close()
+
+			buffer.SetLimit(math.MaxInt64)
+			buffer.SetMasked([]string{"hello"})
+
+			const N = 10000
+			b.ReportAllocs()
+			b.SetBytes(int64(len(logLineByte) * N))
+			for i := 0; i < N; i++ {
+				_, _ = buffer.Write(logLineByte)
+				if i%5 == 0 {
+					r, _ := buffer.Reader(0, 1000)
+					_, _ = io.Copy(ioutil.Discard, r)
+				}
+			}
+
+			buffer.Finish()
+		}()
+	}
 }

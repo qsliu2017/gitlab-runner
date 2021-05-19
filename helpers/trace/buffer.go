@@ -118,7 +118,7 @@ func (b *Buffer) Size() int {
 	return int(b.lw.written)
 }
 
-func (b *Buffer) Bytes(offset, n int) ([]byte, error) {
+func (b *Buffer) Reader(offset, n int) (io.Reader, error) {
 	b.lock.Lock()
 	defer b.lock.Unlock()
 
@@ -133,7 +133,7 @@ func (b *Buffer) Bytes(offset, n int) ([]byte, error) {
 		return nil, fmt.Errorf("flushing log buffer: %w", err)
 	}
 
-	return ioutil.ReadAll(io.NewSectionReader(b.logFile, int64(offset), int64(n)))
+	return io.NewSectionReader(b.logFile, int64(offset), int64(n)), nil
 }
 
 func (b *Buffer) Write(p []byte) (int, error) {

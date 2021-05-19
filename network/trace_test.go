@@ -8,6 +8,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
+	"io/ioutil"
 	"sync"
 	"testing"
 	"time"
@@ -57,6 +59,11 @@ func ignoreOptionalTouchJob(mockNetwork *common.MockNetwork) {
 	// due to timing the `trace.touchJob()` can be executed
 	mockNetwork.On("UpdateJob", jobConfig, jobCredentials, touchMatcher).
 		Return(common.UpdateJobResult{State: common.UpdateSucceeded}).Maybe()
+}
+
+func matchAllReader(t *testing.T, r io.Reader, input string) {
+	data, _ := ioutil.ReadAll(r)
+	assert.Equal(t, input, string(data))
 }
 
 func newTestJobTrace(network *common.MockNetwork, config common.RunnerConfig) (*clientJobTrace, error) {
@@ -170,7 +177,7 @@ func TestSendPatchAbort(t *testing.T) {
 	// abort while running
 	// 1. on `incrementalUpdate() -> sendPatch()`
 	// 2. on `finalTraceUpdate() -> sendPatch()`
-	mockNetwork.On("PatchTrace", mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+	mockNetwork.On("PatchTrace", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
 		Return(common.NewPatchTraceResult(0, common.PatchAbort, 0)).Twice()
 
 	ignoreOptionalTouchJob(mockNetwork)
@@ -214,13 +221,13 @@ func TestJobOutputLimit(t *testing.T) {
 	expectedLogLength := jobOutputLimit.OutputLimit*traceMessageSize + len(expectedLogLimitExceededMsg)
 
 	receivedTrace := bytes.NewBuffer([]byte{})
-	mockNetwork.On("PatchTrace", jobOutputLimit, jobCredentials, mock.Anything, mock.Anything).
+	//nolint:lll
+	mockNetwork.On("PatchTrace", jobOutputLimit, jobCredentials, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
 		Return(common.NewPatchTraceResult(expectedLogLength, common.PatchSucceeded, 0)).
 		Once().
 		Run(func(args mock.Arguments) {
 			// the expectedLogLength == len(data)
-			data := args.Get(2).([]byte)
-			receivedTrace.Write(data)
+			_, _ = io.Copy(receivedTrace, args.Get(2).(io.Reader))
 		})
 
 	mockNetwork.On("UpdateJob", jobOutputLimit, jobCredentials, updateMatcher).
@@ -247,7 +254,10 @@ func TestJobMasking(t *testing.T) {
 
 	ignoreOptionalTouchJob(mockNetwork)
 
-	mockNetwork.On("PatchTrace", mock.Anything, mock.Anything, []byte(traceMaskedMessage), 0).
+	mockNetwork.On("PatchTrace", mock.Anything, mock.Anything, mock.Anything, 0, len(traceMaskedMessage)).
+		Run(func(args mock.Arguments) {
+			matchAllReader(t, args.Get(2).(io.Reader), traceMaskedMessage)
+		}).
 		Return(common.NewPatchTraceResult(len(traceMaskedMessage), common.PatchSucceeded, 0))
 
 	mockNetwork.On("UpdateJob", mock.Anything, mock.Anything, mock.Anything).
@@ -276,32 +286,46 @@ func TestJobFinishTraceUpdateRetry(t *testing.T) {
 	require.NoError(t, err)
 
 	// accept just 3 bytes
-	mockNetwork.On("PatchTrace", jobConfig, jobCredentials, []byte("My trace send"), 0).
+	mockNetwork.On("PatchTrace", jobConfig, jobCredentials, mock.Anything, 0, 13).
 		Return(common.NewPatchTraceResult(3, common.PatchSucceeded, 0)).
+		Run(func(args mock.Arguments) {
+			matchAllReader(t, args.Get(2).(io.Reader), "My trace send")
+		}).
 		Once()
 
 	// retry when trying to send next bytes
-	mockNetwork.On("PatchTrace", jobConfig, jobCredentials, []byte("trace send"), 3).
+	mockNetwork.On("PatchTrace", jobConfig, jobCredentials, mock.Anything, 3, 10).
 		Return(common.NewPatchTraceResult(0, common.PatchFailed, 0)).
 		Run(func(args mock.Arguments) {
+			matchAllReader(t, args.Get(2).(io.Reader), "trace send")
+
 			// Ensure that short interval is used on retry to speed-up test
 			b.setUpdateInterval(time.Microsecond)
 		}).
 		Once()
 
 	// accept 6 more bytes
-	mockNetwork.On("PatchTrace", jobConfig, jobCredentials, []byte("trace send"), 3).
+	mockNetwork.On("PatchTrace", jobConfig, jobCredentials, mock.Anything, 3, 10).
 		Return(common.NewPatchTraceResult(9, common.PatchSucceeded, 0)).
+		Run(func(args mock.Arguments) {
+			matchAllReader(t, args.Get(2).(io.Reader), "trace send")
+		}).
 		Once()
 
 	// restart most of trace
-	mockNetwork.On("PatchTrace", jobConfig, jobCredentials, []byte("send"), 9).
+	mockNetwork.On("PatchTrace", jobConfig, jobCredentials, mock.Anything, 9, 4).
 		Return(common.NewPatchTraceResult(6, common.PatchRangeMismatch, 0)).
+		Run(func(args mock.Arguments) {
+			matchAllReader(t, args.Get(2).(io.Reader), "send")
+		}).
 		Once()
 
 	// accept rest of trace
-	mockNetwork.On("PatchTrace", jobConfig, jobCredentials, []byte("ce send"), 6).
+	mockNetwork.On("PatchTrace", jobConfig, jobCredentials, mock.Anything, 6, 7).
 		Return(common.NewPatchTraceResult(13, common.PatchSucceeded, 0)).
+		Run(func(args mock.Arguments) {
+			matchAllReader(t, args.Get(2).(io.Reader), "ce send")
+		}).
 		Once()
 
 	mockNetwork.On("UpdateJob", jobConfig, jobCredentials, updateMatcher).
@@ -323,13 +347,19 @@ func TestJobDelayedTraceProcessingWithRejection(t *testing.T) {
 
 	receiveTraceInChunks := func() {
 		// accept just 10 bytes
-		mockNetwork.On("PatchTrace", jobConfig, jobCredentials, []byte("My trace s"), 0).
+		mockNetwork.On("PatchTrace", jobConfig, jobCredentials, mock.Anything, 0, 10).
 			Return(common.NewPatchTraceResult(10, common.PatchSucceeded, 1)).
+			Run(func(args mock.Arguments) {
+				matchAllReader(t, args.Get(2).(io.Reader), "My trace s")
+			}).
 			Once()
 
 		// accept next 3 bytes
-		mockNetwork.On("PatchTrace", jobConfig, jobCredentials, []byte("end"), 10).
+		mockNetwork.On("PatchTrace", jobConfig, jobCredentials, mock.Anything, 10, 3).
 			Return(common.NewPatchTraceResult(13, common.PatchSucceeded, 1)).
+			Run(func(args mock.Arguments) {
+				matchAllReader(t, args.Get(2).(io.Reader), "end")
+			}).
 			Once()
 	}
 
@@ -398,15 +428,24 @@ func TestJobMaxTracePatchSize(t *testing.T) {
 	ignoreOptionalTouchJob(mockNetwork)
 
 	// expect just 5 bytes
-	mockNetwork.On("PatchTrace", jobConfig, jobCredentials, []byte("My tr"), 0).
+	mockNetwork.On("PatchTrace", jobConfig, jobCredentials, mock.Anything, 0, 5).
+		Run(func(args mock.Arguments) {
+			matchAllReader(t, args.Get(2).(io.Reader), "My tr")
+		}).
 		Return(common.NewPatchTraceResult(5, common.PatchSucceeded, 0)).Once()
 
 	// expect next 5 bytes
-	mockNetwork.On("PatchTrace", jobConfig, jobCredentials, []byte("ace s"), 5).
+	mockNetwork.On("PatchTrace", jobConfig, jobCredentials, mock.Anything, 5, 5).
+		Run(func(args mock.Arguments) {
+			matchAllReader(t, args.Get(2).(io.Reader), "ace s")
+		}).
 		Return(common.NewPatchTraceResult(10, common.PatchSucceeded, 0)).Once()
 
 	// expect last 3 bytes
-	mockNetwork.On("PatchTrace", jobConfig, jobCredentials, []byte("end"), 10).
+	mockNetwork.On("PatchTrace", jobConfig, jobCredentials, mock.Anything, 10, 3).
+		Run(func(args mock.Arguments) {
+			matchAllReader(t, args.Get(2).(io.Reader), "end")
+		}).
 		Return(common.NewPatchTraceResult(13, common.PatchSucceeded, 0)).Once()
 
 	mockNetwork.On("UpdateJob", jobConfig, jobCredentials, updateMatcher).
@@ -463,9 +502,11 @@ func TestJobIncrementalPatchSend(t *testing.T) {
 
 	// ensure that PatchTrace gets executed first
 	wg.Add(1)
-	mockNetwork.On("PatchTrace", jobConfig, jobCredentials, []byte("123456789\n"), 0).
+	mockNetwork.On("PatchTrace", jobConfig, jobCredentials, mock.Anything, 0, 10).
 		Return(common.NewPatchTraceResult(10, common.PatchSucceeded, 0)).Once().
 		Run(func(args mock.Arguments) {
+			matchAllReader(t, args.Get(2).(io.Reader), "123456789\n")
+
 			wg.Done()
 		})
 
@@ -544,13 +585,15 @@ func TestCancelingJobIncrementalUpdate(t *testing.T) {
 
 			wg.Add(4)
 
-			mockNetwork.On("PatchTrace", jobConfig, jobCredentials, []byte("123456789\n"), 0).
+			mockNetwork.On("PatchTrace", jobConfig, jobCredentials, mock.Anything, 0, 10).
 				Return(common.PatchTraceResult{
 					SentOffset:      10,
 					CancelRequested: tt.patchCanceling,
 					State:           common.PatchSucceeded,
 				}).
 				Run(func(args mock.Arguments) {
+					matchAllReader(t, args.Get(2).(io.Reader), "123456789\n")
+
 					wg.Done()
 				}).
 				Once()
@@ -563,9 +606,11 @@ func TestCancelingJobIncrementalUpdate(t *testing.T) {
 				}).Twice()
 
 			// When `UpdateJob` requested cancelation we continue to send the trace.
-			mockNetwork.On("PatchTrace", jobConfig, jobCredentials, []byte("987654321\n"), 10).
+			mockNetwork.On("PatchTrace", jobConfig, jobCredentials, mock.Anything, 10, 10).
 				Return(common.PatchTraceResult{SentOffset: 20, CancelRequested: true, State: common.PatchSucceeded}).
 				Run(func(args mock.Arguments) {
+					matchAllReader(t, args.Get(2).(io.Reader), "987654321\n")
+
 					wg.Done()
 				}).
 				Once()
@@ -669,20 +714,22 @@ func TestUpdateIntervalChanges(t *testing.T) {
 				waitForPatch := new(sync.WaitGroup)
 				waitForPatch.Add(1)
 
-				client.On("PatchTrace", jobConfig, jobCredentials, []byte(testTrace), 0).
+				client.On("PatchTrace", jobConfig, jobCredentials, mock.Anything, 0, len(testTrace)).
 					Return(common.NewPatchTraceResult(
 						len(testTrace),
 						tt.patchStateResponse,
 						tt.requestedUpdateInterval,
 					)).
-					Run(func(_ mock.Arguments) {
+					Run(func(args mock.Arguments) {
+						matchAllReader(t, args.Get(2).(io.Reader), testTrace)
+
 						waitForPatch.Done()
 					}).
 					Once()
 
 				if tt.patchStateResponse != common.PatchSucceeded {
 					// Ensure that if we test failure `PatchTrace` gets finally accepted
-					client.On("PatchTrace", mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+					client.On("PatchTrace", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
 						Return(common.NewPatchTraceResult(
 							len(testTrace),
 							common.PatchSucceeded,
@@ -819,10 +866,16 @@ func TestJobChecksum(t *testing.T) {
 	defer mockNetwork.AssertExpectations(t)
 
 	// 22 is an offset of a space before `[MASKED]`
-	mockNetwork.On("PatchTrace", mock.Anything, mock.Anything, []byte(traceMaskedMessage[0:22]), 0).
+	mockNetwork.On("PatchTrace", mock.Anything, mock.Anything, mock.Anything, 0, 22).
+		Run(func(args mock.Arguments) {
+			matchAllReader(t, args.Get(2).(io.Reader), traceMaskedMessage[0:22])
+		}).
 		Return(common.NewPatchTraceResult(22, common.PatchSucceeded, 0)).Once()
 
-	mockNetwork.On("PatchTrace", mock.Anything, mock.Anything, []byte(traceMaskedMessage[22:]), 22).
+	mockNetwork.On("PatchTrace", mock.Anything, mock.Anything, mock.Anything, 22, 13).
+		Run(func(args mock.Arguments) {
+			matchAllReader(t, args.Get(2).(io.Reader), traceMaskedMessage[22:])
+		}).
 		Return(common.NewPatchTraceResult(len(traceMaskedMessage), common.PatchSucceeded, 0)).Once()
 
 	mockNetwork.On("UpdateJob", jobConfig, jobCredentials, expectedJobInfo).
@@ -857,7 +910,10 @@ func TestJobBytesize(t *testing.T) {
 	mockNetwork := new(common.MockNetwork)
 	defer mockNetwork.AssertExpectations(t)
 
-	mockNetwork.On("PatchTrace", mock.Anything, mock.Anything, []byte(traceMaskedMessage), 0).
+	mockNetwork.On("PatchTrace", mock.Anything, mock.Anything, mock.Anything, 0, len(traceMaskedMessage)).
+		Run(func(args mock.Arguments) {
+			matchAllReader(t, args.Get(2).(io.Reader), traceMaskedMessage)
+		}).
 		Return(common.NewPatchTraceResult(len(traceMaskedMessage), common.PatchSucceeded, 0)).Once()
 
 	mockNetwork.On("UpdateJob", jobConfig, jobCredentials, expectedJobInfo).

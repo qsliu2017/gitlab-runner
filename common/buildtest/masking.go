@@ -1,6 +1,7 @@
 package buildtest
 
 import (
+	"io/ioutil"
 	"math"
 	"testing"
 
@@ -50,7 +51,10 @@ func RunBuildWithMasking(t *testing.T, config *common.RunnerConfig, setup BuildS
 
 	buf.Finish()
 
-	contents, err := buf.Bytes(0, math.MaxInt64)
+	r, err := buf.Reader(0, math.MaxInt64)
+	assert.NoError(t, err)
+
+	contents, err := ioutil.ReadAll(r)
 	assert.NoError(t, err)
 
 	assert.NotContains(t, string(contents), "MASKED_KEY=MASKED_VALUE")
