@@ -7,3 +7,16 @@ trigger UBI images build:
     refs:
     - main@gitlab-org/gitlab-runner
     - /\Av[0-9]+\.[0-9]+\.[0-9]+(-rc[0-9]+)?\Z/@gitlab-org/gitlab-runner
+
+trigger runner-incept tests:
+  extends:
+    - .merge_request_pipelines
+    - .except_docs
+  stage: postrelease
+  trigger: gitlab-org/ci-cd/tests/runner-incept
+  needs:
+    - 'bleeding edge docker images'
+  only:
+    refs:
+      - master@gitlab-org/gitlab-runner
+      - /\Av[0-9]+\.[0-9]+\.[0-9]+(-rc[0-9]+)?\Z/@gitlab-org/gitlab-runner
