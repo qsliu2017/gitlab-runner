@@ -113,20 +113,29 @@ type TestTiming struct {
 }
 
 func main() {
+	// TEST_DEFINITIONS_NAME
+	// TEST_DEFINITIONS_TAGS
+	// TEST_DEFINITIONS_PARALLEL
 	fmt.Println("Fetching previous test report...")
 	report, err := getTestReport("250833")
 	if err != nil {
 		fmt.Printf("error fetching previous test timings: %v", err)
 	}
 
+	args := []string{"test"}
+	if os.Getenv("TEST_DEFINITIONS_TAGS") != "" {
+		args = append(args, "-tags", os.Getenv("TEST_DEFINITIONS_TAGS"))
+	}
+	args = append(args, "-list", "Test", "-json", "./...")
+
 	fmt.Println("Fetching go tests...")
-	cmd := exec.Command("go", "test", "-list", "Test", "-json", "./...")
+	cmd := exec.Command("go", args...)
 	out, err := cmd.StdoutPipe()
 	if err != nil {
 		panic(err)
 	}
 
-	count, _ := strconv.Atoi(os.Getenv("PARALLEL_TESTS_LIMIT"))
+	count, _ := strconv.Atoi(os.Getenv("TEST_DEFINITIONS_PARALLEL"))
 	if count == 0 {
 		count = 1
 	}
@@ -176,11 +185,16 @@ func main() {
 		panic(err)
 	}
 
+	testDefinitionsName := os.Getenv("TEST_DEFINITIONS_NAME")
+	if testDefinitionsName == "" {
+		testDefinitionsName = "testsdefinitions"
+	}
+
 	fmt.Println("Splitting...")
 	for idx, b := range buckets {
-		fmt.Println("bucket", idx, b.TotalTime())
+		fmt.Printf("bucket(%d), %.2f seconds, %d tests\n", idx, b.TotalTime(), len(b.Items))
 
-		f, err := os.Create(fmt.Sprintf("testsdefinitions-%d", idx+1))
+		f, err := os.Create(fmt.Sprintf("%s-%d", testDefinitionsName, idx+1))
 		if err != nil {
 			panic(err)
 		}
@@ -233,9 +247,7 @@ func getTestReport(projectID string) (*TestReport, error) {
 	}
 
 	for _, suite := range results.Suites {
-		for _, tc := range suite.Cases {
-			report.Timings = append(report.Timings, tc)
-		}
+		report.Timings = append(report.Timings, suite.Cases...)
 	}
 
 	return report, nil

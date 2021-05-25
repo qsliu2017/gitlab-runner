@@ -223,7 +223,6 @@ fuzz variable mask:
   - .rules:default-branch-only
   - .go-cache-windows
   stage: test
-  parallel: 6
   variables:
     GOROOT: "C:\\Go"
   before_script:
@@ -244,24 +243,22 @@ fuzz variable mask:
   allow_failure: true
 
 .windows unit test:
+  parallel: 2
   extends:
   - .windows test
   needs:
   - 'unit test definitions'
   - 'clone test repo'
   - 'prepare done'
-  variables:
-    TESTFLAGS: '-tags=!integration'
 
 .windows integration test:
+  parallel: 4
   extends:
   - .windows test
   needs:
   - 'integration test definitions'
   - 'clone test repo'
   - 'prepare done'
-  variables:
-    TESTFLAGS: '-tags=integration'
 
 # Only test the oldest supported version in merge requests,
 # but test all versions in the default branch.

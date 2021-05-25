@@ -55,13 +55,15 @@ unit test definitions:
   extends:
   - .test definitions
   variables:
-    TESTFLAGS: -cover
+    TEST_DEFINITIONS_PARALLEL: 2
+    TEST_DEFINITIONS_TAGS: "!integration"
 
 integration test definitions:
   extends:
   - .test definitions
   variables:
-    TESTFLAGS: -cover -tags=integration
+    TEST_DEFINITIONS_PARALLEL: 4
+    TEST_DEFINITIONS_TAGS: "integration"
 
 ecr public token:
   extends:

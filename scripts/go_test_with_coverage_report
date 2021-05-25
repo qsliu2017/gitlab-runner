@@ -28,62 +28,6 @@ joinBy() {
     echo "${*}"
 }
 
-prepareTestCommands() {
-    local definitions
-
-    [[ ! -f ${testsDefinitions} ]] || rm ${testsDefinitions}
-
-    for pkg in $(go list ./...); do
-        local testIndex=0
-        local runTests=()
-
-        echo "Listing tests for ${pkg} package"
-
-        local tempFile
-        tempFile=$(mktemp)
-        local exitCode=0
-
-        # shellcheck disable=SC2086
-        go test ${TESTFLAGS} -list "Test.*" "${pkg}" > "${tempFile}" || exitCode=1
-
-        local tests
-        tests=$(grep "^Test" "${tempFile}" || true)
-
-        rm "${tempFile}"
-
-        if [[ ${exitCode} -ne 0 ]]; then
-            exit ${exitCode}
-        fi
-
-        if [[ -z "${tests}" ]]; then
-            continue
-        fi
-
-        local counter=0
-        for test in ${tests}; do
-            counter=$((counter+1))
-            runTests+=("${test}")
-
-            if [[ ${counter} -ge ${PARALLEL_TESTS_LIMIT} ]]; then
-                if [[ ${#runTests[@]} -gt 0 ]]; then
-                    definitions=$(joinBy "|" "${runTests[@]}")
-                    echo "${pkg} ${testIndex} ${definitions}" | tee -a ${testsDefinitions}
-                fi
-
-                counter=0
-                runTests=()
-
-                testIndex=$((testIndex+1))
-            fi
-        done
-
-        if [[ ${#runTests[@]} -gt 0 ]]; then
-            definitions=$(joinBy "|" "${runTests[@]}")
-            echo "${pkg} ${testIndex} ${definitions}" | tee -a ${testsDefinitions}
-        fi
-    done
-}
-
 executeTestCommand() {
     local pkg=${1}
     local index=${2}
