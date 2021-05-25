@@ -32,6 +32,7 @@ func init() {
 	s := MockShell{}
 	s.On("GetName").Return("script-shell")
 	s.On("GenerateScript", mock.Anything, mock.Anything).Return("script", nil)
+	s.On("IsDefault").Return(false).Maybe()
 	RegisterShell(&s)
 }
 

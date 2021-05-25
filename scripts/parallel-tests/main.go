@@ -130,6 +130,7 @@ func main() {
 
 	fmt.Println("Fetching go tests...")
 	cmd := exec.Command("go", args...)
+	cmd.Stderr = os.Stderr
 	out, err := cmd.StdoutPipe()
 	if err != nil {
 		panic(err)
@@ -199,9 +200,15 @@ func main() {
 			panic(err)
 		}
 
+		var testNames []string
+		var packNames []string
+
 		for pkg, item := range b.Groups() {
-			fmt.Fprintln(f, pkg, strings.Join(item, "|"))
+			packNames = append(packNames, pkg)
+			testNames = append(testNames, item...)
 		}
+
+		fmt.Fprintf(f, "%s %s\n", strings.Join(testNames, "|"), strings.Join(packNames, " "))
 
 		/*for pkg, item := range b.Groups() {
 			hash := sha256.Sum256([]byte(pkg))

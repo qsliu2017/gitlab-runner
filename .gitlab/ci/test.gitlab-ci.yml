@@ -250,6 +250,8 @@ fuzz variable mask:
   - 'unit test definitions'
   - 'clone test repo'
   - 'prepare done'
+  variables:
+    TESTFLAGS: '-tags=!integration'
 
 .windows integration test:
   parallel: 4
@@ -259,6 +261,8 @@ fuzz variable mask:
   - 'integration test definitions'
   - 'clone test repo'
   - 'prepare done'
+  variables:
+    TESTFLAGS: '-tags=integration'
 
 # Only test the oldest supported version in merge requests,
 # but test all versions in the default branch.

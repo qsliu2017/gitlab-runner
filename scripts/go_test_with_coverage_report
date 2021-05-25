@@ -51,17 +51,17 @@ executeTestCommand() {
 
         printMessage "\\n\\n--- Starting part ${index} of go ${type} tests of '${pkg}' package with coverprofile in '${coverMode}' mode:\\n"
 
-        local profileFile=".cover/${type}/${pkgSlug}.${index}.${coverMode}.cover.txt"
+        local profileFile=".cover/${type}/${index}.${coverMode}.cover.txt"
         options="-covermode=${coverMode} -coverprofile=${profileFile} -coverpkg=${MAIN_PACKAGE}/..."
     else
         echo "Starting go ${type} test"
     fi
 
-    local testOutputFile=".testoutput/${type}/${pkgSlug}.${index}.${output}.output.txt"
+    local testOutputFile=".testoutput/${type}/${index}.${output}.output.txt"
 
     local exitCode=0
     # shellcheck disable=SC2086
-    go test ${options} ${TESTFLAGS} -ldflags "${GO_LDFLAGS}" -v "${pkg}" -run "${runTestsList}" 2>&1 | tee "${testOutputFile}" || exitCode=1
+    go test ${options} ${TESTFLAGS} -ldflags "${GO_LDFLAGS}" -v -run "${runTestsList}" ${pkg} 2>&1 | tee "${testOutputFile}" || exitCode=1
 
     return ${exitCode}
 }
@@ -76,7 +76,7 @@ executeTestPart() {
     printMessage "Suite index: ${CI_NODE_INDEX}"
 
     local exitCode=0
-    while read -r pkg tests; do
+    while read -r tests pkg; do
         executeTestCommand "${pkg}" "${CI_NODE_INDEX}" "${tests}" || exitCode=1
     done < <(cat "${testsDefinitions}")
 

@@ -15,6 +15,8 @@ import (
 )
 
 func TestStackDumping(t *testing.T) {
+	t.Skip()
+
 	logger, hook := test.NewNullLogger()
 	logger.SetFormatter(new(logrus.TextFormatter))
 
