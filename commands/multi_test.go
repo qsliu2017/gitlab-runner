@@ -4,11 +4,13 @@ package commands
 
 import (
 	"context"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"strings"
 	"sync"
 	"sync/atomic"
+	"syscall"
 	"testing"
 	"time"
 
@@ -16,6 +18,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"gitlab.com/gitlab-org/gitlab-runner/helpers"
+	testHelpers "gitlab.com/gitlab-org/gitlab-runner/helpers/test"
 
 	"gitlab.com/gitlab-org/gitlab-runner/common"
 	"gitlab.com/gitlab-org/gitlab-runner/log/test"
@@ -210,4 +214,164 @@ func TestRunCommand_doJobRequest(t *testing.T) {
 			assert.NoError(t, ctx.Err())
 		})
 	}
+}
+
+func TestRunCommand_infiniteIncomingJobs(t *testing.T) {
+	testHelpers.SkipIfGitLabCIWithMessage(t, "This job should be executed manually")
+
+	configTOML := `
+concurrent = 1000
+check_interval = 10
+# log_level = "debug"
+
+[[runners]]
+  name = "dummy-runner"
+  limit = 1000
+  url = "http://gitlab.example.com/"
+  token = "dummy-token"
+  request_concurrency = 10
+  executor = "dummy-executor"
+  shell = "dummy-shell"
+`
+
+	f, err := ioutil.TempFile("", "config.toml")
+	require.NoError(t, err)
+
+	defer func() {
+		_ = f.Close()
+		_ = os.Remove(f.Name())
+	}()
+
+	_, err = fmt.Fprint(f, configTOML)
+	require.NoError(t, err)
+	_ = f.Close()
+
+	testJob := &common.JobResponse{
+		ID: 0,
+		JobInfo: common.JobInfo{
+			Name:        "",
+			Stage:       "",
+			ProjectID:   0,
+			ProjectName: "",
+		},
+		GitInfo: common.GitInfo{
+			RepoURL:   "",
+			Ref:       "",
+			Sha:       "",
+			BeforeSha: "",
+			RefType:   "",
+			Refspecs:  nil,
+			Depth:     0,
+		},
+		Steps: common.Steps{
+			{
+				Name: "user_script",
+				Script: common.StepScript{
+					"echo nothing",
+				},
+				Timeout:      10,
+				When:         "always",
+				AllowFailure: false,
+			},
+		},
+	}
+
+	doneCh := make(chan struct{})
+	done := false
+
+	shell := new(common.MockShell)
+	defer shell.AssertExpectations(t)
+
+	shell.On("GetName").Return("dummy-shell")
+	shell.On("IsDefault").Return(true).Maybe()
+	shell.On("GenerateScript", mock.Anything, mock.Anything).Return("script", nil)
+
+	common.RegisterShell(shell)
+
+	trace := new(common.MockJobTrace)
+	defer trace.AssertExpectations(t)
+
+	trace.On("SetFailuresCollector", mock.Anything)
+	trace.On("Write", mock.Anything).Return(0, nil)
+	trace.On("IsStdout").Return(false)
+	trace.On("Success").Maybe()
+	trace.On("Fail", mock.Anything, mock.Anything).Maybe()
+	trace.On("SetCancelFunc", mock.Anything)
+	trace.On("SetAbortFunc", mock.Anything)
+	trace.On("SetMasked", mock.Anything)
+
+	network := new(common.MockNetwork)
+	defer network.AssertExpectations(t)
+
+	network.On("RequestJob", mock.Anything, mock.Anything, mock.Anything).
+		Run(func(args mock.Arguments) {
+			time.Sleep(20 * time.Millisecond)
+		}).
+		Return(testJob, true).
+		Times(100)
+	network.On("RequestJob", mock.Anything, mock.Anything, mock.Anything).
+		Run(func(args mock.Arguments) {
+			time.Sleep(20 * time.Millisecond)
+			if !done {
+				close(doneCh)
+				done = true
+			}
+		}).
+		Return(nil, true)
+	network.On("ProcessJob", mock.Anything, mock.Anything).Return(trace, nil)
+
+	executor := new(common.MockExecutor)
+	defer executor.AssertExpectations(t)
+
+	executor.On("GetCurrentStage").Return(common.ExecutorStageCreated).Maybe()
+	executor.On("Prepare", mock.Anything).Return(nil)
+	executor.On("Finish", mock.Anything)
+	executor.On("Cleanup")
+	executor.On("Shell").Return(&common.ShellScriptInfo{
+		Shell:         shell.GetName(),
+		RunnerCommand: "gitlab-runner",
+	})
+	executor.On("Run", mock.Anything).
+		Run(func(_ mock.Arguments) {
+			time.Sleep(2 * time.Second)
+		}).
+		Return(nil)
+
+	executorProvider := new(common.MockExecutorProvider)
+	defer executorProvider.AssertExpectations(t)
+
+	executorProvider.On("GetDefaultShell").Return("bash")
+	executorProvider.On("CanCreate").Return(true)
+	executorProvider.On("GetFeatures", mock.Anything).Return(nil)
+	executorProvider.On("Acquire", mock.Anything).Return(nil, nil)
+	executorProvider.On("Release", mock.Anything, mock.Anything)
+	executorProvider.On("Create").
+		Run(func(_ mock.Arguments) {
+			time.Sleep(250 * time.Millisecond)
+		}).
+		Return(executor)
+
+	common.RegisterExecutorProvider("dummy-executor", executorProvider)
+
+	wg := new(sync.WaitGroup)
+	wg.Add(1)
+
+	rc := newRunCommand()
+	rc.ConfigFile = f.Name()
+	rc.network = network
+
+	go func() {
+		defer wg.Done()
+		defer helpers.MakeFatalToPanic()()
+
+		assert.NotPanics(t, func() {
+			rc.Execute(nil)
+		})
+	}()
+
+	<-doneCh
+
+	rc.stopSignals <- syscall.SIGQUIT
+
+	wg.Wait()
 }
