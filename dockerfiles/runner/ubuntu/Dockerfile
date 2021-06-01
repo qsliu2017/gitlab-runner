@@ -9,6 +9,7 @@ RUN apt-get update -y && \
         apt-transport-https \
         ca-certificates \
         curl \
+        tar \
         git \
         wget \
         tzdata \

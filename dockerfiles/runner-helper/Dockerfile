@@ -6,7 +6,7 @@ FROM $BASE_IMAGE
 ENV PATH="${PATH:-/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin}"
 
 # hadolint ignore=DL3018
-RUN apk add --no-cache bash ca-certificates dumb-init git git-lfs miniperl \
+RUN apk add --no-cache bash ca-certificates dumb-init git curl tar git-lfs miniperl \
     && ln -s miniperl /usr/bin/perl
 
 RUN git lfs install --skip-repo

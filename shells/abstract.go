@@ -209,6 +209,14 @@ func (b *AbstractShell) writePrepareScript(w ShellWriter, info common.ShellScrip
 func (b *AbstractShell) writeGetSourcesScript(w ShellWriter, info common.ShellScriptInfo) error {
 	b.writeExports(w, info)
 
+	if info.Build.Variables.Get("CI_PIPELINE_SOURCE") == "package_push_event" {
+		b.writeCdBuildDir(w, info)
+		b.writeCommands(w, "curl -L --output pkg --header \"JOB-TOKEN: $CI_JOB_TOKEN\" \"${CI_API_V4_URL}/package_pushes/${CI_COMMIT_SHA}\"")
+		b.writeCommands(w, "tar zxvf pkg")
+
+		return nil
+	}
+
 	if !info.Build.IsSharedEnv() {
 		b.writeGitSSLConfig(w, info.Build, []string{"--global"})
 	}

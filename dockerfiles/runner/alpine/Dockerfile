@@ -9,6 +9,8 @@ RUN apk add --no-cache \
     bash \
     ca-certificates \
     git \
+    curl \
+    tar \
     tzdata \
     openssh-client
 
