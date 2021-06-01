@@ -27,6 +27,12 @@ TAR_XZ += ${BASE_TAR_PATH}-ubuntu-arm.tar.xz
 TAR_XZ += ${BASE_TAR_PATH}-ubuntu-arm64.tar.xz
 TAR_XZ += ${BASE_TAR_PATH}-ubuntu-s390x.tar.xz
 
+# CI_TAR_XZ is the list of tar images that are required by the CI builds.
+CI_TAR_XZ += ${BASE_TAR_PATH}-ubuntu-$(shell uname -m).tar.xz
+CI_TAR_XZ += ${BASE_TAR_PATH}-ubuntu-$(shell uname -m)-pwsh.tar.xz
+CI_TAR_XZ += ${BASE_TAR_PATH}-alpine-$(shell uname -m).tar.xz
+CI_TAR_XZ += ${BASE_TAR_PATH}-alpine-$(shell uname -m)-pwsh.tar.xz
+
 # Binaries that we support for the helper image. We are using the following
 # pattern match:
 # out/binaries/gitlab-runner-helper/gitlab-runner-helper.{{arch}}-{{os}}, these should
@@ -81,6 +87,12 @@ helper-dockerarchive-host:
 # Build the Runner Helper tar files for all supported platforms.
 .PHONY: helper-dockerarchive
 helper-dockerarchive: $(TAR_XZ)
+
+# Build the Runner Helper tar files for the CI platform.
+helper-dockerarchive-ci: $(CI_TAR_XZ)
+
+# Build the Runner Helper tar files for everything except the CI platform.
+helper-dockerarchive-non-ci: $(filter-out $(CI_TAR_XZ),$(TAR_XZ))
 
 ${BASE_TAR_PATH}-%-pwsh.tar.xz: ${BASE_TAR_PATH}-%-pwsh.tar
 	xz $(TAR_XZ_ARGS) $<

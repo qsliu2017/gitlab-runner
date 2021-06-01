@@ -11,6 +11,7 @@
     TARGET_ARCHS: "amd64,arm64,s390x"
   dependencies:
   - 'helper images'
+  - 'helper images for ci'
   - 'ecr public token'
   - 'binaries linux/386 linux/amd64 linux/arm linux/arm64 linux/s390x'
   - 'package-deb'
@@ -30,6 +31,7 @@
     PUBLISH_IMAGES: "true"
   dependencies:
   - 'helper images'
+  - 'helper images for ci'
   - 'ecr public token'
   - 'binaries windows/386 windows/amd64'
   before_script:
@@ -59,6 +61,7 @@
   - .release
   dependencies:
   - 'helper images'
+  - 'helper images for ci'
   - 'test coverage report'
   - 'binaries darwin/amd64'
   - 'binaries freebsd/386 freebsd/amd64 freebsd/arm'
