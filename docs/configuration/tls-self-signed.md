@@ -233,3 +233,11 @@ when performing operations like cloning and uploading artifacts, for example.
 Due to a [known issue](https://gitlab.com/gitlab-org/gitlab-runner/-/issues/4125) in the Kubernetes executor's
 handling of the helper image's `ENTRYPOINT`, the mapped certificate file isn't automatically installed
 to the system certificate store.
+
+## Troubleshooting
+
+Refer to our general [SSL troubleshooting](https://docs.gitlab.com/omnibus/settings/ssl.html#troubleshooting)
+documentation.
+
+In addition to the above, the [tlsctl](https://gitlab.com/gitlab-org/ci-cd/runner-tools/tlsctl) tool can be
+used to debug GitLab certificates from the Runner's end.
