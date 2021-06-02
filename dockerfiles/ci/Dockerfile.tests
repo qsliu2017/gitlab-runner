@@ -1,0 +1,85 @@
+FROM debian:buster-slim
+
+# Utilities installed here are the bare minimum required for our CI tests (both unit and integration).
+#
+# This image should attempt to remain as light as possible:
+#  - Only install the tools required. Another docker image based off of this one (Dockerfile.packaging)
+#     is used for packaging/building binaries.
+#  - Strip static binaries to reduce size. DO NOT strip the Go libraries.
+#  - Always cleanup redundant files after installation.
+#
+# A smaller sized image leads to faster initialization of unit and integration tests.
+
+# Install required dependencies
+# hadolint ignore=DL3008,DL3015
+RUN apt-get update -yq && \
+    apt-get --no-install-recommends install -yq locales ca-certificates \
+        git curl wget xz-utils jq zip unzip \
+        make gcc libc-dev && \
+    rm -rf /var/lib/apt/lists/*
+
+# Set default locale for the environment
+RUN echo "en_US UTF-8" > /etc/locale.gen; \
+    locale-gen en_US.UTF-8
+
+ENV LANG=en_US.UTF-8
+ENV LANGUAGE=en_US:en
+ENV LC_ALL=en_US.UTF-8
+
+ENV GOPATH /go
+ENV PATH $GOPATH/bin:$PATH
+ENV PATH /usr/local/go/bin:$PATH
+
+ARG GO_VERSION
+ARG GO_AMD64_CHECKSUM
+
+RUN wget -q https://golang.org/dl/go${GO_VERSION}.linux-amd64.tar.gz -O go.tgz && \
+    tar -C /usr/local -xzf go.tgz && \
+    echo "${GO_AMD64_CHECKSUM} go.tgz" | sha256sum --strict --check - && \
+    mkdir -p "$GOPATH/src" "$GOPATH/bin" && chmod -R 777 "$GOPATH" && \
+    strip /usr/local/go/bin/* /usr/local/go/pkg/tool/linux_amd64/* && \
+    rm go.tgz
+
+ARG DOCKER_VERSION
+
+# Install docker client
+RUN wget -q https://download.docker.com/linux/static/stable/x86_64/docker-${DOCKER_VERSION}.tgz -O /tmp/docker.tar.gz && \
+    tar -xzf /tmp/docker.tar.gz -C /tmp/ && \
+    cp /tmp/docker/docker* /usr/bin && \
+    chmod +x /usr/bin/docker* && \
+    strip /usr/bin/docker* && \
+    rm -rf /tmp/*
+
+ARG PWSH_VERSION
+# Install Powershell Core
+RUN wget https://packages.microsoft.com/config/debian/10/packages-microsoft-prod.deb && \
+    dpkg -i packages-microsoft-prod.deb && \
+    rm packages-microsoft-prod.deb && \
+    apt-get update && \
+    apt-get install -y powershell=${PWSH_VERSION}-1.debian.10 && \
+    rm -rf /var/lib/apt/lists/* && \
+    pwsh --version
+
+ARG GIT_LFS_VERSION
+ARG GIT_LFS_AMD64_CHECKSUM
+
+RUN wget -q https://github.com/git-lfs/git-lfs/releases/download/v${GIT_LFS_VERSION}/git-lfs-linux-amd64-v${GIT_LFS_VERSION}.tar.gz -O git-lfs.tgz && \
+	tar -C /usr/local/bin -xzf git-lfs.tgz && \
+    echo "${GIT_LFS_AMD64_CHECKSUM} git-lfs.tgz" | sha256sum --strict --check - && \
+	rm git-lfs.tgz && \
+    git-lfs install --skip-repo && \
+    strip $(which git-lfs)
+
+ARG KUBECTL_VERSION
+
+# Install kubectl
+RUN wget -q https://storage.googleapis.com/kubernetes-release/release/v${KUBECTL_VERSION}/bin/linux/amd64/kubectl -O /usr/local/bin/kubectl && \
+    chmod +x /usr/local/bin/kubectl && \
+    strip /usr/local/bin/kubectl
+
+COPY Makefile* /tmp/
+WORKDIR /tmp
+
+RUN make deps && \
+    GO111MODULE=on go install -ldflags '-w -s' github.com/jstemmer/go-junit-report && \
+    go clean --modcache -cache -testcache

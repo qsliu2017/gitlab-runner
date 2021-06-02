@@ -365,7 +365,7 @@ $(GOCOVER_COBERTURA):
 	go get github.com/boumenot/gocover-cobertura
 
 $(GOX):
-	go get github.com/mitchellh/gox
+	GO111MODULE=on go install -ldflags '-w -s' github.com/mitchellh/gox
 
 $(GOLANGLINT): TOOL_BUILD_DIR := .tmp/build/golangci-lint
 $(GOLANGLINT): $(GOLANGLINT_GOARGS)

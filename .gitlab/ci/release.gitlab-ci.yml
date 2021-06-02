@@ -4,6 +4,7 @@
   - .docker_qemu
   - .linux-dependency-checksums
   stage: release
+  image: $CI_IMAGE-packaging
   variables:
     PUBLISH_IMAGES: "true"
     PUSH_TO_DOCKER_HUB: "true"

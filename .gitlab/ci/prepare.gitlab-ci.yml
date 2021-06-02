@@ -14,8 +14,11 @@ prepare ci image:
   - .image_builder
   - .linux-dependency-checksums
   variables:
-    BUILD_IMAGE: $CI_IMAGE
-    BUILD_DOCKERFILE: ./dockerfiles/ci/Dockerfile
+    GO_VERSION: 1.13.8
+    GO_LINUX_AMD64_CHECKSUM: "0567734d558aef19112f2b2873caa0c600f1b4a5827930eb5a7f35235219e9d8"
+  script:
+    - BUILD_DOCKERFILE=./dockerfiles/ci/Dockerfile.tests BUILD_IMAGE=${CI_IMAGE} source ./ci/build_ci_image
+    - BUILD_DOCKERFILE=./dockerfiles/ci/Dockerfile.packaging BASE_IMAGE=${CI_IMAGE} BUILD_IMAGE=${CI_IMAGE}-packaging source ./ci/build_ci_image
   only:
     changes:
     - dockerfiles/ci/*

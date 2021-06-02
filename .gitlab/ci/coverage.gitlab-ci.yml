@@ -38,7 +38,6 @@ integration test coverage report:
 test junit report:
   extends:
   - .coverage_job
-  image: $CI_IMAGE
   needs:
   - unit test
   - integration test

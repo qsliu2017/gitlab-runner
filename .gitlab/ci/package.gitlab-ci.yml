@@ -2,6 +2,7 @@
   extends:
   - .rules:merge_request_pipelines:no_docs
   stage: package
+  image: $CI_IMAGE-packaging
   needs:
   - 'helper images'
   - 'helper images for ci'
