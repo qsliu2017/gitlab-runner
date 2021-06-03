@@ -669,8 +669,8 @@ func TestExecutor_Run(t *testing.T) {
 				options process.CommandOptions,
 			) {
 				assert.Equal(t, tt.config.Custom.RunExec, executable)
-				assert.Len(t, args, 2)
-				assert.Equal(t, "build_script", args[1])
+				require.Len(t, args, 2)
+				assert.Equal(t, "step_script", args[1])
 			},
 		},
 		"Run executes job with error": {

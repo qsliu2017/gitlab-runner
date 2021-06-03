@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strconv"
+	"strings"
 
 	"gitlab.com/gitlab-org/gitlab-runner/executors/custom/api"
 )
@@ -26,17 +27,28 @@ const (
 	stageCleanup = "cleanup"
 )
 
-var knownBuildStages = map[string]struct{}{
-	"prepare_script":              {},
-	"get_sources":                 {},
-	"restore_cache":               {},
-	"download_artifacts":          {},
-	"build_script":                {},
-	"after_script":                {},
-	"archive_cache":               {},
-	"archive_cache_on_failure":    {},
-	"upload_artifacts_on_success": {},
-	"upload_artifacts_on_failure": {},
+func knownBuildStage(stage string) bool {
+	var knownBuildStages = map[string]struct{}{
+		"prepare_script":              {},
+		"get_sources":                 {},
+		"restore_cache":               {},
+		"download_artifacts":          {},
+		"after_script":                {},
+		"archive_cache":               {},
+		"archive_cache_on_failure":    {},
+		"upload_artifacts_on_success": {},
+		"upload_artifacts_on_failure": {},
+	}
+
+	if _, ok := knownBuildStages[stage]; ok {
+		return true
+	}
+
+	// step_* stages are dynamic in their nature, so it's not possible
+	// to prepare a predefined list of known step_* entries.
+	// Instead, the integration needs to be checked differently - be
+	// confirming that the stage name starts with "step_"
+	return strings.HasPrefix(stage, "step_")
 }
 
 func setBuildFailure(msg string, args ...interface{}) {
@@ -189,7 +201,7 @@ func mockError() {
 }
 
 func createCommand(shell string, script string, stage string) *exec.Cmd {
-	if _, ok := knownBuildStages[stage]; !ok {
+	if !knownBuildStage(stage) {
 		setSystemFailure("Unknown build stage %q", stage)
 	}
 

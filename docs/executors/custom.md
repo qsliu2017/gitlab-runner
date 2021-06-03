@@ -267,7 +267,7 @@ order:
 1. `restore_cache`
 1. `download_artifacts`
 1. `step_*`
-1. `build_script`
+1. `step_script`
 1. `step_*`
 1. `after_script`
 1. `archive_cache` OR `archive_cache_on_failure`
@@ -275,7 +275,10 @@ order:
 1. `cleanup_file_variables`
 
 NOTE:
-In GitLab Runner 14.0 and later, `build_script` will be replaced with `step_script`. For more information, see [this issue](https://gitlab.com/gitlab-org/gitlab-runner/-/issues/26426).
+In GitLab Runner 13.1 we've introduced dynamic build stages. They are prefixed with `step_` and are not of
+a predefined set.
+In GitLab Runner 14.0 `build_script` was replaced with `step_script`.
+For more information, see [this issue](https://gitlab.com/gitlab-org/gitlab-runner/-/issues/26426).
 
 For each stage mentioned above, the `run_exec` executable will be
 executed with:
