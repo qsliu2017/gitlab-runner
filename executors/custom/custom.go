@@ -20,6 +20,19 @@ import (
 	"gitlab.com/gitlab-org/gitlab-runner/helpers/process"
 )
 
+const (
+	// DEPRECATED
+	// TODO: Change to true in 14.3 - https://gitlab.com/gitlab-org/gitlab-runner/-/issues/27958
+	// TODO: Remove this in 15.0 - https://gitlab.com/gitlab-org/gitlab-runner/-/issues/27959
+	defaultStepScriptSupported = false
+
+	// DEPRECATED
+	// TODO: Remove this in 15.0 - https://gitlab.com/gitlab-org/gitlab-runner/-/issues/27959
+	BuildScriptWarning = "As per https://gitlab.com/groups/gitlab-org/-/epics/6112 the " +
+		"'build_script' job execution stage is deprecated and it will be removed in 15.0. Please " +
+		"migrate to use 'step_script' instead."
+)
+
 type commandOutputs struct {
 	stdout io.Writer
 	stderr io.Writer
@@ -64,6 +77,12 @@ func (c *ConfigExecOutput) InjectInto(executor *executor) {
 	if c.JobEnv != nil {
 		executor.jobEnv = *c.JobEnv
 	}
+
+	// TODO: Remove this in 15.0 - https://gitlab.com/gitlab-org/gitlab-runner/-/issues/27959
+	executor.stepScriptSupported = defaultStepScriptSupported
+	if c.StepScriptSupported != nil {
+		executor.stepScriptSupported = *c.StepScriptSupported
+	}
 }
 
 type executor struct {
@@ -75,6 +94,10 @@ type executor struct {
 	driverInfo *api.DriverInfo
 
 	jobEnv map[string]string
+
+	// DEPRECATED
+	// TODO: Remove this in 15.0 - https://gitlab.com/gitlab-org/gitlab-runner/-/issues/27959
+	stepScriptSupported bool
 }
 
 func (e *executor) Prepare(options common.ExecutorPrepareOptions) error {
@@ -268,15 +291,7 @@ func (e *executor) Run(cmd common.ExecutorCommand) error {
 		return err
 	}
 
-	// TODO: Remove this translation in 14.0 - https://gitlab.com/gitlab-org/gitlab-runner/-/issues/26426
-	stage := cmd.Stage
-	if stage == "step_script" {
-		e.BuildLogger.Warningln("Starting with version 14.0 the 'build_script' stage " +
-			"will be replaced with 'step_script': https://gitlab.com/gitlab-org/gitlab-runner/-/issues/26426")
-		stage = "build_script"
-	}
-
-	args := append(e.config.RunArgs, scriptFile, string(stage))
+	args := append(e.config.RunArgs, scriptFile, e.translateStageToBuildScript(cmd.Stage))
 
 	opts := prepareCommandOpts{
 		executable: e.config.RunExec,
@@ -285,6 +300,22 @@ func (e *executor) Run(cmd common.ExecutorCommand) error {
 	}
 
 	return e.prepareCommand(cmd.Context, opts).Run()
+}
+
+// DEPRECATED
+// TODO: Remove this in 15.0 - https://gitlab.com/gitlab-org/gitlab-runner/-/issues/27959
+func (e *executor) translateStageToBuildScript(stage common.BuildStage) string {
+	if stage != "step_script" {
+		return string(stage)
+	}
+
+	if e.stepScriptSupported {
+		return string(stage)
+	}
+
+	e.BuildLogger.Warningln(BuildScriptWarning)
+
+	return "build_script"
 }
 
 func (e *executor) Cleanup() {

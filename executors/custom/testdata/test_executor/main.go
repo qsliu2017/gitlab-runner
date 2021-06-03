@@ -6,17 +6,16 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strconv"
+	"strings"
 
 	"gitlab.com/gitlab-org/gitlab-runner/executors/custom/api"
 )
 
 const (
-	isBuildError     = "CUSTOM_ENV_IS_BUILD_ERROR"
-	isSystemError    = "CUSTOM_ENV_IS_SYSTEM_ERROR"
-	isUnknownError   = "CUSTOM_ENV_IS_UNKNOWN_ERROR"
-	isRunOnCustomDir = "CUSTOM_ENV_IS_RUN_ON_CUSTOM_DIR"
+	isBuildError   = "CUSTOM_ENV_IS_BUILD_ERROR"
+	isSystemError  = "CUSTOM_ENV_IS_SYSTEM_ERROR"
+	isUnknownError = "CUSTOM_ENV_IS_UNKNOWN_ERROR"
 )
 
 const (
@@ -26,17 +25,35 @@ const (
 	stageCleanup = "cleanup"
 )
 
-var knownBuildStages = map[string]struct{}{
-	"prepare_script":              {},
-	"get_sources":                 {},
-	"restore_cache":               {},
-	"download_artifacts":          {},
-	"build_script":                {},
-	"after_script":                {},
-	"archive_cache":               {},
-	"archive_cache_on_failure":    {},
-	"upload_artifacts_on_success": {},
-	"upload_artifacts_on_failure": {},
+func validateBuildStageName(stage string) {
+	const stepStagePrefix = "step_"
+
+	var knownBuildStages = map[string]struct{}{
+		"prepare_script":              {},
+		"get_sources":                 {},
+		"restore_cache":               {},
+		"download_artifacts":          {},
+		"after_script":                {},
+		"archive_cache":               {},
+		"archive_cache_on_failure":    {},
+		"upload_artifacts_on_success": {},
+		"upload_artifacts_on_failure": {},
+	}
+
+	if _, ok := knownBuildStages[stage]; ok {
+		return
+	}
+
+	if strings.HasPrefix(stage, stepStagePrefix) {
+		return
+	}
+
+	// TODO: Remove this in 15.0 - https://gitlab.com/gitlab-org/gitlab-runner/-/issues/27959
+	if stage == "build_script" {
+		return
+	}
+
+	setSystemFailure("Unknown build stage %q", stage)
 }
 
 func setBuildFailure(msg string, args ...interface{}) {
@@ -106,26 +123,61 @@ func main() {
 }
 
 func config(shell string, args []string) {
-	customDir := os.Getenv(isRunOnCustomDir)
-	if customDir == "" {
-		return
-	}
+	var config api.ConfigExecOutput
 
-	concurrentID := os.Getenv("CUSTOM_ENV_CI_CONCURRENT_PROJECT_ID")
-	projectSlug := os.Getenv("CUSTOM_ENV_CI_PROJECT_PATH_SLUG")
+	adjustConfig(&config, args)
 
-	dir := filepath.Join(customDir, concurrentID, projectSlug)
-
-	type output struct {
-		BuildsDir string `json:"builds_dir"`
-	}
-
-	jsonOutput, err := json.Marshal(output{BuildsDir: dir})
+	jsonOutput, err := json.Marshal(config)
 	if err != nil {
 		panic(fmt.Errorf("error while creating JSON output: %w", err))
 	}
 
 	fmt.Print(string(jsonOutput))
+}
+
+func adjustConfig(config *api.ConfigExecOutput, args []string) {
+	for _, arg := range args {
+		setBuildsDirConfig(config, arg)
+		setStepScriptSupportedConfig(config, arg)
+	}
+}
+
+func setBuildsDirConfig(config *api.ConfigExecOutput, arg string) {
+	const (
+		argumentPrefix = "builds_dir="
+	)
+
+	if !strings.HasPrefix(arg, argumentPrefix) {
+		return
+	}
+
+	dir := strings.TrimPrefix(arg, argumentPrefix)
+
+	config.BuildsDir = &dir
+}
+
+// setStepScriptSupportedConfig
+// DEPRECATED
+// TODO: Remove this in 15.0 - https://gitlab.com/gitlab-org/gitlab-runner/-/issues/27959
+func setStepScriptSupportedConfig(config *api.ConfigExecOutput, arg string) {
+	const (
+		argumentPrefix = "step_script_supported="
+	)
+
+	if !strings.HasPrefix(arg, argumentPrefix) {
+		return
+	}
+
+	stepScriptSupported, err := strconv.ParseBool(strings.TrimPrefix(arg, argumentPrefix))
+	if err != nil {
+		panic(fmt.Sprintf(
+			"invalid value of %q argument; expected bool got %v",
+			argumentPrefix,
+			stepScriptSupported,
+		))
+	}
+
+	config.StepScriptSupported = &stepScriptSupported
 }
 
 func prepare(shell string, args []string) {
@@ -189,9 +241,7 @@ func mockError() {
 }
 
 func createCommand(shell string, script string, stage string) *exec.Cmd {
-	if _, ok := knownBuildStages[stage]; !ok {
-		setSystemFailure("Unknown build stage %q", stage)
-	}
+	validateBuildStageName(stage)
 
 	shellConfigs := map[string]struct {
 		command string

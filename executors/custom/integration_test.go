@@ -8,11 +8,13 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gitlab.com/gitlab-org/gitlab-runner/executors/custom"
 
 	"gitlab.com/gitlab-org/gitlab-runner/common"
 	"gitlab.com/gitlab-org/gitlab-runner/common/buildtest"
@@ -510,7 +512,7 @@ func TestBuildOnCustomDirectory(t *testing.T) {
 				require.Truef(t, ok, "Missing command for shell %q", shell)
 
 				dir := filepath.Join(os.TempDir(), "custom", "directory")
-				expectedDirectory := filepath.Join(dir, "0")
+				expectedDirectory := filepath.Join(dir, "project-0")
 
 				successfulBuild, err := common.GetSuccessfulBuild()
 				require.NoError(t, err)
@@ -521,11 +523,10 @@ func TestBuildOnCustomDirectory(t *testing.T) {
 				defer cleanup()
 
 				if tt {
-					build.Variables = append(build.Variables, common.JobVariable{
-						Key:    "IS_RUN_ON_CUSTOM_DIR",
-						Value:  dir,
-						Public: true,
-					})
+					build.Runner.Custom.ConfigArgs = append(
+						build.Runner.Custom.ConfigArgs,
+						fmt.Sprintf("builds_dir=%s", dir),
+					)
 				}
 
 				out, err := buildtest.RunBuildReturningOutput(t, build)
@@ -547,5 +548,64 @@ func TestBuildLogLimitExceeded(t *testing.T) {
 		defer cleanup()
 
 		buildtest.RunBuildWithJobOutputLimitExceeded(t, build.Runner, nil)
+	})
+}
+
+// TODO: Remove this in 15.0 - https://gitlab.com/gitlab-org/gitlab-runner/-/issues/27959
+func TestSupportForStepScriptUsageConfiguration(t *testing.T) {
+	shellstest.OnEachShell(t, func(t *testing.T, shell string) {
+		boolToPointer := func(b bool) *bool {
+			return &b
+		}
+
+		tests := map[string]struct {
+			stepScriptSupported *bool
+			expectedStageName   string
+			warningExpected     bool
+		}{
+			"step_script_supported undefined": {
+				stepScriptSupported: nil,
+				expectedStageName:   "build_script", // TODO: Change to "step_script" in 14.3 - https://gitlab.com/gitlab-org/gitlab-runner/-/issues/27958
+				warningExpected:     true,           // TODO: Change to false in 14.3 - https://gitlab.com/gitlab-org/gitlab-runner/-/issues/27958
+			},
+			"step_script_supported set to true": {
+				stepScriptSupported: boolToPointer(true),
+				expectedStageName:   "step_script",
+				warningExpected:     false,
+			},
+			"step_script_supported set to false": {
+				stepScriptSupported: boolToPointer(false),
+				expectedStageName:   "build_script",
+				warningExpected:     true,
+			},
+		}
+
+		for tn, tt := range tests {
+			t.Run(tn, func(t *testing.T) {
+				successfulBuild, err := common.GetSuccessfulBuild()
+				require.NoError(t, err)
+
+				build, cleanup := newBuild(t, successfulBuild, shell)
+				defer cleanup()
+
+				if tt.stepScriptSupported != nil {
+					build.Runner.Custom.ConfigArgs = append(
+						build.Runner.Custom.ConfigArgs,
+						fmt.Sprintf("step_script_supported=%s", strconv.FormatBool(*tt.stepScriptSupported)),
+					)
+				}
+
+				output, err := buildtest.RunBuildReturningOutput(t, build)
+				require.NoError(t, err)
+
+				assert.Contains(t, output, tt.expectedStageName)
+
+				if tt.warningExpected {
+					assert.Contains(t, output, custom.BuildScriptWarning)
+				} else {
+					assert.NotContains(t, output, custom.BuildScriptWarning)
+				}
+			})
+		}
 	})
 }

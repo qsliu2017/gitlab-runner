@@ -670,6 +670,7 @@ func TestExecutor_Run(t *testing.T) {
 			) {
 				assert.Equal(t, tt.config.Custom.RunExec, executable)
 				assert.Len(t, args, 2)
+				// TODO: Change to "step_script" in 14.3 - https://gitlab.com/gitlab-org/gitlab-runner/-/issues/27958
 				assert.Equal(t, "build_script", args[1])
 			},
 		},

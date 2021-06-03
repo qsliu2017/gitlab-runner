@@ -14,6 +14,10 @@ type ConfigExecOutput struct {
 	BuildsDirIsShared *bool `json:"builds_dir_is_shared,omitempty"`
 
 	JobEnv *map[string]string `json:"job_env,omitempty"`
+
+	// DEPRECATED
+	// TODO: Remove this in 15.0 - https://gitlab.com/gitlab-org/gitlab-runner/-/issues/27959
+	StepScriptSupported *bool `json:"step_script_supported,omitempty"`
 }
 
 // DriverInfo wraps the information about Custom Executor driver details
