@@ -9,6 +9,8 @@ info: To determine the technical writer assigned to the Stage/Group associated w
 
 GitLab Runner is an application that works with GitLab CI/CD to run jobs in a pipeline.
 
+Test.
+
 You can choose to [**install**](install/index.md) the GitLab Runner application
 on infrastructure that you own or manage. If you do, you should install
 GitLab Runner on a machine that's separate from the one that hosts the GitLab instance
