@@ -236,8 +236,7 @@ to the system certificate store.
 
 ## Troubleshooting
 
-Refer to our general [SSL troubleshooting](https://docs.gitlab.com/omnibus/settings/ssl.html#troubleshooting)
+Refer to the general [SSL troubleshooting](https://docs.gitlab.com/omnibus/settings/ssl.html#troubleshooting)
 documentation.
 
-In addition to the above, the [tlsctl](https://gitlab.com/gitlab-org/ci-cd/runner-tools/tlsctl) tool can be
-used to debug GitLab certificates from the Runner's end.
+In addition, you can use the [`tlsctl`](https://gitlab.com/gitlab-org/ci-cd/runner-tools/tlsctl) tool to debug GitLab certificates from the runner's end.
