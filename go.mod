@@ -3,8 +3,8 @@ module gitlab.com/gitlab-org/gitlab-runner
 go 1.13
 
 require (
-	cloud.google.com/go/storage v1.12.0
-	github.com/Azure/azure-storage-blob-go v0.11.1-0.20201209121048-6df5d9af221d
+	cloud.google.com/go/storage v1.15.0
+	github.com/Azure/azure-storage-blob-go v0.13.0
 	github.com/BurntSushi/toml v0.3.1
 	github.com/Microsoft/go-winio v0.4.12 // indirect
 	github.com/bmatcuk/doublestar v1.3.0
@@ -20,7 +20,8 @@ require (
 	github.com/elazarl/goproxy v0.0.0-20191011121108-aa519ddbe484 // indirect
 	github.com/fullsailor/pkcs7 v0.0.0-20190404230743-d7302db945fa
 	github.com/getsentry/raven-go v0.0.0-20160518204710-dffeb57df75d
-	github.com/golang/mock v1.4.4
+	github.com/golang/mock v1.5.0
+	github.com/googleapis/gax-go v2.0.2+incompatible // indirect
 	github.com/gorhill/cronexpr v0.0.0-20160318121724-f0984319b442
 	github.com/gorilla/context v1.1.1 // indirect
 	github.com/gorilla/mux v1.3.1-0.20170228224354-599cba5e7b61
@@ -31,7 +32,6 @@ require (
 	github.com/jpillora/backoff v0.0.0-20170222002228-06c7a16c845d
 	github.com/kardianos/osext v0.0.0-20160811001526-c2c54e542fb7
 	github.com/kardianos/service v1.2.0
-	github.com/klauspost/compress v1.11.6 // indirect
 	github.com/klauspost/cpuid v1.3.1 // indirect
 	github.com/klauspost/pgzip v1.2.5
 	github.com/kr/pty v1.1.5
@@ -56,11 +56,11 @@ require (
 	github.com/urfave/cli v1.20.0
 	gitlab.com/ayufan/golang-cli-helpers v0.0.0-20171103152739-a7cf72d604cd
 	gitlab.com/gitlab-org/gitlab-terminal v0.0.0-20210104151801-2a71b03b4462
-	gocloud.dev v0.21.1-0.20201223184910-5094f54ed8bb
-	golang.org/x/crypto v0.0.0-20210220033148-5ea612d1eb83
-	golang.org/x/net v0.0.0-20210224082022-3d97a244fca7
-	golang.org/x/sync v0.0.0-20201207232520-09787c993a3a
-	golang.org/x/sys v0.0.0-20210225134936-a50acf3fe073
+	gocloud.dev v0.23.0
+	golang.org/x/crypto v0.0.0-20210506145944-38f3c27a63bf
+	golang.org/x/net v0.0.0-20210505214959-0714010a04ed
+	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
+	golang.org/x/sys v0.0.0-20210503173754-0981d6026fa6
 	golang.org/x/text v0.3.6
 	gopkg.in/ini.v1 v1.62.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0
