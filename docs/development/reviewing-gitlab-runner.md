@@ -29,7 +29,7 @@ executed in regular (`count`) and race (`atomic`) modes.
 
 There are two places where test coverage reports can be seen. For:
 
-- Contributions made directly to <https://gitlab.com/gitlab-org/gitlab-runner> project, changes merged to `master`
+- Contributions made directly to <https://gitlab.com/gitlab-org/gitlab-runner> project, changes merged to `main`
   branch and for all tagged releases.
 - Community contributions and contributions made directly to <https://gitlab.com/gitlab-org/gitlab-runner> project.
 
@@ -37,7 +37,7 @@ There are two places where test coverage reports can be seen. For:
 
 This report has a long-term life but, because it uses the `gitlab-runners-download` S3 bucket, it's available
 only for contributions made directly to <https://gitlab.com/gitlab-org/gitlab-runner>. It is also available
-for all jobs started from `master` branch (so mostly Merge Requests merges) and for all tagged releases.
+for all jobs started from `main` branch (so mostly Merge Requests merges) and for all tagged releases.
 
 To open the report:
 
@@ -45,7 +45,7 @@ To open the report:
    Merge Requests or a Pipeline for the tag. For example, we can look at this one:
    <https://gitlab.com/gitlab-org/gitlab-runner/pipelines/48686952>, which released the `v11.8.0` version of GitLab Runner.
 
-1. In the pipeline, find the `stable S3` (for tagged releases), `bleeding edge S3` (for `master` and RC tagged releases),
+1. In the pipeline, find the `stable S3` (for tagged releases), `bleeding edge S3` (for `main` and RC tagged releases),
    or `development S3` (for regular commits) job which should be present at the `release` stage. In our example
    pipeline, it will be: <https://gitlab.com/gitlab-org/gitlab-runner/-/jobs/165757556>.
 
@@ -135,7 +135,7 @@ To view a code coverage report for a merge request:
 
 ## Reviewing the Merge Request title
 
-Because we generate [`CHANGELOG.md`](https://gitlab.com/gitlab-org/gitlab-runner/-/blob/master/CHANGELOG.md) entries
+Because we generate [`CHANGELOG.md`](https://gitlab.com/gitlab-org/gitlab-runner/-/blob/main/CHANGELOG.md) entries
 from the merge request titles, making sure that the title is valid and informative is a part
 of the reviewer and maintainer's responsibilities.
 
