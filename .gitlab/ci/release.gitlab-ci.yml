@@ -156,7 +156,7 @@ stable S3:
 stable gitlab release:
   extends:
   - .release
-  - .rules:release:stable
+  - .rules:release:stable-or-rc
   environment:
     name: stable/gitlab
     url: https://gitlab.com/gitlab-org/gitlab-runner/-/releases

@@ -8,10 +8,10 @@
 .if-default-branch: &if-default-branch
   if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
 
-.if-release-candidate: &if-release-candidate
+.if-release-candidate-tag: &if-release-candidate-tag
   if: '$CI_COMMIT_TAG =~ /^v[0-9]+\.[0-9]+\.[0-9]+-rc[0-9]+/'
 
-.if-stable-release: &if-stable-release
+.if-stable-release-tag: &if-stable-release-tag
   if: '$CI_COMMIT_TAG =~ /^v[0-9]+\.[0-9]+\.[0-9]+$/'
 
 .if-docs-branch: &if-docs-branch
@@ -32,19 +32,19 @@
 .if-runner-or-security-runner-default-branch: &if-runner-or-security-runner-default-branch
   if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && ($CI_PROJECT_PATH == "gitlab-org/gitlab-runner" || $CI_PROJECT_PATH == "gitlab-org/security/gitlab-runner")
 
-.if-runner-or-security-runner-stable: &if-runner-or-security-runner-stable
+.if-runner-or-security-runner-stable-ref: &if-runner-or-security-runner-stable-ref
   if: $CI_COMMIT_REF_NAME =~ /\A[0-9]+-[0-9]+-stable\z/ && ($CI_PROJECT_PATH == "gitlab-org/gitlab-runner" || $CI_PROJECT_PATH == "gitlab-org/security/gitlab-runner")
 
-.if-runner-release: &if-runner-release
+.if-runner-release-ref: &if-runner-release-ref
   if: $CI_COMMIT_REF_NAME =~ /\Av[0-9]+\.[0-9]+\.[0-9]+(-rc[0-9]+)?\z/ && $CI_PROJECT_PATH == "gitlab-org/gitlab-runner"
 
-.if-runner-stable-release: &if-runner-stable-release
+.if-runner-stable-release-ref: &if-runner-stable-release-ref
   if: $CI_COMMIT_REF_NAME =~ /\Av[0-9]+\.[0-9]+\.[0-9]+?\z/ && $CI_PROJECT_PATH == "gitlab-org/gitlab-runner"
 
-.if-security-runner-release: &if-security-runner-release
+.if-security-runner-release-ref: &if-security-runner-release-ref
   if: $CI_COMMIT_REF_NAME =~ /\Av[0-9]+\.[0-9]+\.[0-9]+?\z/ && $CI_PROJECT_PATH == "gitlab-org/security/gitlab-runner"
 
-.if-runner-bleeding-edge-release: &if-runner-bleeding-edge-release
+.if-runner-bleeding-edge-release-ref: &if-runner-bleeding-edge-release-ref
   if: $CI_COMMIT_REF_NAME =~ /\Av[0-9]+\.[0-9]+\.[0-9]+-rc[0-9]+\z/ && $CI_PROJECT_PATH == "gitlab-org/gitlab-runner"
 
 ########################
@@ -68,9 +68,9 @@
   rules:
   - <<: *if-merge-request-pipeline
   - <<: *if-runner-or-security-runner-default-branch
-  - <<: *if-runner-or-security-runner-stable
-  - <<: *if-runner-release
-  - <<: *if-security-runner-release
+  - <<: *if-runner-or-security-runner-stable-ref
+  - <<: *if-runner-release-ref
+  - <<: *if-security-runner-release-ref
 
 .rules:merge_request_pipelines:no_docs:
   rules:
@@ -78,9 +78,9 @@
     when: never
   - <<: *if-merge-request-pipeline
   - <<: *if-runner-or-security-runner-default-branch
-  - <<: *if-runner-or-security-runner-stable
-  - <<: *if-runner-release
-  - <<: *if-security-runner-release
+  - <<: *if-runner-or-security-runner-stable-ref
+  - <<: *if-runner-release-ref
+  - <<: *if-security-runner-release-ref
 
 .rules:merge_request_pipelines:no_docs:always:
   rules:
@@ -90,11 +90,11 @@
     when: always
   - <<: *if-runner-or-security-runner-default-branch
     when: always
-  - <<: *if-runner-or-security-runner-stable
+  - <<: *if-runner-or-security-runner-stable-ref
     when: always
-  - <<: *if-runner-release
+  - <<: *if-runner-release-ref
     when: always
-  - <<: *if-security-runner-release
+  - <<: *if-security-runner-release-ref
     when: always
 
 #################
@@ -106,17 +106,17 @@
   - <<: *if-not-canonical-namespace
     when: never
   - <<: *if-default-branch
-  - <<: *if-release-candidate
-  - <<: *if-stable-release
+  - <<: *if-release-candidate-tag
+  - <<: *if-stable-release-tag
 
 .rules:release:bleeding-edge:
   rules:
   - <<: *if-docs-branch
     when: never
   - <<: *if-runner-default-branch
-  - <<: *if-runner-bleeding-edge-release
+  - <<: *if-runner-bleeding-edge-release-ref
 
-.rules:release:stable:
+.rules:release:stable-or-rc:
   rules:
   - <<: *if-docs-branch
     when: never
@@ -129,8 +129,8 @@
   rules:
   - <<: *if-docs-branch
     when: never
-  - <<: *if-runner-stable-release
-  - <<: *if-security-runner-release
+  - <<: *if-runner-stable-release-ref
+  - <<: *if-security-runner-release-ref
 
 .rules:release:development:merge-requests:
   rules:
