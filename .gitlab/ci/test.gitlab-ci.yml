@@ -6,13 +6,65 @@ include:
 
 .merge_request_pipelines_rules:
   rules: &merge_request_pipelines_rules
-  - if: $CI_MERGE_REQUEST_SOURCE_BRANCH_NAME =~ /(^docs[\/-].*|.*-docs$)/
-    when: never
   - if: $CI_MERGE_REQUEST_ID
+    changes:
+      - ".gitlab-ci.yml"
+      - ".golangci.yml"
+      - ".gitlab/ci/**/*"
+      - ".{gitattributes,markdownlint.json,stylelintrc,yamllint}"
+      - "Makefile*"
+      - "{apps,cache,ci,commands,common,dockerfiles,executors,helpers,log,network,packaging,referees,scripts,session,shells,tests,vendor}/**/*"
+      - "go.*"
+      - "main.go"
+      - "tools.go"
   - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && ($CI_PROJECT_PATH == "gitlab-org/gitlab-runner" || $CI_PROJECT_PATH == "gitlab-org/security/gitlab-runner")
+    changes:
+      - ".gitlab-ci.yml"
+      - ".golangci.yml"
+      - ".gitlab/ci/**/*"
+      - ".{gitattributes,markdownlint.json,stylelintrc,yamllint}"
+      - "Makefile*"
+      - "{apps,cache,ci,commands,common,dockerfiles,executors,helpers,log,network,packaging,referees,scripts,session,shells,tests,vendor}/**/*"
+      - "go.*"
+      - "main.go"
+      - "tools.go"
   - if: $CI_COMMIT_REF_NAME =~ /\A[0-9]+-[0-9]+-stable\z/ && ($CI_PROJECT_PATH == "gitlab-org/gitlab-runner" || $CI_PROJECT_PATH == "gitlab-org/security/gitlab-runner")
+    changes:
+      - ".gitlab-ci.yml"
+      - ".golangci.yml"
+      - ".gitlab/ci/**/*"
+      - ".{gitattributes,markdownlint.json,stylelintrc,yamllint}"
+      - "Makefile*"
+      - "{apps,cache,ci,commands,common,dockerfiles,executors,helpers,log,network,packaging,referees,scripts,session,shells,tests,vendor}/**/*"
+      - "go.*"
+      - "main.go"
+      - "tools.go"
   - if: $CI_COMMIT_REF_NAME =~ /\Av[0-9]+\.[0-9]+\.[0-9]+(-rc[0-9]+)?\z/ && $CI_PROJECT_PATH == "gitlab-org/gitlab-runner"
+    changes:
+      - ".gitlab-ci.yml"
+      - ".golangci.yml"
+      - ".gitlab/ci/**/*"
+      - ".{gitattributes,markdownlint.json,stylelintrc,yamllint}"
+      - "Makefile*"
+      - "{apps,cache,ci,commands,common,dockerfiles,executors,helpers,log,network,packaging,referees,scripts,session,shells,tests,vendor}/**/*"
+      - "go.*"
+      - "main.go"
+      - "tools.go"
   - if: $CI_COMMIT_REF_NAME =~ /\Av[0-9]+\.[0-9]+\.[0-9]+?\z/ && $CI_PROJECT_PATH == "gitlab-org/security/gitlab-runner"
+    changes:
+      - ".gitlab-ci.yml"
+      - ".golangci.yml"
+      - ".gitlab/ci/**/*"
+      - ".{gitattributes,markdownlint.json,stylelintrc,yamllint}"
+      - "Makefile*"
+      - "{apps,cache,ci,commands,common,dockerfiles,executors,helpers,log,network,packaging,referees,scripts,session,shells,tests,vendor}/**/*"
+      - "go.*"
+      - "main.go"
+      - "tools.go"
+  - changes:
+      - "docs/**/*"
+      - "scripts/lint-docs"
+    when: never
 
 # Overriding 'Dependency-Scanning.gitlab-ci.yml' template, because
 # we need to replace the rules with our own, the same
