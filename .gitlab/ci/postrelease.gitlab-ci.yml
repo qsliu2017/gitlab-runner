@@ -14,8 +14,6 @@ trigger runner-incept tests:
     - .except_docs
   stage: postrelease
   trigger: gitlab-org/ci-cd/tests/runner-incept
-  needs:
-    - 'bleeding edge docker images'
   only:
     refs:
       - main@gitlab-org/gitlab-runner
