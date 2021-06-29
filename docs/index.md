@@ -187,7 +187,7 @@ sequenceDiagram
 
 ## Troubleshooting
 
-Learn how to [troubleshoot](faq/index.md) common issues.
+Learn how to [troubleshoot](faq/README.md) common GitLab Runner issues.
 
 ## Contributing
 
