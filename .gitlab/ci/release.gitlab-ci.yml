@@ -39,7 +39,7 @@
 .release:
   extends:
   - .except_docs
-  - .rules:if_on_ops
+  - .rules:release:ops
   stage: release
   before_script:
   - source ci/touch_make_dependencies
@@ -86,22 +86,16 @@
   - make release_packagecloud
 
 .release_development:
-  only:
-  - merge_requests@gitlab-org/gitlab-runner
-  - merge_requests@gitlab-org/security/gitlab-runner
-  except:
-    variables:
-    - $CI_MERGE_REQUEST_SOURCE_BRANCH_NAME =~ /(^docs[\/-].*|.*-docs$)/
+  extends:
+  - .rules:merge_request_pipelines:no_docs
 
 .release_bleeding_edge:
-  only:
-  - main@gitlab-org/gitlab-runner
-  - /\Av[0-9]+\.[0-9]+\.[0-9]+-rc[0-9]+\Z/@gitlab-org/gitlab-runner
+  extends:
+  - .rules:release:bleeding:cannonical
 
 .release_stable:
-  only:
-  - /\Av[0-9]+\.[0-9]+\.[0-9]+\Z/@gitlab-org/gitlab-runner
-  - /\Av[0-9]+\.[0-9]+\.[0-9]+\Z/@gitlab-org/security/gitlab-runner
+  extends:
+  - .rules:release:stable
 
 development S3:
   extends:
@@ -110,8 +104,6 @@ development S3:
   environment:
     name: development/s3/${CI_COMMIT_REF_NAME}
     url: https://gitlab-runner-downloads.s3.amazonaws.com/${CI_COMMIT_REF_NAME}/index.html
-  only:
-  - merge_requests@gitlab-org/gitlab-runner
 
 development docker images:
   extends:

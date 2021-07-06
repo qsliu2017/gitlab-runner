@@ -5,6 +5,9 @@
 .if-not-canonical-namespace: &if-not-canonical-namespace
   if: '$CI_PROJECT_NAMESPACE !~ /^gitlab-org($|\/)/'
 
+.if-canonical-namespace: &if-canonical-namespace:
+  if: '$CI_PROJECT_NAMESPACE =~ /^gitlab-org($|\/)/'
+
 .if-default-branch: &if-default-branch
   if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
 
@@ -52,10 +55,6 @@
 # Merge Request rules #
 #######################
 
-.rules:if_on_ops:
-  rules:
-  - <<: *if-on-ops
-
 .rules:merge_request_pipelines:
   rules:
   - <<: *if-merge-request-pipeline
@@ -92,6 +91,20 @@
 #################
 # Release rules #
 #################
+
+.rules:release:ops:
+  rules:
+  - <<: *if-on-ops
+
+.rules:release:bleeding:cannonical:
+  rules:
+  - <<: *if-default-branch
+  - <<: *if-canonical-namespace
+  - <<: *if-release-candidate
+
+.rules:release:stable:
+  rules:
+    - <<: *if-stable-release
 
 .rules:release:all:
   rules:
