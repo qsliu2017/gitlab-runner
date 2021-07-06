@@ -150,6 +150,6 @@
 # Used for commits including ONLY documentation changes.
 # https://docs.gitlab.com/ee/development/documentation/index.html#branch-naming
 .except_docs:
-  except:
-    variables:
-    - $CI_MERGE_REQUEST_SOURCE_BRANCH_NAME =~ /(^docs[\/-].*|.*-docs$)/
+  rules:
+  - if: '$CI_MERGE_REQUEST_SOURCE_BRANCH_NAME =~ /(^docs[\/-].*|.*-docs$)/'
+    when: never
