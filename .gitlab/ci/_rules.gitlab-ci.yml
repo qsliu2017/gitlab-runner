@@ -5,7 +5,7 @@
 .if-not-canonical-namespace: &if-not-canonical-namespace
   if: '$CI_PROJECT_NAMESPACE !~ /^gitlab-org($|\/)/'
 
-.if-canonical-namespace: &if-canonical-namespace:
+.if-canonical-namespace: &if-canonical-namespace
   if: '$CI_PROJECT_NAMESPACE =~ /^gitlab-org($|\/)/'
 
 .if-default-branch: &if-default-branch
