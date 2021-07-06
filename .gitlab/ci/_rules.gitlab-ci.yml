@@ -32,6 +32,9 @@
 .if-security-runner-release: &if-security-runner-release
   if: $CI_COMMIT_REF_NAME =~ /\Av[0-9]+\.[0-9]+\.[0-9]+?\z/ && $CI_PROJECT_PATH == "gitlab-org/security/gitlab-runner"
 
+.if-on-ops: &if-on-ops
+  if: '$OPS_MIRROR'
+
 ########################
 # Default branch rules #
 ########################
@@ -48,6 +51,10 @@
 #######################
 # Merge Request rules #
 #######################
+
+.rules:if_on_ops:
+  rules:
+  - <<: *if-on-ops
 
 .rules:merge_request_pipelines:
   rules:

@@ -39,6 +39,7 @@
 .release:
   extends:
   - .except_docs
+  - .rules:if_on_ops
   stage: release
   before_script:
   - source ci/touch_make_dependencies
