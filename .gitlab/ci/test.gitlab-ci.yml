@@ -266,7 +266,8 @@ fuzz variable mask:
     - .testoutput/
     when: always
     expire_in: 7d
-  allow_failure: true
+  allow_failure:
+    exit_codes: 1 # The custom executor driver will return 1 for a build error, anything else should fail the build
 
 .windows unit test:
   extends:
