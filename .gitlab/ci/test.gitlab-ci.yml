@@ -261,6 +261,7 @@ fuzz variable mask:
   - *go-cache-windows_before_script
   script:
   - .\ci\test_windows.ps1 $TESTSDEFINITIONSPATH
+  timeout: 30 seconds # for testing purposes only
   artifacts:
     paths:
     - .testoutput/
