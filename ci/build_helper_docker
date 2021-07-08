@@ -82,15 +82,27 @@ echo -e "Building helper image for: ${GRN}${platform}${RST} based on ${GRN}${BAS
 trap cleanup_docker_context_trap ERR SIGINT SIGTERM
 setup_docker_context
 
+
+buildxFlags=()
+if [[ "${PUBLISH_IMAGES}" == "true" ]]; then
+    buildxFlags+=("--push")
+fi
+
+if [[ "${PUBLISH_IMAGES}" == "true" ]] && [[ -n "${CI_REGISTRY}" ]] && [[ -n "${CI_REGISTRY_IMAGE}" ]]; then
+    login "${CI_REGISTRY_USER}" "${CI_REGISTRY_PASSWORD}" "${CI_REGISTRY}"
+fi
+
 _docker_buildx build \
     --platform "${platform}" \
     --no-cache \
     --build-arg "BASE_IMAGE=${BASE_IMAGE}" \
-    --output "type=tar,dest=$TARGET_FILE" \
     --tag "gitlab/gitlab-runner-helper:$TARGET_ARCH-$REVISION" \
     --build-arg http_proxy="${http_proxy}" \
     --file "dockerfiles/runner-helper/${DOCKERFILE}" \
+    --output "type=tar,dest=$TARGET_FILE" \
     dockerfiles/runner-helper
 
 trap - ERR SIGINT SIGTERM
 cleanup_docker_context
+
+logout "${CI_REGISTRY}"

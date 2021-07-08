@@ -1,0 +1,68 @@
+build runner images:
+  extends:
+  - .merge_request_pipelines
+  - .docker
+  - .go-cache-docker-qemu
+  stage: build release artifacts
+  variables:
+    TARGET_ARCHS: "amd64,arm64,s390x"
+  script:
+  - ./ci/build_runner_image
+  - xz -f -9 /out/runner-images/gitlab-runner-*
+  retry: 2
+  needs:
+  - job: 'package-deb'
+    artifacts: true
+  - job: 'binaries linux/386 linux/amd64 linux/arm linux/arm64 linux/s390x'
+    artifacts: true
+  artifacts:
+    paths:
+    - out/runner-images/
+    expire_in: 7d
+
+.release_development:
+  only:
+    - merge_requests@gitlab-org/gitlab-runner
+    - merge_requests@gitlab-org/security/gitlab-runner
+  except:
+    variables:
+      - $CI_MERGE_REQUEST_SOURCE_BRANCH_NAME =~ /(^docs[\/-].*|.*-docs$)/
+
+.release_bleeding_edge:
+  only:
+    - main@gitlab-org/gitlab-runner
+    - /\Av[0-9]+\.[0-9]+\.[0-9]+-rc[0-9]+\Z/@gitlab-org/gitlab-runner
+
+.release_stable:
+  only:
+    - /\Av[0-9]+\.[0-9]+\.[0-9]+\Z/@gitlab-org/gitlab-runner
+    - /\Av[0-9]+\.[0-9]+\.[0-9]+\Z/@gitlab-org/security/gitlab-runner
+
+.gather_release_variables:
+  extends:
+  - .merge_request_pipelines
+  stage: build release artifacts
+  artifacts:
+    reports:
+      dotenv: release.env
+
+gather release variables development:
+  extends:
+    - .gather_release_variables
+    - .release_development
+  script:
+    - echo "RUNNER_RELEASE_DEVELOPMENT=true" > release.env
+
+gather release variables bleeding edge:
+  extends:
+    - .gather_release_variables
+    - .release_bleeding_edge
+  script:
+    - echo "RUNNER_RELEASE_BLEEDING_EDGE=true" > release.env
+
+gather release variables stable:
+  extends:
+    - .gather_release_variables
+    - .release_stable
+  script:
+    - echo "RUNNER_RELEASE_STABLE=true" > release.env

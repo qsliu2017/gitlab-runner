@@ -1,0 +1,25 @@
+trigger release:
+  stage: trigger release
+  extends:
+  - .merge_request_pipelines
+  needs:
+  - job: 'gather release variables development'
+    optional: true
+    artifacts: true
+  - job: 'gather release variables bleeding edge'
+    optional: true
+    artifacts: true
+  - job: 'gather release variables stable'
+    optional: true
+    artifacts: true
+  script:
+  - curl --request POST \
+    --form token=$RELEASE_TRIGGER_TOKEN \
+    --form ref=main \
+    --form "variables[RUNNER_RELEASE_DEVELOPMENT]=$RUNNER_RELEASE_DEVELOPMENT" \
+    --form "variables[RUNNER_RELEASE_BLEEDING_EDGE]=$RUNNER_RELEASE_BLEEDING_EDGE" \
+    --form "variables[RUNNER_RELEASE_STABLE]=RUNNER_RELEASE_STABLE" \
+    --form "variables[RUNNER_RELEASE_PARENT_PIPELINE_ID]=$CI_PIPELINE_ID" \
+    --form "variables[RUNNER_RELEASE_PARENT_PROJECT_ID]=$CI_PROJECT_ID" \
+    --form "variables[RUNNER_RELEASE_PARENT_API_V4_URL]=$CI_API_V4_URL" \
+    "https://$RELEASE_TRIGGER_URI/$RELEASE_TRIGGER_API_PATH/projects/$RELEASE_TRIGGER_PROJECT_ID/trigger/pipeline" # https://gitlab.example.com/api/v4/projects/9/trigger/pipeline

@@ -6,8 +6,9 @@ stages:
 - build
 - integration
 - package
-- release
-- postrelease
+- static QA
+- build release artifacts
+- trigger release
 - docs
 
 include:
@@ -20,6 +21,7 @@ include:
 - local: /.gitlab/ci/build.gitlab-ci.yml
 - local: /.gitlab/ci/integration.gitlab-ci.yml
 - local: /.gitlab/ci/package.gitlab-ci.yml
-- local: /.gitlab/ci/release.gitlab-ci.yml
-- local: /.gitlab/ci/postrelease.gitlab-ci.yml
+- local: /.gitlab/ci/static-qa.gitlab-ci.yml
+- local: /.gitlab/ci/build-release-artifacts.yml
+- local: /.gitlab/ci/trigger-release.gitlab-ci.yml
 - local: /.gitlab/ci/docs.gitlab-ci.yml

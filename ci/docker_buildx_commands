@@ -48,3 +48,11 @@ cleanup_docker_context() {
     _docker context rm -f "${docker_buildx_ctx_name}" >/dev/null 2>&1
     set -e
 }
+
+login() {
+    echo "${2}" | _docker login --username "${1}" --password-stdin "${3}"
+}
+
+logout() {
+    _docker logout "${1}"
+}
