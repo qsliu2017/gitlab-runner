@@ -10,6 +10,7 @@ require (
 	github.com/bmatcuk/doublestar v1.3.0
 	github.com/boumenot/gocover-cobertura v1.1.0
 	github.com/containerd/containerd v1.4.3 // indirect
+	github.com/creack/pty v1.1.11
 	github.com/docker/cli v20.10.2+incompatible
 	github.com/docker/distribution v2.7.0+incompatible
 	github.com/docker/docker v20.10.2+incompatible
@@ -33,7 +34,6 @@ require (
 	github.com/kardianos/service v1.2.0
 	github.com/klauspost/compress v1.11.6 // indirect
 	github.com/klauspost/pgzip v1.2.5
-	github.com/kr/pty v1.1.5
 	github.com/minio/md5-simd v1.1.1 // indirect
 	github.com/minio/minio-go/v7 v7.0.8
 	github.com/mitchellh/gox v1.0.1
@@ -59,7 +59,7 @@ require (
 	golang.org/x/crypto v0.0.0-20210220033148-5ea612d1eb83
 	golang.org/x/net v0.0.0-20210224082022-3d97a244fca7
 	golang.org/x/sync v0.0.0-20201207232520-09787c993a3a
-	golang.org/x/sys v0.0.0-20210225134936-a50acf3fe073
+	golang.org/x/sys v0.0.0-20210630005230-0f9fa26af87c
 	golang.org/x/text v0.3.6
 	gopkg.in/ini.v1 v1.62.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0

@@ -49,6 +49,9 @@ github.com/boumenot/gocover-cobertura
 github.com/containerd/containerd/errdefs
 github.com/containerd/containerd/log
 github.com/containerd/containerd/platforms
+# github.com/creack/pty v1.1.11
+## explicit
+github.com/creack/pty
 # github.com/davecgh/go-spew v1.1.1
 github.com/davecgh/go-spew/spew
 # github.com/docker/cli v20.10.2+incompatible
@@ -227,9 +230,6 @@ github.com/klauspost/cpuid
 # github.com/klauspost/pgzip v1.2.5
 ## explicit
 github.com/klauspost/pgzip
-# github.com/kr/pty v1.1.5
-## explicit
-github.com/kr/pty
 # github.com/mattn/go-ieproxy v0.0.1
 github.com/mattn/go-ieproxy
 # github.com/matttproud/golang_protobuf_extensions v1.0.1
@@ -424,7 +424,7 @@ golang.org/x/oauth2/jwt
 # golang.org/x/sync v0.0.0-20201207232520-09787c993a3a
 ## explicit
 golang.org/x/sync/errgroup
-# golang.org/x/sys v0.0.0-20210225134936-a50acf3fe073 => golang.org/x/sys v0.0.0-20200826173525-f9321e4c35a6
+# golang.org/x/sys v0.0.0-20210630005230-0f9fa26af87c => golang.org/x/sys v0.0.0-20200826173525-f9321e4c35a6
 ## explicit
 golang.org/x/sys/cpu
 golang.org/x/sys/internal/unsafeheader
