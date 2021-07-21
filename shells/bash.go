@@ -108,7 +108,11 @@ func (b *BashWriter) Variable(variable common.JobVariable) {
 	if variable.File {
 		variableFile := b.TmpFile(variable.Key)
 		b.Linef("mkdir -p %q", helpers.ToSlash(b.TemporaryPath))
+		b.IfFile(variableFile)
+		b.Linef(":") // no-op, required for empty if
+		b.Else()
 		b.Linef("echo -n %s > %q", helpers.ShellEscape(variable.Value), variableFile)
+		b.EndIf()
 		b.Linef("export %s=%q", helpers.ShellEscape(variable.Key), variableFile)
 	} else {
 		b.Linef("export %s=%s", helpers.ShellEscape(variable.Key), helpers.ShellEscape(variable.Value))

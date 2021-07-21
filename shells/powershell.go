@@ -200,11 +200,14 @@ func (p *PsWriter) Variable(variable common.JobVariable) {
 	if variable.File {
 		variableFile := p.TmpFile(variable.Key)
 		p.MkDir(p.TemporaryPath)
+		p.IfFile(variableFile)
+		p.Else()
 		p.Linef(
 			"[System.IO.File]::WriteAllText(%s, %s)",
 			p.resolvePath(variableFile),
 			psQuoteVariable(variable.Value),
 		)
+		p.EndIf()
 		p.Linef("$%s=%s", variable.Key, p.resolvePath(variableFile))
 	} else {
 		p.Linef("$%s=%s", variable.Key, psQuoteVariable(variable.Value))
