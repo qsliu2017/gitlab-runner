@@ -11,6 +11,7 @@ import (
 
 	"gitlab.com/gitlab-org/gitlab-runner/cache"
 	"gitlab.com/gitlab-org/gitlab-runner/common"
+	"gitlab.com/gitlab-org/gitlab-runner/helpers"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers/featureflags"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers/tls"
 )
@@ -217,7 +218,13 @@ func (b *AbstractShell) writeGetSourcesScript(w ShellWriter, info common.ShellSc
 	}
 
 	if info.PreCloneScript != "" && info.Build.GetGitStrategy() != common.GitNone {
-		b.writeCommands(w, info.PreCloneScript)
+		if err := b.writeCommands(
+			w,
+			info,
+			info.PreCloneScript,
+		); err != nil {
+			return err
+		}
 	}
 
 	if err := b.writeCloneFetchCmds(w, info); err != nil {
@@ -493,9 +500,19 @@ func (b *AbstractShell) writeDownloadArtifactsScript(w ShellWriter, info common.
 }
 
 // Write the given string of commands using the provided ShellWriter object.
-func (b *AbstractShell) writeCommands(w ShellWriter, commands ...string) {
+func (b *AbstractShell) writeCommands(w ShellWriter, info common.ShellScriptInfo, commands ...string) error {
 	for _, command := range commands {
 		command = strings.TrimSpace(command)
+
+		if info.Build.IsFeatureFlagOn(featureflags.ScriptSections) &&
+			info.Build.JobResponse.Features.TraceSections {
+			if err := b.writeCommandWithSection(w, command); err != nil {
+				return err
+			}
+
+			continue
+		}
+
 		if command != "" {
 			lines := strings.SplitN(command, "\n", 2)
 			if len(lines) > 1 {
@@ -507,9 +524,35 @@ func (b *AbstractShell) writeCommands(w ShellWriter, commands ...string) {
 		} else {
 			w.EmptyLine()
 		}
+
 		w.Line(command)
 		w.CheckForErrors()
 	}
+	return nil
+}
+
+func (b *AbstractShell) writeCommandWithSection(w ShellWriter, command string) error {
+	if command == "" {
+		w.EmptyLine()
+		return nil
+	}
+
+	sectionID, err := helpers.GenerateRandomUUID(8)
+	if err != nil {
+		return err
+	}
+
+	lines := strings.SplitN(command, "\n", 2)
+	if len(lines) > 1 {
+		w.SectionStart(sectionID, fmt.Sprintf("$ %s # collapsed multi-line command", lines[0]))
+	} else {
+		w.SectionStart(sectionID, fmt.Sprintf("$ %s", lines[0]))
+	}
+
+	w.Line(command)
+	w.CheckForErrors()
+	w.SectionEnd(sectionID)
+	return nil
 }
 
 func (b *AbstractShell) writeUserScript(
@@ -533,13 +576,31 @@ func (b *AbstractShell) writeUserScript(
 	b.writeCdBuildDir(w, info)
 
 	if info.PreBuildScript != "" {
-		b.writeCommands(w, info.PreBuildScript)
+		if err := b.writeCommands(
+			w,
+			info,
+			info.PreBuildScript,
+		); err != nil {
+			return err
+		}
 	}
 
-	b.writeCommands(w, scriptStep.Script...)
+	if err := b.writeCommands(
+		w,
+		info,
+		scriptStep.Script...,
+	); err != nil {
+		return err
+	}
 
 	if info.PostBuildScript != "" {
-		b.writeCommands(w, info.PostBuildScript)
+		if err := b.writeCommands(
+			w,
+			info,
+			info.PostBuildScript,
+		); err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -777,8 +838,8 @@ func (b *AbstractShell) writeAfterScript(w ShellWriter, info common.ShellScriptI
 	b.writeCdBuildDir(w, info)
 
 	w.Noticef("Running after script...")
-	b.writeCommands(w, afterScriptStep.Script...)
-	return nil
+
+	return b.writeCommands(w, info, afterScriptStep.Script...)
 }
 
 func (b *AbstractShell) writeUploadArtifactsOnSuccessScript(w ShellWriter, info common.ShellScriptInfo) error {

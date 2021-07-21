@@ -1539,3 +1539,12 @@ func TestBuildPwshHandlesScriptEncodingCorrectly(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Contains(t, out, "E2 88 85")
 }
+
+func TestBuildScriptSections(t *testing.T) {
+	shellstest.OnEachShell(t, func(t *testing.T, shell string) {
+		build, cleanup := newBuild(t, common.JobResponse{}, shell)
+		defer cleanup()
+
+		buildtest.RunBuildWithSections(t, build.Runner)
+	})
+}

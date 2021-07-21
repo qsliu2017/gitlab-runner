@@ -14,6 +14,7 @@ import (
 
 	_ "gitlab.com/gitlab-org/gitlab-runner/cache/test"
 	"gitlab.com/gitlab-org/gitlab-runner/common"
+	"gitlab.com/gitlab-org/gitlab-runner/helpers/featureflags"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers/tls"
 )
 
@@ -995,6 +996,141 @@ func TestWriteUserScript(t *testing.T) {
 					JobResponse: common.JobResponse{
 						Steps: tt.inputSteps,
 					},
+					Runner: &common.RunnerConfig{},
+				},
+				PostBuildScript: tt.postBuildScript,
+			}
+			mockShellWriter := &MockShellWriter{}
+			defer mockShellWriter.AssertExpectations(t)
+
+			tt.setupExpectations(mockShellWriter)
+			shell := AbstractShell{}
+
+			err := shell.writeUserScript(mockShellWriter, info, tt.buildStage)
+			assert.ErrorIs(t, err, tt.expectedErr)
+		})
+	}
+}
+
+func TestScriptSections(t *testing.T) {
+	tests := []struct {
+		inputSteps        common.Steps
+		prebuildScript    string
+		postBuildScript   string
+		buildStage        common.BuildStage
+		setupExpectations func(*MockShellWriter)
+		expectedErr       error
+		featureFlagOn     bool
+		traceSections     bool
+	}{
+		{
+			featureFlagOn: true,
+			traceSections: true,
+			inputSteps: common.Steps{
+				common.Step{
+					Name:   common.StepNameScript,
+					Script: common.StepScript{"script 1", "script 2", "script 3"},
+				},
+			},
+			prebuildScript:  "echo prebuild",
+			postBuildScript: "echo postbuild",
+			buildStage:      common.BuildStage("step_script"),
+			setupExpectations: func(m *MockShellWriter) {
+				m.On("Variable", mock.Anything)
+				m.On("Cd", mock.AnythingOfType("string"))
+				m.On("SectionStart", mock.AnythingOfType("string"), "$ echo prebuild").Once()
+				m.On("SectionEnd", mock.AnythingOfType("string")).Once()
+				m.On("SectionStart", mock.AnythingOfType("string"), "$ script 1").Once()
+				m.On("SectionEnd", mock.AnythingOfType("string")).Once()
+				m.On("SectionStart", mock.AnythingOfType("string"), "$ script 2").Once()
+				m.On("SectionEnd", mock.AnythingOfType("string")).Once()
+				m.On("SectionStart", mock.AnythingOfType("string"), "$ script 3").Once()
+				m.On("SectionEnd", mock.AnythingOfType("string")).Once()
+				m.On("SectionStart", mock.AnythingOfType("string"), "$ echo postbuild").Once()
+				m.On("SectionEnd", mock.AnythingOfType("string")).Once()
+				m.On("Line", "echo prebuild").Once()
+				m.On("Line", "script 1").Once()
+				m.On("Line", "script 2").Once()
+				m.On("Line", "script 3").Once()
+				m.On("Line", "echo postbuild").Once()
+				m.On("CheckForErrors").Times(5)
+			},
+			expectedErr: nil,
+		},
+		{
+			featureFlagOn: false,
+			traceSections: false,
+			inputSteps: common.Steps{
+				common.Step{
+					Name:   common.StepNameScript,
+					Script: common.StepScript{"script 1", "script 2", "script 3"},
+				},
+			},
+			prebuildScript:  "echo prebuild",
+			postBuildScript: "echo postbuild",
+			buildStage:      common.BuildStage("step_script"),
+			setupExpectations: func(m *MockShellWriter) {
+				m.On("Variable", mock.Anything)
+				m.On("Cd", mock.AnythingOfType("string"))
+				m.On("Noticef", "$ %s", "echo prebuild").Once()
+				m.On("Noticef", "$ %s", "script 1").Once()
+				m.On("Noticef", "$ %s", "script 2").Once()
+				m.On("Noticef", "$ %s", "script 3").Once()
+				m.On("Noticef", "$ %s", "echo postbuild").Once()
+				m.On("Line", "echo prebuild").Once()
+				m.On("Line", "script 1").Once()
+				m.On("Line", "script 2").Once()
+				m.On("Line", "script 3").Once()
+				m.On("Line", "echo postbuild").Once()
+				m.On("CheckForErrors").Times(5)
+			},
+			expectedErr: nil,
+		},
+		{
+			featureFlagOn: true,
+			traceSections: false,
+			inputSteps: common.Steps{
+				common.Step{
+					Name:   common.StepNameScript,
+					Script: common.StepScript{"script 1", "script 2", "script 3"},
+				},
+			},
+			prebuildScript:  "echo prebuild",
+			postBuildScript: "echo postbuild",
+			buildStage:      common.BuildStage("step_script"),
+			setupExpectations: func(m *MockShellWriter) {
+				m.On("Variable", mock.Anything)
+				m.On("Cd", mock.AnythingOfType("string"))
+				m.On("Noticef", "$ %s", "echo prebuild").Once()
+				m.On("Noticef", "$ %s", "script 1").Once()
+				m.On("Noticef", "$ %s", "script 2").Once()
+				m.On("Noticef", "$ %s", "script 3").Once()
+				m.On("Noticef", "$ %s", "echo postbuild").Once()
+				m.On("Line", "echo prebuild").Once()
+				m.On("Line", "script 1").Once()
+				m.On("Line", "script 2").Once()
+				m.On("Line", "script 3").Once()
+				m.On("Line", "echo postbuild").Once()
+				m.On("CheckForErrors").Times(5)
+			},
+			expectedErr: nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(fmt.Sprintf("feature flag %t, trace sections %t", tt.featureFlagOn, tt.traceSections), func(t *testing.T) {
+			info := common.ShellScriptInfo{
+				PreBuildScript: tt.prebuildScript,
+				Build: &common.Build{
+					JobResponse: common.JobResponse{
+						Steps: tt.inputSteps,
+						Features: common.GitlabFeatures{
+							TraceSections: tt.traceSections,
+						},
+					},
+					Runner: &common.RunnerConfig{RunnerSettings: common.RunnerSettings{
+						FeatureFlags: map[string]bool{featureflags.ScriptSections: tt.featureFlagOn},
+					}},
 				},
 				PostBuildScript: tt.postBuildScript,
 			}
