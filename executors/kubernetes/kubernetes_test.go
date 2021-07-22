@@ -637,7 +637,7 @@ func testSetupBuildPodServiceCreationErrorFeatureFlag(t *testing.T, featureFlagN
 	err = ex.prepareOverwrites(make(common.JobVariables, 0))
 	assert.NoError(t, err)
 
-	err = ex.setupBuildPod(nil)
+	err = ex.setupBuildPod()
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "error creating the proxy service")
 }
@@ -699,7 +699,7 @@ func testSetupBuildPodFailureGetPullPolicyFeatureFlag(t *testing.T, featureFlagN
 			err := e.prepareOverwrites(make(common.JobVariables, 0))
 			assert.NoError(t, err)
 
-			err = e.setupBuildPod(nil)
+			err = e.setupBuildPod()
 			assert.ErrorIs(t, err, assert.AnError)
 			assert.Error(t, err)
 		})
@@ -1921,7 +1921,6 @@ type setupBuildPodTestDef struct {
 	RunnerConfig             common.RunnerConfig
 	Variables                []common.JobVariable
 	Options                  *kubernetesOptions
-	InitContainers           []api.Container
 	PrepareFn                func(*testing.T, setupBuildPodTestDef, *executor)
 	VerifyFn                 func(*testing.T, setupBuildPodTestDef, *api.Pod)
 	VerifyExecutorFn         func(*testing.T, setupBuildPodTestDef, *executor)
@@ -2950,37 +2949,6 @@ func TestSetupBuildPod(t *testing.T) {
 				assert.NoError(t, err)
 			},
 		},
-		"no init container defined": {
-			RunnerConfig: common.RunnerConfig{
-				RunnerSettings: common.RunnerSettings{
-					Kubernetes: &common.KubernetesConfig{
-						Namespace: "default",
-					},
-				},
-			},
-			InitContainers: []api.Container{},
-			VerifyFn: func(t *testing.T, def setupBuildPodTestDef, pod *api.Pod) {
-				assert.Nil(t, pod.Spec.InitContainers)
-			},
-		},
-		"init container defined": {
-			RunnerConfig: common.RunnerConfig{
-				RunnerSettings: common.RunnerSettings{
-					Kubernetes: &common.KubernetesConfig{
-						Namespace: "default",
-					},
-				},
-			},
-			InitContainers: []api.Container{
-				{
-					Name:  "a-init-container",
-					Image: "alpine",
-				},
-			},
-			VerifyFn: func(t *testing.T, def setupBuildPodTestDef, pod *api.Pod) {
-				require.Equal(t, def.InitContainers, pod.Spec.InitContainers)
-			},
-		},
 		"support setting linux capabilities": {
 			RunnerConfig: common.RunnerConfig{
 				RunnerSettings: common.RunnerSettings{
@@ -3302,7 +3270,7 @@ func TestSetupBuildPod(t *testing.T) {
 			err = ex.prepareOverwrites(make(common.JobVariables, 0))
 			assert.NoError(t, err, "error preparing overwrites")
 
-			err = ex.setupBuildPod(test.InitContainers)
+			err = ex.setupBuildPod()
 			if test.VerifySetupBuildPodErrFn == nil {
 				assert.NoError(t, err, "error setting up build pod")
 				assert.True(t, rt.executed, "RoundTrip for kubernetes client should be executed")
@@ -3713,9 +3681,10 @@ func TestGenerateScripts(t *testing.T) {
 
 	setupScripts := func(e *executor, stages []common.BuildStage) map[string]string {
 		scripts := map[string]string{}
-		switch e.Shell().Shell {
-		case shells.SNPwsh:
-			scripts[parsePwshScriptName] = shells.PwshValidationScript
+		shell := e.Shell().Shell
+		switch shell {
+		case shells.SNPwsh, shells.SNPowershell:
+			scripts[parsePwshScriptName] = shells.PwshValidationScript(shell)
 		default:
 			scripts[detectShellScriptName] = shells.BashDetectShellScript
 		}
@@ -3822,132 +3791,6 @@ func TestGenerateScripts(t *testing.T) {
 	}
 }
 
-func TestExecutor_buildLogPermissionsInitContainer(t *testing.T) {
-	dockerHub, err := helperimage.Get(common.REVISION, helperimage.Config{
-		OSType:       helperimage.OSTypeLinux,
-		Architecture: "amd64",
-	})
-	require.NoError(t, err)
-
-	gitlabRegistry, err := helperimage.Get(common.REVISION, helperimage.Config{
-		OSType:         helperimage.OSTypeLinux,
-		Architecture:   "amd64",
-		GitLabRegistry: true,
-	})
-	require.NoError(t, err)
-
-	tests := map[string]struct {
-		expectedImage string
-		jobVariables  common.JobVariables
-		config        common.RunnerConfig
-	}{
-		"default helper image": {
-			expectedImage: gitlabRegistry.String(),
-			config: common.RunnerConfig{
-				RunnerSettings: common.RunnerSettings{
-					Kubernetes: &common.KubernetesConfig{
-						Image:      "alpine:3.12",
-						PullPolicy: common.StringOrArray{common.PullPolicyIfNotPresent},
-						Host:       "127.0.0.1",
-					},
-				},
-			},
-		},
-		"helper image from DockerHub": {
-			expectedImage: dockerHub.String(),
-			jobVariables: []common.JobVariable{
-				{
-					Key:    featureflags.GitLabRegistryHelperImage,
-					Value:  "false",
-					Public: true,
-				},
-			},
-			config: common.RunnerConfig{
-				RunnerSettings: common.RunnerSettings{
-					Kubernetes: &common.KubernetesConfig{
-						Image:      "alpine:3.12",
-						PullPolicy: common.StringOrArray{common.PullPolicyIfNotPresent},
-						Host:       "127.0.0.1",
-					},
-				},
-			},
-		},
-		"configured helper image": {
-			expectedImage: "config-image",
-			config: common.RunnerConfig{
-				RunnerSettings: common.RunnerSettings{
-					Kubernetes: &common.KubernetesConfig{
-						HelperImage: "config-image",
-						Image:       "alpine:3.12",
-						PullPolicy:  common.StringOrArray{common.PullPolicyIfNotPresent},
-						Host:        "127.0.0.1",
-					},
-				},
-			},
-		},
-	}
-
-	for testName, tt := range tests {
-		t.Run(testName, func(t *testing.T) {
-			e := &executor{
-				AbstractExecutor: executors.AbstractExecutor{
-					ExecutorOptions: executorOptions,
-					Build: &common.Build{
-						JobResponse: common.JobResponse{
-							Variables: tt.jobVariables,
-						},
-						Runner: &tt.config,
-					},
-					Config: tt.config,
-				},
-			}
-
-			prepareOptions := common.ExecutorPrepareOptions{
-				Config:  &tt.config,
-				Build:   e.Build,
-				Context: context.Background(),
-			}
-
-			err := e.Prepare(prepareOptions)
-			require.NoError(t, err)
-
-			c, err := e.buildLogPermissionsInitContainer()
-			assert.NoError(t, err)
-			assert.Equal(t, tt.expectedImage, c.Image)
-			assert.Equal(t, api.PullIfNotPresent, c.ImagePullPolicy)
-			assert.Len(t, c.VolumeMounts, 1)
-			assert.Len(t, c.Command, 3)
-		})
-	}
-}
-
-func TestExecutor_buildLogPermissionsInitContainer_FailPullPolicy(t *testing.T) {
-	mockPullManager := &pull.MockManager{}
-	defer mockPullManager.AssertExpectations(t)
-
-	e := &executor{
-		AbstractExecutor: executors.AbstractExecutor{
-			ExecutorOptions: executorOptions,
-			Build: &common.Build{
-				Runner: &common.RunnerConfig{},
-			},
-			Config: common.RunnerConfig{
-				RunnerSettings: common.RunnerSettings{
-					Kubernetes: &common.KubernetesConfig{},
-				},
-			},
-		},
-		pullManager: mockPullManager,
-	}
-
-	mockPullManager.On("GetPullPolicyFor", mock.Anything).
-		Return(api.PullAlways, assert.AnError).
-		Once()
-
-	_, err := e.buildLogPermissionsInitContainer()
-	assert.ErrorIs(t, err, assert.AnError)
-}
-
 func TestShellRetrieval(t *testing.T) {
 	successfulResponse, err := common.GetRemoteSuccessfulMultistepBuild()
 	require.NoError(t, err)
@@ -4033,7 +3876,6 @@ func TestGetContainerInfo(t *testing.T) {
 				return []string{
 					e.scriptPath(parsePwshScriptName),
 					e.scriptPath(cmd.Stage),
-					e.logFile(),
 					e.buildRedirectionCmd(),
 				}
 			},

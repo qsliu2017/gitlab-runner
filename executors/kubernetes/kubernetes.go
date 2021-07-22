@@ -273,7 +273,7 @@ func (s *executor) runWithExecLegacy(cmd common.ExecutorCommand) error {
 			return err
 		}
 
-		err = s.setupBuildPod(nil)
+		err = s.setupBuildPod()
 		if err != nil {
 			return err
 		}
@@ -365,11 +365,7 @@ func (s *executor) ensurePodsConfigured(ctx context.Context) error {
 		return fmt.Errorf("setting up scripts configMap: %w", err)
 	}
 
-	permissionsInitContainer, err := s.buildLogPermissionsInitContainer()
-	if err != nil {
-		return fmt.Errorf("building log permissions init container: %w", err)
-	}
-	err = s.setupBuildPod([]api.Container{permissionsInitContainer})
+	err = s.setupBuildPod()
 	if err != nil {
 		return fmt.Errorf("setting up build pod: %w", err)
 	}
@@ -398,7 +394,6 @@ func (s *executor) getContainerInfo(cmd common.ExecutorCommand) (string, []strin
 		containerCommand = []string{
 			s.scriptPath(parsePwshScriptName),
 			s.scriptPath(cmd.Stage),
-			s.logFile(),
 			s.buildRedirectionCmd(),
 		}
 		if cmd.Predefined {
@@ -432,36 +427,6 @@ func (s *executor) getContainerInfo(cmd common.ExecutorCommand) (string, []strin
 	}
 
 	return containerName, containerCommand
-}
-
-func (s *executor) buildLogPermissionsInitContainer() (api.Container, error) {
-	// We need to create the log file in which all scripts will append their output.
-	// The log file is created with the current user. There are 3 different scenarios for the user:
-	// 1. The user in all images and containers is root, in that case the chmod is redundant since they
-	// will all have permissions to the file.
-	// 2. The user of the helper image is root, however the build image's user is not root.
-	// In that case we need to allow the build user to write to the log file from inside the
-	// build container. That's where the chmod comes into play.
-	// 3. No user is root but all containers have the same user ID. In that case create the file.
-	// It will have the same user and group owner across all containers. This is the case for Kubernetes
-	// where the PodSecurityContext is set manually or for Openshift where each pod has a different user ID.
-	// *4. We don't allow setting different user IDs across containers, if that ever becomes the case
-	// we might need to try and chown the log file for the group only.
-	logFile := s.logFile()
-	chmod := fmt.Sprintf("touch %s && (chmod 777 %s || exit 0)", logFile, logFile)
-
-	pullPolicy, err := s.pullManager.GetPullPolicyFor(s.getHelperImage())
-	if err != nil {
-		return api.Container{}, fmt.Errorf("getting pull policy for log permissions init container: %w", err)
-	}
-
-	return api.Container{
-		Name:            "init-logs",
-		Image:           s.getHelperImage(),
-		Command:         []string{"sh", "-c", chmod},
-		VolumeMounts:    s.getVolumeMounts(),
-		ImagePullPolicy: pullPolicy,
-	}, nil
 }
 
 func (s *executor) buildRedirectionCmd() string {
@@ -566,9 +531,11 @@ func (s *executor) retrieveShell() (common.Shell, error) {
 
 func (s *executor) generateScripts(shell common.Shell) (map[string]string, error) {
 	scripts := map[string]string{}
-	switch s.Shell().Shell {
-	case shells.SNPwsh:
-		scripts[parsePwshScriptName] = shells.PwshValidationScript
+
+	shellName := s.Shell().Shell
+	switch shellName {
+	case shells.SNPwsh, shells.SNPowershell:
+		scripts[parsePwshScriptName] = shells.PwshValidationScript(shellName)
 	default:
 		scripts[detectShellScriptName] = shells.BashDetectShellScript
 	}
@@ -873,7 +840,12 @@ func (s *executor) getVolumes() []api.Volume {
 		return volumes
 	}
 
-	mode := int32(0777)
+	var mode *int32
+	if s.helperImageInfo.OSType != helperimage.OSTypeWindows {
+		defaultLinuxMode := int32(0777)
+		mode = &defaultLinuxMode
+	}
+
 	optional := false
 	volumes = append(
 		volumes,
@@ -884,7 +856,7 @@ func (s *executor) getVolumes() []api.Volume {
 					LocalObjectReference: api.LocalObjectReference{
 						Name: s.configMap.Name,
 					},
-					DefaultMode: &mode,
+					DefaultMode: mode,
 					Optional:    &optional,
 				},
 			},
@@ -1112,7 +1084,7 @@ func (s *executor) getHostAliases() ([]api.HostAlias, error) {
 }
 
 //nolint:funlen
-func (s *executor) setupBuildPod(initContainers []api.Container) error {
+func (s *executor) setupBuildPod() error {
 	s.Debugln("Setting up build pod")
 
 	podServices := make([]api.Container, len(s.options.Services))
@@ -1159,7 +1131,7 @@ func (s *executor) setupBuildPod(initContainers []api.Container) error {
 	}
 
 	podConfig, err :=
-		s.preparePodConfig(labels, annotations, podServices, imagePullSecrets, hostAliases, initContainers)
+		s.preparePodConfig(labels, annotations, podServices, imagePullSecrets, hostAliases)
 	if err != nil {
 		return err
 	}
@@ -1190,7 +1162,6 @@ func (s *executor) preparePodConfig(
 	services []api.Container,
 	imagePullSecrets []api.LocalObjectReference,
 	hostAliases []api.HostAlias,
-	initContainers []api.Container,
 ) (api.Pod, error) {
 	buildImage := s.Build.GetAllVariables().ExpandValue(s.options.Image.Name)
 
@@ -1231,7 +1202,6 @@ func (s *executor) preparePodConfig(
 			RestartPolicy:      api.RestartPolicyNever,
 			NodeSelector:       s.Config.Kubernetes.NodeSelector,
 			Tolerations:        s.Config.Kubernetes.GetNodeTolerations(),
-			InitContainers:     initContainers,
 			Containers: append([]api.Container{
 				buildContainer,
 				helperContainer,

@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"gitlab.com/gitlab-org/gitlab-runner/common"
+	"gitlab.com/gitlab-org/gitlab-runner/helpers/featureflags"
 )
 
 // pwshTrapShellScript is used to wrap a shell script in a trap that makes sure the script always exits
@@ -17,29 +18,35 @@ import (
 // At the same time it writes the actual exit code of the script as well as
 // the filename of the script (as json) to a file.
 // With powershell $? returns True if the last command was successful so the exit_code is set to 0 in that case
+//nolint:lll
 const pwshTrapShellScript = `
 function runner_script_trap() {
 	$lastExit = $?
 	$code = 1
 	If($lastExit -eq "True"){ $code = 0 }
 
-	$log_file=%q
 	$out_json= '{"command_exit_code": ' + $code + ', "script": "' + $MyInvocation.MyCommand.Name + '"}'
 
-	# Make sure the command status will always be printed on a new line 
-	if ( $((Get-Content -Path $log_file | Measure-Object -Line).Lines) -gt 0 )
-	{
-		Add-Content $log_file "$out_json"
-	}
-	else
-	{
-		Add-Content $log_file ""
-		Add-Content $log_file "$out_json"
-	}
+	echo ""
+	echo "$out_json"
 }
 
 trap {runner_script_trap}
 
+$log_file=%q
+
+# touch log file if it doesn't exist
+if (!(test-path $log_file)) {
+       new-item -force -type file $log_file | out-null
+}
+
+# Ensure log file is world writable
+if (Get-Command -Name chmod -ErrorAction SilentlyContinue) {
+       chmod 777 $log_file
+} elseif (Get-Command -Name icacls -ErrorAction SilentlyContinue) {
+       $log_dir=($log_file | split-path)
+       icacls $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($log_dir) /grant 'Everyone:(OI)(CI)F' /t /q | out-null
+}
 `
 
 type PwshTrapShellWriter struct {
@@ -80,6 +87,7 @@ func (b *PwshTrapShell) GenerateScript(buildStage common.BuildStage, info common
 			TemporaryPath: info.Build.TmpProjectDir(),
 			Shell:         b.Shell,
 			EOL:           b.EOL,
+			resolvePaths:  info.Build.IsFeatureFlagOn(featureflags.UsePowershellPathResolver),
 		},
 		logFile: b.LogFile,
 	}

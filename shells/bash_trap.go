@@ -16,21 +16,22 @@ import (
 // of the script as json.
 const bashTrapShellScript = `runner_script_trap() {
 	exit_code=$?
-	log_file=%s
 	out_json="{\"command_exit_code\": $exit_code, \"script\": \"$0\"}"
 
-	# Make sure the command status will always be printed on a new line 
-	if [[ $(tail -c1 $log_file | wc -l) -gt 0 ]]; then
-		printf "$out_json\n" >> $log_file
-	else 
-		printf "\n$out_json\n" >> $log_file
-	fi
-	
+	echo ""
+	echo "$out_json"
 	exit 0
 }
 
 trap runner_script_trap EXIT
 
+log_file=%q
+
+# touch log file if it doesn't exist
+touch $log_file
+
+# Ensure log file is world writable
+chmod 777 $log_file
 `
 
 type BashTrapShellWriter struct {
