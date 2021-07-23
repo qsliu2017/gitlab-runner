@@ -176,8 +176,9 @@ func (c *clientJobTrace) ensureAllTraceSent() {
 
 func (c *clientJobTrace) finalUpdate() {
 	// On final-update we want the Runner to fallback
-	// to default interval and make Rails to override it
+	// to default intervals and make Rails to override it
 	c.setUpdateInterval(common.DefaultUpdateInterval)
+	c.setForceSendInterval(common.DefaultTraceForceSendInterval)
 
 	for {
 		// Before sending update to ensure that trace is sent
@@ -263,6 +264,7 @@ func (c *clientJobTrace) sendPatch() common.PatchTraceResult {
 	result := c.client.PatchTrace(c.config, c.jobCredentials, content, sentTrace)
 
 	c.setUpdateInterval(result.NewUpdateInterval)
+	c.setForceSendInterval(result.NewPingInterval)
 
 	if result.State == common.PatchSucceeded || result.State == common.PatchRangeMismatch {
 		c.lock.Lock()
@@ -291,6 +293,23 @@ func (c *clientJobTrace) setUpdateInterval(newUpdateInterval time.Duration) {
 	}
 }
 
+func (c *clientJobTrace) setForceSendInterval(newForceSendInterval time.Duration) {
+	if newForceSendInterval <= 0 {
+		return
+	}
+
+	c.lock.Lock()
+	defer c.lock.Unlock()
+
+	c.forceSendInterval = newForceSendInterval
+
+	// Shouldn't happen, but if the server responds with a really high interval
+	// cap it to what we deem to be sane.
+	if c.forceSendInterval > common.MaxTraceForceSendInterval {
+		c.forceSendInterval = common.MaxTraceForceSendInterval
+	}
+}
+
 // Update Coordinator that the job is still running.
 func (c *clientJobTrace) touchJob() common.UpdateJobResult {
 	c.lock.RLock()
@@ -313,6 +332,7 @@ func (c *clientJobTrace) touchJob() common.UpdateJobResult {
 	result := c.client.UpdateJob(c.config, c.jobCredentials, jobInfo)
 
 	c.setUpdateInterval(result.NewUpdateInterval)
+	c.setForceSendInterval(result.NewPingInterval)
 
 	if result.State == common.UpdateSucceeded {
 		c.lock.Lock()
@@ -407,6 +427,6 @@ func newJobTrace(
 		id:                jobCredentials.ID,
 		maxTracePatchSize: common.DefaultTracePatchLimit,
 		updateInterval:    common.DefaultUpdateInterval,
-		forceSendInterval: common.TraceForceSendInterval,
+		forceSendInterval: common.DefaultTraceForceSendInterval,
 	}, nil
 }

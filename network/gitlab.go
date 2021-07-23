@@ -436,6 +436,7 @@ func (n *GitLabClient) createUpdateJobResult(
 
 	result := common.UpdateJobResult{
 		NewUpdateInterval: remoteJobStateResponse.RemoteUpdateInterval,
+		NewPingInterval:   remoteJobStateResponse.RemotePingInterval,
 		CancelRequested:   remoteJobStateResponse.IsCanceled(),
 	}
 
@@ -547,6 +548,7 @@ func (n *GitLabClient) createPatchTraceResult(
 	result := common.PatchTraceResult{
 		SentOffset:        startOffset,
 		NewUpdateInterval: tracePatchResponse.RemoteUpdateInterval,
+		NewPingInterval:   tracePatchResponse.RemotePingInterval,
 		CancelRequested:   tracePatchResponse.IsCanceled(),
 	}
 

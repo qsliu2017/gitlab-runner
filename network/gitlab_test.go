@@ -1187,40 +1187,60 @@ func TestPatchTraceContentRangeHeaderValues(t *testing.T) {
 	client.PatchTrace(config, &JobCredentials{ID: 1, Token: patchToken}, patchTraceContent, 0)
 }
 
-func TestUpdateIntervalHeaderHandling(t *testing.T) {
+func TestIntervalHeaderHandling(t *testing.T) {
+	type hdr map[string]string
+
 	tests := map[string]struct {
-		sendUpdateIntervalHeader  bool
-		updateIntervalHeaderValue string
-		expectedUpdateInterval    time.Duration
+		header                 hdr
+		expectedUpdateInterval time.Duration
+		expectedPingInterval   time.Duration
 	}{
-		"header set to negative integer": {
-			sendUpdateIntervalHeader:  true,
-			updateIntervalHeaderValue: "-10",
-			expectedUpdateInterval:    -10 * time.Second,
+		"update interval header set to negative integer": {
+			header:                 hdr{updateIntervalHeader: "-10"},
+			expectedUpdateInterval: -10 * time.Second,
 		},
-		"header set to zero": {
-			sendUpdateIntervalHeader:  true,
-			updateIntervalHeaderValue: "0",
-			expectedUpdateInterval:    time.Duration(0),
+		"update interval header set to zero": {
+			header:                 hdr{updateIntervalHeader: "0"},
+			expectedUpdateInterval: 0,
 		},
-		"header set to positive integer": {
-			sendUpdateIntervalHeader:  true,
-			updateIntervalHeaderValue: "10",
-			expectedUpdateInterval:    10 * time.Second,
+		"update interval header set to positive integer": {
+			header:                 hdr{updateIntervalHeader: "10"},
+			expectedUpdateInterval: 10 * time.Second,
 		},
-		"header set to invalid format": {
-			sendUpdateIntervalHeader:  true,
-			updateIntervalHeaderValue: "some text",
-			expectedUpdateInterval:    time.Duration(0),
+		"update interval header set to invalid format": {
+			header:                 hdr{updateIntervalHeader: "some text"},
+			expectedUpdateInterval: 0,
+		},
+		"ping interval header set to negative integer": {
+			header:               hdr{pingIntervalHeader: "-10"},
+			expectedPingInterval: -10 * time.Second,
+		},
+		"ping interval header set to zero": {
+			header:               hdr{pingIntervalHeader: "0"},
+			expectedPingInterval: 0,
+		},
+		"ping interval header set to positive integer": {
+			header:               hdr{pingIntervalHeader: "10"},
+			expectedPingInterval: 10 * time.Second,
+		},
+		"ping interval header set to invalid format": {
+			header:               hdr{pingIntervalHeader: "some text"},
+			expectedPingInterval: 0,
+		},
+		"ping and update interval header set": {
+			header:                 hdr{pingIntervalHeader: "5", updateIntervalHeader: "10"},
+			expectedPingInterval:   5 * time.Second,
+			expectedUpdateInterval: 10 * time.Second,
 		},
 		"empty header": {
-			sendUpdateIntervalHeader:  true,
-			updateIntervalHeaderValue: "",
-			expectedUpdateInterval:    time.Duration(0),
+			header:                 hdr{updateIntervalHeader: ""},
+			expectedUpdateInterval: 0,
+			expectedPingInterval:   0,
 		},
 		"header not set": {
-			sendUpdateIntervalHeader: false,
-			expectedUpdateInterval:   time.Duration(0),
+			header:                 nil,
+			expectedUpdateInterval: 0,
+			expectedPingInterval:   0,
 		},
 	}
 
@@ -1228,10 +1248,9 @@ func TestUpdateIntervalHeaderHandling(t *testing.T) {
 		t.Run(tn, func(t *testing.T) {
 			t.Run("UpdateJob", func(t *testing.T) {
 				handler := func(w http.ResponseWriter, r *http.Request) {
-					if tt.sendUpdateIntervalHeader {
-						w.Header().Add(updateIntervalHeader, tt.updateIntervalHeaderValue)
+					for key, val := range tt.header {
+						w.Header().Add(key, val)
 					}
-
 					testUpdateJobHandler(w, r, t)
 				}
 
@@ -1244,12 +1263,13 @@ func TestUpdateIntervalHeaderHandling(t *testing.T) {
 
 				result := NewGitLabClient().UpdateJob(config, &JobCredentials{ID: 10}, UpdateJobInfo{State: "success"})
 				assert.Equal(t, tt.expectedUpdateInterval, result.NewUpdateInterval)
+				assert.Equal(t, tt.expectedPingInterval, result.NewPingInterval)
 			})
 
 			t.Run("PatchTrace", func(t *testing.T) {
 				handler := func(w http.ResponseWriter, r *http.Request, body []byte, offset, limit int) {
-					if tt.sendUpdateIntervalHeader {
-						w.Header().Add(updateIntervalHeader, tt.updateIntervalHeaderValue)
+					for key, val := range tt.header {
+						w.Header().Add(key, val)
 					}
 
 					w.WriteHeader(http.StatusAccepted)
@@ -1260,6 +1280,7 @@ func TestUpdateIntervalHeaderHandling(t *testing.T) {
 
 				result := client.PatchTrace(config, &JobCredentials{ID: 1, Token: patchToken}, patchTraceContent, 0)
 				assert.Equal(t, tt.expectedUpdateInterval, result.NewUpdateInterval)
+				assert.Equal(t, tt.expectedPingInterval, result.NewPingInterval)
 			})
 		})
 	}

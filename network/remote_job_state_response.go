@@ -10,6 +10,7 @@ import (
 
 const (
 	updateIntervalHeader = "X-GitLab-Trace-Update-Interval"
+	pingIntervalHeader   = "X-GitLab-Trace-Ping-Interval"
 	remoteStateHeader    = "Job-Status"
 
 	statusCanceling = "canceling"
@@ -21,6 +22,7 @@ type RemoteJobStateResponse struct {
 	StatusCode           int
 	RemoteState          string
 	RemoteUpdateInterval time.Duration
+	RemotePingInterval   time.Duration
 }
 
 func (r *RemoteJobStateResponse) IsFailed() bool {
@@ -45,19 +47,26 @@ func NewRemoteJobStateResponse(response *http.Response, logger logrus.FieldLogge
 	}
 
 	result := &RemoteJobStateResponse{
-		StatusCode:  response.StatusCode,
-		RemoteState: response.Header.Get(remoteStateHeader),
-	}
-
-	if updateIntervalRaw := response.Header.Get(updateIntervalHeader); updateIntervalRaw != "" {
-		if updateInterval, err := strconv.Atoi(updateIntervalRaw); err == nil {
-			result.RemoteUpdateInterval = time.Duration(updateInterval) * time.Second
-		} else {
-			logger.WithError(err).
-				WithField("header-value", updateIntervalRaw).
-				Warningf("Failed to parse %q header", updateIntervalHeader)
-		}
+		StatusCode:           response.StatusCode,
+		RemoteState:          response.Header.Get(remoteStateHeader),
+		RemoteUpdateInterval: parseHeaderInterval(response, updateIntervalHeader, logger),
+		RemotePingInterval:   parseHeaderInterval(response, pingIntervalHeader, logger),
 	}
 
 	return result
+}
+
+func parseHeaderInterval(r *http.Response, header string, logger logrus.FieldLogger) time.Duration {
+	raw := r.Header.Get(header)
+	if raw == "" {
+		return 0
+	}
+
+	interval, err := strconv.Atoi(raw)
+	if err != nil {
+		logger.WithError(err).WithField("header-value", raw).Warningf("Failed to parse %q header", header)
+		return 0
+	}
+
+	return time.Duration(interval) * time.Second
 }

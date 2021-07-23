@@ -322,12 +322,22 @@ func TestJobDelayedTraceProcessingWithRejection(t *testing.T) {
 	receiveTraceInChunks := func() {
 		// accept just 10 bytes
 		mockNetwork.On("PatchTrace", jobConfig, jobCredentials, []byte("My trace s"), 0).
-			Return(common.NewPatchTraceResult(10, common.PatchSucceeded, 1)).
+			Return(common.PatchTraceResult{
+				SentOffset:        10,
+				State:             common.PatchSucceeded,
+				NewUpdateInterval: 1,
+				NewPingInterval:   5,
+			}).
 			Once()
 
 		// accept next 3 bytes
 		mockNetwork.On("PatchTrace", jobConfig, jobCredentials, []byte("end"), 10).
-			Return(common.NewPatchTraceResult(13, common.PatchSucceeded, 1)).
+			Return(common.PatchTraceResult{
+				SentOffset:        13,
+				State:             common.PatchSucceeded,
+				NewUpdateInterval: 1,
+				NewPingInterval:   5,
+			}).
 			Once()
 	}
 
@@ -337,6 +347,7 @@ func TestJobDelayedTraceProcessingWithRejection(t *testing.T) {
 			Return(common.UpdateJobResult{
 				State:             common.UpdateAcceptedButNotCompleted,
 				NewUpdateInterval: 1,
+				NewPingInterval:   5,
 			}).
 			Twice()
 	}
@@ -346,6 +357,7 @@ func TestJobDelayedTraceProcessingWithRejection(t *testing.T) {
 			Return(common.UpdateJobResult{
 				State:             common.UpdateTraceValidationFailed,
 				NewUpdateInterval: 1,
+				NewPingInterval:   5,
 			}).
 			Once()
 	}
@@ -355,6 +367,7 @@ func TestJobDelayedTraceProcessingWithRejection(t *testing.T) {
 			Return(common.UpdateJobResult{
 				State:             common.UpdateSucceeded,
 				NewUpdateInterval: 1,
+				NewPingInterval:   5,
 			}).Once()
 	}
 

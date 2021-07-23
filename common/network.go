@@ -568,6 +568,7 @@ type UpdateJobResult struct {
 	State             UpdateState
 	CancelRequested   bool
 	NewUpdateInterval time.Duration
+	NewPingInterval   time.Duration
 }
 
 type PatchTraceResult struct {
@@ -575,6 +576,7 @@ type PatchTraceResult struct {
 	CancelRequested   bool
 	State             PatchState
 	NewUpdateInterval time.Duration
+	NewPingInterval   time.Duration
 }
 
 func NewPatchTraceResult(sentOffset int, state PatchState, newUpdateInterval int) PatchTraceResult {

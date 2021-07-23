@@ -11,37 +11,56 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func responseWithHeader(key string, value string) *http.Response {
-	r := new(http.Response)
-	r.Header = make(http.Header)
-	r.Header.Add(key, value)
-
-	return r
-}
-
 func TestNewTracePatchResponse(t *testing.T) {
+	type hdr map[string]string
+
 	testCases := map[string]struct {
-		response                     *http.Response
+		header                       hdr
 		expectedRemoteUpdateInterval time.Duration
+		expectedRemotePingInterval   time.Duration
 	}{
 		"nil response": {
-			response:                     nil,
+			header:                       nil,
+			expectedRemoteUpdateInterval: 0,
+			expectedRemotePingInterval:   0,
+		},
+		"no intervals": {
+			header:                       hdr{},
+			expectedRemoteUpdateInterval: 0,
+			expectedRemotePingInterval:   0,
+		},
+		"invalid update interval": {
+			header:                       hdr{updateIntervalHeader: "invalid"},
 			expectedRemoteUpdateInterval: 0,
 		},
-		"no remote update period in header": {
-			response:                     new(http.Response),
-			expectedRemoteUpdateInterval: 0,
-		},
-		"invalid remote update period in header": {
-			response:                     responseWithHeader(updateIntervalHeader, "invalid"),
-			expectedRemoteUpdateInterval: 0,
-		},
-		"negative remote update period in header": {
-			response:                     responseWithHeader(updateIntervalHeader, "-10"),
+		"negative update interval": {
+			header:                       hdr{updateIntervalHeader: "-10"},
 			expectedRemoteUpdateInterval: time.Duration(-10) * time.Second,
 		},
-		"valid remote update period in header": {
-			response:                     responseWithHeader(updateIntervalHeader, "10"),
+		"valid update interval": {
+			header:                       hdr{updateIntervalHeader: "10"},
+			expectedRemoteUpdateInterval: time.Duration(10) * time.Second,
+		},
+		"invalid ping interval": {
+			header:                     hdr{pingIntervalHeader: "invalid"},
+			expectedRemotePingInterval: 0,
+		},
+		"negative ping interval": {
+			header:                     hdr{pingIntervalHeader: "-10"},
+			expectedRemotePingInterval: time.Duration(-10) * time.Second,
+		},
+		"valid ping interval": {
+			header:                     hdr{pingIntervalHeader: "10"},
+			expectedRemotePingInterval: time.Duration(10) * time.Second,
+		},
+		"invalid ping and update interval": {
+			header:                       hdr{pingIntervalHeader: "invalid", updateIntervalHeader: "invalid"},
+			expectedRemotePingInterval:   0,
+			expectedRemoteUpdateInterval: 0,
+		},
+		"valid ping and update interval": {
+			header:                       hdr{pingIntervalHeader: "5", updateIntervalHeader: "10"},
+			expectedRemotePingInterval:   time.Duration(5) * time.Second,
 			expectedRemoteUpdateInterval: time.Duration(10) * time.Second,
 		},
 	}
@@ -49,11 +68,20 @@ func TestNewTracePatchResponse(t *testing.T) {
 	for tn, tc := range testCases {
 		t.Run(tn, func(t *testing.T) {
 			log, _ := test.NewNullLogger()
-			tpr := NewRemoteJobStateResponse(tc.response, log)
+
+			var r *http.Response
+			if tc.header != nil {
+				r = &http.Response{Header: make(http.Header)}
+				for key, val := range tc.header {
+					r.Header.Add(key, val)
+				}
+			}
+			tpr := NewRemoteJobStateResponse(r, log)
 
 			assert.NotNil(t, tpr)
 			assert.IsType(t, &RemoteJobStateResponse{}, tpr)
 			assert.Equal(t, tc.expectedRemoteUpdateInterval, tpr.RemoteUpdateInterval)
+			assert.Equal(t, tc.expectedRemotePingInterval, tpr.RemotePingInterval)
 		})
 	}
 }
