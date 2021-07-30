@@ -1118,31 +1118,34 @@ func TestScriptSections(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		t.Run(fmt.Sprintf("feature flag %t, trace sections %t", tt.featureFlagOn, tt.traceSections), func(t *testing.T) {
-			info := common.ShellScriptInfo{
-				PreBuildScript: tt.prebuildScript,
-				Build: &common.Build{
-					JobResponse: common.JobResponse{
-						Steps: tt.inputSteps,
-						Features: common.GitlabFeatures{
-							TraceSections: tt.traceSections,
+		t.Run(
+			fmt.Sprintf("feature flag %t, trace sections %t", tt.featureFlagOn, tt.traceSections),
+			func(t *testing.T) {
+				info := common.ShellScriptInfo{
+					PreBuildScript: tt.prebuildScript,
+					Build: &common.Build{
+						JobResponse: common.JobResponse{
+							Steps: tt.inputSteps,
+							Features: common.GitlabFeatures{
+								TraceSections: tt.traceSections,
+							},
 						},
+						Runner: &common.RunnerConfig{RunnerSettings: common.RunnerSettings{
+							FeatureFlags: map[string]bool{featureflags.ScriptSections: tt.featureFlagOn},
+						}},
 					},
-					Runner: &common.RunnerConfig{RunnerSettings: common.RunnerSettings{
-						FeatureFlags: map[string]bool{featureflags.ScriptSections: tt.featureFlagOn},
-					}},
-				},
-				PostBuildScript: tt.postBuildScript,
-			}
-			mockShellWriter := &MockShellWriter{}
-			defer mockShellWriter.AssertExpectations(t)
+					PostBuildScript: tt.postBuildScript,
+				}
+				mockShellWriter := &MockShellWriter{}
+				defer mockShellWriter.AssertExpectations(t)
 
-			tt.setupExpectations(mockShellWriter)
-			shell := AbstractShell{}
+				tt.setupExpectations(mockShellWriter)
+				shell := AbstractShell{}
 
-			err := shell.writeUserScript(mockShellWriter, info, tt.buildStage)
-			assert.ErrorIs(t, err, tt.expectedErr)
-		})
+				err := shell.writeUserScript(mockShellWriter, info, tt.buildStage)
+				assert.ErrorIs(t, err, tt.expectedErr)
+			},
+		)
 	}
 }
 

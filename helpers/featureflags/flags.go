@@ -156,8 +156,8 @@ var flags = []FeatureFlag{
 		DefaultValue:    false,
 		Deprecated:      false,
 		ToBeRemovedWith: "",
-		Description: "When enabled, each script line will be inside of a collapsible section and show the " +
-			"duration of each line",
+		Description: "When enabled, each script line from the `.gitlab-ci.yml` file will be in a collapsible " +
+			"section in the job output and show the duration of each line",
 	},
 }
 

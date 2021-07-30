@@ -154,14 +154,14 @@ func (p *PsWriter) Command(command string, arguments ...string) {
 func (p *PsWriter) SectionStart(id, command string) {
 	p.Line("echo " +
 		helpers.ANSI_CLEAR +
-		"section_start:$((Get-Date -UFormat %s).Split('.')[0]):section_" + id +
+		"section_start:$((Get-Date(Get-Date).ToUniversalTime() -UFormat %s).Split('.')[0]):section_" + id +
 		"`r" + helpers.ANSI_CLEAR + psQuoteVariable(helpers.ANSI_BOLD_GREEN+command+helpers.ANSI_RESET))
 }
 
 func (p *PsWriter) SectionEnd(id string) {
 	p.Line("echo " +
 		helpers.ANSI_CLEAR +
-		"section_end:$((Get-Date -UFormat %s).Split('.')[0]):section_" + id +
+		"section_end:$((Get-Date(Get-Date).ToUniversalTime() -UFormat %s).Split('.')[0]):section_" + id +
 		"`r" + helpers.ANSI_CLEAR)
 }
 

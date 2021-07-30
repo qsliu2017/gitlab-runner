@@ -1542,6 +1542,9 @@ func TestBuildPwshHandlesScriptEncodingCorrectly(t *testing.T) {
 
 func TestBuildScriptSections(t *testing.T) {
 	shellstest.OnEachShell(t, func(t *testing.T, shell string) {
+		if shell == "cmd" {
+			t.Skip("CMD not supported")
+		}
 		build, cleanup := newBuild(t, common.JobResponse{}, shell)
 		defer cleanup()
 

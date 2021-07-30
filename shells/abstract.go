@@ -524,7 +524,6 @@ func (b *AbstractShell) writeCommands(w ShellWriter, info common.ShellScriptInfo
 		} else {
 			w.EmptyLine()
 		}
-
 		w.Line(command)
 		w.CheckForErrors()
 	}
