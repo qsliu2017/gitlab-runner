@@ -86,6 +86,43 @@ func TestVariablesMaskingBoundary(t *testing.T) {
 			values:   []string{"zzz"},
 			expected: "head slice\n" + strings.Repeat(".", 4095) + "tail slice",
 		},
+
+		// large secrets / flushing on certain boundaries that exceed the internal text/transform
+		// buffer results in short writes.
+		// https://gitlab.com/gitlab-org/gitlab-runner/-/issues/27964
+		{
+			input:    "large secret, but no match: " + strings.Repeat("_", 3000) + "|" + strings.Repeat("+", 3000),
+			values:   []string{strings.Repeat("_", 8000)},
+			expected: "large secret, but no match: " + strings.Repeat("_", 3000) + strings.Repeat("+", 3000),
+		},
+		//nolint:lll
+		{
+			input:    "large secret, full sized/full match: " + strings.Repeat("_", maxPhraseSize/2) + "|" + strings.Repeat("_", maxPhraseSize-(maxPhraseSize/2)),
+			values:   []string{strings.Repeat("_", maxPhraseSize)},
+			expected: "large secret, full sized/full match: [MASKED]",
+		},
+		//nolint:lll
+		{
+			input:    "large secret, over sized/partial match/tailing reveal: " + strings.Repeat("_", maxPhraseSize/2) + "|" + strings.Repeat("_", maxPhraseSize-(maxPhraseSize/2)) + "endsuffix",
+			values:   []string{strings.Repeat("_", maxPhraseSize) + "endsuffix"},
+			expected: "large secret, over sized/partial match/tailing reveal: [MASKED]endsuffix",
+		},
+		{
+			input:    "large secret, partial match: " + strings.Repeat("_", 3000) + "|" + strings.Repeat("_", 3000),
+			values:   []string{strings.Repeat("_", 6000)},
+			expected: "large secret, partial match: [MASKED]" + strings.Repeat("_", 6000-maxPhraseSize),
+		},
+		{
+			input:    "large secret mask in single write: " + strings.Repeat("_", 6000),
+			values:   []string{strings.Repeat("_", 6000)},
+			expected: "large secret mask in single write: [MASKED]" + strings.Repeat("_", 6000-maxPhraseSize),
+		},
+		//nolint:lll
+		{
+			input:    "undersized partial matches should have no masks: __nomatch __|small __" + strings.Repeat("0", 3000) + "|" + strings.Repeat("0", 3000),
+			values:   []string{"__x"},
+			expected: "undersized partial matches should have no masks: __nomatch __small __" + strings.Repeat("0", 3000) + strings.Repeat("0", 3000),
+		},
 	}
 
 	for _, tc := range tests {

@@ -14,11 +14,19 @@ const (
 	// and allows calling writers to set a safe boundary at which data written
 	// isn't buffered before being flushed to the underlying writer.
 	safeTokens = "\r\n"
+
+	// maxPhraseSize is the maximum sized phrase supported. This should be equal
+	// to text/transform's internal buffer size minus 1.
+	// https://cs.opensource.google/go/x/text/+/refs/tags/v0.3.6:transform/transform.go;l=130
+	maxPhraseSize = 4096 - 1
 )
 
 // newPhraseTransform returns a transform.Transformer that replaces the `phrase`
 // with [MASKED]
 func newPhraseTransform(phrase string) transform.Transformer {
+	if len(phrase) > maxPhraseSize {
+		phrase = phrase[:maxPhraseSize]
+	}
 	return phraseTransform(phrase)
 }
 
