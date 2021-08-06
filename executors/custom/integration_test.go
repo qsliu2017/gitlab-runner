@@ -116,6 +116,23 @@ func TestBuildSuccess(t *testing.T) {
 	})
 }
 
+func TestBuildScriptSections(t *testing.T) {
+	shellstest.OnEachShell(t, func(t *testing.T, shell string) {
+		if shell == "cmd" || shell == "pwsh" || shell == "powershell" {
+			// TODO: support pwsh and powershell
+			t.Skip("CMD, pwsh, powershell not supported")
+		}
+		successfulBuild, err := common.GetSuccessfulBuild()
+		require.NoError(t, err)
+
+		build, cleanup := newBuild(t, successfulBuild, shell)
+		defer cleanup()
+
+		require.NoError(t, err)
+		buildtest.RunBuildWithSections(t, build)
+	})
+}
+
 func TestBuildSuccessRawVariable(t *testing.T) {
 	tests := map[string]struct {
 		command string

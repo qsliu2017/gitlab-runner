@@ -20,6 +20,8 @@ import (
 	"testing"
 	"time"
 
+	"gitlab.com/gitlab-org/gitlab-runner/shells/shellstest"
+
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/hashicorp/go-version"
@@ -264,6 +266,21 @@ func TestDockerCommandSuccessRunFileVariableContent(t *testing.T) {
 	out, err := buildtest.RunBuildReturningOutput(t, &build)
 	assert.NoError(t, err)
 	assert.Contains(t, out, fmt.Sprintf("%X", sha1.Sum([]byte(value))))
+}
+
+func TestBuildScriptSections(t *testing.T) {
+	shellstest.OnEachShell(t, func(t *testing.T, shell string) {
+		if shell == "cmd" || shell == "pwsh" || shell == "powershell" {
+			// TODO: support pwsh and powershell
+			t.Skip("CMD, pwsh, powershell not supported")
+		}
+
+		build := getBuildForOS(t, func() (common.JobResponse, error) {
+			return common.GetRemoteSuccessfulBuild()
+		})
+
+		buildtest.RunBuildWithSections(t, &build)
+	})
 }
 
 func TestDockerCommandUsingCustomClonePath(t *testing.T) {

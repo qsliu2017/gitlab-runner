@@ -6,6 +6,8 @@ import (
 	"os"
 	"testing"
 
+	"gitlab.com/gitlab-org/gitlab-runner/shells/shellstest"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -46,6 +48,34 @@ func TestVirtualBoxSuccessRun(t *testing.T) {
 
 	err = build.Run(&common.Config{}, &common.Trace{Writer: os.Stdout})
 	assert.NoError(t, err, "Make sure that you have done 'make development_setup'")
+}
+
+func TestBuildScriptSections(t *testing.T) {
+	shellstest.OnEachShell(t, func(t *testing.T, shell string) {
+		if shell == "cmd" || shell == "pwsh" || shell == "powershell" {
+			// TODO: support pwsh and powershell
+			t.Skip("CMD, pwsh, powershell not supported")
+		}
+
+		successfulBuild, err := common.GetRemoteBuildResponse("echo Hello World")
+		assert.NoError(t, err)
+		build := &common.Build{
+			JobResponse: successfulBuild,
+			Runner: &common.RunnerConfig{
+				RunnerSettings: common.RunnerSettings{
+					Executor: "virtualbox",
+					VirtualBox: &common.VirtualBoxConfig{
+						BaseName:         vboxImage,
+						DisableSnapshots: true,
+					},
+					SSH: vboxSSHConfig,
+				},
+			},
+		}
+
+		require.NoError(t, err)
+		buildtest.RunBuildWithSections(t, build)
+	})
 }
 
 func TestVirtualBoxSuccessRunRawVariable(t *testing.T) {

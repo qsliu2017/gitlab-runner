@@ -1542,12 +1542,17 @@ func TestBuildPwshHandlesScriptEncodingCorrectly(t *testing.T) {
 
 func TestBuildScriptSections(t *testing.T) {
 	shellstest.OnEachShell(t, func(t *testing.T, shell string) {
-		if shell == "cmd" {
+		if shell == "cmd" || shell == "pwsh" || shell == "powershell" {
+			// TODO: support pwsh and powershell
 			t.Skip("CMD not supported")
 		}
 		build, cleanup := newBuild(t, common.JobResponse{}, shell)
 		defer cleanup()
 
-		buildtest.RunBuildWithSections(t, build.Runner)
+		successfulBuild, err := common.GetSuccessfulBuild()
+		require.NoError(t, err)
+		build.JobResponse = successfulBuild
+
+		buildtest.RunBuildWithSections(t, build)
 	})
 }
