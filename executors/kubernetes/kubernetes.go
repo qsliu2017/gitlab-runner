@@ -706,14 +706,23 @@ func (s *executor) buildContainer(
 		return api.Container{}, err
 	}
 
-	command, args := s.getCommandAndArgs(imageDefinition, containerCommand...)
+	var entrypoint, command []string
+
+	if len(imageDefinition.Entrypoint) > 0 {
+		entrypoint = imageDefinition.Entrypoint
+		if len(imageDefinition.Command) > 0 {
+			command = imageDefinition.Command
+		}
+	} else {
+		command = append(containerCommand, imageDefinition.Command...)
+	}
 
 	container := api.Container{
 		Name:            name,
 		Image:           image,
 		ImagePullPolicy: pullPolicy,
-		Command:         command,
-		Args:            args,
+		Args:            command,
+		Command:         entrypoint,
 		Env:             buildVariables(s.Build.GetAllVariables().PublicOrInternal()),
 		Resources: api.ResourceRequirements{
 			Limits:   limits,
