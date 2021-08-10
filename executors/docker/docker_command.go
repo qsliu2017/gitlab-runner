@@ -130,6 +130,7 @@ func (s *commandExecutor) requestNewPredefinedContainer() (*types.ContainerJSON,
 		Name: prebuildImage.ID,
 	}
 
+	fmt.Printf("requesting new predefined container with command %v", s.getHelperImageCmd())
 	containerJSON, err := s.createContainer("predefined", buildImage, s.getHelperImageCmd(), []string{prebuildImage.ID})
 	if err != nil {
 		return nil, err
@@ -157,10 +158,11 @@ func (s *commandExecutor) requestBuildContainer() (*types.ContainerJSON, error) 
 		}
 
 		if !docker.IsErrNotFound(inspectErr) {
-			s.Warningln("Failed to inspect build container", s.buildContainer.ID, inspectErr.Error())
+			s.Warningln("Failed to inspect build container\n", s.buildContainer.ID, inspectErr.Error())
 		}
 	}
 
+	fmt.Printf("requesting new build container with command %v\n", s.BuildShell.DockerCommand)
 	var err error
 	s.buildContainer, err = s.createContainer("build", s.Build.Image, s.BuildShell.DockerCommand, []string{})
 	if err != nil {
