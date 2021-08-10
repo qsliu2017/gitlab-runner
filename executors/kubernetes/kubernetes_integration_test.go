@@ -94,6 +94,30 @@ func testKubernetesSuccessRunFeatureFlag(t *testing.T, featureFlagName string, f
 	assert.NoError(t, err)
 }
 
+func TestEntrypointNotIgnored(t *testing.T) {
+	helpers.SkipIntegrationTests(t, "kubectl", "cluster-info")
+
+	build := getTestBuildWithImage(t, common.TestEntrypointImage, func() (common.JobResponse, error) {
+		job, err := common.GetRemoteBuildResponse("cat /tmp/debug.log", "echo \"I am now `whoami`\"")
+		job.Image = common.Image{
+			Name:       common.TestEntrypointImage,
+			Alias:      "",
+			Command:    nil,
+			Entrypoint: nil,
+			Ports:      nil,
+		}
+
+		return job, err
+	})
+	build.Runner.Kubernetes.PullPolicy = common.StringOrArray{"always"}
+
+	out, err := buildtest.RunBuildReturningOutput(t, build)
+	require.NoError(t, err)
+
+	assert.Contains(t, out, "this has been executed through a custom entrypoint")
+	assert.Contains(t, out, "I am now nobody")
+}
+
 func testKubernetesMultistepRunFeatureFlag(t *testing.T, featureFlagName string, featureFlagValue bool) {
 	helpers.SkipIntegrationTests(t, "kubectl", "cluster-info")
 
@@ -1106,7 +1130,7 @@ func testKubernetesContainerHookFeatureFlag(t *testing.T, featureFlagName string
 	}
 }
 
-func getTestBuild(t *testing.T, getJobResponse func() (common.JobResponse, error)) *common.Build {
+func getTestBuildWithImage(t *testing.T, image string, getJobResponse func() (common.JobResponse, error)) *common.Build {
 	jobResponse, err := getJobResponse()
 	assert.NoError(t, err)
 
@@ -1119,7 +1143,7 @@ func getTestBuild(t *testing.T, getJobResponse func() (common.JobResponse, error
 			RunnerSettings: common.RunnerSettings{
 				Executor: "kubernetes",
 				Kubernetes: &common.KubernetesConfig{
-					Image:      common.TestAlpineImage,
+					Image:      image,
 					PullPolicy: common.StringOrArray{common.PullPolicyIfNotPresent},
 					PodLabels: map[string]string{
 						"test.k8s.gitlab.com/name": podUUID,
@@ -1128,6 +1152,11 @@ func getTestBuild(t *testing.T, getJobResponse func() (common.JobResponse, error
 			},
 		},
 	}
+
+}
+
+func getTestBuild(t *testing.T, getJobResponse func() (common.JobResponse, error)) *common.Build {
+	return getTestBuildWithImage(t, common.TestAlpineImage, getJobResponse)
 }
 
 func getTestKubeClusterClient(t *testing.T) *k8s.Clientset {

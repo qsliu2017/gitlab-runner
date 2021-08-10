@@ -44,4 +44,5 @@ const (
 	TestDockerDindImage   = "docker:18-dind"
 	TestDockerGitImage    = "docker:18-git"
 	TestLivenessImage     = "registry.gitlab.com/gitlab-org/ci-cd/tests/liveness:0.1.0"
+	TestEntrypointImage   = "registry.gitlab.com/gitlab-org/gitlab-runner/alpine-entrypoint:latest"
 )
