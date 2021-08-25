@@ -35,7 +35,7 @@ require (
 	github.com/klauspost/pgzip v1.2.5
 	github.com/kr/pty v1.1.5
 	github.com/minio/md5-simd v1.1.1 // indirect
-	github.com/minio/minio-go/v7 v7.0.8
+	github.com/minio/minio-go/v7 v7.0.12
 	github.com/mitchellh/gox v1.0.1
 	github.com/moby/term v0.0.0-20201216013528-df9cb8a40635 // indirect
 	github.com/morikuni/aec v1.0.0 // indirect
@@ -47,8 +47,7 @@ require (
 	github.com/prometheus/common v0.6.0
 	github.com/prometheus/procfs v0.0.5 // indirect
 	github.com/saracen/fastzip v0.1.5
-	github.com/sirupsen/logrus v1.7.0
-	github.com/smartystreets/goconvey v1.6.4 // indirect
+	github.com/sirupsen/logrus v1.8.1
 	github.com/stretchr/objx v0.3.0 // indirect
 	github.com/stretchr/testify v1.6.2-0.20200720104044-95a9d909e987
 	github.com/tevino/abool v0.0.0-20160628101133-3c25f2fe7cd0
