@@ -18,6 +18,7 @@ import (
 type minioClientInitializationTest struct {
 	errorOnInitialization bool
 	configurationFactory  func() *common.CacheConfig
+	serverAddress         string
 
 	expectedToUseIAM bool
 	expectedInsecure bool
@@ -180,18 +181,24 @@ func runOnFakeMinio(t *testing.T, test minioClientInitializationTest) func() {
 func runOnFakeMinioWithCredentials(t *testing.T, test minioClientInitializationTest) func() {
 	oldNewMinioWithCredentials := newMinioWithIAM
 	newMinioWithIAM =
-		func(bucketLocation string) (*minio.Client, error) {
+		func(serverAddress, bucketLocation string) (*minio.Client, error) {
 			if !test.expectedToUseIAM {
 				t.Error("Should not use minio with IAM client initializator")
 			}
 
 			assert.Equal(t, "location", bucketLocation)
 
+			if test.serverAddress == "" {
+				assert.Equal(t, DefaultAWSS3Server, serverAddress)
+			} else {
+				assert.Equal(t, test.serverAddress, serverAddress)
+			}
+
 			if test.errorOnInitialization {
 				return nil, errors.New("test error")
 			}
 
-			client, err := minio.New(DefaultAWSS3Server, &minio.Options{
+			client, err := minio.New(serverAddress, &minio.Options{
 				Creds:  credentials.NewIAM(""),
 				Secure: true,
 				Transport: &bucketLocationTripper{
