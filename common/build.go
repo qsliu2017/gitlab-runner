@@ -507,14 +507,13 @@ func (b *Build) executeScript(abortCtx context.Context, trace JobTrace, executor
 		b.executeAfterScript(abortCtx, err, executor)
 	}
 
-	archiveCacheErr := b.executeArchiveCache(ctx, err, executor)
+	archiveCacheErr := b.executeArchiveCache(abortCtx, err, executor)
 
-	artifactUploadErr := b.executeUploadArtifacts(ctx, err, executor)
-
+	artifactUploadErr := b.executeUploadArtifacts(abortCtx, err, executor)
 	// track job end and execute referees
-	b.executeUploadReferees(ctx, startTime, time.Now())
+	b.executeUploadReferees(abortCtx, startTime, time.Now())
 
-	b.removeFileBasedVariables(ctx, executor)
+	b.removeFileBasedVariables(abortCtx, executor)
 
 	return b.pickPriorityError(err, archiveCacheErr, artifactUploadErr)
 }
@@ -932,7 +931,6 @@ func (b *Build) Run(globalConfig *Config, trace JobTrace) (err error) {
 	defer cancel()
 
 	// In early phases of build preparation a user-requested cancel is treated as an abort
-	trace.SetCancelFunc(cancel)
 	trace.SetAbortFunc(cancel)
 	trace.SetMasked(b.GetAllVariables().Masked())
 
