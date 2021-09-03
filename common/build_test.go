@@ -384,7 +384,7 @@ func TestJobFailure(t *testing.T) {
 	defer trace.AssertExpectations(t)
 	trace.On("Write", mock.Anything).Return(0, nil)
 	trace.On("IsStdout").Return(true)
-	trace.On("SetCancelFunc", mock.Anything).Once()
+	trace.On("SetCancelFunc", mock.Anything).Twice()
 	trace.On("SetAbortFunc", mock.Anything).Once()
 	trace.On("SetMasked", mock.Anything).Once()
 	trace.On("Fail", thrownErr, JobFailureData{Reason: ScriptFailure, ExitCode: 1}).Once()
@@ -419,7 +419,7 @@ func TestJobFailureOnExecutionTimeout(t *testing.T) {
 	defer trace.AssertExpectations(t)
 	trace.On("Write", mock.Anything).Return(0, nil)
 	trace.On("IsStdout").Return(true)
-	trace.On("SetCancelFunc", mock.Anything).Once()
+	trace.On("SetCancelFunc", mock.Anything).Twice()
 	trace.On("SetAbortFunc", mock.Anything).Once()
 	trace.On("SetMasked", mock.Anything).Once()
 	trace.On("Fail", mock.Anything, JobFailureData{Reason: JobExecutionTimeout}).Run(func(arguments mock.Arguments) {

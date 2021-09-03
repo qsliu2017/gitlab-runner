@@ -32,6 +32,8 @@ const (
 	UnknownFailure      JobFailureReason = "unknown_failure"
 	// JobCanceled is only internal to runner, and not used inside of rails.
 	JobCanceled JobFailureReason = "job_canceled"
+	// JobAborted is only internal to runner, and not used inside of rails.
+	JobAborted JobFailureReason = "job_aborted"
 )
 
 const (
