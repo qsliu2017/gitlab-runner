@@ -9,4 +9,4 @@
 
 [Documentation]
 .markdownlint.yml @marcel.amirault @eread @aqualls @cnorris
-/docs/ @gitlab-com/runner-docs-maintainers
+/docs/ @gitlab-com/runner-maintainers
