@@ -90,7 +90,6 @@ Notes:
 in the `variables:` section of your `.gitlab-ci.yml` file, set the CI variable `GIT_SSL_NO_VERIFY` to `true`.
 - If you are using GitLab Runner Helm chart, you will need to configure certificates according to the doc [Providing a custom certificate for accessing GitLab](../install/kubernetes.md#providing-a-custom-certificate-for-accessing-gitlab).
 
-
 ### Git cloning
 
 The runner injects missing certificates to build the CA chain in build containers.
