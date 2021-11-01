@@ -1303,6 +1303,7 @@ func getTestBuildWithImage(t *testing.T, image string, getJobResponse func() (co
 						"test.k8s.gitlab.com/name": podUUID,
 					},
 				},
+				Shell: "bash",
 			},
 		},
 	}

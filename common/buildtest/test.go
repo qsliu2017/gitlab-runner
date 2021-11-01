@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -14,6 +15,52 @@ import (
 )
 
 const testTimeout = 30 * time.Minute
+
+type traceLogger struct {
+	common.JobTrace
+
+	buf bytes.Buffer
+	on  []*traceLoggerOn
+	mu  sync.Mutex
+}
+
+type traceLoggerOn struct {
+	data []byte
+	fn   func()
+	done bool
+}
+
+func NewTraceWriteLogger(trace common.JobTrace) *traceLogger {
+	return &traceLogger{
+		JobTrace: trace,
+	}
+}
+
+func (t *traceLogger) On(data []byte, fn func()) {
+	t.on = append(t.on, &traceLoggerOn{data, fn, false})
+}
+
+func (t *traceLogger) Write(p []byte) (n int, err error) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
+	n, err = t.JobTrace.Write(p)
+
+	_, _ = t.buf.Write(p[:n])
+
+	for _, on := range t.on {
+		if !on.done && bytes.Contains(t.buf.Bytes(), on.data) {
+			on.done = true
+			on.fn()
+		}
+	}
+
+	if idx := bytes.LastIndex(t.buf.Bytes(), []byte("\n")); idx > -1 {
+		t.buf.Truncate(idx)
+	}
+
+	return n, err
+}
 
 type BuildSetupFn func(build *common.Build)
 
@@ -26,11 +73,11 @@ func RunBuildReturningOutput(t *testing.T, build *common.Build) (string, error) 
 	return output, err
 }
 
-func RunBuildWithTrace(t *testing.T, build *common.Build, trace *common.Trace) error {
+func RunBuildWithTrace(t *testing.T, build *common.Build, trace common.JobTrace) error {
 	return RunBuildWithOptions(t, build, trace, &common.Config{})
 }
 
-func RunBuildWithOptions(t *testing.T, build *common.Build, trace *common.Trace, config *common.Config) error {
+func RunBuildWithOptions(t *testing.T, build *common.Build, trace common.JobTrace, config *common.Config) error {
 	timeoutTimer := time.AfterFunc(testTimeout, func() {
 		t.Log("Timed out")
 		t.FailNow()

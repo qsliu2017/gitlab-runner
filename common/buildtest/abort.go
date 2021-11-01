@@ -2,9 +2,9 @@ package buildtest
 
 import (
 	"bytes"
-	"errors"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -14,6 +14,8 @@ import (
 
 //nolint:funlen
 func RunBuildWithCancel(t *testing.T, config *common.RunnerConfig, setup BuildSetupFn) {
+	require.NotEmpty(t, config.Shell)
+
 	cancelIncludeStages := []common.BuildStage{
 		common.BuildStagePrepare,
 		common.BuildStageGetSources,
@@ -60,31 +62,36 @@ func RunBuildWithCancel(t *testing.T, config *common.RunnerConfig, setup BuildSe
 		},
 	}
 
-	resp, err := common.GetRemoteLongRunningBuildWithAfterScript()
-	require.NoError(t, err)
-
 	for tn, tc := range tests {
 		t.Run(tn, func(t *testing.T) {
 			build := &common.Build{
-				JobResponse:     resp,
+				JobResponse:     common.GetRemoteBuildCancelScript(config.Shell),
 				Runner:          config,
 				SystemInterrupt: make(chan os.Signal, 1),
 			}
 			buf := new(bytes.Buffer)
-			trace := &common.Trace{Writer: buf}
-			done := OnUserStage(build, func() {
+			trace := NewTraceWriteLogger(&common.Trace{Writer: buf})
+			trace.On([]byte("buildcancel: build script is executing"), func() {
+				// At this point, the script has been running for some time and
+				// we've detected that the script has output our expected text.
+				// onUserStep cancels or aborts the build and we eventually see
+				// that syscall.Kill is called to terminate the process. This
+				// call returns without an error but is entirely ignored unless
+				// this sleep is performed first (at least on macos). I've no
+				// idea why this is the case.
+				time.Sleep(time.Second)
+
 				tc.onUserStep(build, trace)
 			})
-			defer done()
-
 			if setup != nil {
 				setup(build)
 			}
 
 			err := RunBuildWithTrace(t, build, trace)
 			t.Log(buf.String())
-			//nolint:lll
-			assert.True(t, errors.Is(err, tc.expectedErr), "expected: %[1]T (%[1]v), got: %[2]T (%[2]v)", tc.expectedErr, err)
+			assert.ErrorIs(t, err, tc.expectedErr)
+
+			assert.Contains(t, buf.String(), "buildcancel: build script exit trap executed")
 
 			for _, stage := range tc.includesStage {
 				assert.Contains(t, buf.String(), common.GetStageDescription(stage))

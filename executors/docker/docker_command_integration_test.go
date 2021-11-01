@@ -169,6 +169,7 @@ func getBuildForOS(t *testing.T, getJobResp func() (common.JobResponse, error)) 
 func getRunnerConfigForOS(t *testing.T) *common.RunnerConfig {
 	executor := "docker"
 	image := common.TestAlpineImage
+	image = "debian:bullseye"
 	shell := "bash"
 
 	if runtime.GOOS == "windows" {

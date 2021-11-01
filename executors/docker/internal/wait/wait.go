@@ -42,6 +42,7 @@ func (d *dockerWaiter) Wait(ctx context.Context, containerID string) error {
 // A nil timeout uses the container or daemon's default value. A negative timeout
 // immediately kills the container.
 func (d *dockerWaiter) StopKillWait(ctx context.Context, containerID string, timeout *time.Duration) error {
+	fmt.Println("Kiling?")
 	return d.retryWait(ctx, containerID, func() {
 		_ = d.client.ContainerStop(ctx, containerID, timeout)
 	})

@@ -245,18 +245,7 @@ func TestBuildCancel(t *testing.T) {
 		build, cleanup := newBuild(t, common.JobResponse{}, shell)
 		defer cleanup()
 
-		updateSleepForCMD := func(build *common.Build) {
-			if shell != "cmd" {
-				return
-			}
-
-			resp, err := common.GetRemoteLongRunningBuildWithAfterScriptCMD()
-			require.NoError(t, err)
-
-			build.JobResponse = resp
-		}
-
-		buildtest.RunBuildWithCancel(t, build.Runner, updateSleepForCMD)
+		buildtest.RunBuildWithCancel(t, build.Runner, nil)
 	})
 }
 

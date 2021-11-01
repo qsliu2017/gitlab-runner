@@ -692,6 +692,8 @@ func (e *executor) createContainerConfig(
 	}
 	config.Entrypoint = e.overwriteEntrypoint(&imageDefinition)
 
+	fmt.Println("CMD", cmd)
+
 	return config
 }
 

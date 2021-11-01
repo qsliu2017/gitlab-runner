@@ -620,7 +620,7 @@ func (b *Build) runtimeStateAndError(err error) (BuildRuntimeState, error) {
 	}
 }
 
-func (b *Build) run(ctx context.Context, executor Executor) (err error) {
+func (b *Build) run(ctx context.Context, executor Executor, trace JobTrace) (err error) {
 	b.setCurrentState(BuildRunRuntimeRunning)
 
 	buildFinish := make(chan error, 1)
@@ -628,6 +628,8 @@ func (b *Build) run(ctx context.Context, executor Executor) (err error) {
 
 	runContext, runCancel := context.WithCancel(context.Background())
 	defer runCancel()
+
+	trace.SetCancelFunc(runCancel)
 
 	if term, ok := executor.(terminal.InteractiveTerminal); b.Session != nil && ok {
 		b.Session.SetInteractiveTerminal(term)
@@ -917,7 +919,7 @@ func (b *Build) Run(globalConfig *Config, trace JobTrace) (err error) {
 	executor, err = b.executeBuildSection(executor, options, provider)
 
 	if err == nil {
-		err = b.run(ctx, executor)
+		err = b.run(ctx, executor, trace)
 		if errWait := b.waitForTerminal(ctx, globalConfig.SessionServer.GetSessionTimeout()); errWait != nil {
 			b.Log().WithError(errWait).Debug("Stopped waiting for terminal")
 		}

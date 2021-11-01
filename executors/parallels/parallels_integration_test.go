@@ -191,7 +191,8 @@ func TestParallelsBuildCancel(t *testing.T) {
 				BaseName:         prlImage,
 				DisableSnapshots: true,
 			},
-			SSH: prlSSHConfig,
+			SSH:   prlSSHConfig,
+			Shell: "bash",
 		},
 	}
 

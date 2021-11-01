@@ -242,45 +242,68 @@ func GetRemoteLongRunningBuild() (JobResponse, error) {
 	return GetRemoteBuildResponse("sleep 3600")
 }
 
-func GetRemoteLongRunningBuildCMD() (JobResponse, error) {
-	// Can't use TIMEOUT since it requires input redirection,
-	// https://knowledge.broadcom.com/external/article/29524/the-timeout-command-in-batch-script-job.html
-	return GetLocalBuildResponse("ping 127.0.0.1 -n 3600 > nul")
-}
+func GetRemoteBuildCancelScript(shell string) JobResponse {
+	var buildCmd []string
+	var afterCmd []string
 
-func GetRemoteLongRunningBuildWithAfterScript() (JobResponse, error) {
-	jobResponse, err := GetRemoteLongRunningBuild()
-	if err != nil {
-		return JobResponse{}, err
+	switch shell {
+	case "cmd":
+		buildCmd = []string{
+			// cmd doesn't support traps, so we fake it
+			"echo \"%TEST_PREFIX%: build script exit trap executed\"",
+			"echo \"%TEST_PREFIX%: build script is executing\"",
+			"ping 127.0.0.1 -n 3600 > nul",
+		}
+		afterCmd = []string{
+			"echo 'Hello World from after_script'",
+			"echo \"%TEST_PREFIX%: after script exit trap executed\"",
+			"echo \"%TEST_PREFIX%: after script is executing\"",
+		}
+
+	case "pwsh", "powershell":
+		buildCmd = []string{
+			"trap {\"${TEST_PREFIX}: build script exit trap executed\"}",
+			"echo \"${TEST_PREFIX}: build script is executing\"",
+			"sleep 3600",
+		}
+		afterCmd = []string{
+			"trap {\"${TEST_PREFIX}: after script exit trap executed\"}",
+			"echo \"${TEST_PREFIX}: after script is executing\"",
+		}
+
+	default:
+		buildCmd = []string{
+			"cleanup() {\necho \"${TEST_PREFIX}: build script exit trap executed\"\n}\n",
+			"trap cleanup SIGTERM",
+			"echo \"${TEST_PREFIX}: build script is executing\"; echo \"on $$\"",
+			"(echo $$; sleep 3600) & wait",
+		}
+		afterCmd = []string{
+			"cleanup() {\necho \"${TEST_PREFIX}: after script exit trap executed\"\n}\n",
+			"trap cleanup SIGTERM",
+			"echo \"${TEST_PREFIX}: after script is executing\"",
+		}
 	}
 
-	addAfterScript(&jobResponse)
-
-	return jobResponse, nil
-}
-
-func GetRemoteLongRunningBuildWithAfterScriptCMD() (JobResponse, error) {
-	jobResponse, err := GetRemoteLongRunningBuildCMD()
-	if err != nil {
-		return JobResponse{}, err
-	}
-
-	addAfterScript(&jobResponse)
-
-	return jobResponse, nil
-}
-
-func addAfterScript(jobResponse *JobResponse) {
-	jobResponse.Steps = append(
-		jobResponse.Steps,
-		Step{
-			Name: StepNameAfterScript,
-			Script: []string{
-				"echo Hello World from after_script",
+	return JobResponse{
+		GitInfo: GetGitInfo(repoRemoteURL),
+		Steps: Steps{
+			Step{
+				Name:         StepNameScript,
+				Script:       buildCmd,
+				When:         StepWhenAlways,
+				AllowFailure: false,
 			},
-			When: StepWhenAlways,
+			Step{
+				Name:   StepNameAfterScript,
+				Script: afterCmd,
+				When:   StepWhenAlways,
+			},
 		},
-	)
+		Variables: JobVariables{
+			{Key: "TEST_PREFIX", Value: "buildcancel"},
+		},
+	}
 }
 
 func GetMultilineBashBuild() (JobResponse, error) {
