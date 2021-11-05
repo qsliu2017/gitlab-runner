@@ -377,6 +377,7 @@ func TestCreateResourceList(t *testing.T) {
 	tests := []struct {
 		Name             string
 		CPU              string
+		HugePages2Mi     string
 		Memory           string
 		EphemeralStorage string
 		Expected         api.ResourceList
@@ -393,6 +394,19 @@ func TestCreateResourceList(t *testing.T) {
 			EphemeralStorage: "2048Mi",
 			Expected: api.ResourceList{
 				api.ResourceCPU:              resource.MustParse("500m"),
+				api.ResourceMemory:           resource.MustParse("1024Mi"),
+				api.ResourceEphemeralStorage: resource.MustParse("2048Mi"),
+			},
+		},
+		{
+			Name:             "cpu and hugepages-2mi and memory",
+			CPU:              "500m",
+			HugePages2Mi:     "512Mi",
+			Memory:           "1024Mi",
+			EphemeralStorage: "2048Mi",
+			Expected: api.ResourceList{
+				api.ResourceCPU:              resource.MustParse("500m"),
+				api.ResourceHugePages2Mi:     resource.MustParse("512Mi"),
 				api.ResourceMemory:           resource.MustParse("1024Mi"),
 				api.ResourceEphemeralStorage: resource.MustParse("2048Mi"),
 			},
@@ -429,6 +443,16 @@ func TestCreateResourceList(t *testing.T) {
 			},
 		},
 		{
+			Name:         "invalid hugepages-2mi",
+			HugePages2Mi: "200j",
+			Expected:     api.ResourceList{},
+			Error: &resourceQuantityError{
+				resource: "hugepages-2mi",
+				value:    "200j",
+				inner:    mustGetParseError(t, "200j"),
+			},
+		},
+		{
 			Name:     "invalid memory",
 			Memory:   "200j",
 			Expected: api.ResourceList{},
@@ -452,7 +476,7 @@ func TestCreateResourceList(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.Name, func(t *testing.T) {
-			actual, err := createResourceList(test.CPU, test.Memory, test.EphemeralStorage)
+			actual, err := createResourceList(test.CPU, test.HugePages2Mi, test.Memory, test.EphemeralStorage)
 			assert.Equal(t, test.Error, err)
 			assert.Equal(t, test.Expected, actual)
 		})

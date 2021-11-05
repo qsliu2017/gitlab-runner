@@ -741,6 +741,52 @@ func testBuildsDirVolumeMountEmptyDirFeatureFlag(t *testing.T, featureFlagName s
 	assert.Equal(t, "/path/to/builds/dir/gitlab-org/ci-cd/gitlab-runner-pipeline-tests/gitlab-test", build.BuildDir)
 }
 
+func testBuildsDirVolumeMountEmptyDirHugePagesFeatureFlag(t *testing.T, featureFlagName string, featureFlagValue bool) {
+	helpers.SkipIntegrationTests(t, "kubectl", "cluster-info")
+
+	build := getTestBuild(t, common.GetRemoteSuccessfulBuild)
+	build.Image.Name = common.TestDockerGitImage
+	buildtest.SetBuildFeatureFlag(build, featureFlagName, featureFlagValue)
+	build.Runner.BuildsDir = "/path/to/builds/dir"
+	build.Runner.Kubernetes.Volumes = common.KubernetesVolumes{
+		EmptyDirs: []common.KubernetesEmptyDir{
+			{
+				Name:      "repo",
+				MountPath: "/path/to/builds/dir",
+				Medium:    "HugePages",
+			},
+		},
+	}
+
+	err := build.Run(&common.Config{}, &common.Trace{Writer: os.Stdout})
+	assert.NoError(t, err)
+
+	assert.Equal(t, "/path/to/builds/dir/gitlab-org/ci-cd/tests/gitlab-test", build.BuildDir)
+}
+
+func testBuildsDirVolumeMountEmptyDirHugePages2MiFeatureFlag(t *testing.T, featureFlagName string, featureFlagValue bool) {
+	helpers.SkipIntegrationTests(t, "kubectl", "cluster-info")
+
+	build := getTestBuild(t, common.GetRemoteSuccessfulBuild)
+	build.Image.Name = common.TestDockerGitImage
+	buildtest.SetBuildFeatureFlag(build, featureFlagName, featureFlagValue)
+	build.Runner.BuildsDir = "/path/to/builds/dir"
+	build.Runner.Kubernetes.Volumes = common.KubernetesVolumes{
+		EmptyDirs: []common.KubernetesEmptyDir{
+			{
+				Name:      "repo",
+				MountPath: "/path/to/builds/dir",
+				Medium:    "HugePages-2Mi",
+			},
+		},
+	}
+
+	err := build.Run(&common.Config{}, &common.Trace{Writer: os.Stdout})
+	assert.NoError(t, err)
+
+	assert.Equal(t, "/path/to/builds/dir/gitlab-org/ci-cd/tests/gitlab-test", build.BuildDir)
+}
+
 func testBuildsDirVolumeMountHostPathFeatureFlag(t *testing.T, featureFlagName string, featureFlagValue bool) {
 	helpers.SkipIntegrationTests(t, "kubectl", "cluster-info")
 

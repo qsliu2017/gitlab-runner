@@ -245,12 +245,12 @@ func waitForPodRunning(
 	return api.PodUnknown, errors.New("timed out waiting for pod to start")
 }
 
-// limits takes a string representing CPU, memory and ephemeralStorage limits,
+// limits takes a string representing CPU, hugePages2Mi, memory and ephemeralStorage limits,
 // and returns a ResourceList with appropriately scaled Quantity
 // values for Kubernetes. This allows users to write "500m" for CPU,
 // "50Mi" for memory and "1Gi" for ephemeral storage (etc.)
-func createResourceList(cpu, memory, ephemeralStorage string) (api.ResourceList, error) {
-	var rCPU, rMem, rStor resource.Quantity
+func createResourceList(cpu, hugePages2Mi, memory, ephemeralStorage string) (api.ResourceList, error) {
+	var rCPU, rHP2Mi, rMem, rStor resource.Quantity
 	var err error
 
 	parse := func(s string) (resource.Quantity, error) {
@@ -266,6 +266,10 @@ func createResourceList(cpu, memory, ephemeralStorage string) (api.ResourceList,
 
 	if rCPU, err = parse(cpu); err != nil {
 		return api.ResourceList{}, &resourceQuantityError{resource: "cpu", value: cpu, inner: err}
+	}
+
+	if rHP2Mi, err = parse(hugePages2Mi); err != nil {
+		return api.ResourceList{}, &resourceQuantityError{resource: "hugePages2Mi", value: memory, inner: err}
 	}
 
 	if rMem, err = parse(memory); err != nil {
@@ -285,6 +289,11 @@ func createResourceList(cpu, memory, ephemeralStorage string) (api.ResourceList,
 	q := resource.Quantity{}
 	if rCPU != q {
 		l[api.ResourceCPU] = rCPU
+	}
+	if rHP2Mi != q {
+		// They use a convoluted prefix approach upstream, just define it with the correct string key for now
+		// ref "ResourceHugePagesPrefix" in https://pkg.go.dev/k8s.io/api/core/v1
+		l["hugepages-2mi"] = rHP2Mi
 	}
 	if rMem != q {
 		l[api.ResourceMemory] = rMem

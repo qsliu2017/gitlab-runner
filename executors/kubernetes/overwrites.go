@@ -11,6 +11,10 @@ import (
 	"gitlab.com/gitlab-org/gitlab-runner/common"
 )
 
+// Re (Helper|Service)?HugePages2MiLimit*, we only allow a limit, not a request
+// https://kubernetes.io/docs/tasks/manage-hugepages/scheduling-hugepages/
+// "Huge page requests must equal the limits. This is the default if limits are specified, but requests are not."
+
 const (
 	// NamespaceOverwriteVariableName is the key for the JobVariable containing user overwritten Namespace
 	NamespaceOverwriteVariableName = "KUBERNETES_NAMESPACE_OVERWRITE"
@@ -28,6 +32,8 @@ const (
 	CPULimitOverwriteVariableValue = "KUBERNETES_CPU_LIMIT"
 	// CPURequestOverwriteVariableValue is the key for the JobVariable containing user overwritten cpu limit
 	CPURequestOverwriteVariableValue = "KUBERNETES_CPU_REQUEST"
+	// HugePages2MiLimitOverwriteVariableValue is the key for the JobVariable containing user overwritten memory limit
+	HugePages2MiLimitOverwriteVariableValue = "KUBERNETES_HUGEPAGES_2MI_LIMIT"
 	// MemoryLimitOverwriteVariableValue is the key for the JobVariable containing user overwritten memory limit
 	MemoryLimitOverwriteVariableValue = "KUBERNETES_MEMORY_LIMIT"
 	// MemoryRequestOverwriteVariableValue is the key for the JobVariable containing user overwritten memory limit
@@ -44,6 +50,9 @@ const (
 	// ServiceCPURequestOverwriteVariableValue is the key for the JobVariable containing user overwritten service cpu
 	// limit
 	ServiceCPURequestOverwriteVariableValue = "KUBERNETES_SERVICE_CPU_REQUEST"
+	// ServiceHugePages2MiLimitOverwriteVariableValue is the key for the JobVariable containing user overwritten service
+	// memory limit
+	ServiceHugePages2MiLimitOverwriteVariableValue = "KUBERNETES_SERVICE_HUGEPAGES_2MI_LIMIT"
 	// ServiceMemoryLimitOverwriteVariableValue is the key for the JobVariable containing user overwritten service
 	// memory limit
 	ServiceMemoryLimitOverwriteVariableValue = "KUBERNETES_SERVICE_MEMORY_LIMIT"
@@ -61,6 +70,9 @@ const (
 	// HelperCPURequestOverwriteVariableValue is the key for the JobVariable containing user overwritten helper cpu
 	// limit
 	HelperCPURequestOverwriteVariableValue = "KUBERNETES_HELPER_CPU_REQUEST"
+	// HelperHugePages2MiLimitOverwriteVariableValue is the key for the JobVariable containing user overwritten service
+	// memory limit
+	HelperHugePages2MiLimitOverwriteVariableValue = "KUBERNETES_HELPER_HUGEPAGES_2MI_LIMIT"
 	// HelperMemoryLimitOverwriteVariableValue is the key for the JobVariable containing user overwritten helper memory
 	// limit
 	HelperMemoryLimitOverwriteVariableValue = "KUBERNETES_HELPER_MEMORY_LIMIT"
@@ -215,18 +227,23 @@ func (o *overwrites) evaluateMaxBuildResourcesOverwrite(
 ) (err error) {
 	o.buildRequests, err = o.evaluateMaxResourceListOverwrite(
 		"CPURequest",
+		"",
 		"MemoryRequest",
 		"EphemeralStorageRequest",
 		config.CPURequest,
+		"",
 		config.MemoryRequest,
 		config.EphemeralStorageRequest,
 		config.CPURequestOverwriteMaxAllowed,
+		"",
 		config.MemoryRequestOverwriteMaxAllowed,
 		config.EphemeralStorageRequestOverwriteMaxAllowed,
 		variables.Get(CPURequestOverwriteVariableValue),
+		"",
 		variables.Get(MemoryRequestOverwriteVariableValue),
 		variables.Get(EphemeralStorageRequestOverwriteVariableValue),
 		logger,
+		false,
 	)
 	if err != nil {
 		return fmt.Errorf("invalid build requests specified: %w", err)
@@ -234,18 +251,23 @@ func (o *overwrites) evaluateMaxBuildResourcesOverwrite(
 
 	o.buildLimits, err = o.evaluateMaxResourceListOverwrite(
 		"CPULimit",
+		"HugePages2MiLimit",
 		"MemoryLimit",
 		"EphemeralStorageLimit",
 		config.CPULimit,
+		config.HugePages2MiLimit,
 		config.MemoryLimit,
 		config.EphemeralStorageLimit,
 		config.CPULimitOverwriteMaxAllowed,
+		config.HugePages2MiLimitOverwriteMaxAllowed,
 		config.MemoryLimitOverwriteMaxAllowed,
 		config.EphemeralStorageLimitOverwriteMaxAllowed,
 		variables.Get(CPULimitOverwriteVariableValue),
+		variables.Get(HugePages2MiLimitOverwriteVariableValue),
 		variables.Get(MemoryLimitOverwriteVariableValue),
 		variables.Get(EphemeralStorageLimitOverwriteVariableValue),
 		logger,
+		true,
 	)
 	if err != nil {
 		return fmt.Errorf("invalid build limits specified: %w", err)
@@ -261,18 +283,23 @@ func (o *overwrites) evaluateMaxServiceResourcesOverwrite(
 ) (err error) {
 	o.serviceRequests, err = o.evaluateMaxResourceListOverwrite(
 		"ServiceCPURequest",
+		"",
 		"ServiceMemoryRequest",
 		"ServiceEphemeralStorageRequest",
 		config.ServiceCPURequest,
+		"",
 		config.ServiceMemoryRequest,
 		config.ServiceEphemeralStorageRequest,
 		config.ServiceCPURequestOverwriteMaxAllowed,
+		"",
 		config.ServiceMemoryRequestOverwriteMaxAllowed,
 		config.ServiceEphemeralStorageRequestOverwriteMaxAllowed,
 		variables.Get(ServiceCPURequestOverwriteVariableValue),
+		"",
 		variables.Get(ServiceMemoryRequestOverwriteVariableValue),
 		variables.Get(ServiceEphemeralStorageRequestOverwriteVariableValue),
 		logger,
+		false,
 	)
 	if err != nil {
 		return fmt.Errorf("invalid service requests specified: %w", err)
@@ -280,18 +307,23 @@ func (o *overwrites) evaluateMaxServiceResourcesOverwrite(
 
 	o.serviceLimits, err = o.evaluateMaxResourceListOverwrite(
 		"ServiceCPULimit",
+		"ServiceHugePages2MiLimit",
 		"ServiceMemoryLimit",
 		"ServiceEphemeralStorageLimit",
 		config.ServiceCPULimit,
+		config.ServiceHugePages2MiLimit,
 		config.ServiceMemoryLimit,
 		config.ServiceEphemeralStorageLimit,
 		config.ServiceCPULimitOverwriteMaxAllowed,
+		config.ServiceHugePages2MiLimitOverwriteMaxAllowed,
 		config.ServiceMemoryLimitOverwriteMaxAllowed,
 		config.ServiceEphemeralStorageLimitOverwriteMaxAllowed,
 		variables.Get(ServiceCPULimitOverwriteVariableValue),
+		variables.Get(ServiceHugePages2MiLimitOverwriteVariableValue),
 		variables.Get(ServiceMemoryLimitOverwriteVariableValue),
 		variables.Get(ServiceEphemeralStorageLimitOverwriteVariableValue),
 		logger,
+		true,
 	)
 	if err != nil {
 		return fmt.Errorf("invalid service limits specified: %w", err)
@@ -307,18 +339,23 @@ func (o *overwrites) evaluateMaxHelperResourcesOverwrite(
 ) (err error) {
 	o.helperRequests, err = o.evaluateMaxResourceListOverwrite(
 		"HelperCPURequest",
+		"",
 		"HelperMemoryRequest",
 		"HelperEphemeralStorageRequest",
 		config.HelperCPURequest,
+		"",
 		config.HelperMemoryRequest,
 		config.HelperEphemeralStorageRequest,
 		config.HelperCPURequestOverwriteMaxAllowed,
+		"",
 		config.HelperMemoryRequestOverwriteMaxAllowed,
 		config.HelperEphemeralStorageRequestOverwriteMaxAllowed,
 		variables.Get(HelperCPURequestOverwriteVariableValue),
+		"",
 		variables.Get(HelperMemoryRequestOverwriteVariableValue),
 		variables.Get(HelperEphemeralStorageRequestOverwriteVariableValue),
 		logger,
+		false,
 	)
 	if err != nil {
 		return fmt.Errorf("invalid helper requests specified: %w", err)
@@ -326,18 +363,23 @@ func (o *overwrites) evaluateMaxHelperResourcesOverwrite(
 
 	o.helperLimits, err = o.evaluateMaxResourceListOverwrite(
 		"HelperCPULimit",
+		"HelperHugePages2MiLimit",
 		"HelperMemoryLimit",
 		"HelperEphemeralStorageLimit",
 		config.HelperCPULimit,
+		config.HelperHugePages2MiLimit,
 		config.HelperMemoryLimit,
 		config.HelperEphemeralStorageLimit,
 		config.HelperCPULimitOverwriteMaxAllowed,
+		config.HelperHugePages2MiLimitOverwriteMaxAllowed,
 		config.HelperMemoryLimitOverwriteMaxAllowed,
 		config.HelperEphemeralStorageLimitOverwriteMaxAllowed,
 		variables.Get(HelperCPULimitOverwriteVariableValue),
+		variables.Get(HelperHugePages2MiLimitOverwriteVariableValue),
 		variables.Get(HelperMemoryLimitOverwriteVariableValue),
 		variables.Get(HelperEphemeralStorageLimitOverwriteVariableValue),
 		logger,
+		true,
 	)
 	if err != nil {
 		return fmt.Errorf("invalid helper limits specified: %w", err)
@@ -447,22 +489,35 @@ func (o *overwrites) evaluateMapOverwrite(
 
 func (o *overwrites) evaluateMaxResourceListOverwrite(
 	cpuFieldName,
+	hugePages2MiFieldName,
 	memoryFieldName,
 	ephemeralStorageFieldName,
 	currentCPU,
+	currentHugePages2Mi,
 	currentMemory,
 	currentEphemeralStorage,
 	maxCPU,
+	maxHugePages2Mi,
 	maxMemory,
 	maxEphemeralStorage,
 	overwriteCPU,
+	overwriteHugePages2Mi string,
 	overwriteMemory string,
 	overwriteEphemeralStorage string,
 	logger common.BuildLogger,
+	evalHugePages2Mi bool,
 ) (api.ResourceList, error) {
 	cpu, err := o.evaluateMaxResourceOverwrite(cpuFieldName, currentCPU, maxCPU, overwriteCPU, logger)
 	if err != nil {
 		return nil, err
+	}
+
+	hugePages2Mi := ""
+	if evalHugePages2Mi == true {
+		hugePages2Mi, err = o.evaluateMaxResourceOverwrite(hugePages2MiFieldName, currentHugePages2Mi, maxHugePages2Mi, overwriteHugePages2Mi, logger)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	memory, err := o.evaluateMaxResourceOverwrite(memoryFieldName, currentMemory, maxMemory, overwriteMemory, logger)
@@ -481,7 +536,7 @@ func (o *overwrites) evaluateMaxResourceListOverwrite(
 		return nil, err
 	}
 
-	return createResourceList(cpu, memory, ephemeralStorage)
+	return createResourceList(cpu, hugePages2Mi, memory, ephemeralStorage)
 }
 
 func (o *overwrites) evaluateMaxResourceOverwrite(

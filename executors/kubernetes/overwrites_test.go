@@ -62,6 +62,7 @@ func TestOverwrites(t *testing.T) {
 		Error                                error
 
 		CPULimitOverwriteVariableValue                string
+		HugePages2MiLimitOverwriteVariableValue       string
 		MemoryLimitOverwriteVariableValue             string
 		EphemeralStorageLimitOverwriteVariableValue   string
 		CPURequestOverwriteVariableValue              string
@@ -69,13 +70,16 @@ func TestOverwrites(t *testing.T) {
 		EphemeralStorageRequestOverwriteVariableValue string
 
 		ServiceCPULimitOverwriteVariableValue                string
+		ServiceHugePages2MiLimitOverwriteVariableValue       string
 		ServiceMemoryLimitOverwriteVariableValue             string
 		ServiceEphemeralStorageLimitOverwriteVariableValue   string
 		ServiceCPURequestOverwriteVariableValue              string
+		ServiceHugePages2MiRequestOverwriteVariableValue     string
 		ServiceMemoryRequestOverwriteVariableValue           string
 		ServiceEphemeralStorageRequestOverwriteVariableValue string
 
 		HelperCPULimitOverwriteVariableValue                string
+		HelperHugePages2MiLimitOverwriteVariableValue       string
 		HelperMemoryLimitOverwriteVariableValue             string
 		HelperEphemeralStorageLimitOverwriteVariableValue   string
 		HelperCPURequestOverwriteVariableValue              string
@@ -119,6 +123,8 @@ func TestOverwrites(t *testing.T) {
 				},
 				CPULimit:                                          "1.5",
 				CPULimitOverwriteMaxAllowed:                       "3.5",
+				HugePages2MiLimit:                                 "2Gi",
+				HugePages2MiLimitOverwriteMaxAllowed:              "4Gi",
 				MemoryLimit:                                       "5Gi",
 				MemoryLimitOverwriteMaxAllowed:                    "10Gi",
 				EphemeralStorageLimit:                             "15Gi",
@@ -131,6 +137,8 @@ func TestOverwrites(t *testing.T) {
 				EphemeralStorageRequestOverwriteMaxAllowed:        "110Gi",
 				ServiceCPULimit:                                   "100m",
 				ServiceCPULimitOverwriteMaxAllowed:                "1000m",
+				ServiceHugePages2MiLimit:                          "100Mi",
+				ServiceHugePages2MiLimitOverwriteMaxAllowed:       "1000Mi",
 				ServiceMemoryLimit:                                "200Mi",
 				ServiceMemoryLimitOverwriteMaxAllowed:             "2000Mi",
 				ServiceEphemeralStorageLimit:                      "300Mi",
@@ -143,6 +151,8 @@ func TestOverwrites(t *testing.T) {
 				ServiceEphemeralStorageRequestOverwriteMaxAllowed: "165Mi",
 				HelperCPULimit:                                    "50m",
 				HelperCPULimitOverwriteMaxAllowed:                 "555m",
+				HelperHugePages2MiLimit:                           "50Mi",
+				HelperHugePages2MiLimitOverwriteMaxAllowed:        "505Mi",
 				HelperMemoryLimit:                                 "100Mi",
 				HelperMemoryLimitOverwriteMaxAllowed:              "1010Mi",
 				HelperEphemeralStorageLimit:                       "200Mi",
@@ -169,18 +179,21 @@ func TestOverwrites(t *testing.T) {
 				"KUBERNETES_POD_ANNOTATIONS_kube2iam":     "iam.amazonaws.com/role=arn:aws:iam::kjcbs;dkjbck=jxzweopiu:role/",
 			},
 			CPULimitOverwriteVariableValue:                       "3",
+			HugePages2MiLimitOverwriteVariableValue:              "4Gi",
 			MemoryLimitOverwriteVariableValue:                    "10Gi",
 			EphemeralStorageLimitOverwriteVariableValue:          "16Gi",
 			CPURequestOverwriteVariableValue:                     "2",
 			MemoryRequestOverwriteVariableValue:                  "3Gi",
 			EphemeralStorageRequestOverwriteVariableValue:        "11Gi",
 			ServiceCPULimitOverwriteVariableValue:                "200m",
+			ServiceHugePages2MiLimitOverwriteVariableValue:       "200Mi",
 			ServiceMemoryLimitOverwriteVariableValue:             "400Mi",
 			ServiceEphemeralStorageLimitOverwriteVariableValue:   "600Mi",
 			ServiceCPURequestOverwriteVariableValue:              "198m",
 			ServiceMemoryRequestOverwriteVariableValue:           "10Mi",
 			ServiceEphemeralStorageRequestOverwriteVariableValue: "110Mi",
 			HelperCPULimitOverwriteVariableValue:                 "105m",
+			HelperHugePages2MiLimitOverwriteVariableValue:        "101Mi",
 			HelperMemoryLimitOverwriteVariableValue:              "202Mi",
 			HelperEphemeralStorageLimitOverwriteVariableValue:    "303Mi",
 			HelperCPURequestOverwriteVariableValue:               "4.5m",
@@ -208,12 +221,12 @@ func TestOverwrites(t *testing.T) {
 					"org.gitlab/gitlab-host":    "https://gitlab.example.com",
 					"iam.amazonaws.com/role":    "arn:aws:iam::kjcbs;dkjbck=jxzweopiu:role/",
 				},
-				buildLimits:     mustCreateResourceList(t, "3", "10Gi", "16Gi"),
-				buildRequests:   mustCreateResourceList(t, "2", "3Gi", "11Gi"),
-				serviceLimits:   mustCreateResourceList(t, "200m", "400Mi", "600Mi"),
-				serviceRequests: mustCreateResourceList(t, "198m", "10Mi", "110Mi"),
-				helperLimits:    mustCreateResourceList(t, "105m", "202Mi", "303Mi"),
-				helperRequests:  mustCreateResourceList(t, "4.5m", "84Mi", "96Mi"),
+				buildLimits:     mustCreateResourceList(t, "3", "4Gi", "10Gi", "16Gi"),
+				buildRequests:   mustCreateResourceList(t, "2", "", "3Gi", "11Gi"),
+				serviceLimits:   mustCreateResourceList(t, "200m", "200Mi", "400Mi", "600Mi"),
+				serviceRequests: mustCreateResourceList(t, "198m", "", "10Mi", "110Mi"),
+				helperLimits:    mustCreateResourceList(t, "105m", "101Mi", "202Mi", "303Mi"),
+				helperRequests:  mustCreateResourceList(t, "4.5m", "", "84Mi", "96Mi"),
 			},
 		},
 		{
@@ -231,18 +244,21 @@ func TestOverwrites(t *testing.T) {
 					"test2": "test2",
 				},
 				CPULimit:                       "1.5",
+				HugePages2MiLimit:              "2Gi",
 				MemoryLimit:                    "4Gi",
 				EphemeralStorageLimit:          "3Gi",
 				CPURequest:                     "1",
 				MemoryRequest:                  "1.5Gi",
 				EphemeralStorageRequest:        "3Gi",
 				ServiceCPULimit:                "100m",
+				ServiceHugePages2MiLimit:       "100Mi",
 				ServiceMemoryLimit:             "200Mi",
 				ServiceEphemeralStorageLimit:   "300Mi",
 				ServiceCPURequest:              "99m",
 				ServiceMemoryRequest:           "5Mi",
 				ServiceEphemeralStorageRequest: "10Mi",
 				HelperCPULimit:                 "50m",
+				HelperHugePages2MiLimit:        "50Mi",
 				HelperMemoryLimit:              "100Mi",
 				HelperEphemeralStorageLimit:    "200Mi",
 				HelperCPURequest:               "0.5m",
@@ -261,18 +277,21 @@ func TestOverwrites(t *testing.T) {
 				"KUBERNETES_POD_ANNOTATIONS_2": "test4=test4",
 			},
 			CPULimitOverwriteVariableValue:                       "3",
+			HugePages2MiLimitOverwriteVariableValue:              "5Gi",
 			MemoryLimitOverwriteVariableValue:                    "10Gi",
 			EphemeralStorageLimitOverwriteVariableValue:          "16Gi",
 			CPURequestOverwriteVariableValue:                     "2",
 			MemoryRequestOverwriteVariableValue:                  "3Gi",
 			EphemeralStorageRequestOverwriteVariableValue:        "11Gi",
 			ServiceCPULimitOverwriteVariableValue:                "200m",
+			ServiceHugePages2MiLimitOverwriteVariableValue:       "200Mi",
 			ServiceMemoryLimitOverwriteVariableValue:             "400Mi",
 			ServiceEphemeralStorageLimitOverwriteVariableValue:   "17Gi",
 			ServiceCPURequestOverwriteVariableValue:              "198m",
 			ServiceMemoryRequestOverwriteVariableValue:           "10Mi",
 			ServiceEphemeralStorageRequestOverwriteVariableValue: "12Gi",
 			HelperCPULimitOverwriteVariableValue:                 "105m",
+			HelperHugePages2MiLimitOverwriteVariableValue:        "101Mi",
 			HelperMemoryLimitOverwriteVariableValue:              "202Mi",
 			HelperEphemeralStorageLimitOverwriteVariableValue:    "18Gi",
 			HelperCPURequestOverwriteVariableValue:               "4.5m",
@@ -290,12 +309,12 @@ func TestOverwrites(t *testing.T) {
 					"test1": "test1",
 					"test2": "test2",
 				},
-				buildLimits:     mustCreateResourceList(t, "1.5", "4Gi", "3Gi"),
-				buildRequests:   mustCreateResourceList(t, "1", "1.5Gi", "3Gi"),
-				serviceLimits:   mustCreateResourceList(t, "100m", "200Mi", "300Mi"),
-				serviceRequests: mustCreateResourceList(t, "99m", "5Mi", "10Mi"),
-				helperLimits:    mustCreateResourceList(t, "50m", "100Mi", "200Mi"),
-				helperRequests:  mustCreateResourceList(t, "0.5m", "42Mi", "38Mi"),
+				buildLimits:     mustCreateResourceList(t, "1.5", "2Gi", "4Gi", "3Gi"),
+				buildRequests:   mustCreateResourceList(t, "1", "", "1.5Gi", "3Gi"),
+				serviceLimits:   mustCreateResourceList(t, "100m", "100Mi", "200Mi", "300Mi"),
+				serviceRequests: mustCreateResourceList(t, "99m", "", "5Mi", "10Mi"),
+				helperLimits:    mustCreateResourceList(t, "50m", "50Mi", "100Mi", "200Mi"),
+				helperRequests:  mustCreateResourceList(t, "0.5m", "", "42Mi", "38Mi"),
 			},
 		},
 		{
@@ -304,6 +323,7 @@ func TestOverwrites(t *testing.T) {
 				CPURequestOverwriteMaxAllowed:              "10",
 				CPULimitOverwriteMaxAllowed:                "12",
 				MemoryRequestOverwriteMaxAllowed:           "10Gi",
+				HugePages2MiLimitOverwriteMaxAllowed:       "6Gi",
 				MemoryLimitOverwriteMaxAllowed:             "12Gi",
 				EphemeralStorageRequestOverwriteMaxAllowed: "10Gi",
 				EphemeralStorageLimitOverwriteMaxAllowed:   "13Gi",
@@ -311,12 +331,13 @@ func TestOverwrites(t *testing.T) {
 			CPURequestOverwriteVariableValue:              "10",
 			CPULimitOverwriteVariableValue:                "12",
 			MemoryRequestOverwriteVariableValue:           "10Gi",
+			HugePages2MiLimitOverwriteVariableValue:       "6Gi",
 			MemoryLimitOverwriteVariableValue:             "12Gi",
 			EphemeralStorageRequestOverwriteVariableValue: "10Gi",
 			EphemeralStorageLimitOverwriteVariableValue:   "13Gi",
 			Expected: &overwrites{
-				buildLimits:     mustCreateResourceList(t, "12", "12Gi", "13Gi"),
-				buildRequests:   mustCreateResourceList(t, "10", "10Gi", "10Gi"),
+				buildLimits:     mustCreateResourceList(t, "12", "6Gi", "12Gi", "13Gi"),
+				buildRequests:   mustCreateResourceList(t, "10", "", "10Gi", "10Gi"),
 				serviceLimits:   api.ResourceList{},
 				serviceRequests: api.ResourceList{},
 				helperLimits:    api.ResourceList{},
@@ -412,6 +433,22 @@ func TestOverwrites(t *testing.T) {
 			Error:                            new(overwriteTooHighError),
 		},
 		{
+			Name: "HugePage2MiLimit too high",
+			Config: &common.KubernetesConfig{
+				HugePages2MiLimitOverwriteMaxAllowed: "1Gi",
+			},
+			HugePages2MiLimitOverwriteVariableValue: "5Gi",
+			Error:                                   new(overwriteTooHighError),
+		},
+		{
+			Name: "HugePage2MiLimit too high Mi",
+			Config: &common.KubernetesConfig{
+				HugePages2MiLimitOverwriteMaxAllowed: "10Mi",
+			},
+			HugePages2MiLimitOverwriteVariableValue: "5Gi",
+			Error:                                   new(overwriteTooHighError),
+		},
+		{
 			Name: "MemoryLimit too high",
 			Config: &common.KubernetesConfig{
 				MemoryLimitOverwriteMaxAllowed: "2Gi",
@@ -504,18 +541,21 @@ func TestOverwrites(t *testing.T) {
 					BearerTokenOverwriteVariableValue:                    test.BearerTokenOverwriteVariableValue,
 					CPULimitOverwriteVariableValue:                       test.CPULimitOverwriteVariableValue,
 					CPURequestOverwriteVariableValue:                     test.CPURequestOverwriteVariableValue,
+					HugePages2MiLimitOverwriteVariableValue:              test.HugePages2MiLimitOverwriteVariableValue,
 					MemoryLimitOverwriteVariableValue:                    test.MemoryLimitOverwriteVariableValue,
 					MemoryRequestOverwriteVariableValue:                  test.MemoryRequestOverwriteVariableValue,
 					EphemeralStorageLimitOverwriteVariableValue:          test.EphemeralStorageLimitOverwriteVariableValue,
 					EphemeralStorageRequestOverwriteVariableValue:        test.EphemeralStorageRequestOverwriteVariableValue,
 					ServiceCPULimitOverwriteVariableValue:                test.ServiceCPULimitOverwriteVariableValue,
 					ServiceCPURequestOverwriteVariableValue:              test.ServiceCPURequestOverwriteVariableValue,
+					ServiceHugePages2MiLimitOverwriteVariableValue:       test.ServiceHugePages2MiLimitOverwriteVariableValue,
 					ServiceMemoryLimitOverwriteVariableValue:             test.ServiceMemoryLimitOverwriteVariableValue,
 					ServiceMemoryRequestOverwriteVariableValue:           test.ServiceMemoryRequestOverwriteVariableValue,
 					ServiceEphemeralStorageLimitOverwriteVariableValue:   test.ServiceEphemeralStorageLimitOverwriteVariableValue,
 					ServiceEphemeralStorageRequestOverwriteVariableValue: test.ServiceEphemeralStorageRequestOverwriteVariableValue,
 					HelperCPULimitOverwriteVariableValue:                 test.HelperCPULimitOverwriteVariableValue,
 					HelperCPURequestOverwriteVariableValue:               test.HelperCPURequestOverwriteVariableValue,
+					HelperHugePages2MiLimitOverwriteVariableValue:        test.HelperHugePages2MiLimitOverwriteVariableValue,
 					HelperMemoryLimitOverwriteVariableValue:              test.HelperMemoryLimitOverwriteVariableValue,
 					HelperMemoryRequestOverwriteVariableValue:            test.HelperMemoryRequestOverwriteVariableValue,
 					HelperEphemeralStorageLimitOverwriteVariableValue:    test.HelperEphemeralStorageLimitOverwriteVariableValue,
