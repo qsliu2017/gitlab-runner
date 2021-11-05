@@ -245,6 +245,8 @@ func waitForPodRunning(
 	return api.PodUnknown, errors.New("timed out waiting for pod to start")
 }
 
+const resourceHugePages2Mi api.ResourceName = "hugepages-2mi"
+
 // limits takes a string representing CPU, hugePages2Mi, memory and ephemeralStorage limits,
 // and returns a ResourceList with appropriately scaled Quantity
 // values for Kubernetes. This allows users to write "500m" for CPU,
@@ -291,9 +293,7 @@ func createResourceList(cpu, hugePages2Mi, memory, ephemeralStorage string) (api
 		l[api.ResourceCPU] = rCPU
 	}
 	if rHP2Mi != q {
-		// They use a convoluted prefix approach upstream, just define it with the correct string key for now
-		// ref "ResourceHugePagesPrefix" in https://pkg.go.dev/k8s.io/api/core/v1
-		l["hugepages-2mi"] = rHP2Mi
+		l[resourceHugePages2Mi] = rHP2Mi
 	}
 	if rMem != q {
 		l[api.ResourceMemory] = rMem

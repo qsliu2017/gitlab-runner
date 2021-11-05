@@ -406,7 +406,7 @@ func TestCreateResourceList(t *testing.T) {
 			EphemeralStorage: "2048Mi",
 			Expected: api.ResourceList{
 				api.ResourceCPU:              resource.MustParse("500m"),
-				api.ResourceHugePages2Mi:     resource.MustParse("512Mi"),
+				resourceHugePages2Mi:         resource.MustParse("512Mi"),
 				api.ResourceMemory:           resource.MustParse("1024Mi"),
 				api.ResourceEphemeralStorage: resource.MustParse("2048Mi"),
 			},
@@ -447,8 +447,8 @@ func TestCreateResourceList(t *testing.T) {
 			HugePages2Mi: "200j",
 			Expected:     api.ResourceList{},
 			Error: &resourceQuantityError{
-				resource: "hugepages-2mi",
-				value:    "200j",
+				resource: "hugePages2Mi",
+				value:    "",
 				inner:    mustGetParseError(t, "200j"),
 			},
 		},
