@@ -271,7 +271,7 @@ func createResourceList(cpu, hugePages2Mi, memory, ephemeralStorage string) (api
 	}
 
 	if rHP2Mi, err = parse(hugePages2Mi); err != nil {
-		return api.ResourceList{}, &resourceQuantityError{resource: "hugePages2Mi", value: memory, inner: err}
+		return api.ResourceList{}, &resourceQuantityError{resource: "hugepages-2mi", value: hugePages2Mi, inner: err}
 	}
 
 	if rMem, err = parse(memory); err != nil {
