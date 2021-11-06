@@ -245,7 +245,7 @@ func waitForPodRunning(
 	return api.PodUnknown, errors.New("timed out waiting for pod to start")
 }
 
-const resourceHugePages2Mi api.ResourceName = "hugepages-2mi"
+const resourceHugePages2Mi api.ResourceName = "hugepages-2Mi"
 
 // limits takes a string representing CPU, hugePages2Mi, memory and ephemeralStorage limits,
 // and returns a ResourceList with appropriately scaled Quantity
