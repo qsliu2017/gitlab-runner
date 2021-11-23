@@ -4,9 +4,9 @@ stages:
 - test
 - coverage
 - build
-- integration
 - package
 - release
+- integration
 - postrelease
 - docs
 
