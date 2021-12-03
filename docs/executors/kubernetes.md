@@ -9,7 +9,7 @@ info: To determine the technical writer assigned to the Stage/Group associated w
 GitLab Runner can use Kubernetes to run builds on a Kubernetes cluster. This is
 possible with the use of the **Kubernetes** executor.
 
-The **Kubernetes** executor, when used with GitLab CI, connects to the Kubernetes
+The **GitLab Runner for Kubernetes** executor, when used with GitLab CI, connects to the Kubernetes
 API in the cluster creating a Pod for each GitLab CI Job. This Pod is made
 up of, at the very least, a build container, a helper container, and an additional container for each
 `service` defined in the `.gitlab-ci.yml` or `config.toml` files. The names for these containers
