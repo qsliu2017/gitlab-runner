@@ -328,15 +328,20 @@ func TestWriteWritingArchiveCacheOnSuccess(t *testing.T) {
 
 	shell := AbstractShell{}
 
+	goCloudFlags := map[string]bool{
+		featureflags.UseGoCloudForS3CacheUploads: true,
+	}
+
 	tests := map[string]struct {
-		cacheType string
+		cacheType    string
+		featureFlags map[string]bool
 	}{
 		"pre-signed URL cache": {
 			cacheType: "test",
 		},
-
 		"GoCloud cache": {
-			cacheType: "goCloudTest",
+			cacheType:    "goCloudTest",
+			featureFlags: goCloudFlags,
 		},
 	}
 
@@ -348,6 +353,7 @@ func TestWriteWritingArchiveCacheOnSuccess(t *testing.T) {
 						Type:   tt.cacheType,
 						Shared: true,
 					},
+					FeatureFlags: tt.featureFlags,
 				},
 				RunnerCredentials: common.RunnerCredentials{
 					URL: gitlabURL,
@@ -370,7 +376,7 @@ func TestWriteWritingArchiveCacheOnSuccess(t *testing.T) {
 			mockWriter.On("IfCmd", "gitlab-runner-helper", "--version")
 			mockWriter.On("Noticef", "Creating cache %s...", mock.Anything).Times(3)
 
-			if tt.cacheType == "test" {
+			if !build.IsFeatureFlagOn(featureflags.UseGoCloudForS3CacheUploads) {
 				mockWriter.On(
 					"IfCmdWithOutput", "gitlab-runner-helper", "cache-archiver",
 					"--file", mock.Anything,
@@ -447,16 +453,20 @@ func TestWriteWritingArchiveCacheOnFailure(t *testing.T) {
 	gitlabURL := "https://example.com:3443"
 
 	shell := AbstractShell{}
+	goCloudFlags := map[string]bool{
+		featureflags.UseGoCloudForS3CacheUploads: true,
+	}
 
 	tests := map[string]struct {
-		cacheType string
+		cacheType    string
+		featureFlags map[string]bool
 	}{
 		"pre-signed URL cache": {
 			cacheType: "test",
 		},
-
 		"GoCloud cache": {
-			cacheType: "goCloudTest",
+			cacheType:    "goCloudTest",
+			featureFlags: goCloudFlags,
 		},
 	}
 
@@ -468,6 +478,7 @@ func TestWriteWritingArchiveCacheOnFailure(t *testing.T) {
 						Type:   tt.cacheType,
 						Shared: true,
 					},
+					FeatureFlags: tt.featureFlags,
 				},
 				RunnerCredentials: common.RunnerCredentials{
 					URL: gitlabURL,
@@ -490,7 +501,7 @@ func TestWriteWritingArchiveCacheOnFailure(t *testing.T) {
 			mockWriter.On("IfCmd", "gitlab-runner-helper", "--version")
 			mockWriter.On("Noticef", "Creating cache %s...", mock.Anything).Times(2)
 
-			if tt.cacheType == "test" {
+			if !build.IsFeatureFlagOn(featureflags.UseGoCloudForS3CacheUploads) {
 				mockWriter.On(
 					"IfCmdWithOutput", "gitlab-runner-helper", "cache-archiver",
 					"--file", mock.Anything,

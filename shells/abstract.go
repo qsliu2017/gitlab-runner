@@ -235,6 +235,22 @@ func (b *AbstractShell) writeExports(w ShellWriter, info common.ShellScriptInfo)
 	}
 }
 
+func (b *AbstractShell) writeCacheExports(w ShellWriter, info common.ShellScriptInfo) {
+	cacheVariables := info.Build.GetCacheHelperVariables()
+
+	// Filter out any build variables that would conflict with the cache
+	// credential variables (e.g. AWS_ACCESS_KEY_ID). Note that we don't
+	// want to inject the cache credential variables in the script
+	// because the values would then be visible in debug
+	// output. Instead, the variables are quietly inserted in the job's
+	// environment via the ExecutorCommand's AdditionalEnv parameter.
+	for _, variable := range info.Build.GetAllVariables() {
+		if cacheVariables.Get(variable.Key) == "" {
+			w.Variable(variable)
+		}
+	}
+}
+
 func (b *AbstractShell) writeGitSSLConfig(w ShellWriter, build *common.Build, where []string) {
 	repoURL, err := url.Parse(build.GetRemoteURL())
 	if err != nil {
@@ -488,7 +504,7 @@ func (b *AbstractShell) writeSubmoduleUpdateNoticeMsg(w ShellWriter, recursive b
 }
 
 func (b *AbstractShell) writeRestoreCacheScript(w ShellWriter, info common.ShellScriptInfo) error {
-	b.writeExports(w, info)
+	b.writeCacheExports(w, info)
 	b.writeCdBuildDir(w, info)
 
 	// Try to restore from main cache, if not found cache for default branch
@@ -580,7 +596,7 @@ func (b *AbstractShell) writeUserScript(
 }
 
 func (b *AbstractShell) cacheArchiver(w ShellWriter, info common.ShellScriptInfo, onSuccess bool) error {
-	b.writeExports(w, info)
+	b.writeCacheExports(w, info)
 	b.writeCdBuildDir(w, info)
 
 	skipArchiveCache, err := b.archiveCache(w, info, onSuccess)
@@ -686,9 +702,11 @@ func (b *AbstractShell) addCacheUploadCommand(
 // available then fallback to a pre-signed URL.
 func getCacheUploadURL(build *common.Build, cacheKey string) []string {
 	// Prefer Go Cloud URL if supported
-	goCloudURL := cache.GetCacheGoCloudURL(build, cacheKey)
-	if goCloudURL != nil {
-		return []string{"--gocloud-url", goCloudURL.String()}
+	if build.IsFeatureFlagOn(featureflags.UseGoCloudForS3CacheUploads) {
+		goCloudURL := cache.GetCacheGoCloudURL(build, cacheKey)
+		if goCloudURL != nil {
+			return []string{"--gocloud-url", goCloudURL.String()}
+		}
 	}
 
 	uploadURL := cache.GetCacheUploadURL(build, cacheKey)

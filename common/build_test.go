@@ -157,7 +157,7 @@ func TestBuildPanic(t *testing.T) {
 
 			cfg := &RunnerConfig{}
 			cfg.Executor = t.Name()
-			build, err := NewBuild(res, cfg, nil, nil)
+			build, err := NewBuild(res, cfg, nil, nil, nil)
 			require.NoError(t, err)
 			var out bytes.Buffer
 			err = build.Run(&Config{}, &Trace{Writer: &out})
@@ -1755,7 +1755,7 @@ func registerExecutorWithSuccessfulBuild(t *testing.T, p *MockExecutorProvider, 
 		// Ensure we set the executor name if not already defined
 		rc.RunnerSettings.Executor = t.Name()
 	}
-	build, err := NewBuild(successfulBuild, rc, nil, nil)
+	build, err := NewBuild(successfulBuild, rc, nil, nil, nil)
 	assert.NoError(t, err)
 	return build
 }
@@ -1863,7 +1863,7 @@ func TestSecretsResolving(t *testing.T) {
 			rc := new(RunnerConfig)
 			rc.RunnerSettings.Executor = t.Name()
 
-			build, err := NewBuild(successfulBuild, rc, nil, nil)
+			build, err := NewBuild(successfulBuild, rc, nil, nil, nil)
 			assert.NoError(t, err)
 
 			build.secretsResolver = func(_ logger, _ SecretResolverRegistry) (SecretsResolver, error) {
@@ -1994,6 +1994,89 @@ func TestSetTraceStatus(t *testing.T) {
 
 			tc.assert(t, trace, tc.err)
 			b.setTraceStatus(trace, tc.err)
+		})
+	}
+}
+
+func TestExecuteStageWithAdditionalEnv(t *testing.T) {
+	provider := &MockCacheCredentialsProvider{}
+	provider.On("GetCredentials").Return(map[string]string{"ABC": "123", "XYZ": "456"})
+
+	featureFlagCfg := map[string]bool{
+		featureflags.UseGoCloudForS3CacheUploads: true,
+	}
+	build := &Build{
+		Runner: &RunnerConfig{
+			RunnerSettings: RunnerSettings{
+				FeatureFlags: featureFlagCfg,
+			},
+		},
+		JobResponse:              JobResponse{},
+		cacheCredentialsProvider: provider,
+	}
+
+	tests := map[string]struct {
+		stage         BuildStage
+		expectedCreds bool
+	}{
+		"prepare": {
+			stage:         BuildStagePrepare,
+			expectedCreds: false,
+		},
+		"get sources": {
+			stage:         BuildStageGetSources,
+			expectedCreds: false,
+		},
+		"restore cache": {
+			stage:         BuildStageRestoreCache,
+			expectedCreds: true,
+		},
+		"download artifacts": {
+			stage:         BuildStageDownloadArtifacts,
+			expectedCreds: false,
+		},
+		"after script": {
+			stage:         BuildStageAfterScript,
+			expectedCreds: false,
+		},
+		"archive cache on success": {
+			stage:         BuildStageArchiveOnSuccessCache,
+			expectedCreds: true,
+		},
+		"upload artifacts on failed job": {
+			stage:         BuildStageUploadOnFailureArtifacts,
+			expectedCreds: false,
+		},
+		"upload artifacts on successful job": {
+			stage:         BuildStageUploadOnSuccessArtifacts,
+			expectedCreds: false,
+		},
+		"clean up": {
+			stage:         BuildStageCleanup,
+			expectedCreds: false,
+		},
+	}
+
+	for tn, tt := range tests {
+		t.Run(tn, func(t *testing.T) {
+			executor := new(MockExecutor)
+			executor.On("Shell").Return(&ShellScriptInfo{Shell: "script-shell"})
+			executor.On("Run", mock.Anything).Return(
+				func(cmd ExecutorCommand) error {
+					vars := cmd.AdditionalEnv
+
+					if tt.expectedCreds {
+						assert.Equal(t, 2, len(vars))
+					} else {
+						assert.Empty(t, vars)
+					}
+
+					return nil
+				},
+			)
+
+			err := build.executeStage(context.Background(), tt.stage, executor)
+			assert.NoError(t, err)
 		})
 	}
 }

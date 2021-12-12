@@ -15,10 +15,11 @@ type ExecutorData interface{}
 // ExecutorCommand stores the script executor will run on a given stage.
 // If Predefined it will try to use already allocated resources.
 type ExecutorCommand struct {
-	Script     string
-	Stage      BuildStage
-	Predefined bool
-	Context    context.Context
+	Script        string
+	Stage         BuildStage
+	Predefined    bool
+	Context       context.Context
+	AdditionalEnv JobVariables
 }
 
 // ExecutorStage represents a stage of build execution in the executor scope.

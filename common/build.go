@@ -101,6 +101,10 @@ var staticBuildStages = []BuildStage{
 	BuildStageCleanup,
 }
 
+type CacheCredentialsProvider interface {
+	GetCredentials() map[string]string
+}
+
 const (
 	ExecutorJobSectionAttempts = "EXECUTOR_JOB_SECTION_ATTEMPTS"
 )
@@ -149,6 +153,8 @@ type Build struct {
 	executorStageResolver func() ExecutorStage
 
 	secretsResolver func(l logger, registry SecretResolverRegistry) (SecretsResolver, error)
+
+	cacheCredentialsProvider CacheCredentialsProvider
 
 	Session *session.Session
 
@@ -352,10 +358,11 @@ func (b *Build) executeStage(ctx context.Context, buildStage BuildStage, executo
 	}
 
 	cmd := ExecutorCommand{
-		Context:    ctx,
-		Script:     script,
-		Stage:      buildStage,
-		Predefined: getPredefinedEnv(buildStage),
+		Context:       ctx,
+		Script:        script,
+		Stage:         buildStage,
+		Predefined:    getPredefinedEnv(buildStage),
+		AdditionalEnv: b.getAdditionalEnv(buildStage),
 	}
 
 	section := helpers.BuildSection{
@@ -398,6 +405,30 @@ func getPredefinedEnv(buildStage BuildStage) bool {
 	}
 
 	return predefined
+}
+
+func (b *Build) GetCacheHelperVariables() JobVariables {
+	if b.cacheCredentialsProvider == nil || !b.IsFeatureFlagOn(featureflags.UseGoCloudForS3CacheUploads) {
+		return JobVariables{}
+	}
+
+	creds := b.cacheCredentialsProvider.GetCredentials()
+	var env JobVariables
+
+	for key, value := range creds {
+		env = append(env, JobVariable{Key: key, Value: value, Internal: true})
+	}
+
+	return env
+}
+
+func (b *Build) getAdditionalEnv(buildStage BuildStage) JobVariables {
+	switch buildStage {
+	case BuildStageRestoreCache, BuildStageArchiveOnSuccessCache, BuildStageArchiveOnFailureCache:
+		return b.GetCacheHelperVariables()
+	}
+
+	return JobVariables{}
 }
 
 func GetStageDescription(stage BuildStage) string {
@@ -1354,6 +1385,7 @@ func NewBuild(
 	runnerConfig *RunnerConfig,
 	systemInterrupt chan os.Signal,
 	executorData ExecutorData,
+	cacheCredentialsProvider CacheCredentialsProvider,
 ) (*Build, error) {
 	// Attempt to perform a deep copy of the RunnerConfig
 	runnerConfigCopy, err := runnerConfig.DeepCopy()
@@ -1362,12 +1394,13 @@ func NewBuild(
 	}
 
 	return &Build{
-		JobResponse:     jobData,
-		Runner:          runnerConfigCopy,
-		SystemInterrupt: systemInterrupt,
-		ExecutorData:    executorData,
-		createdAt:       time.Now(),
-		secretsResolver: newSecretsResolver,
+		JobResponse:              jobData,
+		Runner:                   runnerConfigCopy,
+		SystemInterrupt:          systemInterrupt,
+		ExecutorData:             executorData,
+		createdAt:                time.Now(),
+		secretsResolver:          newSecretsResolver,
+		cacheCredentialsProvider: cacheCredentialsProvider,
 	}, nil
 }
 

@@ -24,6 +24,7 @@ const (
 	UseNewShellEscape                    string = "FF_USE_NEW_SHELL_ESCAPE"
 	EnableJobCleanup                     string = "FF_ENABLE_JOB_CLEANUP"
 	KubernetesHonorEntrypoint            string = "FF_KUBERNETES_HONOR_ENTRYPOINT"
+	UseGoCloudForS3CacheUploads          string = "FF_USE_GO_CLOUD_S3_CACHE_UPLOADS"
 )
 
 type FeatureFlag struct {
@@ -182,7 +183,15 @@ var flags = []FeatureFlag{
 		Deprecated:      false,
 		ToBeRemovedWith: "",
 		Description: "When enabled, the Docker entrypoint of an image will be honored if " +
-			"`FF_USE_LEGACY_KUBERNETES_EXECUTION_STRATEGY` is not set to true",
+			"`FF_USE_LEGACY_KUBERNETES_EXECUTION_STRATEGY` is not set to true.",
+	},
+	{
+		Name:            UseGoCloudForS3CacheUploads,
+		DefaultValue:    false,
+		Deprecated:      false,
+		ToBeRemovedWith: "",
+		Description: "When enabled, cache uploads to S3 will use the native AWS SDK via Go Cloud if " +
+			"`FF_USE_GO_CLOUD_S3_CACHE_UPLOADS` is set to true. This enables multipart uploads for files > 5 GB.",
 	},
 }
 

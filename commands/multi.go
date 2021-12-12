@@ -19,6 +19,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
 
+	"gitlab.com/gitlab-org/gitlab-runner/cache"
 	"gitlab.com/gitlab-org/gitlab-runner/common"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers/certificate"
@@ -508,8 +509,10 @@ func (mr *RunCommand) processRunner(
 	}
 	defer func() { mr.traceOutcome(trace, err) }()
 
+	cacheProvider := getCacheCredentialsProvider(runner.Cache)
+
 	// Create a new build
-	build, err := common.NewBuild(*jobData, runner, mr.abortBuilds, executorData)
+	build, err := common.NewBuild(*jobData, runner, mr.abortBuilds, executorData, cacheProvider)
 	if err != nil {
 		return
 	}
@@ -945,6 +948,16 @@ func (mr *RunCommand) Collect(ch chan<- prometheus.Metric) {
 			runner.ShortDescription(),
 		)
 	}
+}
+
+func getCacheCredentialsProvider(config *common.CacheConfig) common.CacheCredentialsProvider {
+	if config == nil {
+		return nil
+	}
+
+	adapter, _ := cache.CreateCredentialsAdapter(config)
+
+	return adapter
 }
 
 func init() {

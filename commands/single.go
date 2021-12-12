@@ -92,8 +92,10 @@ func (r *RunSingleCommand) processBuild(data common.ExecutorData, abortSignal ch
 		return nil
 	}
 
+	cacheProvider := getCacheCredentialsProvider(r.RunnerConfig.Cache)
+
 	config := common.NewConfig()
-	newBuild, err := common.NewBuild(*jobData, &r.RunnerConfig, abortSignal, data)
+	newBuild, err := common.NewBuild(*jobData, &r.RunnerConfig, abortSignal, data, cacheProvider)
 	if err != nil {
 		return err
 	}

@@ -5,7 +5,10 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strconv"
 	"time"
+
+	"github.com/minio/minio-go/v7/pkg/s3utils"
 
 	"github.com/sirupsen/logrus"
 
@@ -18,6 +21,24 @@ type s3Adapter struct {
 	config     *common.CacheS3Config
 	objectName string
 	client     minioClient
+}
+
+func isVirtualHostSupported(c *common.CacheS3Config) bool {
+	// We assume this is the default AWS server, so it must support virtual hosts.
+	if c.ServerAddress == "" {
+		return true
+	}
+
+	scheme := "https"
+	if c.Insecure {
+		scheme = "http"
+	}
+
+	u := url.URL{Scheme: scheme, Host: c.ServerAddress}
+
+	// Since we don't have a `PathStyle` config option, we use Minio's utility class
+	// to auto-detect whether the endpoint supports this.
+	return s3utils.IsVirtualHostSupported(u, c.BucketName)
 }
 
 func (a *s3Adapter) GetDownloadURL() *url.URL {
@@ -47,7 +68,23 @@ func (a *s3Adapter) GetUploadHeaders() http.Header {
 }
 
 func (a *s3Adapter) GetGoCloudURL() *url.URL {
-	return nil
+	// Go Cloud omits the object name from the URL. Since object storage
+	// providers use the URL host for the bucket name, we attach the
+	// object name to avoid having to pass another parameter.
+	u := &url.URL{
+		Scheme: "s3",
+		Host:   a.config.BucketName,
+		Path:   a.objectName,
+	}
+
+	q := u.Query()
+	q.Set("endpoint", a.config.GetEndpoint())
+	q.Set("region", a.config.BucketLocation)
+	q.Set("disableSSL", strconv.FormatBool(a.config.Insecure))
+	q.Set("s3ForcePathStyle", strconv.FormatBool(!isVirtualHostSupported(a.config)))
+	u.RawQuery = q.Encode()
+
+	return u
 }
 
 func (a *s3Adapter) GetUploadEnv() map[string]string {

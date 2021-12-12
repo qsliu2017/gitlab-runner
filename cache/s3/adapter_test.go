@@ -5,6 +5,7 @@ package s3
 import (
 	"errors"
 	"net/url"
+	"strconv"
 	"testing"
 	"time"
 
@@ -16,9 +17,8 @@ import (
 	"gitlab.com/gitlab-org/gitlab-runner/common"
 )
 
-var defaultTimeout = 1 * time.Hour
-
 const (
+	defaultTimeout = 1 * time.Hour
 	bucketName     = "test"
 	objectName     = "key"
 	bucketLocation = "location"
@@ -98,8 +98,19 @@ func testCacheOperation(
 
 		headers := adapter.GetUploadHeaders()
 		assert.Nil(t, headers)
-		assert.Nil(t, adapter.GetGoCloudURL())
 		assert.Empty(t, adapter.GetUploadEnv())
+
+		url := adapter.GetGoCloudURL()
+		require.NotNil(t, url)
+		assert.Equal(t, "s3", url.Scheme)
+		assert.Equal(t, bucketName, url.Host)
+		assert.Equal(t, objectName, url.Path)
+
+		q := url.Query()
+		assert.Equal(t, bucketLocation, q.Get("region"))
+		assert.Equal(t, "https://server.com", q.Get("endpoint"))
+		assert.Equal(t, "false", q.Get("disableSSL"))
+		assert.Equal(t, "true", q.Get("s3ForcePathStyle"))
 	})
 }
 
@@ -136,6 +147,79 @@ func TestCacheOperation(t *testing.T) {
 				func(adapter cache.Adapter) *url.URL { return adapter.GetUploadURL() },
 				test,
 			)
+		})
+	}
+}
+
+func TestCacheOperation_GetGoCloudURL(t *testing.T) {
+	tests := map[string]struct {
+		s3         *common.CacheS3Config
+		disableSSL bool
+		pathStyle  bool
+	}{
+		"defaults": {
+			s3: &common.CacheS3Config{
+				BucketName: bucketName,
+			},
+			disableSSL: false,
+			pathStyle:  false,
+		},
+		"defaults with region": {
+			s3: &common.CacheS3Config{
+				BucketName:     bucketName,
+				BucketLocation: bucketLocation,
+			},
+			disableSSL: false,
+			pathStyle:  false,
+		},
+		"custom server": {
+			s3: &common.CacheS3Config{
+				BucketName:     bucketName,
+				ServerAddress:  "minio.example.com",
+				BucketLocation: bucketLocation,
+			},
+			disableSSL: false,
+			pathStyle:  true,
+		},
+		"insecure custom server": {
+			s3: &common.CacheS3Config{
+				BucketName:     bucketName,
+				ServerAddress:  "minio.example.com",
+				BucketLocation: bucketLocation,
+				Insecure:       true,
+			},
+			disableSSL: true,
+			pathStyle:  true,
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			cacheConfig := &common.CacheConfig{
+				Type: "s3",
+				S3:   tt.s3,
+			}
+
+			adapter, err := New(cacheConfig, defaultTimeout, objectName)
+			require.NoError(t, err)
+
+			url := adapter.GetGoCloudURL()
+			require.NotNil(t, url)
+			assert.Equal(t, "s3", url.Scheme)
+			assert.Equal(t, tt.s3.BucketName, url.Host)
+			assert.Equal(t, objectName, url.Path)
+
+			q := url.Query()
+			assert.Equal(t, tt.s3.BucketLocation, q.Get("region"))
+			assert.Equal(t, tt.s3.GetEndpoint(), q.Get("endpoint"))
+
+			disableSSL, err := strconv.ParseBool(q.Get("disableSSL"))
+			require.NoError(t, err)
+			assert.Equal(t, tt.disableSSL, disableSSL)
+
+			pathStyle, err := strconv.ParseBool(q.Get("s3ForcePathStyle"))
+			require.NoError(t, err)
+			assert.Equal(t, tt.pathStyle, pathStyle)
 		})
 	}
 }
