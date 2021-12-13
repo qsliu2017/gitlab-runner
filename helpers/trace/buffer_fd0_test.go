@@ -1,4 +1,3 @@
-//go:build !integration && (aix || android || darwin || dragonfly || freebsd || hurd || illumos || linux || netbsd || openbsd || solaris)
 // +build !integration
 // +build aix android darwin dragonfly freebsd hurd illumos linux netbsd openbsd solaris
 
