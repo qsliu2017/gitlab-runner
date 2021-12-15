@@ -551,7 +551,7 @@ WARNING:
 Due to a [bug in go versions before 1.16](https://github.com/golang/go/issues/35305),
 if the `/etc/nsswitch.conf` file is not present, the runner ignores the `/etc/hosts` file.
 As a workaround, create `/etc/nsswitch.conf` and add `hosts: files dns` to it.
-When we [switch to go version 1.16.x](https://gitlab.com/gitlab-org/gitlab-runner/-/issues/27568),
+When we [switch to go version 1.17.x](https://gitlab.com/gitlab-org/gitlab-runner/-/issues/28159),
 this problem will be resolved.
 
 The host aliases can be configured with the following options:
