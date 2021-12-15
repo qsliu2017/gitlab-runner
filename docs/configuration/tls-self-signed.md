@@ -24,7 +24,7 @@ GitLab Runner provides two options to configure certificates to be used to verif
 
 - **A more generic approach which also covers other scenarios such as user scripts, connecting to a cache server or an external Git LFS store**:
   a certificate can be specified and installed on the container as detailed in the
-  [Trusting TLS certificates for the executors for Docker and Kubernetes](#trusting-tls-certificates-for-executors-for-docker-and-kubernetes) section.
+  [Trusting TLS certificates for the executors for Docker and Kubernetes](#trusting-tls-certificates-for-the-executors-for-docker-and-kubernetes) section.
 
     An example job log error concerning a Git LFS operation that is missing a certificate:
 
@@ -36,7 +36,7 @@ GitLab Runner provides two options to configure certificates to be used to verif
 
 This section refers to the situation where only the GitLab server requires a custom certificate.
 If other hosts also require a custom certificate authority (CA), please see
-the [next section](#trusting-tls-certificates-for-executors-for-docker-and-kubernetes).
+the [next section](#trusting-tls-certificates-for-the-executors-for-docker-and-kubernetes).
 
 GitLab Runner supports the following options:
 
