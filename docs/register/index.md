@@ -236,7 +236,7 @@ For example:
 
 - Environment variables do not support slices.
 - Command line option support is intentionally unavailable for the settings for the
-  whole Kubernetes executor volumes tree.
+  whole executor for Kubernetes volumes tree.
 
 This is a problem for environments that are handled by any kind of automation, such as the
 [GitLab Runner official Helm chart](../install/kubernetes.md). In cases like these, the only solution was
@@ -335,10 +335,10 @@ We can see the basic configuration created from the provided command line option
 - The default, empty section `runners.kubernetes` with only the one option
   provided during the registration filled out.
 
-Normally one would need to set few more options to make the Kubernetes executor
+Normally one would need to set few more options to make the executor for Kubernetes
 usable, but the above is enough for the purpose of our example.
 
-Let's now assume that we need to configure an `emptyDir` volume for our Kubernetes executor. There is
+Let's now assume that we need to configure an `emptyDir` volume for our executor for Kubernetes. There is
 no way to add this while registering with neither environment variables nor command line options.
 We would need to **manually append** something like this to the end of the file:
 

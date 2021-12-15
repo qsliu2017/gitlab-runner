@@ -35,7 +35,7 @@ When using the private Docker images support described in
 [advanced configuration: using a private container registry](../configuration/advanced-configuration.md#use-a-private-container-registry)
 you should use `always` as the `pull_policy` value. Especially you should
 use `always` pull policy if you are hosting a public, shared Runner with the
-Docker or Kubernetes executors.
+executors for Docker or Kubernetes.
 
 Let's consider an example where the pull policy is set to `if-not-present`:
 

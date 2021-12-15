@@ -4,12 +4,12 @@ group: Runner
 info: To determine the technical writer assigned to the Stage/Group associated with this page, see https://about.gitlab.com/handbook/engineering/ux/technical-writing/#assignments
 ---
 
-# The Kubernetes executor **(FREE)**
+# The executor for Kubernetes **(FREE)**
 
 GitLab Runner can use Kubernetes to run builds on a Kubernetes cluster. This is
-possible with the use of the **Kubernetes** executor.
+possible with the use of the GitLab Runner **executor for Kubernetes**.
 
-The **Kubernetes** executor, when used with GitLab CI, connects to the Kubernetes
+The **executor for Kubernetes**, when used with GitLab CI, connects to the Kubernetes
 API in the cluster creating a Pod for each GitLab CI Job. This Pod is made
 up of, at the very least, a build container, a helper container, and an additional container for each
 `service` defined in the `.gitlab-ci.yml` or `config.toml` files. The names for these containers
@@ -29,7 +29,7 @@ are then applicable:
 
 ## Workflow
 
-The Kubernetes executor divides the build into multiple steps:
+The executor for Kubernetes divides the build into multiple steps:
 
 1. **Prepare**: Create the Pod against the Kubernetes Cluster.
    This creates the containers required for the build and services to run.
@@ -59,7 +59,7 @@ If you are running it externally to the Cluster then you will need to set each
 of these settings and make sure that GitLab Runner has access to the Kubernetes API
 on the cluster.
 
-## Kubernetes executor interaction diagram
+## Executor for Kubernetes interaction diagram
 
 The diagram below depicts the interaction with a GitLab Runner hosted on a Kubernetes cluster and the Kubernetes API. The Kubernetes API is the mechanism that is used by GitLab Runner on Kubernetes to create pods on the cluster. The interaction depicted in this diagram is valid on any Kubernetes cluster, whether that's a turnkey solution hosted on the major public cloud providers or a self-managed Kubernetes installation.
 
@@ -150,8 +150,8 @@ The following settings help to define the behavior of GitLab Runner within Kuber
 | `allowed_services` | Wildcard list of services that can be specified in `.gitlab-ci.yml`. If not present all images are allowed (equivalent to `["*/*:*"]`). See [Restrict Docker images and services](../configuration/advanced-configuration.md#restricting-docker-images-and-services). |
 | `bearer_token` | Default bearer token used to launch build pods. |
 | `bearer_token_overwrite_allowed` | Boolean to allow projects to specify a bearer token that will be used to create the build pod. |
-| `cap_add` | Specify Linux capabilities that should be added to the job pod containers. [Read more about capabilities configuration in Kubernetes executor](#capabilities-configuration). |
-| `cap_drop` | Specify Linux capabilities that should be dropped from the job pod containers. [Read more about capabilities configuration in Kubernetes executor](#capabilities-configuration). |
+| `cap_add` | Specify Linux capabilities that should be added to the job pod containers. [Read more about capabilities configuration in the executor for Kubernetes](#capabilities-configuration). |
+| `cap_drop` | Specify Linux capabilities that should be dropped from the job pod containers. [Read more about capabilities configuration in the executor for Kubernetes](#capabilities-configuration). |
 | `cleanup_grace_period_seconds` | When a job completes, the duration in seconds that the pod has to terminate gracefully. After this period, the processes are forcibly halted with a kill signal. Ignored if `terminationGracePeriodSeconds` is specified. |
 | `helper_image` | (Advanced) [Override the default helper image](../configuration/advanced-configuration.md#helper-image) used to clone repos and upload artifacts. |
 | `helper_image_flavor` | Sets the helper image flavor (`alpine`, `alpine3.12`, `alpine3.13`, `alpine3.14` or `ubuntu`). Defaults to `alpine`. Using `alpine` is the same as `alpine3.12`. |
@@ -1146,7 +1146,7 @@ To handle this situation, you can use the GitLab Runner Pod Cleanup application 
 
 ## Troubleshooting
 
-The following errors are commonly encountered when using the Kubernetes executor.
+The following errors are commonly encountered when using the executor for Kubernetes.
 
 ### `Job failed (system failure): timed out waiting for pod to start`
 

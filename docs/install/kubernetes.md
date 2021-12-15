@@ -16,7 +16,7 @@ Kubernetes cluster is by using the `gitlab-runner` Helm chart.
 
 This chart configures GitLab Runner to:
 
-- Run using the GitLab Runner [Kubernetes executor](../executors/kubernetes.md).
+- Run using the GitLab Runner [executor for Kubernetes](../executors/kubernetes.md).
 - For each new job it receives from GitLab CI/CD, it will provision a
   new pod within the specified namespace to run it.
 
@@ -161,7 +161,7 @@ Many of the fields accepted by the `values.yaml` file will be removed with the i
 Helm Chart version 1.0. We recommend migrating away from them as soon as possible.
 These fields are marked with a `DEPRECATED:` comment above them.
 
-All the configuration options supported by the Kubernetes executor are listed in [the Kubernetes executor docs](../executors/kubernetes.md#the-available-configtoml-settings).
+All the configuration options supported by the executor for Kubernetes are listed in [the documentation](../executors/kubernetes.md#the-available-configtoml-settings).
 For many of the fields, the old name in `values.yaml` is the same as [the keyword](../executors/kubernetes.md#the-available-configtoml-settings).
 For some, you must rename them. For example, if you are using `helpers` to set CPU limits:
 
@@ -415,7 +415,7 @@ kubectl create secret docker-registry <SECRET_NAME> \
   --docker-password="<REGISTRY_PASSWORD>"
 ```
 
-If you configure `runners.imagePullSecrets`, the container adds `--kubernetes-image-pull-secrets "<SECRET_NAME>"` to the image entrypoint script. This eliminates the need to configure the `image_pull_secrets` parameter in the Kubernetes executor `config.toml` settings.
+If you configure `runners.imagePullSecrets`, the container adds `--kubernetes-image-pull-secrets "<SECRET_NAME>"` to the image entrypoint script. This eliminates the need to configure the `image_pull_secrets` parameter in the executor for Kubernetes `config.toml` settings.
 
 ```yaml
 runners:

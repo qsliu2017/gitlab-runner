@@ -24,7 +24,7 @@ GitLab Runner provides two options to configure certificates to be used to verif
 
 - **A more generic approach which also covers other scenarios such as user scripts, connecting to a cache server or an external Git LFS store**:
   a certificate can be specified and installed on the container as detailed in the
-  [Trusting TLS certificates for Docker and Kubernetes executors](#trusting-tls-certificates-for-docker-and-kubernetes-executors) section.
+  [Trusting TLS certificates for the executors for Docker and Kubernetes](#trusting-tls-certificates-for-docker-and-kubernetes-executors) section.
 
     An example job log error concerning a Git LFS operation that is missing a certificate:
 
@@ -104,7 +104,7 @@ trusted certificates.
 
 This approach is secure, but makes the runner a single point of trust.
 
-## Trusting TLS certificates for Docker and Kubernetes executors
+## Trusting TLS certificates for the executors for Docker and Kubernetes
 
 There are two contexts that need to be taken into account when we consider registering a certificate on a container:
 
@@ -237,7 +237,7 @@ when performing operations like cloning and uploading artifacts, for example.
 
 #### Kubernetes
 
-Due to a [known issue](https://gitlab.com/gitlab-org/gitlab-runner/-/issues/4125) in the Kubernetes executor's
+Due to a [known issue](https://gitlab.com/gitlab-org/gitlab-runner/-/issues/4125) in the executor for Kubernetes'
 handling of the helper image's `ENTRYPOINT`, the mapped certificate file isn't automatically installed
 to the system certificate store.
 

@@ -337,7 +337,7 @@ test:
 Also, be careful of the difference between `return` and `exit` when using PowerShell
 functions. While `exit 1` will mark a job as failed, `return 1` will **not**.
 
-### Job marked as success and terminated midway using Kubernetes executor
+### Job marked as success and terminated midway using executor for Kubernetes
 
 Please see [Job execution](../executors/kubernetes.md#job-execution).
 

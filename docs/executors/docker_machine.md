@@ -135,7 +135,7 @@ NOTE:
 GPUs are [supported on every executor](../configuration/gpus.md). It is
 not necessary to use Docker Machine just for GPU support. The Docker
 Machine executor makes it easy to scale the GPU nodes up and down, but
-this can also be done with the [Kubernetes executor](kubernetes.md).
+this can also be done with the [executor for Kubernetes](kubernetes.md).
 
 You can use the Docker Machine [fork](#forked-version-of-docker-machine) to create [Google Compute Engine instances
 with graphics processing units (GPUs)](https://cloud.google.com/compute/docs/gpus/).

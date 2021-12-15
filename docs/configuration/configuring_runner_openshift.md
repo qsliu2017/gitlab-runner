@@ -208,7 +208,7 @@ Job concurrency is dictated by the requirements of the specific project.
 1. Start by trying to determine the compute and memory resources required to execute a CI job.
 1. Calculate how many times that job would be able to execute given the resources in the cluster.
 
-If you set too large a concurrency value, the Kubernetes executor will process the jobs as soon as it can.
+If you set too large a concurrency value, the executor for Kubernetes will process the jobs as soon as it can.
 However, the Kubernetes cluster's scheduler capacity determines when the job is scheduled.
 
 ## Troubleshooting

@@ -30,7 +30,7 @@ For example:
 
 See the [documentation for the GitLab fork of Docker Machine](../executors/docker_machine.md#using-gpus-on-google-compute-engine).
 
-## Kubernetes executor
+## Executor for Kubernetes
 
 No runner configuration should be needed. Be sure to check that
 [the node selector chooses a node with GPU support](https://kubernetes.io/docs/tasks/manage-gpus/scheduling-gpus/).

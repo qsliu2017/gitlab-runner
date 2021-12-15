@@ -838,7 +838,7 @@ Example:
 > Introduced in GitLab Runner v1.6.0.
 
 The following parameters define Kubernetes behavior.
-For more parameters, see the [Kubernetes executor documentation](../executors/kubernetes.md).
+For more parameters, see the [documentation for the executor for Kubernetes](../executors/kubernetes.md).
 
 | Parameter        | Type    | Description |
 |------------------|---------|-------------|
@@ -1112,9 +1112,9 @@ For example, a shared GitLab Runner environment that uses the `docker-machine` e
 
 ## Restricting Docker images and services
 
-> Added for the Kubernetes executor in GitLab Runner 14.2.
+> Added for the executor for Kubernetes in GitLab Runner 14.2.
 
-If you use the Docker or Kubernetes executors, you can restrict the Docker images which can
+If you use the executors for Docker or Kubernetes, you can restrict the Docker images which can
 be used to run your jobs. To do this, you specify wildcard patterns. For example, to allow images
 from your private Docker registry only:
 
@@ -1140,7 +1140,7 @@ Or, to restrict to a specific list of images from this registry:
     allowed_services = ["postgres:9.4", "postgres:latest"]
 ```
 
-The allowed list also works with the Kubernetes executor (that is, if you use `[runners.kubernetes]` instead of `[runners.docker]`).
+The allowed list also works with the executor for Kubernetes (that is, if you use `[runners.kubernetes]` instead of `[runners.docker]`).
 
 ## Deploy to multiple servers using GitLab CI/CD
 
