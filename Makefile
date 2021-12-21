@@ -364,10 +364,10 @@ check_modules:
 
 # development tools
 $(GOCOVER_COBERTURA):
-	go get github.com/boumenot/gocover-cobertura
+	go install github.com/boumenot/gocover-cobertura@latest
 
 $(GOX):
-	go get github.com/mitchellh/gox
+	go install github.com/mitchellh/gox@latest
 
 $(GOLANGLINT): TOOL_BUILD_DIR := .tmp/build/golangci-lint
 $(GOLANGLINT): $(GOLANGLINT_GOARGS)
