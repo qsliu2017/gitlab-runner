@@ -6,7 +6,7 @@ RUN apt-get update -yq && \
     apt-get install -yq locales make xz-utils \
                         ruby ruby-dev python-pip \
                         dpkg-sig createrepo rpm \
-                        zip libffi-dev jq zip && \
+                        zip libffi-dev jq zip patch && \
     rm -rf /var/lib/apt/lists/*
 
 # Set default locale for the environment
@@ -64,6 +64,10 @@ RUN wget -q https://awscli.amazonaws.com/awscli-exe-linux-x86_64-${AWS_CLI_VERSI
     rm awscliv2.zip
 
 COPY Makefile* /tmp/
+COPY ci /tmp/ci/
+COPY scripts /tmp/scripts/
+COPY VERSION /tmp
+
 WORKDIR /tmp
 RUN make deps package-deps packagecloud-deps
 
