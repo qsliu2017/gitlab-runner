@@ -6,8 +6,8 @@ info: To determine the technical writer assigned to the Stage/Group associated w
 
 # Install GitLab Runner with Kubernetes Agent **(PREMIUM ONLY)**
 
-These instructions to install GitLab Runner assume the
-[GitLab Kubernetes Agent](https://docs.gitlab.com/ee/user/clusters/agent/index.html) is already configured.
+The instructions to install a GitLab Runner assumes the
+[GitLab Agent for Kubernetes](https://docs.gitlab.com/ee/user/clusters/agent/index.html) is already installed in cluster, with a configuration repository that defines a manifest repository. The manifest repository is where the runner will be installed and will be where the runner registration token is generated.
 
 1. Review the possible [GitLab Runner chart YAML values](https://gitlab.com/gitlab-org/charts/gitlab-runner/blob/main/values.yaml).
 1. Create a `runner-chart-values.yaml` file with the configuration that fits
@@ -37,8 +37,7 @@ These instructions to install GitLab Runner assume the
        privileged: true
    ```
 
-1. Create a single manifest file to install the GitLab Runner chart with your cluster agent,
-   replacing `GITLAB-NAMESPACE` with your namespace:
+1. This `runner-chart-values.yaml` is referenced in the following `helm template`command. The `GITLAB-NAMESPACE` argument should point to a Kubernetes namespace distinct from the configuration repository's Agent:
 
    ```shell
    helm template --namespace GITLAB-NAMESPACE gitlab-runner -f runner-chart-values.yaml gitlab/gitlab-runner > runner-manifest.yaml
@@ -46,8 +45,7 @@ These instructions to install GitLab Runner assume the
 
    An [example file is available](#example-runner-manifest).
 
-1. Edit `runner-manifest.yaml` file to include the `namespace` for every resource. The output of `helm template` doesn't include the
-   `namespace` in the generated resources:
+1. The output of the `helm template` includes all the resources needed to create a Kubernetes Exectuor  on a Gitlab Runner:
 
    ```yaml
    ---
@@ -62,12 +60,11 @@ These instructions to install GitLab Runner assume the
    ...
    ```
 
-1. Push your `runner-manifest.yaml` to your manifest repository.
+1. To deploy the Runner, push the `runner-manifest.yaml` to your manifest repository.
 
 ## Example runner manifest
 
-This code is an example of a runner manifest looks like.
-Create your own `manifest.yaml` file to meet your project's needs.
+This is an example of a `runner-manifest.yaml`:
 
 ```yaml
 ---
