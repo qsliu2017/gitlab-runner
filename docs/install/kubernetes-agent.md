@@ -48,7 +48,7 @@ installed and where the Runner registration token is generated.
 
    An [example file is available](#example-runner-manifest).
 
-1. The output of the `helm template` includes all the resources needed to create a Kubernetes Executor on a Gitlab Runner:
+1. The output of the `helm template` includes all the resources needed to create a Kubernetes Executor on a GitLab Runner:
 
    ```yaml
    ---
