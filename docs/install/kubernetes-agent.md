@@ -7,7 +7,9 @@ info: To determine the technical writer assigned to the Stage/Group associated w
 # Install GitLab Runner with Kubernetes Agent **(PREMIUM ONLY)**
 
 The instructions to install a GitLab Runner assumes the
-[GitLab Agent for Kubernetes](https://docs.gitlab.com/ee/user/clusters/agent/index.html) is already installed in cluster, with a configuration repository that defines a manifest repository. The manifest repository is where the runner will be installed and will be where the runner registration token is generated.
+[GitLab Agent for Kubernetes](https://docs.gitlab.com/ee/user/clusters/agent/index.html) is already installed in cluster,
+with a configuration repository that defines a manifest repository. The manifest repository is where the Runner is
+installed and where the Runner registration token is generated.
 
 1. Review the possible [GitLab Runner chart YAML values](https://gitlab.com/gitlab-org/charts/gitlab-runner/blob/main/values.yaml).
 1. Create a `runner-chart-values.yaml` file with the configuration that fits
@@ -37,7 +39,8 @@ The instructions to install a GitLab Runner assumes the
        privileged: true
    ```
 
-1. This `runner-chart-values.yaml` is referenced in the following `helm template`command. The `GITLAB-NAMESPACE` argument should point to a Kubernetes namespace distinct from the configuration repository's Agent:
+1. This `runner-chart-values.yaml` is referenced in the following `helm template` command. Point the
+`GITLAB-NAMESPACE` argument to a Kubernetes namespace distinct from the Agent's configuration repository:
 
    ```shell
    helm template --namespace GITLAB-NAMESPACE gitlab-runner -f runner-chart-values.yaml gitlab/gitlab-runner > runner-manifest.yaml
@@ -45,7 +48,7 @@ The instructions to install a GitLab Runner assumes the
 
    An [example file is available](#example-runner-manifest).
 
-1. The output of the `helm template` includes all the resources needed to create a Kubernetes Exectuor  on a Gitlab Runner:
+1. The output of the `helm template` includes all the resources needed to create a Kubernetes Executor on a Gitlab Runner:
 
    ```yaml
    ---
