@@ -1,4 +1,6 @@
-FROM golang:1.17.5-buster
+ARG GOLANG_VERSION
+
+FROM golang:${GOLANG_VERSION}-buster
 
 # Install required dependencies
 # hadolint ignore=DL3008,DL3015
@@ -46,8 +48,8 @@ RUN mkdir -p ~/.docker/cli-plugins && \
 ARG GIT_LFS_VERSION
 ARG GIT_LFS_AMD64_CHECKSUM
 
-COPY dockerfiles/ci/install_git_lfs /tmp/
-RUN /tmp/install_git_lfs
+COPY dockerfiles/ci/install_git_lfs /builddir/
+RUN /builddir/install_git_lfs
 
 ARG KUBECTL_VERSION
 
@@ -63,8 +65,8 @@ RUN wget -q https://awscli.amazonaws.com/awscli-exe-linux-x86_64-${AWS_CLI_VERSI
     rm -r aws && \
     rm awscliv2.zip
 
-COPY Makefile* /tmp/
-WORKDIR /tmp
+COPY go.mod go.sum Makefile* /builddir/
+WORKDIR /builddir
 RUN make deps package-deps packagecloud-deps
 
 RUN go get -u github.com/jstemmer/go-junit-report

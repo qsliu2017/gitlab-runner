@@ -200,6 +200,19 @@ unit test with race:
   allow_failure:
     exit_codes: 99
 
+unit test next go:
+  extends:
+  - .linux test
+  needs:
+  - 'unit test definitions'
+  - 'clone test repo'
+  - 'prepare done'
+  parallel: 2
+  image: $CI_IMAGE_NEXT
+  variables:
+    TESTFLAGS: -cover
+    TESTSDEFINITIONSPATH: unit/testsdefinitions.txt
+
 integration test:
   extends:
   - .linux test
