@@ -143,6 +143,9 @@ executeTestPart() {
     printMessage "Execution size: ${executionSize}"
     printMessage "Execution offset: ${executionOffset}"
 
+    # print go version
+    go version
+
     local exitCode=0
     while read -r pkg index tests; do
         executeTestCommand "${pkg}" "${index}" "${tests}" || exitCode=99
