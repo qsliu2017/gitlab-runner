@@ -844,7 +844,11 @@ func (e *executor) overwriteEntrypoint(image *common.Image) []string {
 }
 
 func (e *executor) connectDocker() error {
-	client, err := docker.New(e.Config.Docker.Credentials, "")
+	client, err := docker.New(
+		docker.WithCredentials(e.Config.Docker.Credentials),
+		docker.WithGitlabUserAgent(common.AppVersion.UserAgent()),
+	)
+
 	if err != nil {
 		return err
 	}

@@ -23,7 +23,9 @@ func prepareDockerClientAndFakeServer(t *testing.T, handler http.HandlerFunc) (C
 		TLSVerify: false,
 	}
 
-	client, err := New(credentials, "")
+	client, err := New(
+		WithCredentials(credentials),
+	)
 	require.NoError(t, err)
 
 	return client, server
@@ -63,7 +65,7 @@ func TestWrapError(t *testing.T) {
 	assert.Regexp(t, "\\(official_docker_client_test.go:\\d\\d:\\d+s\\)", err.Error())
 }
 
-func TestNew_Version(t *testing.T) {
+func TestNew_WithAPIVersion(t *testing.T) {
 	cases := []struct {
 		version         string
 		host            string
@@ -81,7 +83,9 @@ func TestNew_Version(t *testing.T) {
 
 	for _, c := range cases {
 		t.Run(c.expectedVersion, func(t *testing.T) {
-			client, err := New(Credentials{}, c.version)
+			client, err := New(
+				WithAPIVersion(c.version),
+			)
 			require.NoError(t, err)
 
 			test, ok := client.(*officialDockerClient)
@@ -106,7 +110,9 @@ func TestRedirectsNotAllowed(t *testing.T) {
 		TLSVerify: false,
 	}
 
-	client, err := New(credentials, "")
+	client, err := New(
+		WithCredentials(credentials),
+	)
 	require.NoError(t, err)
 
 	_, err = client.Info(context.Background())
@@ -116,4 +122,34 @@ func TestRedirectsNotAllowed(t *testing.T) {
 	// errors.Is and must resort to string search
 	assert.Contains(t, err.Error(), "error during connect")
 	assert.ErrorIs(t, err, ErrRedirectNotAllowed)
+}
+
+func TestNew_WithGitlabUserAgent(t *testing.T) {
+	tests := map[string]struct {
+		options           []ClientOption
+		expectedUserAgent string
+	}{
+		"gitlab user agent is not set": {
+			options:           []ClientOption{},
+			expectedUserAgent: defaultGitlabUserAgent,
+		},
+		"gitlab user agent is set": {
+			options:           []ClientOption{WithGitlabUserAgent("user-agent")},
+			expectedUserAgent: "user-agent",
+		},
+	}
+
+	for tn, tt := range tests {
+		t.Run(tn, func(t *testing.T) {
+			client, err := New(tt.options...)
+			require.NoError(t, err)
+
+			test, ok := client.(*officialDockerClient)
+			assert.True(t, ok)
+
+			h := test.client.CustomHTTPHeaders()
+			require.Contains(t, h, gitlabUserAgentHeader)
+			assert.Equal(t, tt.expectedUserAgent, h[gitlabUserAgentHeader])
+		})
+	}
 }

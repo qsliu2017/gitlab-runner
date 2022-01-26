@@ -21,8 +21,13 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// The default API version used to create a new docker client.
-const DefaultAPIVersion = "1.25"
+const (
+	// DefaultAPIVersion The default API version used to create a new docker client.
+	DefaultAPIVersion = "1.25"
+
+	gitlabUserAgentHeader  = "X-Meta-Gitlab-User-Agent"
+	defaultGitlabUserAgent = "gitlab-runner"
+)
 
 // ErrRedirectNotAllowed is returned when we get a 3xx request from the Docker
 // client to prevent any redirections to malicious docker clients.
@@ -38,6 +43,85 @@ func IsErrNotFound(err error) bool {
 	return client.IsErrNotFound(err)
 }
 
+type clientOptions struct {
+	credentials     Credentials
+	apiVersion      string
+	gitlabUserAgent string
+}
+
+type ClientOption func(o *clientOptions)
+
+// New attempts to create a new Docker client with the specified options
+//
+// If credentials are not defined or no host is given in the Credentials,
+// it will attempt to look up details from the environment. If that fails,
+// it will use the default connection details for your platform.
+//
+// If the version specified in options is empty, it will use the default version.
+func New(options ...ClientOption) (Client, error) {
+	var o clientOptions
+
+	for _, option := range options {
+		option(&o)
+	}
+
+	o.credentials = ensureHostInCredentials(o.credentials)
+	o.apiVersion = ensureVersion(o.apiVersion)
+	o.gitlabUserAgent = ensureGitlabUserAgent(o.gitlabUserAgent)
+
+	return newOfficialDockerClient(o)
+}
+
+func ensureHostInCredentials(c Credentials) Credentials {
+	if c.Host == "" {
+		c = credentialsFromEnv()
+	}
+
+	// Use the default if nothing is specified by caller *or* environment
+	if c.Host == "" {
+		c.Host = client.DefaultDockerHost
+	}
+
+	return c
+}
+
+func ensureVersion(v string) string {
+	if v != "" {
+		return v
+	}
+
+	return DefaultAPIVersion
+}
+
+func ensureGitlabUserAgent(ua string) string {
+	if ua != "" {
+		return ua
+	}
+
+	return defaultGitlabUserAgent
+}
+
+// WithCredentials sets the credentials option for the client.
+func WithCredentials(c Credentials) ClientOption {
+	return func(o *clientOptions) {
+		o.credentials = c
+	}
+}
+
+// WithAPIVersion sets the apiVersion option for the client.
+func WithAPIVersion(v string) ClientOption {
+	return func(o *clientOptions) {
+		o.apiVersion = v
+	}
+}
+
+// WithGitlabUserAgent sets the gitlabUserAgent option for the client.
+func WithGitlabUserAgent(ua string) ClientOption {
+	return func(o *clientOptions) {
+		o.gitlabUserAgent = ua
+	}
+}
+
 // type officialDockerClient wraps a "github.com/docker/docker/client".Client,
 // giving it the methods it needs to satisfy the docker.Client interface
 type officialDockerClient struct {
@@ -47,8 +131,8 @@ type officialDockerClient struct {
 	Transport *http.Transport
 }
 
-func newOfficialDockerClient(c Credentials, apiVersion string) (*officialDockerClient, error) {
-	transport, err := newHTTPTransport(c)
+func newOfficialDockerClient(options clientOptions) (*officialDockerClient, error) {
+	transport, err := newHTTPTransport(options.credentials)
 	if err != nil {
 		logrus.Errorln("Error creating TLS Docker client:", err)
 		return nil, err
@@ -60,10 +144,15 @@ func newOfficialDockerClient(c Credentials, apiVersion string) (*officialDockerC
 		},
 	}
 
+	customHTTPHeaders := map[string]string{
+		gitlabUserAgentHeader: options.gitlabUserAgent,
+	}
+
 	dockerClient, err := client.NewClientWithOpts(
-		client.WithHost(c.Host),
-		client.WithVersion(apiVersion),
+		client.WithHost(options.credentials.Host),
+		client.WithVersion(options.apiVersion),
 		client.WithHTTPClient(httpClient),
+		client.WithHTTPHeaders(customHTTPHeaders),
 	)
 	if err != nil {
 		transport.CloseIdleConnections()
@@ -309,29 +398,6 @@ func (c *officialDockerClient) handleEventStream(rc io.ReadCloser) error {
 func (c *officialDockerClient) Close() error {
 	c.Transport.CloseIdleConnections()
 	return nil
-}
-
-// New attempts to create a new Docker client of the specified version. If the
-// specified version is empty, it will use the default version.
-//
-// If no host is given in the Credentials, it will attempt to look up
-// details from the environment. If that fails, it will use the default
-// connection details for your platform.
-func New(c Credentials, apiVersion string) (Client, error) {
-	if c.Host == "" {
-		c = credentialsFromEnv()
-	}
-
-	// Use the default if nothing is specified by caller *or* environment
-	if c.Host == "" {
-		c.Host = client.DefaultDockerHost
-	}
-
-	if apiVersion == "" {
-		apiVersion = DefaultAPIVersion
-	}
-
-	return newOfficialDockerClient(c, apiVersion)
 }
 
 func newHTTPTransport(c Credentials) (*http.Transport, error) {
