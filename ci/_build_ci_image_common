@@ -32,9 +32,9 @@ push () {
 }
 
 scan() {
+    bundle install
     echo "Triggering container scan for ${BUILD_IMAGE}"
-    curl -X POST --form token="${CONTAINER_SCANNING_PIPELINE_TRIGGER_TOKEN}" \
-        --form ref=master  \
-        --form "variables[IMAGES]= ${BUILD_IMAGE}" \
-         https://gitlab.com/api/v4/projects/16505542/trigger/pipeline
+    ./appsec-container-scan "$BUILD_IMAGE" > gl-container-scanning-report.json
 }
+
+
