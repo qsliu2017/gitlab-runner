@@ -1,6 +1,7 @@
 package docker
 
 import (
+	"io"
 	"net"
 	"net/http"
 	"time"
@@ -42,4 +43,33 @@ func configureTransport(tr *http.Transport, proto, addr string) error {
 		tr.Dial = dialer.Dial // nolint:staticcheck
 	}
 	return nil
+}
+
+type connCloser struct {
+	net.Conn
+	io.Closer
+}
+
+// NewWrapperConnCloser returns an implementation of net.Conn that also closes
+// an additional closer. It is useful for tunnelled connections, where a dialer
+// might initiate both a parent and tunnelled connection, but wish to have the
+// caller close both together.
+func NewWrappedConnCloser(conn net.Conn, closer io.Closer) net.Conn {
+	return &connCloser{
+		Conn:   conn,
+		Closer: closer,
+	}
+}
+
+func (c *connCloser) Close() error {
+	//fmt.Println("=============== connection is closing...")
+	//debug.PrintStack()
+
+	defer c.Conn.Close()
+
+	if err := c.Closer.Close(); err != nil {
+		return err
+	}
+
+	return c.Conn.Close()
 }

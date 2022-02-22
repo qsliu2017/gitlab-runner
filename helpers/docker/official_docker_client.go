@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -320,7 +321,9 @@ func (c *officialDockerClient) handleEventStream(rc io.ReadCloser) error {
 }
 
 func (c *officialDockerClient) Close() error {
-	c.Transport.CloseIdleConnections()
+	if c.Transport != nil {
+		c.Transport.CloseIdleConnections()
+	}
 	return nil
 }
 
@@ -341,6 +344,41 @@ func New(c Credentials) (Client, error) {
 	}
 
 	return newOfficialDockerClient(c)
+}
+
+func NewWithDialer(fn func(ctx context.Context, network, addr string) (net.Conn, error)) (Client, error) {
+	transport := &http.Transport{
+		ResponseHeaderTimeout: defaultResponseHeaderTimeout,
+		ExpectContinueTimeout: defaultExpectContinueTimeout,
+		IdleConnTimeout:       defaultIdleConnTimeout,
+	}
+
+	options := []client.Opt{
+		client.WithAPIVersionNegotiation(),
+		client.WithHTTPClient(&http.Client{
+			Transport: transport,
+			CheckRedirect: func(_ *http.Request, _ []*http.Request) error {
+				return ErrRedirectNotAllowed
+			},
+		}),
+		client.WithDialContext(fn),
+	}
+
+	if version := os.Getenv("DOCKER_API_VERSION"); version != "" {
+		options = append(options, client.WithVersion(version))
+	}
+
+	dockerClient, err := client.NewClientWithOpts(options...)
+	if err != nil {
+		transport.CloseIdleConnections()
+		logrus.Errorln("Error creating Docker client with dialer:", err)
+		return nil, err
+	}
+
+	return &officialDockerClient{
+		client:    dockerClient,
+		Transport: transport,
+	}, nil
 }
 
 func newHTTPTransport(c Credentials) (*http.Transport, error) {

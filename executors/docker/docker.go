@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -854,7 +855,33 @@ func (e *executor) overwriteEntrypoint(image *common.Image) []string {
 }
 
 func (e *executor) connectDocker() error {
-	client, err := docker.New(e.Config.Docker.Credentials)
+	var client docker.Client
+	var err error
+
+	environment, ok := e.Build.ExecutorData.(executors.Environment)
+	if ok {
+		client, err = docker.NewWithDialer(func(ctx context.Context, network, addr string) (conn net.Conn, err error) {
+			// fmt.Println("================== DIALING DOCKER")
+			c, err := environment.Dial(ctx)
+			if err != nil {
+				return nil, err
+			}
+
+			if environment.OS() == "windows" {
+				conn, err = c.Dial("npipe", "//./pipe/docker_engine")
+			} else {
+				conn, err = c.Dial("unix", "/var/run/docker.sock")
+			}
+			if err != nil {
+				c.Close()
+				return nil, err
+			}
+
+			return docker.NewWrappedConnCloser(conn, c), nil
+		})
+	} else {
+		client, err = docker.New(e.Config.Docker.Credentials)
+	}
 	if err != nil {
 		return err
 	}

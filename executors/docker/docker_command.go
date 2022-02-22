@@ -18,6 +18,7 @@ import (
 	"gitlab.com/gitlab-org/gitlab-runner/executors/docker/internal/user"
 	"gitlab.com/gitlab-org/gitlab-runner/executors/docker/internal/volumes/parser"
 	"gitlab.com/gitlab-org/gitlab-runner/executors/docker/internal/volumes/permission"
+	"gitlab.com/gitlab-org/gitlab-runner/executors/internal/autoscaler"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers/docker"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers/featureflags"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers/limitwriter"
@@ -354,4 +355,11 @@ func init() {
 		ConfigUpdater:    configUpdater,
 		DefaultShellName: options.Shell.Shell,
 	})
+
+	common.RegisterExecutorProvider("docker+autoscaler", autoscaler.New(executors.DefaultExecutorProvider{
+		Creator:          creator,
+		FeaturesUpdater:  featuresUpdater,
+		ConfigUpdater:    configUpdater,
+		DefaultShellName: options.Shell.Shell,
+	}))
 }
