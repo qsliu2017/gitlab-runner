@@ -236,7 +236,7 @@ func (b *AbstractShell) writeExports(w ShellWriter, info common.ShellScriptInfo)
 }
 
 func (b *AbstractShell) writeGitSSLConfig(w ShellWriter, build *common.Build, where []string) {
-	repoURL, err := url.Parse(build.GetRemoteURL())
+	repoURL, err := url.Parse(build.GetRepoURL())
 	if err != nil {
 		w.Warningf("git SSL config: Can't parse repository URL. %s", err)
 		return
@@ -354,10 +354,10 @@ func (b *AbstractShell) writeRefspecFetchCmd(w ShellWriter, build *common.Build,
 	w.Cd(projectDir)
 
 	// Add `git remote` or update existing
-	w.IfCmd("git", "remote", "add", "origin", build.GetRemoteURL())
+	w.IfCmd("git", "remote", "add", "origin", build.GetRepoURL())
 	w.Noticef("Created fresh repository.")
 	w.Else()
-	w.Command("git", "remote", "set-url", "origin", build.GetRemoteURL())
+	w.Command("git", "remote", "set-url", "origin", build.GetRepoURL())
 	w.EndIf()
 
 	v := common.AppVersion

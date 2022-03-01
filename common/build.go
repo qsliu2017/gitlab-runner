@@ -1166,10 +1166,10 @@ func (b *Build) GetAllVariables() JobVariables {
 	return b.allVariables
 }
 
-// GetRemoteURL checks if the default clone URL is overwritten by the runner
+// GetRepoURL checks if the default clone URL is overwritten by the runner
 // configuration option: 'CloneURL'. If it is, we use that to create the clone
 // URL.
-func (b *Build) GetRemoteURL() string {
+func (b *Build) GetRepoURL() string {
 	cloneURL := strings.TrimRight(b.Runner.CloneURL, "/")
 
 	if !strings.HasPrefix(cloneURL, "http") {

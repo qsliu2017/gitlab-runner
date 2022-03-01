@@ -811,7 +811,7 @@ func TestSharedEnvVariables(t *testing.T) {
 	}
 }
 
-func TestGetRemoteURL(t *testing.T) {
+func TestGetRepoURL(t *testing.T) {
 	testCases := []struct {
 		runner RunnerSettings
 		result string
@@ -848,7 +848,7 @@ func TestGetRemoteURL(t *testing.T) {
 			},
 		}
 
-		assert.Equal(t, tc.result, build.GetRemoteURL())
+		assert.Equal(t, tc.result, build.GetRepoURL())
 	}
 }
 
