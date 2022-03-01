@@ -1704,3 +1704,41 @@ func TestKubernetesTerminationPeriod(t *testing.T) {
 		})
 	}
 }
+
+func TestRunnerConfig_GetArtifactsURL(t *testing.T) {
+	const (
+		defaultURL = "default_url"
+		customURL  = "custom_url"
+	)
+
+	tests := map[string]struct {
+		updateRunner func(*testing.T, *RunnerConfig)
+		expectedURL  string
+	}{
+		"custom artifacts URL defined": {
+			updateRunner: func(t *testing.T, config *RunnerConfig) {
+				require.NotNil(t, config)
+				config.RunnerSettings.ArtifactsURL = customURL
+			},
+			expectedURL: customURL,
+		},
+		"custom artifacts URL not defined": {
+			updateRunner: func(_ *testing.T, _ *RunnerConfig) {},
+			expectedURL:  defaultURL,
+		},
+	}
+
+	for tn, tt := range tests {
+		t.Run(tn, func(t *testing.T) {
+			config := RunnerConfig{
+				RunnerCredentials: RunnerCredentials{
+					URL: defaultURL,
+				},
+			}
+
+			tt.updateRunner(t, &config)
+
+			assert.Equal(t, tt.expectedURL, config.GetArtifactsURL())
+		})
+	}
+}

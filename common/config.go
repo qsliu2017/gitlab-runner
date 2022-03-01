@@ -788,10 +788,11 @@ type CacheConfig struct {
 
 //nolint:lll
 type RunnerSettings struct {
-	Executor  string `toml:"executor" json:"executor" long:"executor" env:"RUNNER_EXECUTOR" required:"true" description:"Select executor, eg. shell, docker, etc."`
-	BuildsDir string `toml:"builds_dir,omitempty" json:"builds_dir" long:"builds-dir" env:"RUNNER_BUILDS_DIR" description:"Directory where builds are stored"`
-	CacheDir  string `toml:"cache_dir,omitempty" json:"cache_dir" long:"cache-dir" env:"RUNNER_CACHE_DIR" description:"Directory where build cache is stored"`
-	CloneURL  string `toml:"clone_url,omitempty" json:"clone_url" long:"clone-url" env:"CLONE_URL" description:"Overwrite the default URL used to clone or fetch the git ref"`
+	Executor     string `toml:"executor" json:"executor" long:"executor" env:"RUNNER_EXECUTOR" required:"true" description:"Select executor, eg. shell, docker, etc."`
+	BuildsDir    string `toml:"builds_dir,omitempty" json:"builds_dir" long:"builds-dir" env:"RUNNER_BUILDS_DIR" description:"Directory where builds are stored"`
+	CacheDir     string `toml:"cache_dir,omitempty" json:"cache_dir" long:"cache-dir" env:"RUNNER_CACHE_DIR" description:"Directory where build cache is stored"`
+	CloneURL     string `toml:"clone_url,omitempty" json:"clone_url" long:"clone-url" env:"CLONE_URL" description:"Overwrite the default URL used to clone or fetch the git ref"`
+	ArtifactsURL string `toml:"artifacts_url,omitempty" json:"artifacts_url" long:"artifacts-url" env:"RUNNER_ARTIFACTS_URL" description:"Overwrite the default URL used to upload/download artifacts"`
 
 	Environment     []string `toml:"environment,omitempty" json:"environment" long:"env" env:"RUNNER_ENV" description:"Custom environment variables injected to build environment"`
 	PreCloneScript  string   `toml:"pre_clone_script,omitempty" json:"pre_clone_script" long:"pre-clone-script" env:"RUNNER_PRE_CLONE_SCRIPT" description:"Runner-specific command script executed before code is pulled"`
@@ -1480,6 +1481,17 @@ func (c *RunnerConfig) logWarnings() {
 				"to false (https://docs.gitlab.com/runner/executors/ssh.html#security).")
 		}
 	}
+}
+
+// GetArtifactsURL returns the URL that should be use as base for artifacts operations.
+// Uses the `artifacts_url` setting if defined. Otherwise, it defers to use the `url`
+// setting.
+func (c *RunnerConfig) GetArtifactsURL() string {
+	if c.RunnerSettings.ArtifactsURL != "" {
+		return c.RunnerSettings.ArtifactsURL
+	}
+
+	return c.RunnerCredentials.URL
 }
 
 func NewConfig() *Config {
