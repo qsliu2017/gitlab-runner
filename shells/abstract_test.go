@@ -289,6 +289,164 @@ func TestWriteWritingArtifactsWithExcludedPaths(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func TestWriteUploadingArtifactsWithCustomizedURL(t *testing.T) {
+	const (
+		defaultURL = "default_url"
+		customURL  = "custom_url"
+	)
+
+	tests := map[string]struct {
+		updateRunnerConfig func(*testing.T, *common.RunnerConfig)
+		expectedURL        string
+	}{
+		"custom artifacts URL defined": {
+			updateRunnerConfig: func(t *testing.T, config *common.RunnerConfig) {
+				require.NotNil(t, config)
+				config.RunnerSettings.ArtifactsURL = customURL
+			},
+			expectedURL: customURL,
+		},
+		"custom artifacts URL not defined": {
+			updateRunnerConfig: func(_ *testing.T, _ *common.RunnerConfig) {},
+			expectedURL:        defaultURL,
+		},
+	}
+
+	for tn, tt := range tests {
+		t.Run(tn, func(t *testing.T) {
+			runnerConfig := &common.RunnerConfig{
+				RunnerCredentials: common.RunnerCredentials{
+					URL: defaultURL,
+				},
+			}
+			tt.updateRunnerConfig(t, runnerConfig)
+
+			build := &common.Build{
+				JobResponse: common.JobResponse{
+					ID:    1001,
+					Token: "token",
+					Artifacts: common.Artifacts{
+						common.Artifact{
+							Paths:  []string{"include/**"},
+							When:   common.ArtifactWhenAlways,
+							Format: common.ArtifactFormatZip,
+							Type:   "archive",
+						},
+					},
+				},
+				Runner: runnerConfig,
+			}
+
+			info := common.ShellScriptInfo{
+				RunnerCommand: "gitlab-runner-helper",
+				Build:         build,
+			}
+
+			mockWriter := new(MockShellWriter)
+			defer mockWriter.AssertExpectations(t)
+			mockWriter.On("Variable", mock.Anything)
+			mockWriter.On("Cd", mock.Anything).Once()
+			mockWriter.On("IfCmd", "gitlab-runner-helper", "--version").Once()
+			mockWriter.On("Noticef", mock.Anything).Once()
+			mockWriter.On(
+				"Command", "gitlab-runner-helper", "artifacts-uploader",
+				"--url", tt.expectedURL,
+				"--token", "token",
+				"--id", "1001",
+				"--path", "include/**",
+				"--artifact-format", "zip",
+				"--artifact-type", "archive",
+			).Once()
+			mockWriter.On("Else").Once()
+			mockWriter.On("Warningf", mock.Anything, mock.Anything, mock.Anything).Once()
+			mockWriter.On("EndIf").Once()
+
+			shell := AbstractShell{}
+			err := shell.writeScript(mockWriter, common.BuildStageUploadOnSuccessArtifacts, info)
+			require.NoError(t, err)
+		})
+	}
+}
+
+func TestWriteDownloadingArtifactsWithCustomizedURL(t *testing.T) {
+	const (
+		defaultURL = "default_url"
+		customURL  = "custom_url"
+	)
+
+	tests := map[string]struct {
+		updateRunnerConfig func(*testing.T, *common.RunnerConfig)
+		expectedURL        string
+	}{
+		"custom artifacts URL defined": {
+			updateRunnerConfig: func(t *testing.T, config *common.RunnerConfig) {
+				require.NotNil(t, config)
+				config.RunnerSettings.ArtifactsURL = customURL
+			},
+			expectedURL: customURL,
+		},
+		"custom artifacts URL not defined": {
+			updateRunnerConfig: func(_ *testing.T, _ *common.RunnerConfig) {},
+			expectedURL:        defaultURL,
+		},
+	}
+
+	for tn, tt := range tests {
+		t.Run(tn, func(t *testing.T) {
+			runnerConfig := &common.RunnerConfig{
+				RunnerCredentials: common.RunnerCredentials{
+					URL: defaultURL,
+				},
+			}
+			tt.updateRunnerConfig(t, runnerConfig)
+
+			build := &common.Build{
+				JobResponse: common.JobResponse{
+					ID:    1001,
+					Token: "job-token",
+					Dependencies: common.Dependencies{
+						{
+							ID:    1002,
+							Token: "artifact-token",
+							Name:  "artifact-name",
+							ArtifactsFile: common.DependencyArtifactsFile{
+								Filename: "artifact-file-name",
+								Size:     0,
+							},
+						},
+					},
+				},
+				Runner: runnerConfig,
+			}
+
+			info := common.ShellScriptInfo{
+				RunnerCommand: "gitlab-runner-helper",
+				Build:         build,
+			}
+
+			mockWriter := new(MockShellWriter)
+			defer mockWriter.AssertExpectations(t)
+			mockWriter.On("Variable", mock.Anything)
+			mockWriter.On("Cd", mock.Anything).Once()
+			mockWriter.On("IfCmd", "gitlab-runner-helper", "--version").Once()
+			mockWriter.On("Noticef", mock.Anything, "artifact-name", int64(1002)).Once()
+			mockWriter.On(
+				"Command", "gitlab-runner-helper", "artifacts-downloader",
+				"--url", tt.expectedURL,
+				"--token", "artifact-token",
+				"--id", "1002",
+			).Once()
+			mockWriter.On("Else").Once()
+			mockWriter.On("Warningf", mock.Anything, mock.Anything, mock.Anything).Once()
+			mockWriter.On("EndIf").Once()
+
+			shell := AbstractShell{}
+			err := shell.writeScript(mockWriter, common.BuildStageDownloadArtifacts, info)
+			require.NoError(t, err)
+		})
+	}
+}
+
 func getJobResponseWithCachePaths() common.JobResponse {
 	return common.JobResponse{
 		ID:    1000,

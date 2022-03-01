@@ -170,7 +170,7 @@ func (b *AbstractShell) downloadArtifacts(w ShellWriter, job common.Dependency, 
 	args := []string{
 		"artifacts-downloader",
 		"--url",
-		info.Build.Runner.URL,
+		info.Build.Runner.GetArtifactsURL(),
 		"--token",
 		job.Token,
 		"--id",
@@ -713,7 +713,7 @@ func (b *AbstractShell) writeUploadArtifact(w ShellWriter, info common.ShellScri
 	args := []string{
 		"artifacts-uploader",
 		"--url",
-		info.Build.Runner.URL,
+		info.Build.Runner.GetArtifactsURL(),
 		"--token",
 		info.Build.Token,
 		"--id",
@@ -767,7 +767,7 @@ func (b *AbstractShell) writeUploadArtifact(w ShellWriter, info common.ShellScri
 }
 
 func (b *AbstractShell) writeUploadArtifacts(w ShellWriter, info common.ShellScriptInfo, onSuccess bool) error {
-	if info.Build.Runner.URL == "" {
+	if info.Build.Runner.GetArtifactsURL() == "" {
 		return common.ErrSkipBuildStage
 	}
 
