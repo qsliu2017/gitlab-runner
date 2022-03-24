@@ -36,3 +36,18 @@ static QA:
       jq -C . gl-code-quality-report.json
       exit 1
     fi
+
+trigger charts update:
+  stage: postrelease
+  extends:
+    - .rules:release:stable-or-rc
+  # We can't use multi-project pipelines using `trigger` keyword
+  # because master branch of Charts repos is locked only for Maintainers
+  # which means others won't be able to run a pipeline there. Hence falling
+  # back to the curl script using a trigger token.
+  script:
+    - curl --request POST \
+           --form token=${GITLAB_CHARTS_TRIGGER_TOKEN} \
+           --form ref=master \
+           --form "variables[DEPS_PIPELINE]=true" \
+           "https://gitlab.com/api/v4/projects/3828396/trigger/pipeline"
