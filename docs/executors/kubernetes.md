@@ -1301,3 +1301,7 @@ services:
   - name: docker:dind
     command: ["--mtu=1450"]
 ```
+
+### WARNING: Failed to process runner builds=0 error=open /tmp/traceXXXXXXXX: read-only file system executor=kubernetes runner=XXXXXXXX
+
+Due to the fact that we [store traces on disk](https://gitlab.com/gitlab-org/gitlab-runner/-/merge_requests/1315), this error will appear if `readOnlyFileSystem: true` is forced in `PodSecurityPolicy`. To resolve this, a memory type `emptyDir` volume  should be mounted at `/tmp`.
