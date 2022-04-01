@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math/big"
 	"os"
@@ -1651,7 +1652,6 @@ func (c *Config) StatConfig(configFile string) error {
 
 func (c *Config) LoadConfig(configFile string) error {
 	info, err := os.Stat(configFile)
-
 	// permission denied is soft error
 	if os.IsNotExist(err) {
 		return nil
@@ -1660,6 +1660,9 @@ func (c *Config) LoadConfig(configFile string) error {
 	}
 
 	if _, err = toml.DecodeFile(configFile, c); err != nil {
+		if pe, ok := err.(toml.ParseError); ok {
+			return errors.New(pe.ErrorWithPosition())
+		}
 		return err
 	}
 
