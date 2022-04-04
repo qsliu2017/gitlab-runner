@@ -161,6 +161,19 @@ oc apply -f catalogsource.yaml
 
 In a minute the new Runner should show up in the OpenShift cluster's OperatorHub section.
 
+#### GitLab Runner Operator Version Chart
+
+| GitLab Runner | GitLab Runner Operator |
+| --------------| ---------------------- |
+| 13.9.0  | 1.0.0 |
+| 13.11.0 | 1.1.0 |
+| 14.0.1  | 1.2.0 |
+| 14.1.0  | 1.3.0 |
+| 14.2.0  | 1.4.0 |
+| 14.3.2  | 1.5.0 |
+| 14.7.0  | 1.6.0 |
+| 14.8.2  | 1.7.0 |
+
 ## Uninstall Operator 
 
 ### Uninstall on RedHat OpenShift
