@@ -308,3 +308,13 @@ Elasticsearch has a `vm.max_map_count` requirement that has to be set on the ins
 
 See the [Elasticsearch Docs](https://www.elastic.co/guide/en/elasticsearch/reference/current/docker.html#docker-prod-prerequisites)
 for how to set this value correctly depending on the platform.
+
+## WARNING: Failed to process runner builds=0 error=open /tmp/traceXXXXXXXX: read-only file system executor=kubernetes runner=XXXXXXXX
+
+Due to the fact that we [store traces on disk](https://gitlab.com/gitlab-org/gitlab-runner/-/merge_requests/1315), this error will appear if `readOnlyFileSystem: true` is forced in `PodSecurityPolicy`. As a workaround for this, add following to your `config.toml` runner configuration file:
+
+```yaml
+volumes:
+- name: tmp-folder
+  emptyDir: {}
+```
