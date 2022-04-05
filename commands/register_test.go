@@ -145,7 +145,7 @@ func TestConfigTemplate_MergeTo(t *testing.T) {
 		"invalid template file": {
 			templateContent: configTemplateMergeToInvalidConfiguration,
 			config:          configTemplateMergeToBaseConfiguration,
-			expectedError:   errors.New("couldn't load configuration template file: Near line 1 (last key parsed '-'): expected key separator '=', but got ',' instead"),
+			expectedError:   errors.New("couldn't load configuration template file: toml: error: expected '.' or '=', but got ',' instead\n\nAt line 1, column 3:\n\n      1 | - , ;\n            ^\n"),
 		},
 		"no runners in template": {
 			templateContent: configTemplateMergeToEmptyConfiguration,
