@@ -161,7 +161,7 @@ oc apply -f catalogsource.yaml
 
 In a minute the new Runner should show up in the OpenShift cluster's OperatorHub section.
 
-#### GitLab Runner Operator Version Chart
+#### GitLab Runner Operator version compatibility
 
 | GitLab Runner | GitLab Runner Operator |
 | --------------| ---------------------- |
