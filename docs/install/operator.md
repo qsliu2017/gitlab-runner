@@ -161,7 +161,9 @@ oc apply -f catalogsource.yaml
 
 In a minute the new Runner should show up in the OpenShift cluster's OperatorHub section.
 
-#### GitLab Runner Operator version compatibility
+#### GitLab Runner Operator versions compatibility
+
+You can determine the appropriate version of the GitLab Runner Operator for your GitLab instance by using the chart below. We recommend matching the GitLab Runner version as closely as possible with your version of GitLab.
 
 | GitLab Runner | GitLab Runner Operator |
 | --------------| ---------------------- |
