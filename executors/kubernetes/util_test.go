@@ -447,8 +447,8 @@ func TestCreateResourceList(t *testing.T) {
 			HugePages2Mi: "200j",
 			Expected:     api.ResourceList{},
 			Error: &resourceQuantityError{
-				resource: "hugePages2Mi",
-				value:    "",
+				resource: "hugepages-2mi",
+				value:    "200j",
 				inner:    mustGetParseError(t, "200j"),
 			},
 		},
