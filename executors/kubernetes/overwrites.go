@@ -243,7 +243,6 @@ func (o *overwrites) evaluateMaxBuildResourcesOverwrite(
 		variables.Get(MemoryRequestOverwriteVariableValue),
 		variables.Get(EphemeralStorageRequestOverwriteVariableValue),
 		logger,
-		false,
 	)
 	if err != nil {
 		return fmt.Errorf("invalid build requests specified: %w", err)
@@ -267,7 +266,6 @@ func (o *overwrites) evaluateMaxBuildResourcesOverwrite(
 		variables.Get(MemoryLimitOverwriteVariableValue),
 		variables.Get(EphemeralStorageLimitOverwriteVariableValue),
 		logger,
-		true,
 	)
 	if err != nil {
 		return fmt.Errorf("invalid build limits specified: %w", err)
@@ -299,7 +297,6 @@ func (o *overwrites) evaluateMaxServiceResourcesOverwrite(
 		variables.Get(ServiceMemoryRequestOverwriteVariableValue),
 		variables.Get(ServiceEphemeralStorageRequestOverwriteVariableValue),
 		logger,
-		false,
 	)
 	if err != nil {
 		return fmt.Errorf("invalid service requests specified: %w", err)
@@ -323,7 +320,6 @@ func (o *overwrites) evaluateMaxServiceResourcesOverwrite(
 		variables.Get(ServiceMemoryLimitOverwriteVariableValue),
 		variables.Get(ServiceEphemeralStorageLimitOverwriteVariableValue),
 		logger,
-		true,
 	)
 	if err != nil {
 		return fmt.Errorf("invalid service limits specified: %w", err)
@@ -355,7 +351,6 @@ func (o *overwrites) evaluateMaxHelperResourcesOverwrite(
 		variables.Get(HelperMemoryRequestOverwriteVariableValue),
 		variables.Get(HelperEphemeralStorageRequestOverwriteVariableValue),
 		logger,
-		false,
 	)
 	if err != nil {
 		return fmt.Errorf("invalid helper requests specified: %w", err)
@@ -379,7 +374,6 @@ func (o *overwrites) evaluateMaxHelperResourcesOverwrite(
 		variables.Get(HelperMemoryLimitOverwriteVariableValue),
 		variables.Get(HelperEphemeralStorageLimitOverwriteVariableValue),
 		logger,
-		true,
 	)
 	if err != nil {
 		return fmt.Errorf("invalid helper limits specified: %w", err)
@@ -505,19 +499,21 @@ func (o *overwrites) evaluateMaxResourceListOverwrite(
 	overwriteMemory string,
 	overwriteEphemeralStorage string,
 	logger common.BuildLogger,
-	evalHugePages2Mi bool,
 ) (api.ResourceList, error) {
 	cpu, err := o.evaluateMaxResourceOverwrite(cpuFieldName, currentCPU, maxCPU, overwriteCPU, logger)
 	if err != nil {
 		return nil, err
 	}
 
-	hugePages2Mi := ""
-	if evalHugePages2Mi == true {
-		hugePages2Mi, err = o.evaluateMaxResourceOverwrite(hugePages2MiFieldName, currentHugePages2Mi, maxHugePages2Mi, overwriteHugePages2Mi, logger)
-		if err != nil {
-			return nil, err
-		}
+	hugePages2Mi, err := o.evaluateMaxResourceOverwrite(
+		hugePages2MiFieldName,
+		currentHugePages2Mi,
+		maxHugePages2Mi,
+		overwriteHugePages2Mi,
+		logger,
+	)
+	if err != nil {
+		return nil, err
 	}
 
 	memory, err := o.evaluateMaxResourceOverwrite(memoryFieldName, currentMemory, maxMemory, overwriteMemory, logger)
