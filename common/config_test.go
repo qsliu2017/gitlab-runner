@@ -221,7 +221,8 @@ func TestConfigParse(t *testing.T) {
 				[[runners.docker.services]]
 				name = 5
 			`,
-			expectedErr: "toml: incompatible types: TOML key \"runners.docker.services.name\" has type int64; destination has type string",
+			expectedErr: "toml: incompatible types: TOML key \"runners.docker.services.name\"" +
+				" has type int64; destination has type string",
 		},
 		"parse Service as table int value alias": {
 			config: `
@@ -230,7 +231,8 @@ func TestConfigParse(t *testing.T) {
 				name = "svc1"
 				alias = 5
 			`,
-			expectedErr: "toml: incompatible types: TOML key \"runners.docker.services.alias\" has type int64; destination has type string",
+			expectedErr: "toml: incompatible types: TOML key \"runners.docker.services.alias\"" +
+				" has type int64; destination has type string",
 		},
 		"parse Service runners.docker and runners.docker.services": {
 			config: `

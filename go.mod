@@ -58,8 +58,11 @@ require (
 )
 
 require (
+<<<<<<< HEAD
 	cloud.google.com/go v0.72.0 // indirect
 	github.com/766b/go-outliner v0.0.0-20180511142203-fc6edecdadd7 // indirect
+=======
+>>>>>>> b7648abfb (updated config_test.go to reduce string char size)
 	github.com/Azure/azure-pipeline-go v0.2.3 // indirect
 	github.com/Azure/go-ansiterm v0.0.0-20170929234023-d6e3b3328b78 // indirect
 	github.com/Azure/go-autorest v14.2.0+incompatible // indirect
