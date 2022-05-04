@@ -274,6 +274,7 @@ Finally
         # We don't really care if these fail or not, clean up shouldn't fail
         # the pipelines.
         & 'docker' rmi -f $Env:CI_REGISTRY_IMAGE/gitlab-runner-helper:$tag
+        & 'docker' rmi -f $ecrPublicRegistry/gitlab-runner-helper:$tag
         & 'docker' image prune -f
     }
 }
