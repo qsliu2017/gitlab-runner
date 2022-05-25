@@ -39,6 +39,7 @@ The flags are defined in `./helpers/featureflags/flags.go` file.
 
 | Feature flag | Default value | Deprecated | To be removed with | Description |
 |--------------|---------------|------------|--------------------|-------------|
+| `certificate_based_clusters` | `true` | **{dotted-circle}** No | | When set to `false` in version 15.0, it will switch off the create and connect to certificate-based integrations in the UI. In GitLab 16.0, both the feature and its related code will be removed. |
 | `FF_CMD_DISABLE_DELAYED_ERROR_LEVEL_EXPANSION` | `false` | **{dotted-circle}** No |  | Disables [EnableDelayedExpansion](https://ss64.com/nt/delayedexpansion.html) for error checking for when using [Window Batch](../shells/index.md#windows-batch) shell |
 | `FF_NETWORK_PER_BUILD` | `false` | **{dotted-circle}** No |  | Enables creation of a Docker [network per build](../executors/docker.md#networking) with the `docker` executor |
 | `FF_USE_LEGACY_KUBERNETES_EXECUTION_STRATEGY` | `false` | **{dotted-circle}** No |  | When set to `false` disables execution of remote Kubernetes commands through `exec` in favor of `attach` to solve problems like [#4119](https://gitlab.com/gitlab-org/gitlab-runner/-/issues/4119) |
