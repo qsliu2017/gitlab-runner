@@ -15,7 +15,7 @@ COPY "$BASE_PATH/entrypoint.sh" /entrypoint
 RUN chmod +x /entrypoint
 
 COPY "$BASE_PATH/scripts" "$BASE_PATH/binaries/gitlab-runner-helper" /usr/bin/
-RUN chmod +x /usr/bin/gitlab-runner-helper
+RUN chmod +x /usr/bin/gitlab-runner-helper /usr/bin/gitlab-runner-build
 
 RUN echo 'hosts: files dns' >> /etc/nsswitch.conf
 
