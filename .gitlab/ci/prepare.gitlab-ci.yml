@@ -57,7 +57,7 @@ prepare helper-entrypoint image:
   variables:
     BUILD_DOCKERFILE_BASEDIR: ./tests/dockerfiles/gitlab-runner-helper-entrypoint
     BUILD_IMAGE: registry.gitlab.com/gitlab-org/gitlab-runner/helper-entrypoint:latest
-    BUILD_DOCKERFILE: "$BUILD_DOCKERFILE_BASEDIR/Dockerfile"
+    BUILD_DOCKERFILE: "$BUILD_DOCKERFILE_BASEDIR/dockerfile"
   script:
   - make helper-bin-host
   - mkdir -p "$BUILD_DOCKERFILE_BASEDIR/binaries/"
