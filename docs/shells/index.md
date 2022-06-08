@@ -279,6 +279,11 @@ You can execute Batch scripts from PowerShell using `Start-Process
 "cmd.exe" "/c C:\Path\file.bat"` for old Batch scripts not ported to
 PowerShell.
 
+### Additional References
+
+- Video: [Slicing and Dicing with PowerShell on GitLab CI](https://youtu.be/UZvtAYwruFc)
+- Working Examples: [PowerShell Pipelines on GitLab CI](https://gitlab.com/guided-explorations/microsoft/powershell/powershell-pipelines-on-gitlab-ci)
+
 ## Windows Batch
 
 NOTE:
