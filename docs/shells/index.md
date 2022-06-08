@@ -87,17 +87,21 @@ PowerShell doesn't support executing the build in context of another user.
 The generated PowerShell script is executed by saving its content to a file and
 passing the filename to the following command:
 
-- For PowerShell Desktop Edition:
+- For Legacy Windows PowerShell 5.x:
 
   ```batch
   powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command generated-windows-powershell.ps1
   ```
 
-- For PowerShell Core Edition:
+- For PowerShell Core / PowerShell 7 and Later:
 
-  ```batch
-  pwsh -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command generated-windows-powershell.ps1
-  ```
+This is the default shell when the runner is installed on Windows.
+
+NOTE
+PowerShell 7 or later must be installed on Windows editions that do not ship with it in order for GitLab runner to find pwsh.exe as the shell for default GitLab runner jobs.
+
+NOTE
+PowerShell has a [specifically engineered approach to terminating and non-terminating errors](https://docs.microsoft.com/en-us/powershell/scripting/developer/cmdlet/terminating-errors) which is worked into all provided CMDLets and many 3rd party and custom CMDLets. As with all PowerShell execution, if a PowerShell script does not terminate upon specific non-terminating errors - the code must be instrumented to handle the situation. The variable $ErrorActionPreference can be set to 'stop' - however, frequently this is too broad and can cause undesireable terminations for previously passive errors. If $ErrorActionPreference needs to be set for given lines, it can also be done selectively around the non-terminating errors you wish to trap and reset to the default after those lines. It can also be set globally in .gitlab-ci.yml variables.
 
 This is what an example PowerShell script looks like:
 
