@@ -29,6 +29,9 @@
 .if-not-canonical-namespace: &if-not-canonical-namespace
   if: '$CI_PROJECT_NAMESPACE !~ /^gitlab-org($|\/)/'
 
+.if-canonical-namespace: &if-canonical-namespace
+  if: '$CI_PROJECT_NAMESPACE == gitlab-org'
+
 .if-default-branch: &if-default-branch
   if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
 
@@ -150,8 +153,7 @@
 
 .rules:release:all:
   rules:
-  - <<: *if-not-canonical-namespace
-    when: never
+  - <<: *if-canonical-namespace
   - <<: *if-default-branch
   - <<: *if-release-candidate-tag
   - <<: *if-stable-release-tag
