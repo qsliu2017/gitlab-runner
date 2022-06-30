@@ -25,6 +25,7 @@ const (
 	KubernetesHonorEntrypoint            string = "FF_KUBERNETES_HONOR_ENTRYPOINT"
 	PosixlyCorrectEscapes                string = "FF_POSIXLY_CORRECT_ESCAPES"
 	UseImprovedURLMasking                string = "FF_USE_IMPROVED_URL_MASKING"
+	UseShellAdapterInShellExecutor       string = "FF_USE_SHELL_ADAPTER_IN_SHELL_EXECUTOR"
 )
 
 type FeatureFlag struct {
@@ -195,6 +196,18 @@ var flags = []FeatureFlag{
 			"log output. When this is disabled, sensitive URL parameters are only masked in select places and can " +
 			"[occasionally be revealed](https://gitlab.com/gitlab-org/gitlab-runner/-/issues/4625). This feature " +
 			"flag can only be configured via Runner's config and not from a job.",
+	},
+	{
+		Name:            UseShellAdapterInShellExecutor,
+		DefaultValue:    false,
+		Deprecated:      false,
+		ToBeRemovedWith: "",
+		//nolint:lll
+		Description: "On Unix like systems, when Shell executor is used and when Runner is configured to use " +
+			"a different user account for job execution than for the runner process, `su` is used to change the " +
+			"user context. This unfortunately [causes problems with job termination](https://gitlab.com/gitlab-org/gitlab-runner/-/issues/3376). " +
+			"This feature flag will enable a mechanism that should solve this problem. Applicable to both `bash` and " +
+			"`powershell` shells when specific user for jobs is configured on Unix like systems.",
 	},
 }
 

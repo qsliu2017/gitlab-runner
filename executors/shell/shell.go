@@ -72,7 +72,14 @@ func (s *executor) Run(cmd common.ExecutorCommand) error {
 		UseWindowsLegacyProcessStrategy: s.Build.IsFeatureFlagOn(featureflags.UseWindowsLegacyProcessStrategy),
 	}
 
-	args := s.BuildShell.Arguments
+	args := make([]string, len(s.BuildShell.Arguments))
+	copy(args, s.BuildShell.Arguments)
+
+	if s.BuildShell.Command == "su" && s.Build.IsFeatureFlagOn(featureflags.UseShellAdapterInShellExecutor) {
+		s.BuildLogger.Infoln("Using shell-adapter for shell executor")
+		args[len(args)-1] = fmt.Sprintf("gitlab-runner shell-adapter --command-line %q", args[len(args)-1])
+	}
+
 	stdin, args, cleanup, err := s.shellScriptArgs(cmd, args)
 	if err != nil {
 		return err
