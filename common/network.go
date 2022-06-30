@@ -566,10 +566,13 @@ type JobTrace interface {
 	SetCancelFunc(cancelFunc context.CancelFunc)
 	Cancel() bool
 	SetAbortFunc(abortFunc context.CancelFunc)
+	SetOnWriteFunc(func(sentTraceLen int))
 	Abort() bool
 	SetFailuresCollector(fc FailuresCollector)
 	SetMasked(values []string)
 	IsStdout() bool
+	Disable()
+	Enable()
 }
 
 type UpdateJobResult struct {
@@ -602,5 +605,5 @@ type Network interface {
 	PatchTrace(config RunnerConfig, jobCredentials *JobCredentials, content []byte, startOffset int) PatchTraceResult
 	DownloadArtifacts(config JobCredentials, artifactsFile io.WriteCloser, directDownload *bool) DownloadState
 	UploadRawArtifacts(config JobCredentials, reader io.ReadCloser, options ArtifactsOptions) (UploadState, string)
-	ProcessJob(config RunnerConfig, buildCredentials *JobCredentials) (JobTrace, error)
+	ProcessJob(config RunnerConfig, buildCredentials *JobCredentials, startOffset int) (JobTrace, error)
 }

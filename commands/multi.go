@@ -52,6 +52,7 @@ type RunCommand struct {
 	healthHelper
 
 	buildsHelper buildsHelper
+	jobStore     *common.MultiJobStore
 
 	ServiceName      string `short:"n" long:"service" description:"Use different names for different services"`
 	WorkingDirectory string `short:"d" long:"working-directory" description:"Specify custom working directory"`
@@ -103,6 +104,10 @@ func (mr *RunCommand) Start(_ service.Service) error {
 	mr.reloadSignal = make(chan os.Signal, 1)
 	mr.runFinished = make(chan bool, 1)
 	mr.stopSignals = make(chan os.Signal)
+
+	mr.jobStore = common.NewMultiJobStore(func(config *common.RunnerConfig) common.JobStore {
+		return common.NewFileJobStore("/tmp/", config)
+	})
 
 	mr.log().Info("Starting multi-runner from ", mr.ConfigFile, "...")
 
@@ -502,14 +507,21 @@ func (mr *RunCommand) processRunner(
 	}
 
 	// Receive a new build
-	trace, jobData, err := mr.requestJob(runner, sessionInfo)
+	trace, jobData, executionState, err := mr.requestJob(runner, sessionInfo)
 	if err != nil || jobData == nil {
 		return
 	}
 	defer func() { mr.traceOutcome(trace, err) }()
 
 	// Create a new build
-	build, err := common.NewBuild(*jobData, runner, mr.abortBuilds, executorData)
+	build, err := common.NewBuild(
+		*jobData,
+		runner,
+		mr.abortBuilds,
+		executorData,
+		executionState,
+		mr.jobStore.Get(runner),
+	)
 	if err != nil {
 		return
 	}
@@ -525,7 +537,13 @@ func (mr *RunCommand) processRunner(
 	mr.requeueRunner(runner, runners)
 
 	// Process a build
-	return build.Run(mr.config, trace)
+	if err := build.Run(mr.config, trace); err != nil {
+		// TODO:
+		_ = mr.jobStore.Get(runner).Remove(jobData.ID)
+		return err
+	}
+
+	return nil
 }
 
 func (mr *RunCommand) traceOutcome(trace common.JobTrace, err error) {
@@ -570,20 +588,55 @@ func (mr *RunCommand) createSession(provider common.ExecutorProvider) (*session.
 func (mr *RunCommand) requestJob(
 	runner *common.RunnerConfig,
 	sessionInfo *common.SessionInfo,
-) (common.JobTrace, *common.JobResponse, error) {
+) (common.JobTrace, *common.JobResponse, *common.JobExecutionState, error) {
 	if !mr.buildsHelper.acquireRequest(runner) {
 		mr.log().WithField("runner", runner.ShortDescription()).
 			Debugln("Failed to request job: runner requestConcurrency meet")
-		return nil, nil, nil
+		return nil, nil, nil, nil
 	}
 	defer mr.buildsHelper.releaseRequest(runner)
 
-	jobData, healthy := mr.doJobRequest(context.Background(), runner, sessionInfo)
-	mr.makeHealthy(runner.UniqueID(), healthy)
+	store := mr.jobStore.Get(runner)
 
-	if jobData == nil {
-		return nil, nil, nil
+	var jobData *common.JobResponse
+	executionState, err := store.FindJobToResume()
+	if err != nil {
+		// TODO: handle invalid json
+		return nil, nil, nil, err
 	}
+	if executionState != nil {
+		// TODO: should we check early the job status and fail if e.g. it's been cancelled?
+		jobData = executionState.Job
+		executionState.Resumes++
+		executionState.ResumedFromStage = executionState.Stage
+		// TODO:
+		_ = store.Save(executionState)
+		mr.makeHealthy(runner.UniqueID(), true)
+	} else {
+		var healthy bool
+		jobData, healthy = mr.doJobRequest(context.Background(), runner, sessionInfo)
+		mr.makeHealthy(runner.UniqueID(), healthy)
+
+		if jobData == nil {
+			return nil, nil, nil, nil
+		}
+
+		executionState = common.NewJobExecutionState(jobData)
+		if err := store.Save(executionState); err != nil {
+			return nil, nil, nil, err
+		}
+	}
+
+	go func() {
+		t := time.NewTicker(10 * time.Second)
+		for {
+			<-t.C
+			executionState.UpdateHealth()
+			if err := store.Save(executionState); err != nil {
+				mr.log().WithField("update job execution health error:", err)
+			}
+		}
+	}()
 
 	// Make sure to always close output
 	jobCredentials := &common.JobCredentials{
@@ -591,7 +644,7 @@ func (mr *RunCommand) requestJob(
 		Token: jobData.Token,
 	}
 
-	trace, err := mr.network.ProcessJob(*runner, jobCredentials)
+	trace, err := mr.network.ProcessJob(*runner, jobCredentials, executionState.SentTrace)
 	if err != nil {
 		jobInfo := common.UpdateJobInfo{
 			ID:            jobCredentials.ID,
@@ -601,11 +654,21 @@ func (mr *RunCommand) requestJob(
 
 		// send failure once
 		mr.network.UpdateJob(*runner, jobCredentials, jobInfo)
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
+	if executionState.IsResumed() {
+		trace.Disable()
+	}
+
+	trace.SetOnWriteFunc(func(sentTraceLen int) {
+		executionState.SentTrace = sentTraceLen
+		// TODO:
+		_ = store.Save(executionState)
+	})
+
 	trace.SetFailuresCollector(mr.failuresCollector)
-	return trace, jobData, nil
+	return trace, jobData, executionState, nil
 }
 
 // doJobRequest will execute the request for a new job, respecting an interruption

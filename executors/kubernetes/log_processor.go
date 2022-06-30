@@ -21,6 +21,11 @@ type logStreamer interface {
 	fmt.Stringer
 }
 
+type logLineData struct {
+	line   string
+	offset int64
+}
+
 type kubernetesLogStreamer struct {
 	kubernetesLogProcessorPodConfig
 
@@ -63,7 +68,7 @@ type logProcessor interface {
 	// Process listens for log lines
 	// consumers must read from the channel until it's closed
 	// consumers are also notified in case of error through the error channel
-	Process(ctx context.Context) (<-chan string, <-chan error)
+	Process(ctx context.Context) (<-chan logLineData, <-chan error)
 }
 
 type backoffCalculator interface {
@@ -94,6 +99,7 @@ func newKubernetesLogProcessor(
 	backoff backoffCalculator,
 	logger logrus.FieldLogger,
 	podCfg kubernetesLogProcessorPodConfig,
+	offset int64,
 ) *kubernetesLogProcessor {
 	logStreamer := &kubernetesLogStreamer{
 		kubernetesLogProcessorPodConfig: podCfg,
@@ -106,11 +112,13 @@ func newKubernetesLogProcessor(
 		backoff:     backoff,
 		logger:      logger,
 		logStreamer: logStreamer,
+
+		logsOffset: offset,
 	}
 }
 
-func (l *kubernetesLogProcessor) Process(ctx context.Context) (<-chan string, <-chan error) {
-	outCh := make(chan string)
+func (l *kubernetesLogProcessor) Process(ctx context.Context) (<-chan logLineData, <-chan error) {
+	outCh := make(chan logLineData)
 	errCh := make(chan error)
 	go func() {
 		defer close(outCh)
@@ -121,7 +129,7 @@ func (l *kubernetesLogProcessor) Process(ctx context.Context) (<-chan string, <-
 	return outCh, errCh
 }
 
-func (l *kubernetesLogProcessor) attach(ctx context.Context, outCh chan string, errCh chan error) {
+func (l *kubernetesLogProcessor) attach(ctx context.Context, outCh chan logLineData, errCh chan error) {
 	var (
 		attempt         float64 = -1
 		backoffDuration time.Duration
@@ -167,7 +175,11 @@ func (l *kubernetesLogProcessor) attach(ctx context.Context, outCh chan string, 
 	}
 }
 
-func (l *kubernetesLogProcessor) processStream(ctx context.Context, outCh chan string) error {
+func (l *kubernetesLogProcessor) setLogsOffset(newOffset int64) {
+	l.logsOffset = newOffset
+}
+
+func (l *kubernetesLogProcessor) processStream(ctx context.Context, outCh chan logLineData) error {
 	reader, writer := io.Pipe()
 	defer func() {
 		_ = reader.Close()
@@ -212,7 +224,7 @@ func (l *kubernetesLogProcessor) processStream(ctx context.Context, outCh chan s
 	return gr.Wait()
 }
 
-func (l *kubernetesLogProcessor) readLogs(ctx context.Context, logs io.Reader, outCh chan string) error {
+func (l *kubernetesLogProcessor) readLogs(ctx context.Context, logs io.Reader, outCh chan logLineData) error {
 	logsScanner, linesCh := l.scan(ctx, logs)
 
 	for {
@@ -230,7 +242,10 @@ func (l *kubernetesLogProcessor) readLogs(ctx context.Context, logs io.Reader, o
 				l.logsOffset = newLogsOffset
 			}
 
-			outCh <- logLine
+			outCh <- logLineData{
+				line:   logLine,
+				offset: l.logsOffset,
+			}
 		}
 	}
 }

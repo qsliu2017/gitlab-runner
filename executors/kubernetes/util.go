@@ -228,6 +228,10 @@ func waitForPodRunning(
 	out io.Writer,
 	config *common.KubernetesConfig,
 ) (api.PodPhase, error) {
+	if running, err := isRunning(pod); running {
+		return pod.Status.Phase, err
+	}
+
 	pollInterval := config.GetPollInterval()
 	pollAttempts := config.GetPollAttempts()
 	for i := 0; i <= pollAttempts; i++ {

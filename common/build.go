@@ -141,12 +141,10 @@ type Build struct {
 	// Unique ID for all running builds on this runner and this project
 	ProjectRunnerID int `json:"project_runner_id"`
 
+	statusLock sync.Mutex
 	// CurrentStage(), CurrentState() and CurrentExecutorStage() are called
 	// from the metrics go routine whilst a build is in-flight, so access
 	// to these variables requires a lock.
-	statusLock            sync.Mutex
-	currentStage          BuildStage
-	currentState          BuildRuntimeState
 	executorStageResolver func() ExecutorStage
 
 	secretsResolver func(l logger, registry SecretResolverRegistry) (SecretsResolver, error)
@@ -160,36 +158,48 @@ type Build struct {
 
 	createdAt time.Time
 
+	ExecutionState *JobExecutionState
+	Store          JobStore
+
 	Referees         []referees.Referee
 	ArtifactUploader func(config JobCredentials, reader io.ReadCloser, options ArtifactsOptions) (UploadState, string)
 }
 
 func (b *Build) setCurrentStage(stage BuildStage) {
-	b.statusLock.Lock()
-	defer b.statusLock.Unlock()
+	b.ExecutionState.Lock()
+	defer b.ExecutionState.Unlock()
 
-	b.currentStage = stage
+	if b.ExecutionState.Stage != stage {
+		b.ExecutionState.Stage = stage
+		// TODO:
+		_ = b.Store.Save(b.ExecutionState)
+	}
 }
 
 func (b *Build) CurrentStage() BuildStage {
-	b.statusLock.Lock()
-	defer b.statusLock.Unlock()
+	b.ExecutionState.Lock()
+	defer b.ExecutionState.Unlock()
 
-	return b.currentStage
+	return b.ExecutionState.Stage
+
 }
 
 func (b *Build) setCurrentState(state BuildRuntimeState) {
-	b.statusLock.Lock()
-	defer b.statusLock.Unlock()
+	b.ExecutionState.Lock()
+	defer b.ExecutionState.Unlock()
 
-	b.currentState = state
+	if b.ExecutionState.State != state {
+		b.ExecutionState.State = state
+		// TODO:
+		_ = b.Store.Save(b.ExecutionState)
+	}
 }
 
 func (b *Build) CurrentState() BuildRuntimeState {
-	b.statusLock.Lock()
-	defer b.statusLock.Unlock()
+	b.ExecutionState.Lock()
+	defer b.ExecutionState.Unlock()
 
-	return b.currentState
+	return b.ExecutionState.State
 }
 
 func (b *Build) Log() *logrus.Entry {
@@ -320,7 +330,18 @@ func (b *Build) StartBuild(rootDir, cacheDir string, customBuildDirEnabled, shar
 	return nil
 }
 
-func (b *Build) executeStage(ctx context.Context, buildStage BuildStage, executor Executor) error {
+func (b *Build) executeStage(ctx context.Context, buildStage BuildStage, executor Executor, trace JobTrace) error {
+	if b.ExecutionState.IsResumed() && b.ExecutionState.Stage != "" && buildStage != b.ExecutionState.Stage {
+		return nil
+	}
+
+	if b.ExecutionState.IsResumed() && b.ExecutionState.Stage == b.ExecutionState.ResumedFromStage {
+		// TODO: executors should still perform similar checks to make sure they won't print lines for a second time after resuming
+		// Enable the trace at the end of the method to avoid some more logs
+		// TODO: restore/close build sections?
+		defer trace.Enable()
+	}
+
 	if ctx.Err() != nil {
 		return ctx.Err()
 	}
@@ -423,29 +444,29 @@ func GetStageDescription(stage BuildStage) string {
 	return description
 }
 
-func (b *Build) executeUploadArtifacts(ctx context.Context, state error, executor Executor) (err error) {
+func (b *Build) executeUploadArtifacts(ctx context.Context, state error, executor Executor, trace JobTrace) (err error) {
 	if state == nil {
-		return b.executeStage(ctx, BuildStageUploadOnSuccessArtifacts, executor)
+		return b.executeStage(ctx, BuildStageUploadOnSuccessArtifacts, executor, trace)
 	}
 
-	return b.executeStage(ctx, BuildStageUploadOnFailureArtifacts, executor)
+	return b.executeStage(ctx, BuildStageUploadOnFailureArtifacts, executor, trace)
 }
 
-func (b *Build) executeArchiveCache(ctx context.Context, state error, executor Executor) (err error) {
+func (b *Build) executeArchiveCache(ctx context.Context, state error, executor Executor, trace JobTrace) (err error) {
 	if state == nil {
-		return b.executeStage(ctx, BuildStageArchiveOnSuccessCache, executor)
+		return b.executeStage(ctx, BuildStageArchiveOnSuccessCache, executor, trace)
 	}
 
-	return b.executeStage(ctx, BuildStageArchiveOnFailureCache, executor)
+	return b.executeStage(ctx, BuildStageArchiveOnFailureCache, executor, trace)
 }
 
-func (b *Build) executeScript(ctx context.Context, executor Executor) error {
+func (b *Build) executeScript(ctx context.Context, executor Executor, trace JobTrace) error {
 	// track job start and create referees
 	startTime := time.Now()
 	b.createReferees(executor)
 
 	// Prepare stage
-	err := b.executeStage(ctx, BuildStagePrepare, executor)
+	err := b.executeStage(ctx, BuildStagePrepare, executor, trace)
 	if err != nil {
 		return fmt.Errorf(
 			"prepare environment: %w. "+
@@ -454,13 +475,13 @@ func (b *Build) executeScript(ctx context.Context, executor Executor) error {
 		)
 	}
 
-	err = b.attemptExecuteStage(ctx, BuildStageGetSources, executor, b.GetGetSourcesAttempts())
+	err = b.attemptExecuteStage(ctx, BuildStageGetSources, executor, b.GetGetSourcesAttempts(), trace)
 
 	if err == nil {
-		err = b.attemptExecuteStage(ctx, BuildStageRestoreCache, executor, b.GetRestoreCacheAttempts())
+		err = b.attemptExecuteStage(ctx, BuildStageRestoreCache, executor, b.GetRestoreCacheAttempts(), trace)
 	}
 	if err == nil {
-		err = b.attemptExecuteStage(ctx, BuildStageDownloadArtifacts, executor, b.GetDownloadArtifactsAttempts())
+		err = b.attemptExecuteStage(ctx, BuildStageDownloadArtifacts, executor, b.GetDownloadArtifactsAttempts(), trace)
 	}
 
 	if err == nil {
@@ -469,24 +490,24 @@ func (b *Build) executeScript(ctx context.Context, executor Executor) error {
 			if s.Name == StepNameAfterScript {
 				continue
 			}
-			err = b.executeStage(ctx, StepToBuildStage(s), executor)
+			err = b.executeStage(ctx, StepToBuildStage(s), executor, trace)
 			if err != nil {
 				break
 			}
 		}
 
-		b.executeAfterScript(ctx, err, executor)
+		b.executeAfterScript(ctx, err, executor, trace)
 	}
 
-	archiveCacheErr := b.executeArchiveCache(ctx, err, executor)
+	archiveCacheErr := b.executeArchiveCache(ctx, err, executor, trace)
 
-	artifactUploadErr := b.executeUploadArtifacts(ctx, err, executor)
+	artifactUploadErr := b.executeUploadArtifacts(ctx, err, executor, trace)
 
 	// track job end and execute referees
 	endTime := time.Now()
 	b.executeUploadReferees(ctx, startTime, endTime)
 
-	b.removeFileBasedVariables(ctx, executor)
+	b.removeFileBasedVariables(ctx, executor, trace)
 
 	return b.pickPriorityError(err, archiveCacheErr, artifactUploadErr)
 }
@@ -505,7 +526,7 @@ func (b *Build) pickPriorityError(jobErr error, archiveCacheErr error, artifactU
 	return artifactUploadErr
 }
 
-func (b *Build) executeAfterScript(ctx context.Context, err error, executor Executor) {
+func (b *Build) executeAfterScript(ctx context.Context, err error, executor Executor, trace JobTrace) {
 	state, _ := b.runtimeStateAndError(err)
 	b.GetAllVariables().OverwriteKey("CI_JOB_STATUS", JobVariable{
 		Key:   "CI_JOB_STATUS",
@@ -515,7 +536,7 @@ func (b *Build) executeAfterScript(ctx context.Context, err error, executor Exec
 	ctx, cancel := context.WithTimeout(ctx, AfterScriptTimeout)
 	defer cancel()
 
-	_ = b.executeStage(ctx, BuildStageAfterScript, executor)
+	_ = b.executeStage(ctx, BuildStageAfterScript, executor, trace)
 }
 
 // StepToBuildStage returns the BuildStage corresponding to a step.
@@ -527,8 +548,8 @@ func (b *Build) createReferees(executor Executor) {
 	b.Referees = referees.CreateReferees(executor, b.Runner.Referees, b.Log())
 }
 
-func (b *Build) removeFileBasedVariables(ctx context.Context, executor Executor) {
-	err := b.executeStage(ctx, BuildStageCleanup, executor)
+func (b *Build) removeFileBasedVariables(ctx context.Context, executor Executor, trace JobTrace) {
+	err := b.executeStage(ctx, BuildStageCleanup, executor, trace)
 	if err != nil {
 		b.Log().WithError(err).Warning("Error while executing file based variables removal script")
 	}
@@ -572,12 +593,13 @@ func (b *Build) attemptExecuteStage(
 	buildStage BuildStage,
 	executor Executor,
 	attempts int,
+	trace JobTrace,
 ) (err error) {
 	if attempts < 1 || attempts > 10 {
 		return fmt.Errorf("number of attempts out of the range [1, 10] for stage: %s", buildStage)
 	}
 	for attempt := 0; attempt < attempts; attempt++ {
-		if err = b.executeStage(ctx, buildStage, executor); err == nil {
+		if err = b.executeStage(ctx, buildStage, executor, trace); err == nil {
 			return
 		}
 	}
@@ -621,8 +643,10 @@ func (b *Build) runtimeStateAndError(err error) (BuildRuntimeState, error) {
 	}
 }
 
-func (b *Build) run(ctx context.Context, executor Executor) (err error) {
-	b.setCurrentState(BuildRunRuntimeRunning)
+func (b *Build) run(ctx context.Context, executor Executor, trace JobTrace) (err error) {
+	if !b.ExecutionState.IsResumed() {
+		b.setCurrentState(BuildRunRuntimeRunning)
+	}
 
 	buildFinish := make(chan error, 1)
 	buildPanic := make(chan error, 1)
@@ -646,7 +670,7 @@ func (b *Build) run(ctx context.Context, executor Executor) (err error) {
 			}
 		}()
 
-		buildFinish <- b.executeScript(runContext, executor)
+		buildFinish <- b.executeScript(runContext, executor, trace)
 	}()
 
 	// Wait for signals: cancel, timeout, abort or finish
@@ -880,9 +904,11 @@ func (b *Build) Run(globalConfig *Config, trace JobTrace) (err error) {
 	}
 
 	b.logger = NewBuildLogger(trace, b.Log())
-	b.printRunningWithHeader()
 
-	b.setCurrentState(BuildRunStatePending)
+	if !b.ExecutionState.IsResumed() {
+		b.printRunningWithHeader()
+		b.setCurrentState(BuildRunStatePending)
+	}
 
 	// These defers are ordered because runBuild could panic and the recover needs to handle that panic.
 	// setTraceStatus needs to be last since it needs a correct error value to report the job's status
@@ -901,7 +927,12 @@ func (b *Build) Run(globalConfig *Config, trace JobTrace) (err error) {
 		return err
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), b.GetBuildTimeout())
+	contextTimeout := b.GetBuildTimeout()
+	if b.ExecutionState.IsResumed() {
+		contextTimeout -= time.Since(b.ExecutionState.StartedAt.Time)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), contextTimeout)
 	defer cancel()
 
 	trace.SetCancelFunc(cancel)
@@ -922,7 +953,7 @@ func (b *Build) Run(globalConfig *Config, trace JobTrace) (err error) {
 	executor, err = b.executeBuildSection(executor, options, provider)
 
 	if err == nil {
-		err = b.run(ctx, executor)
+		err = b.run(ctx, executor, trace)
 		if errWait := b.waitForTerminal(ctx, globalConfig.SessionServer.GetSessionTimeout()); errWait != nil {
 			b.Log().WithError(errWait).Debug("Stopped waiting for terminal")
 		}
@@ -990,13 +1021,17 @@ func (b *Build) executeBuildSection(
 		Name:        string(BuildStagePrepareExecutor),
 		SkipMetrics: !b.JobResponse.Features.TraceSections,
 		Run: func() error {
-			msg := fmt.Sprintf(
-				"%sPreparing the %q executor%s",
-				helpers.ANSI_BOLD_CYAN,
-				b.Runner.Executor,
-				helpers.ANSI_RESET,
-			)
-			b.logger.Println(msg)
+			if !b.ExecutionState.IsResumed() {
+				msg := fmt.Sprintf(
+					"%sPreparing the %q executor%s",
+					helpers.ANSI_BOLD_CYAN,
+					b.Runner.Executor,
+					helpers.ANSI_RESET,
+				)
+
+				b.logger.Println(msg)
+			}
+
 			executor, err = b.retryCreateExecutor(options, provider, b.logger)
 			return err
 		},
@@ -1365,6 +1400,8 @@ func NewBuild(
 	runnerConfig *RunnerConfig,
 	systemInterrupt chan os.Signal,
 	executorData ExecutorData,
+	executionState *JobExecutionState,
+	store JobStore,
 ) (*Build, error) {
 	// Attempt to perform a deep copy of the RunnerConfig
 	runnerConfigCopy, err := runnerConfig.DeepCopy()
@@ -1379,6 +1416,8 @@ func NewBuild(
 		ExecutorData:    executorData,
 		createdAt:       time.Now(),
 		secretsResolver: newSecretsResolver,
+		ExecutionState:  executionState,
+		Store:           store,
 	}, nil
 }
 

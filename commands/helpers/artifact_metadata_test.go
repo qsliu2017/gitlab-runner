@@ -80,10 +80,10 @@ func TestGenerateMetadataToFile(t *testing.T) {
 			},
 			Materials: make([]interface{}, 0),
 			Metadata: AttestationMetadataInfo{
-				BuildStartedOn: TimeRFC3339{
+				BuildStartedOn: common.TimeRFC3339{
 					Time: startedAt,
 				},
-				BuildFinishedOn: TimeRFC3339{
+				BuildFinishedOn: common.TimeRFC3339{
 					Time: endedAt,
 				},
 				Reproducible: false,

@@ -93,7 +93,7 @@ func (r *RunSingleCommand) processBuild(data common.ExecutorData, abortSignal ch
 	}
 
 	config := common.NewConfig()
-	newBuild, err := common.NewBuild(*jobData, &r.RunnerConfig, abortSignal, data)
+	newBuild, err := common.NewBuild(*jobData, &r.RunnerConfig, abortSignal, data, nil, nil)
 	if err != nil {
 		return err
 	}
@@ -102,7 +102,7 @@ func (r *RunSingleCommand) processBuild(data common.ExecutorData, abortSignal ch
 		ID:    jobData.ID,
 		Token: jobData.Token,
 	}
-	trace, err := r.network.ProcessJob(r.RunnerConfig, jobCredentials)
+	trace, err := r.network.ProcessJob(r.RunnerConfig, jobCredentials, 0)
 	if err != nil {
 		return err
 	}

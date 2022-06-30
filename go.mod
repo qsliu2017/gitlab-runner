@@ -1,6 +1,6 @@
 module gitlab.com/gitlab-org/gitlab-runner
 
-go 1.17
+go 1.18
 
 require (
 	cloud.google.com/go v0.72.0
@@ -87,6 +87,7 @@ require (
 	github.com/dustin/go-humanize v1.0.0 // indirect
 	github.com/form3tech-oss/jwt-go v3.2.2+incompatible // indirect
 	github.com/go-logr/logr v0.4.0 // indirect
+	github.com/gofrs/flock v0.8.1 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/groupcache v0.0.0-20200121045136-8c9f03a8e57e // indirect
 	github.com/golang/protobuf v1.5.0 // indirect

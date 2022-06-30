@@ -79,6 +79,26 @@ var (
 	resourceTypePullSecret     = "ImagePullSecret"
 )
 
+type jobStateResource struct {
+	Name      string `json:"name"`
+	Namespace string `json:"namespace"`
+}
+
+func resourceFromKubernetesType(from metav1.ObjectMeta) *jobStateResource {
+	return &jobStateResource{
+		Name:      from.Name,
+		Namespace: from.Namespace,
+	}
+}
+
+type jobStateMetadata struct {
+	Credentials *jobStateResource   `json:"credentials"`
+	ConfigMap   *jobStateResource   `json:"config_map"`
+	Pod         *jobStateResource   `json:"pod"`
+	Services    []*jobStateResource `json:"services"`
+	Offset      int64               `json:"offset"`
+}
+
 type commandTerminatedError struct {
 	exitCode int
 }
@@ -161,7 +181,7 @@ type executor struct {
 
 	featureChecker featureChecker
 
-	newLogProcessor func() logProcessor
+	newLogProcessor func(offset int64) logProcessor
 
 	remoteProcessTerminated chan shells.TrapCommandExitStatus
 
@@ -169,6 +189,8 @@ type executor struct {
 
 	// Flag if a repo mount and emptyDir volume are needed
 	requireDefaultBuildsDirVolume *bool
+
+	processingLogs bool
 }
 
 type serviceCreateResponse struct {
@@ -182,6 +204,15 @@ func (s *executor) Name() string {
 
 func (s *executor) Prepare(options common.ExecutorPrepareOptions) (err error) {
 	s.AbstractExecutor.PrepareConfiguration(options)
+	if s.Build.ExecutionState.IsResumed() && s.Build.ExecutionState.ExecutorMetadata != nil {
+		// When loaded from this this is a map[string]interface{}, we need to convert it
+		b, _ := json.Marshal(s.Build.ExecutionState.ExecutorMetadata)
+		var meta *jobStateMetadata
+		_ = json.Unmarshal(b, &meta)
+		s.Build.ExecutionState.ExecutorMetadata = meta
+	} else {
+		s.Build.ExecutionState.ExecutorMetadata = &jobStateMetadata{}
+	}
 
 	if err = s.prepareOverwrites(options.Build.GetAllVariables()); err != nil {
 		return fmt.Errorf("couldn't prepare overwrites: %w", err)
@@ -225,9 +256,11 @@ func (s *executor) Prepare(options common.ExecutorPrepareOptions) (err error) {
 
 	imageName := s.Build.GetAllVariables().ExpandValue(s.options.Image.Name)
 
-	s.Println("Using Kubernetes executor with image", imageName, "...")
-	if !s.Build.IsFeatureFlagOn(featureflags.UseLegacyKubernetesExecutionStrategy) {
-		s.Println("Using attach strategy to execute scripts...")
+	if !s.Build.ExecutionState.IsResumed() {
+		s.Println("Using Kubernetes executor with image", imageName, "...")
+		if !s.Build.IsFeatureFlagOn(featureflags.UseLegacyKubernetesExecutionStrategy) {
+			s.Println("Using attach strategy to execute scripts...")
+		}
 	}
 
 	s.Debugln(fmt.Sprintf("Using helper image: %s:%s", s.helperImageInfo.Name, s.helperImageInfo.Tag))
@@ -347,6 +380,10 @@ func (s *executor) runWithExecLegacy(cmd common.ExecutorCommand) error {
 }
 
 func (s *executor) runWithAttach(cmd common.ExecutorCommand) error {
+	if s.Build.ExecutionState.IsResumed() {
+		fmt.Println("Resuming stage ", s.Build.ExecutionState.Stage)
+	}
+
 	err := s.ensurePodsConfigured(cmd.Context)
 	if err != nil {
 		return err
@@ -355,25 +392,28 @@ func (s *executor) runWithAttach(cmd common.ExecutorCommand) error {
 	ctx, cancel := context.WithCancel(cmd.Context)
 	defer cancel()
 
-	containerName, containerCommand := s.getContainerInfo(cmd)
-
-	s.Debugln(fmt.Sprintf(
-		"Starting in container %q the command %q with script: %s",
-		containerName,
-		containerCommand,
-		cmd.Script,
-	))
-
 	podStatusCh := s.watchPodStatus(ctx)
 
-	select {
-	case err := <-s.runInContainer(containerName, containerCommand):
-		s.Debugln(fmt.Sprintf("Container %q exited with error: %v", containerName, err))
-		var terminatedError *commandTerminatedError
-		if err != nil && errors.As(err, &terminatedError) {
-			return &common.BuildError{Inner: err, ExitCode: terminatedError.exitCode}
-		}
+	var runInContainerCh <-chan error
+	if s.Build.ExecutionState.Stage != s.Build.ExecutionState.ResumedFromStage {
+		containerName, containerCommand := s.getContainerInfo(cmd)
 
+		s.Debugln(fmt.Sprintf(
+			"Starting in container %q the command %q with script: %s",
+			containerName,
+			containerCommand,
+			cmd.Script,
+		))
+
+		// If we resume from a stage we don't want to run the scripts for that stage again,
+		// rather let the log processor read the logs from the correct index and move on to the next stage
+		runInContainerCh = s.runInContainer(containerName, containerCommand)
+	} else {
+		runInContainerCh = s.listenForCommandExit()
+	}
+
+	select {
+	case err := <-runInContainerCh:
 		return err
 	case err := <-podStatusCh:
 		if IsKubernetesPodNotFoundError(err) {
@@ -387,10 +427,6 @@ func (s *executor) runWithAttach(cmd common.ExecutorCommand) error {
 }
 
 func (s *executor) ensurePodsConfigured(ctx context.Context) error {
-	if s.pod != nil {
-		return nil
-	}
-
 	err := s.setupCredentials()
 	if err != nil {
 		return fmt.Errorf("setting up credentials: %w", err)
@@ -401,13 +437,9 @@ func (s *executor) ensurePodsConfigured(ctx context.Context) error {
 		return fmt.Errorf("setting up scripts configMap: %w", err)
 	}
 
-	permissionsInitContainer, err := s.buildPermissionsInitContainer(s.helperImageInfo.OSType)
+	err = s.setupPods()
 	if err != nil {
-		return fmt.Errorf("building permissions init container: %w", err)
-	}
-	err = s.setupBuildPod([]api.Container{permissionsInitContainer})
-	if err != nil {
-		return fmt.Errorf("setting up build pod: %w", err)
+		return fmt.Errorf("setting up pods: %w", err)
 	}
 
 	status, err := waitForPodRunning(ctx, s.kubeClient, s.pod, s.Trace, s.Config.Kubernetes)
@@ -419,7 +451,63 @@ func (s *executor) ensurePodsConfigured(ctx context.Context) error {
 		return fmt.Errorf("pod failed to enter running state: %s", status)
 	}
 
-	go s.processLogs(ctx)
+	// TODO: can we and should we handle the case of:
+	// Runner is restarted
+	// Job is running in background
+	// Job completes while no running is handling it
+	// Runner starts but the pod is already done with its work
+	if !s.processingLogs {
+		s.processingLogs = true
+		go s.processLogs(ctx)
+	}
+
+	return nil
+}
+
+func (s *executor) setupPods() error {
+	if s.pod != nil {
+		return nil
+	}
+
+	existingPod := s.stateExecutorMetadata().Pod
+	existingServices := s.stateExecutorMetadata().Services
+	if s.Build.ExecutionState.IsResumed() && existingPod != nil {
+		// TODO: Ideally we will separate the creation/restoration of Pod and Services but it's not really
+		// necessary for now
+		s.Debugln("Restoring pods")
+
+		var err error
+		s.pod, err = s.kubeClient.CoreV1().
+			Pods(existingPod.Namespace).
+			Get(context.TODO(), existingPod.Name, metav1.GetOptions{})
+		if err != nil {
+			return err
+		}
+
+		for _, existingSrv := range existingServices {
+			srv, err := s.kubeClient.CoreV1().
+				Services(existingSrv.Namespace).
+				Get(context.TODO(), existingSrv.Name, metav1.GetOptions{})
+			if err != nil {
+				return err
+			}
+
+			// TODO: might be nil but we don't care right now
+			s.services = append(s.services, *srv)
+		}
+
+		return nil
+	}
+
+	permissionsInitContainer, err := s.buildPermissionsInitContainer(s.helperImageInfo.OSType)
+	if err != nil {
+		return fmt.Errorf("building permissions init container: %w", err)
+	}
+
+	err = s.setupBuildPod([]api.Container{permissionsInitContainer})
+	if err != nil {
+		return fmt.Errorf("setting up build pod: %w", err)
+	}
 
 	return nil
 }
@@ -550,15 +638,56 @@ func (s *executor) buildRedirectionCmd(shell string) string {
 }
 
 func (s *executor) processLogs(ctx context.Context) {
-	processor := s.newLogProcessor()
+	processor := s.newLogProcessor(s.stateExecutorMetadata().Offset)
 	logsCh, errCh := processor.Process(ctx)
+
+	var offsetToWriteMutex sync.RWMutex
+	var offsetToWrite int64
+	var offsetLastWritten int64
+	go func() {
+		writeOffset := func() {
+			s.updateStateExecutorMetadata(func(d *jobStateMetadata) {
+				offsetToWriteMutex.RLock()
+				if offsetLastWritten == offsetToWrite {
+					offsetToWriteMutex.RUnlock()
+					return
+				}
+				offsetToWriteMutex.RUnlock()
+
+				d.Offset = offsetToWrite
+				offsetToWriteMutex.Lock()
+				offsetLastWritten = offsetToWrite
+				offsetToWriteMutex.Unlock()
+			})
+
+		}
+
+		t := time.NewTicker(100 * time.Millisecond)
+		for {
+			select {
+			case <-t.C:
+				writeOffset()
+			case <-ctx.Done():
+				writeOffset()
+				return
+			}
+		}
+	}()
 
 	for {
 		select {
-		case line, ok := <-logsCh:
+		case lineData, ok := <-logsCh:
 			if !ok {
 				return
 			}
+
+			line := lineData.line
+			offset := lineData.offset
+
+			offsetToWriteMutex.Lock()
+			offsetToWrite = offset
+			offsetToWriteMutex.Unlock()
+
 			var status shells.TrapCommandExitStatus
 			if status.TryUnmarshal(line) {
 				s.remoteProcessTerminated <- status
@@ -596,6 +725,21 @@ func getExitCode(err error) int {
 }
 
 func (s *executor) setupScriptsConfigMap() error {
+	if s.configMap != nil {
+		return nil
+	}
+
+	existingConfigMap := s.stateExecutorMetadata().ConfigMap
+	if s.Build.ExecutionState.IsResumed() && existingConfigMap != nil {
+		s.Debugln("Restoring scripts config map")
+
+		var err error
+		s.configMap, err = s.kubeClient.CoreV1().
+			ConfigMaps(existingConfigMap.Namespace).
+			Get(context.TODO(), existingConfigMap.Name, metav1.GetOptions{})
+		return err
+	}
+
 	s.Debugln("Setting up scripts config map")
 
 	// After issue https://gitlab.com/gitlab-org/gitlab-runner/issues/10342 is resolved and
@@ -627,6 +771,10 @@ func (s *executor) setupScriptsConfigMap() error {
 	if err != nil {
 		return fmt.Errorf("generating scripts config map: %w", err)
 	}
+
+	s.updateStateExecutorMetadata(func(d *jobStateMetadata) {
+		d.ConfigMap = resourceFromKubernetesType(s.configMap.ObjectMeta)
+	})
 
 	return nil
 }
@@ -1197,6 +1345,21 @@ func (s *executor) isSharedBuildsDirRequired() bool {
 }
 
 func (s *executor) setupCredentials() error {
+	if s.credentials != nil {
+		return nil
+	}
+
+	existingCredentials := s.stateExecutorMetadata().Credentials
+	if s.Build.ExecutionState.IsResumed() && existingCredentials != nil {
+		s.Debugln("Restoring secrets")
+
+		var err error
+		s.credentials, err = s.kubeClient.CoreV1().
+			Secrets(existingCredentials.Namespace).
+			Get(context.TODO(), existingCredentials.Name, metav1.GetOptions{})
+		return err
+	}
+
 	s.Debugln("Setting up secrets")
 
 	authConfigs, err := auth.ResolveConfigs(s.Build.GetDockerAuthConfig(), s.Shell().User, s.Build.Credentials)
@@ -1235,7 +1398,26 @@ func (s *executor) setupCredentials() error {
 	}
 
 	s.credentials = creds
+
+	s.updateStateExecutorMetadata(func(d *jobStateMetadata) {
+		d.Credentials = resourceFromKubernetesType(s.credentials.ObjectMeta)
+	})
+
 	return nil
+}
+
+func (s *executor) updateStateExecutorMetadata(mutator func(d *jobStateMetadata)) {
+	s.Build.ExecutionState.UpdateExecutorMetadata(func(data any) {
+		mutator(data.(*jobStateMetadata))
+	})
+
+	if err := s.Build.Store.Save(s.Build.ExecutionState); err != nil {
+		s.Errorln("Error saving execution state to store: ", err)
+	}
+}
+
+func (s *executor) stateExecutorMetadata() *jobStateMetadata {
+	return s.Build.ExecutionState.ExecutorMetadata.(*jobStateMetadata)
 }
 
 func (s *executor) getHostAliases() ([]api.HostAlias, error) {
@@ -1312,6 +1494,13 @@ func (s *executor) setupBuildPod(initContainers []api.Container) error {
 	if err != nil {
 		return err
 	}
+
+	s.updateStateExecutorMetadata(func(d *jobStateMetadata) {
+		d.Pod = resourceFromKubernetesType(s.pod.ObjectMeta)
+		for _, srv := range s.services {
+			d.Services = append(d.Services, resourceFromKubernetesType(srv.ObjectMeta))
+		}
+	})
 
 	return nil
 }
@@ -1477,6 +1666,9 @@ func (s *executor) createBuildAndHelperContainers() (api.Container, api.Containe
 }
 
 func (s *executor) setOwnerReferencesForResources(ownerReferences []metav1.OwnerReference) error {
+	// TODO: we could make all these operations more granular in terms of reliability and add
+	// owner reference state in the executor state object
+
 	if s.credentials != nil {
 		credentials := s.credentials.DeepCopy()
 		credentials.SetOwnerReferences(ownerReferences)
@@ -1741,10 +1933,8 @@ func (s *executor) checkPodStatus() error {
 }
 
 func (s *executor) runInContainer(name string, command []string) <-chan error {
-	errCh := make(chan error, 1)
+	errCh := s.listenForCommandExit()
 	go func() {
-		defer close(errCh)
-
 		attach := AttachOptions{
 			PodName:       s.pod.Name,
 			Namespace:     s.pod.Namespace,
@@ -1759,8 +1949,23 @@ func (s *executor) runInContainer(name string, command []string) <-chan error {
 		retryable := retry.New(retry.WithBuildLog(&attach, &s.BuildLogger))
 		err := retryable.Run()
 		if err != nil {
+			s.Debugln(fmt.Sprintf("Container %q exited with error: %v", name, err))
+			var terminatedError *commandTerminatedError
+			if err != nil && errors.As(err, &terminatedError) {
+				err = &common.BuildError{Inner: err, ExitCode: terminatedError.exitCode}
+			}
+
 			errCh <- err
 		}
+	}()
+
+	return errCh
+}
+
+func (s *executor) listenForCommandExit() chan error {
+	errCh := make(chan error, 1)
+	go func() {
+		defer close(errCh)
 
 		exitStatus := <-s.remoteProcessTerminated
 		s.Debugln("Remote process exited with the status:", exitStatus)
@@ -1890,13 +2095,19 @@ func (s *executor) checkDefaults() error {
 	}
 
 	if s.configurationOverwrites.namespace == "" {
-		s.Warningln(
-			fmt.Printf("Namespace is empty, therefore assuming '%s'.", DefaultResourceIdentifier),
-		)
+		// TODO: make all these trace printing steps smarter, e.g. disable trace until we reach the stage to resume from
+		if !s.Build.ExecutionState.IsResumed() {
+			s.Warningln(
+				fmt.Printf("Namespace is empty, therefore assuming '%s'.", DefaultResourceIdentifier),
+			)
+		}
+
 		s.configurationOverwrites.namespace = DefaultResourceIdentifier
 	}
 
-	s.Println("Using Kubernetes namespace:", s.configurationOverwrites.namespace)
+	if !s.Build.ExecutionState.IsResumed() {
+		s.Println("Using Kubernetes namespace:", s.configurationOverwrites.namespace)
+	}
 
 	return nil
 }
@@ -1917,19 +2128,22 @@ func newExecutor() *executor {
 		remoteProcessTerminated: make(chan shells.TrapCommandExitStatus),
 	}
 
-	e.newLogProcessor = func() logProcessor {
+	e.newLogProcessor = func(offset int64) logProcessor {
+		podConfig := kubernetesLogProcessorPodConfig{
+			namespace:          e.pod.Namespace,
+			pod:                e.pod.Name,
+			container:          helperContainerName,
+			logPath:            e.logFile(),
+			waitLogFileTimeout: waitLogFileTimeout,
+		}
+
 		return newKubernetesLogProcessor(
 			e.kubeClient,
 			e.kubeConfig,
 			&backoff.Backoff{Min: time.Second, Max: 30 * time.Second},
 			e.Build.Log(),
-			kubernetesLogProcessorPodConfig{
-				namespace:          e.pod.Namespace,
-				pod:                e.pod.Name,
-				container:          helperContainerName,
-				logPath:            e.logFile(),
-				waitLogFileTimeout: waitLogFileTimeout,
-			},
+			podConfig,
+			offset,
 		)
 	}
 

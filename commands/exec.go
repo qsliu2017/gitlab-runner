@@ -86,7 +86,7 @@ func (c *ExecCommand) createBuild(repoURL string, abortSignal chan os.Signal) (*
 		RunnerSettings: c.RunnerSettings,
 	}
 
-	return common.NewBuild(jobResponse, runner, abortSignal, nil)
+	return common.NewBuild(jobResponse, runner, abortSignal, nil, nil, nil)
 }
 
 func (c *ExecCommand) Execute(context *cli.Context) {

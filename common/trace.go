@@ -8,10 +8,11 @@ import (
 )
 
 type Trace struct {
-	Writer     io.Writer
-	cancelFunc context.CancelFunc
-	abortFunc  context.CancelFunc
-	mutex      sync.Mutex
+	Writer      io.Writer
+	cancelFunc  context.CancelFunc
+	abortFunc   context.CancelFunc
+	onWriteFunc func(sentTraceLen int)
+	mutex       sync.Mutex
 }
 
 type masker interface {
@@ -91,4 +92,16 @@ func (s *Trace) SetFailuresCollector(fc FailuresCollector) {}
 
 func (s *Trace) IsStdout() bool {
 	return true
+}
+
+func (s *Trace) SetOnWriteFunc(onWriteFunc func(sentTraceLen int)) {
+	s.onWriteFunc = onWriteFunc
+}
+
+func (s *Trace) Enable() {
+
+}
+
+func (s *Trace) Disable() {
+
 }

@@ -9,7 +9,6 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"time"
 
@@ -88,8 +87,8 @@ type AttestationPredicateInvocationEnvironment struct {
 type AttestationPredicateInvocationParameters map[string]string
 
 type AttestationMetadataInfo struct {
-	BuildStartedOn  TimeRFC3339                         `json:"buildStartedOn"`
-	BuildFinishedOn TimeRFC3339                         `json:"buildFinishedOn"`
+	BuildStartedOn  common.TimeRFC3339                  `json:"buildStartedOn"`
+	BuildFinishedOn common.TimeRFC3339                  `json:"buildFinishedOn"`
 	Reproducible    bool                                `json:"reproducible"`
 	Completeness    AttestationMetadataInfoCompleteness `json:"completeness"`
 }
@@ -98,26 +97,6 @@ type AttestationMetadataInfoCompleteness struct {
 	Parameters  bool `json:"parameters"`
 	Environment bool `json:"environment"`
 	Materials   bool `json:"materials"`
-}
-
-// TimeRFC3339 is used specifically to marshal and unmarshal time to/from RFC3339 strings
-// That's because the metadata is user-facing and using Go's built-in time parsing will not be portable
-type TimeRFC3339 struct {
-	time.Time
-}
-
-func (t *TimeRFC3339) UnmarshalJSON(b []byte) error {
-	var err error
-	t.Time, err = time.Parse(time.RFC3339, strings.Trim(string(b), `"`))
-	return err
-}
-
-func (t TimeRFC3339) MarshalJSON() ([]byte, error) {
-	if t.IsZero() {
-		return nil, nil
-	}
-
-	return []byte(strconv.Quote(t.Time.Format(time.RFC3339))), nil
 }
 
 type generateMetadataOptions struct {
@@ -181,8 +160,8 @@ func (g *artifactMetadataGenerator) metadata(opts generateMetadataOptions) (Atte
 			},
 		},
 		Metadata: AttestationMetadataInfo{
-			BuildStartedOn:  TimeRFC3339{Time: startedAt},
-			BuildFinishedOn: TimeRFC3339{Time: endedAt},
+			BuildStartedOn:  common.TimeRFC3339{Time: startedAt},
+			BuildFinishedOn: common.TimeRFC3339{Time: endedAt},
 			Reproducible:    false,
 			Completeness: AttestationMetadataInfoCompleteness{
 				Parameters:  true,

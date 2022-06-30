@@ -823,8 +823,9 @@ func (n *GitLabClient) downloadArtifactFile(
 func (n *GitLabClient) ProcessJob(
 	config common.RunnerConfig,
 	jobCredentials *common.JobCredentials,
+	startOffset int,
 ) (common.JobTrace, error) {
-	trace, err := newJobTrace(n, config, jobCredentials)
+	trace, err := newJobTrace(n, config, jobCredentials, startOffset)
 	if err != nil {
 		return nil, err
 	}

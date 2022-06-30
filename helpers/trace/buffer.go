@@ -35,6 +35,7 @@ type Buffer struct {
 
 type options struct {
 	urlParamMasking bool
+	offset          int
 }
 
 type Option func(*options) error
@@ -42,6 +43,13 @@ type Option func(*options) error
 func WithURLParamMasking(enabled bool) Option {
 	return func(o *options) error {
 		o.urlParamMasking = enabled
+		return nil
+	}
+}
+
+func WithOffset(offset int) Option {
+	return func(o *options) error {
+		o.offset = offset
 		return nil
 	}
 }
@@ -224,6 +232,7 @@ func New(opts ...Option) (*Buffer, error) {
 
 	options := options{
 		urlParamMasking: true,
+		offset:          0,
 	}
 
 	for _, o := range opts {
@@ -231,6 +240,14 @@ func New(opts ...Option) (*Buffer, error) {
 		if err != nil {
 			return nil, err
 		}
+	}
+
+	// TODO:
+	// This might not work exactly the same on a new log file, locally the file exists
+	// but in a new pod it won't in case the manager is running in a pod which it should
+	_, err = logFile.Seek(int64(options.offset), 0)
+	if err != nil {
+		return nil, err
 	}
 
 	buffer := &Buffer{
@@ -241,7 +258,7 @@ func New(opts ...Option) (*Buffer, error) {
 
 	buffer.lw = &limitWriter{
 		w:       io.MultiWriter(buffer.logFile, buffer.checksum),
-		written: 0,
+		written: int64(options.offset),
 		limit:   defaultBytesLimit,
 	}
 

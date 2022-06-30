@@ -3,6 +3,7 @@ package network
 import (
 	"context"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"gitlab.com/gitlab-org/gitlab-runner/common"
@@ -17,6 +18,7 @@ type clientJobTrace struct {
 	id             int64
 	cancelFunc     context.CancelFunc
 	abortFunc      context.CancelFunc
+	onWriteFunc    func(sentTraceLen int)
 
 	buffer *trace.Buffer
 
@@ -34,6 +36,8 @@ type clientJobTrace struct {
 
 	failuresCollector common.FailuresCollector
 	exitCode          int
+
+	enabled int32
 }
 
 func (c *clientJobTrace) Success() {
@@ -63,6 +67,10 @@ func (c *clientJobTrace) Fail(err error, failureData common.JobFailureData) {
 }
 
 func (c *clientJobTrace) Write(data []byte) (n int, err error) {
+	if atomic.LoadInt32(&c.enabled) == 0 {
+		return 0, nil
+	}
+
 	return c.buffer.Write(data)
 }
 
@@ -111,6 +119,10 @@ func (c *clientJobTrace) SetAbortFunc(cancelFunc context.CancelFunc) {
 	defer c.lock.Unlock()
 
 	c.abortFunc = cancelFunc
+}
+
+func (c *clientJobTrace) SetOnWriteFunc(onWriteFunc func(sentTraceLen int)) {
+	c.onWriteFunc = onWriteFunc
 }
 
 // Abort consumes function set by SetAbortFunc
@@ -244,7 +256,8 @@ func (c *clientJobTrace) anyTraceToSend() bool {
 	c.lock.RLock()
 	defer c.lock.RUnlock()
 
-	return c.buffer.Size() != c.sentTrace
+	size := c.buffer.Size()
+	return size != c.sentTrace
 }
 
 func (c *clientJobTrace) sendPatch() common.PatchTraceResult {
@@ -269,6 +282,7 @@ func (c *clientJobTrace) sendPatch() common.PatchTraceResult {
 		c.lock.Lock()
 		c.sentTime = time.Now()
 		c.sentTrace = result.SentOffset
+		c.onWriteFunc(c.sentTrace)
 		c.lock.Unlock()
 	}
 
@@ -405,12 +419,24 @@ func (c *clientJobTrace) IsMaskingURLParams() bool {
 	return c.config.IsFeatureFlagOn(featureflags.UseImprovedURLMasking)
 }
 
+func (c *clientJobTrace) Disable() {
+	atomic.StoreInt32(&c.enabled, 0)
+}
+
+func (c *clientJobTrace) Enable() {
+	atomic.StoreInt32(&c.enabled, 1)
+}
+
 func newJobTrace(
 	client common.Network,
 	config common.RunnerConfig,
 	jobCredentials *common.JobCredentials,
+	startOffset int,
 ) (*clientJobTrace, error) {
-	buffer, err := trace.New(trace.WithURLParamMasking(config.IsFeatureFlagOn(featureflags.UseImprovedURLMasking)))
+	buffer, err := trace.New(
+		trace.WithURLParamMasking(config.IsFeatureFlagOn(featureflags.UseImprovedURLMasking)),
+		trace.WithOffset(startOffset),
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -424,5 +450,7 @@ func newJobTrace(
 		maxTracePatchSize: common.DefaultTracePatchLimit,
 		updateInterval:    common.DefaultUpdateInterval,
 		forceSendInterval: common.MinTraceForceSendInterval,
+		sentTrace:         startOffset,
+		enabled:           1,
 	}, nil
 }

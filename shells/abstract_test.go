@@ -1101,7 +1101,7 @@ func TestWriteUserScript(t *testing.T) {
 				m.On("Variable", mock.Anything)
 				m.On("Cd", mock.AnythingOfType("string"))
 				m.On("Noticef", "$ %s", "echo hello").Once()
-				m.On("Line", "echo hello").Once()
+				m.On("line", "echo hello").Once()
 				m.On("CheckForErrors").Once()
 			},
 			expectedErr: nil,
@@ -1130,9 +1130,9 @@ func TestWriteUserScript(t *testing.T) {
 				m.On("Noticef", "$ %s", "echo prebuild").Once()
 				m.On("Noticef", "$ %s", "echo release").Once()
 				m.On("Noticef", "$ %s", "echo postbuild").Once()
-				m.On("Line", "echo prebuild").Once()
-				m.On("Line", "echo release").Once()
-				m.On("Line", "echo postbuild").Once()
+				m.On("line", "echo prebuild").Once()
+				m.On("line", "echo release").Once()
+				m.On("line", "echo postbuild").Once()
 				m.On("CheckForErrors").Times(3)
 			},
 			expectedErr: nil,
@@ -1192,11 +1192,11 @@ func TestScriptSections(t *testing.T) {
 				m.On("SectionEnd", mock.AnythingOfType("string")).Once()
 				m.On("SectionStart", mock.AnythingOfType("string"), "$ echo postbuild").Once()
 				m.On("SectionEnd", mock.AnythingOfType("string")).Once()
-				m.On("Line", "echo prebuild").Once()
-				m.On("Line", "script 1").Once()
-				m.On("Line", "script 2").Once()
-				m.On("Line", "script 3").Once()
-				m.On("Line", "echo postbuild").Once()
+				m.On("line", "echo prebuild").Once()
+				m.On("line", "script 1").Once()
+				m.On("line", "script 2").Once()
+				m.On("line", "script 3").Once()
+				m.On("line", "echo postbuild").Once()
 				m.On("CheckForErrors").Times(5)
 			},
 		},
@@ -1217,11 +1217,11 @@ func TestScriptSections(t *testing.T) {
 				m.On("Noticef", "$ %s", "script 2").Once()
 				m.On("Noticef", "$ %s", "script 3").Once()
 				m.On("Noticef", "$ %s", "echo postbuild").Once()
-				m.On("Line", "echo prebuild").Once()
-				m.On("Line", "script 1").Once()
-				m.On("Line", "script 2").Once()
-				m.On("Line", "script 3").Once()
-				m.On("Line", "echo postbuild").Once()
+				m.On("line", "echo prebuild").Once()
+				m.On("line", "script 1").Once()
+				m.On("line", "script 2").Once()
+				m.On("line", "script 3").Once()
+				m.On("line", "echo postbuild").Once()
 				m.On("CheckForErrors").Times(5)
 			},
 		},
@@ -1242,11 +1242,11 @@ func TestScriptSections(t *testing.T) {
 				m.On("Noticef", "$ %s", "script 2").Once()
 				m.On("Noticef", "$ %s", "script 3").Once()
 				m.On("Noticef", "$ %s", "echo postbuild").Once()
-				m.On("Line", "echo prebuild").Once()
-				m.On("Line", "script 1").Once()
-				m.On("Line", "script 2").Once()
-				m.On("Line", "script 3").Once()
-				m.On("Line", "echo postbuild").Once()
+				m.On("line", "echo prebuild").Once()
+				m.On("line", "script 1").Once()
+				m.On("line", "script 2").Once()
+				m.On("line", "script 3").Once()
+				m.On("line", "echo postbuild").Once()
 				m.On("CheckForErrors").Times(5)
 			},
 		},
@@ -1267,11 +1267,11 @@ func TestScriptSections(t *testing.T) {
 				m.On("Noticef", "$ %s", "script 2").Once()
 				m.On("Noticef", "$ %s", "script 3").Once()
 				m.On("Noticef", "$ %s", "echo postbuild").Once()
-				m.On("Line", "echo prebuild").Once()
-				m.On("Line", "script 1").Once()
-				m.On("Line", "script 2").Once()
-				m.On("Line", "script 3").Once()
-				m.On("Line", "echo postbuild").Once()
+				m.On("line", "echo prebuild").Once()
+				m.On("line", "script 1").Once()
+				m.On("line", "script 2").Once()
+				m.On("line", "script 3").Once()
+				m.On("line", "echo postbuild").Once()
 				m.On("CheckForErrors").Times(5)
 			},
 		},
