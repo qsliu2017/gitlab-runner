@@ -54,7 +54,7 @@ func (l *linuxInfo) Create(revision string, cfg Config) (Info, error) {
 
 	return Info{
 		Architecture:            arch,
-		Name:                    GitLabRegistryName,
+		Name:                    cfg.GetRegistryName(),
 		Tag:                     tag,
 		IsSupportingLocalImport: true,
 		Cmd:                     cmd,

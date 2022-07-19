@@ -316,10 +316,11 @@ func (s *executor) setupDefaultExecutorOptions(os string) {
 
 func (s *executor) prepareHelperImage() (helperimage.Info, error) {
 	config := helperimage.Config{
-		OSType:       helperimage.OSTypeLinux,
-		Architecture: "amd64",
-		Shell:        s.Config.Shell,
-		Flavor:       s.Config.Kubernetes.HelperImageFlavor,
+		OSType:              helperimage.OSTypeLinux,
+		Architecture:        "amd64",
+		Shell:               s.Config.Shell,
+		Flavor:              s.Config.Kubernetes.HelperImageFlavor,
+		HelperImageRegistry: s.Config.Kubernetes.HelperImageRegistry,
 	}
 
 	// use node selector labels to better select the correct image
