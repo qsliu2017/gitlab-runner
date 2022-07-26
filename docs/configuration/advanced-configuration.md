@@ -279,6 +279,7 @@ This defines the Docker Container parameters.
 | `extra_hosts`                  | Hosts that should be defined in container environment. |
 | `gpus`                         | GPU devices for Docker container. Uses the same format as the `docker` cli. View details in the [Docker documentation](https://docs.docker.com/config/containers/resource_constraints/#gpu). |
 | `helper_image`                 | (Advanced) [The default helper image](#helper-image) used to clone repositories and upload artifacts. |
+| `helper_image_registry`        | (Advanced) The registry used to pull the helper image. Default is `registry.gitlab.com/gitlab-org/gitlab-runner/gitlab-runner-helper`. It is however ignored when `helper_image` is also set. |
 | `helper_image_flavor`          | Sets the helper image flavor (`alpine`, `alpine3.12`, `alpine3.13`, `alpine3.14`, `alpine3.15`, `alpine-latest`, `ubi-fips` or `ubuntu`). Defaults to `alpine`. The `alpine` flavor uses the same version as `alpine3.15`. |
 | `host`                         | Custom Docker endpoint. Default is `DOCKER_HOST` environment or `unix:///var/run/docker.sock`. |
 | `hostname`                     | Custom hostname for the Docker container. |
