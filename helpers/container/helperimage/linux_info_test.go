@@ -23,11 +23,12 @@ func Test_linuxInfo_create(t *testing.T) {
 		}
 
 		tests := map[string]struct {
-			shell        string
-			dockerArch   string
-			revision     string
-			flavor       string
-			expectedInfo Info
+			shell               string
+			dockerArch          string
+			revision            string
+			flavor              string
+			helperImageRegistry string
+			expectedInfo        Info
 		}{
 			"When dockerArch not specified we fallback to runtime arch": {
 				shell:      shell,
@@ -125,6 +126,19 @@ func Test_linuxInfo_create(t *testing.T) {
 					Cmd:                     expectedCmd,
 				},
 			},
+			"Flavor configured custom registry": {
+				dockerArch:          "amd64",
+				revision:            "2923a43",
+				flavor:              "ubuntu",
+				helperImageRegistry: "docker.io/gitlab/gitlab-runner-helper",
+				expectedInfo: Info{
+					Architecture:            "x86_64",
+					Name:                    "docker.io/gitlab/gitlab-runner-helper",
+					Tag:                     "ubuntu-x86_64-2923a43" + expectedTagSuffix,
+					IsSupportingLocalImport: true,
+					Cmd:                     expectedCmd,
+				},
+			},
 		}
 
 		t.Run(shell, func(t *testing.T) {
@@ -135,9 +149,10 @@ func Test_linuxInfo_create(t *testing.T) {
 					image, err := l.Create(
 						test.revision,
 						Config{
-							Architecture: test.dockerArch,
-							Shell:        shell,
-							Flavor:       test.flavor,
+							Architecture:        test.dockerArch,
+							Shell:               shell,
+							Flavor:              test.flavor,
+							HelperImageRegistry: test.helperImageRegistry,
 						},
 					)
 

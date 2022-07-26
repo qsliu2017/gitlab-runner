@@ -1914,6 +1914,26 @@ func TestHelperImageRegistry(t *testing.T) {
 			// the override happens at a later stage.
 			expectedHelperImageName: helperimage.GitLabRegistryName,
 		},
+		"helper image registry overridden still use default helper image in prepare": {
+			build: &common.Build{
+				JobResponse: common.JobResponse{
+					Image: common.Image{
+						Name: "test",
+					},
+				},
+				Runner: &common.RunnerConfig{
+					RunnerSettings: common.RunnerSettings{
+						Docker: &common.DockerConfig{
+							HelperImageRegistry: "custom.registry.com/helper/gitlab/gitlab-runner",
+							HelperImage:         "private.registry.com/helper",
+						},
+					},
+				},
+			},
+			// We expect the custom registry to be chosen since the check of
+			// the override happens at a later stage.
+			expectedHelperImageName: "custom.registry.com/helper/gitlab/gitlab-runner",
+		},
 	}
 
 	for tn, tt := range tests {

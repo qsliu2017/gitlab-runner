@@ -68,3 +68,32 @@ func Test_imageRevision(t *testing.T) {
 		})
 	}
 }
+
+func TestGetRegistryName(t *testing.T) {
+	tests := map[string]struct {
+		helperImageRegistry  string
+		expectedRegistryName string
+	}{
+		"default registry name": {
+			expectedRegistryName: GitLabRegistryName,
+		},
+		"empty registry name": {
+			helperImageRegistry:  "",
+			expectedRegistryName: GitLabRegistryName,
+		},
+		"custom registry name": {
+			helperImageRegistry:  "docker.io/gitlab/gitlab-runner-helper",
+			expectedRegistryName: "docker.io/gitlab/gitlab-runner-helper",
+		},
+	}
+
+	for tn, tt := range tests {
+		t.Run(tn, func(t *testing.T) {
+			cfg := Config{
+				HelperImageRegistry: tt.helperImageRegistry,
+			}
+
+			assert.Equal(t, tt.expectedRegistryName, cfg.GetRegistryName())
+		})
+	}
+}

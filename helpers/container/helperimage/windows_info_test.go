@@ -24,10 +24,11 @@ func Test_windowsInfo_create(t *testing.T) {
 		}
 
 		tests := []struct {
-			operatingSystem string
-			shell           string
-			expectedInfo    Info
-			expectedErr     error
+			operatingSystem     string
+			shell               string
+			helperImageRegistry string
+			expectedInfo        Info
+			expectedErr         error
 		}{
 			{
 				operatingSystem: "Windows Server 2019 Datacenter Evaluation Version 1809 (OS Build 17763.316)",
@@ -78,6 +79,23 @@ func Test_windowsInfo_create(t *testing.T) {
 				expectedErr: nil,
 			},
 			{
+				operatingSystem:     "Windows Server 2022 Datacenter Version 2009 (OS Build 20348.643) custom registry",
+				helperImageRegistry: "docker.io/gitlab/gitlab-runner-helper",
+				expectedInfo: Info{
+					Architecture: windowsSupportedArchitecture,
+					Name:         "docker.io/gitlab/gitlab-runner-helper",
+					Tag: fmt.Sprintf(
+						"%s-%s-%s",
+						windowsSupportedArchitecture,
+						revision,
+						baseImage21H1,
+					),
+					IsSupportingLocalImport: false,
+					Cmd:                     expectedPowershellCmdLine,
+				},
+				expectedErr: nil,
+			},
+			{
 				operatingSystem: "some random string",
 				expectedErr:     windows.NewUnsupportedWindowsVersionError("some random string"),
 			},
@@ -91,8 +109,9 @@ func Test_windowsInfo_create(t *testing.T) {
 					image, err := w.Create(
 						revision,
 						Config{
-							OperatingSystem: test.operatingSystem,
-							Shell:           shell,
+							OperatingSystem:     test.operatingSystem,
+							Shell:               shell,
+							HelperImageRegistry: test.helperImageRegistry,
 						},
 					)
 

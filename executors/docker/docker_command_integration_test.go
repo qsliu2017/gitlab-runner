@@ -25,6 +25,7 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/hashicorp/go-version"
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -1918,6 +1919,61 @@ func TestDockerCommandConflictingPullPolicies(t *testing.T) {
 			require.Error(t, gotErr)
 			assert.Contains(t, gotErr.Error(), test.wantErrMsg)
 			assert.Contains(t, gotErr.Error(), "failed to pull image '"+common.TestAlpineImage)
+		})
+	}
+}
+
+// TestDockerCustomHelperRegistryImage tests the custom helper image registry
+// and the relationship between default helper image registry, helper_image_registry and helper_image configurations
+// We set the LogLevel to debug
+// In the debug log will be found the expected message related to the helper image used.
+// As seen in the getPrebuiltImage func, when the default/custom helper registry is used,
+// the log looks like "Looking for prebuilt image {helper_registry}:{TAG}"
+// However, when a custom helper_image is set, the log looks like
+// "Pull configured helper_image for predefined container instead of import bundled image {helper_image}"
+func TestDockerCustomHelperRegistryImage(t *testing.T) {
+	test.SkipIfGitLabCIOn(t, test.OSWindows)
+	helpers.SkipIntegrationTests(t, "docker", "info")
+
+	tests := map[string]struct {
+		helperImageRegistry string
+		helperImage         string
+		expectedLog         string
+	}{
+		///nolint:lll
+		"Use default helper image registry to pull image": {
+			expectedLog: "Looking for prebuilt image registry.gitlab.com/gitlab-org/gitlab-runner/gitlab-runner-helper",
+		},
+		"Use custom helper image registry to pull image": {
+			helperImageRegistry: "docker.io/gitlab/gitlab-runner-helper",
+			expectedLog:         "Looking for prebuilt image docker.io/gitlab/gitlab-runner-helper",
+		},
+		///nolint:lll
+		"Use custom helper image to pull image": {
+			helperImageRegistry: "not-valid-helper-image-registry",
+			helperImage:         "docker.io/gitlab/gitlab-runner-helper:x86_64-latest",
+			expectedLog:         "Pull configured helper_image for predefined container instead of import bundled image docker.io/gitlab/gitlab-runner-helper:x86_64-latest",
+		},
+	}
+
+	for tn, tt := range tests {
+		t.Run(tn, func(t *testing.T) {
+			build := getBuildForOS(t, func() (common.JobResponse, error) {
+				return common.GetRemoteSuccessfulBuild()
+			})
+
+			var buf bytes.Buffer
+			trace := &common.Trace{Writer: &buf}
+
+			build.Log().Logger.SetLevel(logrus.DebugLevel)
+			build.Log().Logger.SetOutput(trace)
+
+			build.Runner.Docker.HelperImageRegistry = tt.helperImageRegistry
+			build.Runner.Docker.HelperImage = tt.helperImage
+
+			err := build.Run(&common.Config{}, trace)
+			assert.NoError(t, err)
+			assert.Contains(t, buf.String(), tt.expectedLog)
 		})
 	}
 }

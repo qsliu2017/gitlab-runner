@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	v1 "k8s.io/api/core/v1"
@@ -129,6 +130,7 @@ func TestRunIntegrationTestsWithFeatureFlag(t *testing.T) {
 		"testKubernetesContainerHookFeatureFlag":                  testKubernetesContainerHookFeatureFlag,
 		"testKubernetesGarbageCollection":                         testKubernetesGarbageCollection,
 		"testKubernetesWaitResources":                             testKubernetesWaitResources,
+		"testKubernetesCustomHelperRegistryImageFeatureFlag":      testKubernetesCustomHelperRegistryImageFeatureFlag,
 	}
 
 	featureFlags := []string{
@@ -1066,6 +1068,79 @@ func testKubernetesWaitResources(t *testing.T, featureFlagName string, featureFl
 
 			assert.NoError(t, err)
 			assert.Contains(t, out, "Hello World")
+		})
+	}
+}
+
+func testKubernetesCustomHelperRegistryImageFeatureFlag(t *testing.T, featureFlagName string, featureFlagValue bool) {
+	helpers.SkipIntegrationTests(t, "kubectl", "cluster-info")
+
+	tests := map[string]struct {
+		shell               string
+		buildImage          string
+		helperImageRegistry string
+		helperImage         string
+		expectedLog         string
+	}{
+		//nolint:lll
+		"bash shell and default helper image registry used to pull image": {
+			shell:       "bash",
+			buildImage:  common.TestAlpineImage,
+			expectedLog: "Using helper image: registry.gitlab.com/gitlab-org/gitlab-runner/gitlab-runner-helper",
+		},
+		"bash shell and custom helper image registry used to pull image": {
+			shell:               "bash",
+			buildImage:          common.TestAlpineImage,
+			helperImageRegistry: "docker.io/gitlab/gitlab-runner-helper",
+			expectedLog:         "Using helper image: docker.io/gitlab/gitlab-runner-helper",
+		},
+		"bash shell and helper image used to pull the image": {
+			shell:               "bash",
+			buildImage:          common.TestAlpineImage,
+			helperImageRegistry: "not-valid-helper-image-registry",
+			helperImage:         "docker.io/gitlab/gitlab-runner-helper:x86_64-latest",
+			expectedLog:         "Using helper image: docker.io/gitlab/gitlab-runner-helper:x86_64-latest",
+		},
+		//nolint:lll
+		"pwsh shell and default helper image registry used to pull image": {
+			shell:       "pwsh",
+			buildImage:  common.TestPwshImage,
+			expectedLog: "Using helper image: registry.gitlab.com/gitlab-org/gitlab-runner/gitlab-runner-helper",
+		},
+		"pwsh shell and custom helper image registry used to pull image": {
+			shell:               "pwsh",
+			buildImage:          common.TestPwshImage,
+			helperImageRegistry: "docker.io/gitlab/gitlab-runner-helper",
+			expectedLog:         "Using helper image: docker.io/gitlab/gitlab-runner-helper",
+		},
+		"pwsh shell and helper image used to pull the image": {
+			shell:               "pwsh",
+			buildImage:          common.TestPwshImage,
+			helperImageRegistry: "not-valid-helper-image-registry",
+			helperImage:         "docker.io/gitlab/gitlab-runner-helper:x86_64-latest-pwsh",
+			expectedLog:         "Using helper image: docker.io/gitlab/gitlab-runner-helper:x86_64-latest-pwsh",
+		},
+	}
+
+	for tn, tc := range tests {
+		t.Run(tn, func(t *testing.T) {
+			var buf bytes.Buffer
+			trace := &common.Trace{Writer: &buf}
+
+			build := getTestBuild(t, common.GetRemoteSuccessfulBuild)
+
+			build.Log().Logger.SetLevel(logrus.DebugLevel)
+			build.Log().Logger.SetOutput(trace)
+
+			build.Image.Name = tc.buildImage
+			build.Runner.Shell = tc.shell
+			build.Runner.Kubernetes.HelperImageRegistry = tc.helperImageRegistry
+			build.Runner.Kubernetes.HelperImage = tc.helperImage
+			buildtest.SetBuildFeatureFlag(build, featureFlagName, featureFlagValue)
+
+			err := build.Run(&common.Config{}, trace)
+			assert.NoError(t, err)
+			assert.Contains(t, buf.String(), tc.expectedLog)
 		})
 	}
 }
