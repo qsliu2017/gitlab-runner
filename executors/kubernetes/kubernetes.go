@@ -230,7 +230,7 @@ func (s *executor) Prepare(options common.ExecutorPrepareOptions) (err error) {
 		s.Println("Using attach strategy to execute scripts...")
 	}
 
-	s.Debugln(fmt.Sprintf("Using helper image: %s:%s", s.helperImageInfo.Name, s.helperImageInfo.Tag))
+	s.Debugln(fmt.Sprintf("Using helper image: %s", s.getHelperImage()))
 
 	if err = s.AbstractExecutor.PrepareBuildAndShell(); err != nil {
 		return fmt.Errorf("prepare build and shell: %w", err)
