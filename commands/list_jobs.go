@@ -18,6 +18,7 @@ type ListJobsCommand struct {
 }
 
 func (c *ListJobsCommand) Execute(context *cli.Context) {
+	userModeWarning(true)
 	// 	read the configuration file
 	err := c.loadConfig()
 	if err != nil {
@@ -33,7 +34,10 @@ func (c *ListJobsCommand) Execute(context *cli.Context) {
 
 	// if yes - read data from the debug/jobs/list endpoint and print it to STDOUT
 	for _, runner := range c.config.Runners {
-		state := c.network.ListJobs(runner.RunnerCredentials)
+		state := c.network.ListJobs(common.RunnerCredentials{
+			URL: fmt.Sprintf("http://%s", c.config.ListenAddress),
+		})
+
 		fmt.Printf(
 			"runner-name=%s state=%s\n",
 			runner.Name,

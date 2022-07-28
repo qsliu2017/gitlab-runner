@@ -123,10 +123,6 @@ type VerifyRunnerRequest struct {
 	Token string `json:"token,omitempty"`
 }
 
-type ListJobsRequest struct {
-	Token string `json:"token,omitempty"`
-}
-
 type UnregisterRunnerRequest struct {
 	Token string `json:"token,omitempty"`
 }

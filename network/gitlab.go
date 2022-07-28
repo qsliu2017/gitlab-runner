@@ -844,19 +844,16 @@ func NewGitLabClient() *GitLabClient {
 }
 
 func (n *GitLabClient) ListJobs(runner common.RunnerCredentials) (content []byte) {
-	request := common.ListJobsRequest{
-		Token: runner.Token,
-	}
-
 	result, statusText, resp := n.doJSON(
 		context.Background(),
 		&runner,
 		http.MethodGet,
 		"debug/jobs/list",
 		http.StatusOK,
-		&request,
+		nil,
 		nil,
 	)
+
 	if resp != nil {
 		defer func() { _ = resp.Body.Close() }()
 	}
@@ -864,6 +861,7 @@ func (n *GitLabClient) ListJobs(runner common.RunnerCredentials) (content []byte
 	respBody, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		runner.Log().WithField("status", statusText).Errorln(err)
+		return
 	}
 
 	logText := "Listing jobs..."
@@ -871,15 +869,12 @@ func (n *GitLabClient) ListJobs(runner common.RunnerCredentials) (content []byte
 	switch result {
 	case http.StatusOK:
 		runner.Log().Println(logText)
-		return respBody
 	case http.StatusForbidden:
 		runner.Log().WithField("status", statusText).Errorln(logText)
-		return respBody
 	case clientError:
 		runner.Log().WithField("status", statusText).Errorln(logText, "error")
-		return respBody
 	default:
 		runner.Log().WithField("status", statusText).Errorln(logText, "failed")
-		return respBody
 	}
+	return respBody
 }
