@@ -123,6 +123,10 @@ type VerifyRunnerRequest struct {
 	Token string `json:"token,omitempty"`
 }
 
+type ListJobsRequest struct {
+	Token string `json:"token,omitempty"`
+}
+
 type UnregisterRunnerRequest struct {
 	Token string `json:"token,omitempty"`
 }
@@ -603,4 +607,5 @@ type Network interface {
 	DownloadArtifacts(config JobCredentials, artifactsFile io.WriteCloser, directDownload *bool) DownloadState
 	UploadRawArtifacts(config JobCredentials, reader io.ReadCloser, options ArtifactsOptions) (UploadState, string)
 	ProcessJob(config RunnerConfig, buildCredentials *JobCredentials) (JobTrace, error)
+	ListJobs(config RunnerCredentials) (content []byte)
 }
