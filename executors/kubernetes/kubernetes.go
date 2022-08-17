@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"k8s.io/apimachinery/pkg/util/strategicpatch"
 	"net/http"
 	"path"
 	"strings"
@@ -1517,7 +1518,39 @@ func (s *executor) preparePodConfig(opts podConfigPrepareOpts) (api.Pod, error) 
 		},
 	}
 
+	pod.Spec, err = s.applyPodSpecMerge(&pod.Spec)
+	if err != nil {
+		return api.Pod{}, err
+	}
+
 	return pod, nil
+}
+
+func (s *executor) applyPodSpecMerge(podSpec *api.PodSpec) (api.PodSpec, error) {
+	if s.Config.Kubernetes.PodSpec == "" {
+		return *podSpec, nil
+	}
+
+	configPodSpecBytes, err := s.Config.Kubernetes.PodSpec.ToJSON()
+	if err != nil {
+		return api.PodSpec{}, err
+	}
+
+	podSpecBytes, err := json.Marshal(podSpec)
+	if err != nil {
+		return api.PodSpec{}, err
+	}
+
+	s.Debugln("Patching with Pod Spec: ", string(podSpecBytes))
+
+	patchedBytes, err := strategicpatch.StrategicMergePatch(configPodSpecBytes, podSpecBytes, api.PodSpec{})
+	if err != nil {
+		return api.PodSpec{}, err
+	}
+
+	var patchedPodSpec api.PodSpec
+	err = json.Unmarshal(patchedBytes, &patchedPodSpec)
+	return patchedPodSpec, err
 }
 
 func (s *executor) createBuildAndHelperContainers() (api.Container, api.Container, error) {

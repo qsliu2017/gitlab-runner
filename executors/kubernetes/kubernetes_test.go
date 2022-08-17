@@ -5710,3 +5710,44 @@ func TestInitPermissionContainerSecurityContext(t *testing.T) {
 		})
 	}
 }
+
+func TestKubernetesPrepareCustomPodConfig(t *testing.T) {
+	tests := map[string]struct {
+		podSpec         string
+		validatePodSpec func(t *testing.T, spec *api.PodSpec, err error)
+	}{
+		"no custom pod spec": {
+			validatePodSpec: func(t *testing.T, spec *api.PodSpec, err error) {
+				require.Nil(t, err)
+				require.NotNil(t, spec)
+			},
+		},
+		"set previously unset hostPID": {
+			podSpec: `
+				hostPID: true
+			`,
+			validatePodSpec: func(t *testing.T, spec *api.PodSpec, err error) {
+				require.NoError(t, err)
+				assert.True(t, spec.HostPID)
+			},
+		},
+	}
+
+	for tn, tt := range tests {
+		t.Run(tn, func(t *testing.T) {
+			executor := newExecutor()
+			executor.Build = &common.Build{
+				Runner: new(common.RunnerConfig),
+			}
+			executor.Config.Kubernetes = new(common.KubernetesConfig)
+			executor.Config.Kubernetes.PodSpec = common.KubernetesPodSpec(tt.podSpec)
+			executor.options = &kubernetesOptions{}
+			executor.configurationOverwrites = &overwrites{}
+			executor.BuildShell = &common.ShellConfiguration{}
+			executor.pullManager = pull.NewPullManager(nil, nil)
+
+			pod, err := executor.preparePodConfig(podConfigPrepareOpts{})
+			tt.validatePodSpec(t, &pod.Spec, err)
+		})
+	}
+}

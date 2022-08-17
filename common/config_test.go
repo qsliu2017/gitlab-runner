@@ -1962,3 +1962,36 @@ func Test_GetPullPolicySource(t *testing.T) {
 		})
 	}
 }
+
+func TestKubernetesPodSpecContents(t *testing.T) {
+	tests := map[string]struct {
+		contents    string
+		expected    string
+		expectedErr error
+	}{
+		"yaml to json": {
+			contents: `hostname: "test"`,
+			expected: `{"hostname":"test"}`,
+		},
+		"json to json": {
+			contents: `{"hostname":"test"}`,
+			expected: `{"hostname":"test"}`,
+		},
+		"invalid yaml": {
+			contents:    `invalid yaml`,
+			expectedErr: &KubernetesPodSpecConversionError{},
+		},
+	}
+
+	for tn, tt := range tests {
+		t.Run(tn, func(t *testing.T) {
+			res, err := KubernetesPodSpec(tt.contents).ToJSON()
+			if tt.expectedErr != nil {
+				t.Log(err)
+				require.ErrorIs(t, tt.expectedErr, err)
+			}
+
+			require.Equal(t, tt.expected, string(res))
+		})
+	}
+}

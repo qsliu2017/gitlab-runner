@@ -73,6 +73,8 @@ require (
 	k8s.io/client-go v0.21.1
 )
 
+require sigs.k8s.io/yaml v1.2.0
+
 require (
 	github.com/Azure/azure-pipeline-go v0.2.3 // indirect
 	github.com/Azure/go-ansiterm v0.0.0-20170929234023-d6e3b3328b78 // indirect
@@ -133,9 +135,9 @@ require (
 	gopkg.in/square/go-jose.v2 v2.3.1 // indirect
 	gotest.tools/v3 v3.0.3 // indirect
 	k8s.io/klog/v2 v2.8.0 // indirect
+	k8s.io/kube-openapi v0.0.0-20210305001622-591a79e4bda7 // indirect
 	k8s.io/utils v0.0.0-20201110183641-67b214c5f920 // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.1.0 // indirect
-	sigs.k8s.io/yaml v1.2.0 // indirect
 )
 
 replace golang.org/x/sys => golang.org/x/sys v0.0.0-20220209214540-3681064d5158

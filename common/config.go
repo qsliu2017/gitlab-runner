@@ -9,6 +9,7 @@ import (
 	"math/big"
 	"os"
 	"path/filepath"
+	"sigs.k8s.io/yaml"
 	"strings"
 	"time"
 
@@ -424,6 +425,40 @@ type KubernetesConfig struct {
 	DNSConfig                                         KubernetesDNSConfig                `toml:"dns_config" json:"dns_config" description:"Pod DNS config"`
 	ContainerLifecycle                                KubernetesContainerLifecyle        `toml:"container_lifecycle,omitempty" json:"container_lifecycle,omitempty" description:"Actions that the management system should take in response to container lifecycle events"`
 	PriorityClassName                                 string                             `toml:"priority_class_name,omitempty" json:"priority_class_name" long:"priority_class_name" env:"KUBERNETES_PRIORITY_CLASS_NAME" description:"If set, the Kubernetes Priority Class to be set to the Pods"`
+	PodSpec                                           KubernetesPodSpec                  `toml:"pod_spec,omitempty" json:"pod_spec" long:"pod_spec" env:"KUBERNETES_POD_SPEC" description:"A Pod Spec in YAML on top of which the generated Pod Spec is applied to be merged."`
+}
+
+type KubernetesPodSpecConversionError struct {
+	inner error
+}
+
+func (e *KubernetesPodSpecConversionError) Error() string {
+	return fmt.Sprintf("error converting Pod Spec JSON %v", e.inner)
+}
+
+func (e *KubernetesPodSpecConversionError) Unwrap() error {
+	return e.inner
+}
+
+func (e *KubernetesPodSpecConversionError) Is(t error) bool {
+	_, ok := t.(*KubernetesPodSpecConversionError)
+	return ok
+}
+
+type KubernetesPodSpec string
+
+func (s KubernetesPodSpec) ToJSON() ([]byte, error) {
+	b, err := yaml.YAMLToJSON(bytes.TrimSpace([]byte(s)))
+	if err != nil {
+		return nil, &KubernetesPodSpecConversionError{inner: err}
+	}
+
+	var d map[string]interface{}
+	if err := json.Unmarshal(b, &d); err != nil {
+		return nil, &KubernetesPodSpecConversionError{inner: fmt.Errorf("json: %v is invalid, %w", string(b), err)}
+	}
+
+	return b, nil
 }
 
 //nolint:lll
