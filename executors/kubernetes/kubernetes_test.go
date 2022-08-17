@@ -5713,8 +5713,9 @@ func TestInitPermissionContainerSecurityContext(t *testing.T) {
 
 func TestKubernetesPrepareCustomPodConfig(t *testing.T) {
 	tests := map[string]struct {
-		podSpec         string
-		validatePodSpec func(t *testing.T, spec *api.PodSpec, err error)
+		podSpec              string
+		podConfigPrepareOpts podConfigPrepareOpts
+		validatePodSpec      func(t *testing.T, spec *api.PodSpec, err error)
 	}{
 		"no custom pod spec": {
 			validatePodSpec: func(t *testing.T, spec *api.PodSpec, err error) {
@@ -5729,6 +5730,37 @@ func TestKubernetesPrepareCustomPodConfig(t *testing.T) {
 			validatePodSpec: func(t *testing.T, spec *api.PodSpec, err error) {
 				require.NoError(t, err)
 				assert.True(t, spec.HostPID)
+			},
+		},
+		"adds an init container": {
+			podSpec: `{"initContainers":[{"name":"alpine-init-container","image":"alpine","command":["echo","hi"]}]}`,
+			validatePodSpec: func(t *testing.T, spec *api.PodSpec, err error) {
+				require.NoError(t, err)
+				require.Len(t, spec.InitContainers, 1)
+				assert.Equal(t, "alpine-init-container", spec.InitContainers[0].Name)
+				assert.Equal(t, "alpine", spec.InitContainers[0].Image)
+				assert.Equal(t, []string{"echo", "hi"}, spec.InitContainers[0].Command)
+			},
+		},
+		"modifies an init container": {
+			podConfigPrepareOpts: podConfigPrepareOpts{
+				initContainers: []api.Container{
+					{
+						Name:       "init-container",
+						Image:      "init-container-image",
+						Command:    []string{"cmd", "arg"},
+						WorkingDir: "dir",
+					},
+				},
+			},
+			podSpec: `{"initContainers":[{"name":"init-container","image":"init-container-image-modified","command":["cmd","arg-modified"],"workdir":"modified"}]}`,
+			validatePodSpec: func(t *testing.T, spec *api.PodSpec, err error) {
+				require.NoError(t, err)
+				require.Len(t, spec.InitContainers, 1)
+				assert.Equal(t, "init-container", spec.InitContainers[0].Name)
+				assert.Equal(t, "init-container-image-modified", spec.InitContainers[0].Image)
+				assert.Equal(t, []string{"cmd", "arg-modified"}, spec.InitContainers[0].Command)
+				assert.Equal(t, "modified", spec.InitContainers[0].WorkingDir)
 			},
 		},
 	}
@@ -5746,7 +5778,7 @@ func TestKubernetesPrepareCustomPodConfig(t *testing.T) {
 			executor.BuildShell = &common.ShellConfiguration{}
 			executor.pullManager = pull.NewPullManager(nil, nil)
 
-			pod, err := executor.preparePodConfig(podConfigPrepareOpts{})
+			pod, err := executor.preparePodConfig(tt.podConfigPrepareOpts)
 			tt.validatePodSpec(t, &pod.Spec, err)
 		})
 	}
