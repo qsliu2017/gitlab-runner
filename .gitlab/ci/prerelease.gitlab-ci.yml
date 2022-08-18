@@ -3,7 +3,7 @@
     - .windows-dependency-checksums
   stage: prerelease
   variables:
-    PUSH_TO_ECR_PUBLIC: "false"
+    PUSH_TO_ECR_PUBLIC: "true"
     PUBLISH_IMAGES: "true"
     PWSH_VERSION: 7.1.1
   dependencies:
@@ -37,7 +37,9 @@ development servercore20H2 helper docker images:
     - .rules:release:development:merge-requests:no-community-mr
     - .docker_images_registry_base_variables_overwrite
   variables:
-    PUSH_TO_ECR_PUBLIC: "false"
+    PUSH_TO_ECR_PUBLIC: "true" # can be removed later
+  environment: # can be removed later
+    name: development/s3/${CI_COMMIT_REF_NAME} # can be removed later
 
 development servercore21H1 helper docker images:
   extends:

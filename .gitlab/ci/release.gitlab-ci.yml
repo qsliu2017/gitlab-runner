@@ -7,7 +7,7 @@
   variables:
     PUBLISH_IMAGES: "true"
     PUSH_TO_DOCKER_HUB: "false"
-    PUSH_TO_ECR_PUBLIC: "false"
+    PUSH_TO_ECR_PUBLIC: "true"
   before_script:
   - source ci/touch_make_dependencies
   retry: 2
@@ -122,7 +122,9 @@ development helper docker images:
   - .rules:release:development:merge-requests
   variables:
     PUBLISH_IMAGES: "false"
-    PUSH_TO_ECR_PUBLIC: "false"
+    PUSH_TO_ECR_PUBLIC: "true" # can be removed later
+  environment: # can be removed later
+    name: development/s3/${CI_COMMIT_REF_NAME} # can be removed later
 
 bleeding edge S3:
   extends:
