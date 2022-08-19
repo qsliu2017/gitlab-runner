@@ -18,8 +18,10 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth" // Register all available authentication methods
 	restclient "k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/remotecommand"
 	"k8s.io/client-go/util/exec"
 
 	"gitlab.com/gitlab-org/gitlab-runner/common"
@@ -457,11 +459,6 @@ func (s *executor) ensurePodsConfigured(ctx context.Context) error {
 		return fmt.Errorf("setting up credentials: %w", err)
 	}
 
-	err = s.setupScriptsConfigMap()
-	if err != nil {
-		return fmt.Errorf("setting up scripts configMap: %w", err)
-	}
-
 	permissionsInitContainer, err := s.buildPermissionsInitContainer(s.helperImageInfo.OSType)
 	if err != nil {
 		return fmt.Errorf("building permissions init container: %w", err)
@@ -478,6 +475,11 @@ func (s *executor) ensurePodsConfigured(ctx context.Context) error {
 
 	if status != api.PodRunning {
 		return fmt.Errorf("pod failed to enter running state: %s", status)
+	}
+
+	err = s.setupScripts()
+	if err != nil {
+		return fmt.Errorf("setting up scripts emptyDir: %w", err)
 	}
 
 	go s.processLogs(ctx)
@@ -660,8 +662,8 @@ func getExitCode(err error) int {
 	return unknownLogProcessorExitCode
 }
 
-func (s *executor) setupScriptsConfigMap() error {
-	s.Debugln("Setting up scripts config map")
+func (s *executor) setupScripts() error {
+	s.Debugln("Setting up scripts on emptyDir ...")
 
 	// After issue https://gitlab.com/gitlab-org/gitlab-runner/issues/10342 is resolved and
 	// the legacy execution mode is removed we can remove the manual construction of trapShell and just use "bash+trap"
@@ -676,24 +678,54 @@ func (s *executor) setupScriptsConfigMap() error {
 		return err
 	}
 
-	configMap := &api.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{
-			GenerateName: fmt.Sprintf("%s-scripts", s.Build.ProjectUniqueName()),
-			Namespace:    s.configurationOverwrites.namespace,
-		},
-		Data: scripts,
-	}
+	for k, v := range scripts {
+		command := s.getScriptSavingCommand(k, v)
+		req := s.kubeClient.CoreV1().RESTClient().Post().
+			Resource("pods").
+			Name(s.pod.Name).
+			Namespace(s.configurationOverwrites.namespace).
+			SubResource("exec").
+			VersionedParams(&api.PodExecOptions{
+				Container: buildContainerName,
+				Command:   command,
+				Stdin:     false,
+				Stdout:    true,
+				Stderr:    true,
+				TTY:       false,
+			}, scheme.ParameterCodec)
 
-	// TODO: handle the context properly with https://gitlab.com/gitlab-org/gitlab-runner/-/issues/27932
-	s.configMap, err = s.kubeClient.
-		CoreV1().
-		ConfigMaps(s.configurationOverwrites.namespace).
-		Create(context.TODO(), configMap, metav1.CreateOptions{})
-	if err != nil {
-		return fmt.Errorf("generating scripts config map: %w", err)
+		exec, err := remotecommand.NewSPDYExecutor(s.kubeConfig, "POST", req.URL())
+		if err != nil {
+			return err
+		}
+		err = exec.Stream(remotecommand.StreamOptions{
+			Stdin:  nil,
+			Stdout: s.Trace,
+			Stderr: s.Trace,
+			Tty:    false,
+		})
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
+}
+
+func (s *executor) getScriptSavingCommand(stage, script string) []string {
+	scriptPath := fmt.Sprintf("%s/%s", s.scriptsDir(), stage)
+	switch s.Shell().Shell {
+	case shells.SNPwsh, shells.SNPowershell:
+		return []string{s.Shell().Shell, "-c", fmt.Sprintf(`echo @"
+%s
+"@ > %[2]s;`, strings.ReplaceAll(script, "$", "`$"), scriptPath)}
+	default:
+		// Here we use 'EOF' (with the single quote) to not evaluate the variables within the scripts
+		return []string{"sh", "-c", fmt.Sprintf(`touch %[1]s && chmod 777 %[1]s && cat > %[1]s << 'EOF'
+%s
+EOF
+`, scriptPath, script)}
+	}
 }
 
 func (s *executor) retrieveShell() (common.Shell, error) {
@@ -779,17 +811,6 @@ func (s *executor) cleanupResources() {
 			})
 		if err != nil {
 			s.Errorln(fmt.Sprintf("Error cleaning up secrets: %s", err.Error()))
-		}
-	}
-	if s.configMap != nil && len(s.configMap.OwnerReferences) == 0 {
-		// TODO: handle the context properly with https://gitlab.com/gitlab-org/gitlab-runner/-/issues/27932
-		err := s.kubeClient.CoreV1().
-			ConfigMaps(s.configurationOverwrites.namespace).
-			Delete(context.TODO(), s.configMap.Name, metav1.DeleteOptions{
-				GracePeriodSeconds: s.Config.Kubernetes.GetCleanupGracePeriodSeconds(),
-			})
-		if err != nil {
-			s.Errorln(fmt.Sprintf("Error cleaning up configmap: %s", err.Error()))
 		}
 	}
 }
@@ -923,8 +944,7 @@ func (s *executor) scriptName(name string) string {
 func (s *executor) getVolumeMounts() []api.VolumeMount {
 	var mounts []api.VolumeMount
 
-	// The configMap is nil when using legacy execution
-	if s.configMap != nil {
+	if !s.Build.IsFeatureFlagOn(featureflags.UseLegacyKubernetesExecutionStrategy) {
 		// These volume mounts **MUST NOT** be mounted inside another volume mount.
 		// E.g. mounting them inside the "repo" volume mount will cause the whole volume
 		// to be owned by root instead of the current user of the image. Something similar
@@ -1029,30 +1049,16 @@ func (s *executor) getVolumes() []api.Volume {
 		})
 	}
 
-	// The configMap is nil when using legacy execution
-	if s.configMap == nil {
+	if s.Build.IsFeatureFlagOn(featureflags.UseLegacyKubernetesExecutionStrategy) {
 		return volumes
 	}
 
-	var mode *int32
-	if s.helperImageInfo.OSType != helperimage.OSTypeWindows {
-		defaultLinuxMode := int32(0777)
-		mode = &defaultLinuxMode
-	}
-
-	optional := false
 	volumes = append(
 		volumes,
 		api.Volume{
 			Name: "scripts",
 			VolumeSource: api.VolumeSource{
-				ConfigMap: &api.ConfigMapVolumeSource{
-					LocalObjectReference: api.LocalObjectReference{
-						Name: s.configMap.Name,
-					},
-					DefaultMode: mode,
-					Optional:    &optional,
-				},
+				EmptyDir: &api.EmptyDirVolumeSource{},
 			},
 		},
 		api.Volume{
@@ -1565,21 +1571,6 @@ func (s *executor) setOwnerReferencesForResources(ownerReferences []metav1.Owner
 			CoreV1().
 			Secrets(s.configurationOverwrites.namespace).
 			Update(context.TODO(), credentials, metav1.UpdateOptions{})
-
-		if err != nil {
-			return err
-		}
-	}
-
-	if s.configMap != nil {
-		configMap := s.configMap.DeepCopy()
-		configMap.ObjectMeta.SetOwnerReferences(ownerReferences)
-
-		var err error
-		s.configMap, err = s.kubeClient.
-			CoreV1().
-			ConfigMaps(s.configurationOverwrites.namespace).
-			Update(context.TODO(), configMap, metav1.UpdateOptions{})
 
 		if err != nil {
 			return err
