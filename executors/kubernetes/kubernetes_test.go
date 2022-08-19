@@ -79,12 +79,28 @@ func TestRunTestsWithFeatureFlag(t *testing.T) {
 }
 
 func testVolumeMountsFeatureFlag(t *testing.T, featureFlagName string, featureFlagValue bool) {
+	addScriptsAndLogVolumeMounts := func(featureFlagValue bool, volumeMounts []api.VolumeMount) []api.VolumeMount {
+		if featureFlagValue {
+			return volumeMounts
+		}
+
+		vm := []api.VolumeMount{
+			{Name: "scripts", MountPath: "/scripts-0-0"},
+			{Name: "logs", MountPath: "/logs-0-0"},
+		}
+
+		return append(
+			vm,
+			volumeMounts...,
+		)
+	}
+
 	tests := map[string]struct {
 		GlobalConfig *common.Config
 		RunnerConfig common.RunnerConfig
 		Build        *common.Build
 
-		Expected []api.VolumeMount
+		Expected func(featureFlagValue bool) []api.VolumeMount
 	}{
 		"no custom volumes": {
 			GlobalConfig: &common.Config{},
@@ -96,8 +112,12 @@ func testVolumeMountsFeatureFlag(t *testing.T, featureFlagName string, featureFl
 			Build: &common.Build{
 				Runner: &common.RunnerConfig{},
 			},
-			Expected: []api.VolumeMount{
-				{Name: "repo", MountPath: "/builds"},
+			Expected: func(featureFlagValue bool) []api.VolumeMount {
+				volumeMounts := []api.VolumeMount{
+					{Name: "repo", MountPath: "/builds"},
+				}
+
+				return addScriptsAndLogVolumeMounts(featureFlagValue, volumeMounts)
 			},
 		},
 		"custom volumes": {
@@ -169,22 +189,26 @@ func testVolumeMountsFeatureFlag(t *testing.T, featureFlagName string, featureFl
 			Build: &common.Build{
 				Runner: &common.RunnerConfig{},
 			},
-			Expected: []api.VolumeMount{
-				{Name: "docker", MountPath: "/var/run/docker.sock"},
-				{Name: "host-path", MountPath: "/path/two"},
-				{Name: "host-subpath", MountPath: "/subpath", SubPath: "subpath"},
-				{Name: "Secret", MountPath: "/path/to/whatever"},
-				{Name: "Secret-subpath", MountPath: "/path/to/whatever", SubPath: "secret-subpath"},
-				{Name: "PVC", MountPath: "/path/to/whatever"},
-				{Name: "PVC-subpath", MountPath: "/path/to/whatever/1", SubPath: "PVC-subpath-1"},
-				{Name: "PVC-subpath", MountPath: "/path/to/whatever/2", SubPath: "PVC-subpath-2"},
-				{Name: "ConfigMap", MountPath: "/path/to/whatever"},
-				{Name: "ConfigMap-subpath", MountPath: "/path/to/whatever", SubPath: "ConfigMap-subpath"},
-				{Name: "emptyDir", MountPath: "/path/to/empty/dir"},
-				{Name: "emptyDir-subpath", MountPath: "/subpath", SubPath: "empty-subpath"},
-				{Name: "csi", MountPath: "/path/to/csi/volume"},
-				{Name: "csi-subpath", MountPath: "/path/to/csi/volume", SubPath: "subpath"},
-				{Name: "repo", MountPath: "/builds"},
+			Expected: func(featureFlagValue bool) []api.VolumeMount {
+				volumeMounts := []api.VolumeMount{
+					{Name: "docker", MountPath: "/var/run/docker.sock"},
+					{Name: "host-path", MountPath: "/path/two"},
+					{Name: "host-subpath", MountPath: "/subpath", SubPath: "subpath"},
+					{Name: "Secret", MountPath: "/path/to/whatever"},
+					{Name: "Secret-subpath", MountPath: "/path/to/whatever", SubPath: "secret-subpath"},
+					{Name: "PVC", MountPath: "/path/to/whatever"},
+					{Name: "PVC-subpath", MountPath: "/path/to/whatever/1", SubPath: "PVC-subpath-1"},
+					{Name: "PVC-subpath", MountPath: "/path/to/whatever/2", SubPath: "PVC-subpath-2"},
+					{Name: "ConfigMap", MountPath: "/path/to/whatever"},
+					{Name: "ConfigMap-subpath", MountPath: "/path/to/whatever", SubPath: "ConfigMap-subpath"},
+					{Name: "emptyDir", MountPath: "/path/to/empty/dir"},
+					{Name: "emptyDir-subpath", MountPath: "/subpath", SubPath: "empty-subpath"},
+					{Name: "csi", MountPath: "/path/to/csi/volume"},
+					{Name: "csi-subpath", MountPath: "/path/to/csi/volume", SubPath: "subpath"},
+					{Name: "repo", MountPath: "/builds"},
+				}
+
+				return addScriptsAndLogVolumeMounts(featureFlagValue, volumeMounts)
 			},
 		},
 		"custom volumes with read-only settings": {
@@ -218,13 +242,17 @@ func testVolumeMountsFeatureFlag(t *testing.T, featureFlagName string, featureFl
 			Build: &common.Build{
 				Runner: &common.RunnerConfig{},
 			},
-			Expected: []api.VolumeMount{
-				{Name: "test", MountPath: "/opt/test/readonly", ReadOnly: true},
-				{Name: "docker", MountPath: "/var/run/docker.sock"},
-				{Name: "secret", MountPath: "/path/to/secret", ReadOnly: true},
-				{Name: "configMap", MountPath: "/path/to/configmap", ReadOnly: true},
-				{Name: "csi", MountPath: "/path/to/csi/volume", ReadOnly: true},
-				{Name: "repo", MountPath: "/builds"},
+			Expected: func(featureFlagValue bool) []api.VolumeMount {
+				volumeMounts := []api.VolumeMount{
+					{Name: "test", MountPath: "/opt/test/readonly", ReadOnly: true},
+					{Name: "docker", MountPath: "/var/run/docker.sock"},
+					{Name: "secret", MountPath: "/path/to/secret", ReadOnly: true},
+					{Name: "configMap", MountPath: "/path/to/configmap", ReadOnly: true},
+					{Name: "csi", MountPath: "/path/to/csi/volume", ReadOnly: true},
+					{Name: "repo", MountPath: "/builds"},
+				}
+
+				return addScriptsAndLogVolumeMounts(featureFlagValue, volumeMounts)
 			},
 		},
 		"default volume with build dir": {
@@ -240,11 +268,15 @@ func testVolumeMountsFeatureFlag(t *testing.T, featureFlagName string, featureFl
 			Build: &common.Build{
 				Runner: &common.RunnerConfig{},
 			},
-			Expected: []api.VolumeMount{
-				{
-					Name:      "repo",
-					MountPath: "/path/to/builds/dir",
-				},
+			Expected: func(featureFlagValue bool) []api.VolumeMount {
+				volumeMounts := []api.VolumeMount{
+					{
+						Name:      "repo",
+						MountPath: "/path/to/builds/dir",
+					},
+				}
+
+				return addScriptsAndLogVolumeMounts(featureFlagValue, volumeMounts)
 			},
 		},
 		"user-provided volume with build dir": {
@@ -264,8 +296,12 @@ func testVolumeMountsFeatureFlag(t *testing.T, featureFlagName string, featureFl
 			Build: &common.Build{
 				Runner: &common.RunnerConfig{},
 			},
-			Expected: []api.VolumeMount{
-				{Name: "user-provided", MountPath: "/path/to/builds/dir"},
+			Expected: func(featureFlagValue bool) []api.VolumeMount {
+				volumeMounts := []api.VolumeMount{
+					{Name: "user-provided", MountPath: "/path/to/builds/dir"},
+				}
+
+				return addScriptsAndLogVolumeMounts(featureFlagValue, volumeMounts)
 			},
 		},
 		"volumes with variables inside mountPath and subPath": {
@@ -346,22 +382,26 @@ func testVolumeMountsFeatureFlag(t *testing.T, featureFlagName string, featureFl
 				},
 				Runner: &common.RunnerConfig{},
 			},
-			Expected: []api.VolumeMount{
-				{Name: "docker", MountPath: "/var/run/docker.sock"},
-				{Name: "host-path", MountPath: "/path/two"},
-				{Name: "host-subpath", MountPath: "/subpath", SubPath: "subpath"},
-				{Name: "Secret", MountPath: "/path/to/whatever"},
-				{Name: "Secret-subpath", MountPath: "/path/to/whatever", SubPath: "secret-subpath"},
-				{Name: "PVC", MountPath: "/path/to/whatever"},
-				{Name: "PVC-subpath", MountPath: "/path/to/whatever/1", SubPath: "PVC-subpath-1"},
-				{Name: "PVC-subpath", MountPath: "/path/to/whatever/2", SubPath: "PVC-subpath-2"},
-				{Name: "ConfigMap", MountPath: "/path/to/whatever"},
-				{Name: "ConfigMap-subpath", MountPath: "/path/to/whatever", SubPath: "ConfigMap-subpath"},
-				{Name: "emptyDir", MountPath: "/path/to/empty/dir"},
-				{Name: "emptyDir-subpath", MountPath: "/subpath", SubPath: "empty-subpath"},
-				{Name: "csi", MountPath: "/path/to/csi/volume"},
-				{Name: "csi-subpath", MountPath: "/path/to/csi/volume", SubPath: "subpath"},
-				{Name: "repo", MountPath: "/builds"},
+			Expected: func(featureFlagValue bool) []api.VolumeMount {
+				volumeMounts := []api.VolumeMount{
+					{Name: "docker", MountPath: "/var/run/docker.sock"},
+					{Name: "host-path", MountPath: "/path/two"},
+					{Name: "host-subpath", MountPath: "/subpath", SubPath: "subpath"},
+					{Name: "Secret", MountPath: "/path/to/whatever"},
+					{Name: "Secret-subpath", MountPath: "/path/to/whatever", SubPath: "secret-subpath"},
+					{Name: "PVC", MountPath: "/path/to/whatever"},
+					{Name: "PVC-subpath", MountPath: "/path/to/whatever/1", SubPath: "PVC-subpath-1"},
+					{Name: "PVC-subpath", MountPath: "/path/to/whatever/2", SubPath: "PVC-subpath-2"},
+					{Name: "ConfigMap", MountPath: "/path/to/whatever"},
+					{Name: "ConfigMap-subpath", MountPath: "/path/to/whatever", SubPath: "ConfigMap-subpath"},
+					{Name: "emptyDir", MountPath: "/path/to/empty/dir"},
+					{Name: "emptyDir-subpath", MountPath: "/subpath", SubPath: "empty-subpath"},
+					{Name: "csi", MountPath: "/path/to/csi/volume"},
+					{Name: "csi-subpath", MountPath: "/path/to/csi/volume", SubPath: "subpath"},
+					{Name: "repo", MountPath: "/builds"},
+				}
+
+				return addScriptsAndLogVolumeMounts(featureFlagValue, volumeMounts)
 			},
 		},
 	}
@@ -377,23 +417,43 @@ func testVolumeMountsFeatureFlag(t *testing.T, featureFlagName string, featureFl
 			}
 
 			buildtest.SetBuildFeatureFlag(e.Build, featureFlagName, featureFlagValue)
-			assert.Equal(t, tt.Expected, e.getVolumeMounts())
+			assert.Equal(t, tt.Expected(featureFlagValue), e.getVolumeMounts())
 		})
 	}
 }
 
 func testVolumesFeatureFlag(t *testing.T, featureFlagName string, featureFlagValue bool) {
+	addScriptsAndLogVolumes := func(featureFlagValue bool, v []api.Volume) []api.Volume {
+		if featureFlagValue {
+			return v
+		}
+
+		return append(
+			v,
+
+			api.Volume{
+				Name: "scripts",
+				VolumeSource: api.VolumeSource{
+					EmptyDir: &api.EmptyDirVolumeSource{},
+				},
+			},
+			api.Volume{
+				Name: "logs",
+				VolumeSource: api.VolumeSource{
+					EmptyDir: &api.EmptyDirVolumeSource{},
+				},
+			},
+		)
+	}
 	csiVolFSType := "ext4"
 	csiVolReadOnly := false
-	mode := int32(0777)
-	optional := false
 	//nolint:lll
 	tests := map[string]struct {
 		GlobalConfig *common.Config
 		RunnerConfig common.RunnerConfig
 		Build        *common.Build
 
-		Expected []api.Volume
+		Expected func(featureFlagValue bool) []api.Volume
 	}{
 		"no custom volumes": {
 			GlobalConfig: &common.Config{},
@@ -405,20 +465,12 @@ func testVolumesFeatureFlag(t *testing.T, featureFlagName string, featureFlagVal
 			Build: &common.Build{
 				Runner: &common.RunnerConfig{},
 			},
-			Expected: []api.Volume{
-				{Name: "repo", VolumeSource: api.VolumeSource{EmptyDir: &api.EmptyDirVolumeSource{}}},
-				{
-					Name: "scripts", VolumeSource: api.VolumeSource{
-						ConfigMap: &api.ConfigMapVolumeSource{
-							LocalObjectReference: api.LocalObjectReference{
-								Name: fakeConfigMap().Name,
-							},
-							DefaultMode: &mode,
-							Optional:    &optional,
-						},
-					},
-				},
-				{Name: "logs", VolumeSource: api.VolumeSource{EmptyDir: &api.EmptyDirVolumeSource{}}},
+			Expected: func(featureFlagValue bool) []api.Volume {
+				v := []api.Volume{
+					{Name: "repo", VolumeSource: api.VolumeSource{EmptyDir: &api.EmptyDirVolumeSource{}}},
+				}
+
+				return addScriptsAndLogVolumes(featureFlagValue, v)
 			},
 		},
 		"custom volumes": {
@@ -495,74 +547,66 @@ func testVolumesFeatureFlag(t *testing.T, featureFlagName string, featureFlagVal
 			Build: &common.Build{
 				Runner: &common.RunnerConfig{},
 			},
-			Expected: []api.Volume{
-				{Name: "docker", VolumeSource: api.VolumeSource{HostPath: &api.HostPathVolumeSource{Path: "/var/run/docker.sock"}}},
-				{Name: "host-path", VolumeSource: api.VolumeSource{HostPath: &api.HostPathVolumeSource{Path: "/path/one"}}},
-				{Name: "host-subpath", VolumeSource: api.VolumeSource{HostPath: &api.HostPathVolumeSource{Path: "/path/one"}}},
-				{
-					Name: "secret",
-					VolumeSource: api.VolumeSource{
-						Secret: &api.SecretVolumeSource{
-							SecretName: "secret",
-							Items:      []api.KeyToPath{{Key: "secret_1", Path: "/path/to/secret_1"}},
-						},
-					},
-				},
-				{
-					Name: "secret-subpath",
-					VolumeSource: api.VolumeSource{
-						Secret: &api.SecretVolumeSource{
-							SecretName: "secret-subpath",
-							Items:      []api.KeyToPath{{Key: "secret_1", Path: "/path/to/secret_1"}},
-						},
-					},
-				},
-				{Name: "PVC", VolumeSource: api.VolumeSource{PersistentVolumeClaim: &api.PersistentVolumeClaimVolumeSource{ClaimName: "PVC"}}},
-				{Name: "PVC-subpath", VolumeSource: api.VolumeSource{PersistentVolumeClaim: &api.PersistentVolumeClaimVolumeSource{ClaimName: "PVC-subpath"}}},
-				{
-					Name: "ConfigMap",
-					VolumeSource: api.VolumeSource{
-						ConfigMap: &api.ConfigMapVolumeSource{
-							LocalObjectReference: api.LocalObjectReference{Name: "ConfigMap"},
-							Items:                []api.KeyToPath{{Key: "key_1", Path: "/path/to/key_1"}},
-						},
-					},
-				},
-				{
-					Name: "ConfigMap-subpath",
-					VolumeSource: api.VolumeSource{
-						ConfigMap: &api.ConfigMapVolumeSource{
-							LocalObjectReference: api.LocalObjectReference{Name: "ConfigMap-subpath"},
-							Items:                []api.KeyToPath{{Key: "key_1", Path: "/path/to/key_1"}},
-						},
-					},
-				},
-				{Name: "emptyDir", VolumeSource: api.VolumeSource{EmptyDir: &api.EmptyDirVolumeSource{Medium: "Memory"}}},
-				{Name: "emptyDir-subpath", VolumeSource: api.VolumeSource{EmptyDir: &api.EmptyDirVolumeSource{Medium: "Memory"}}},
-				{
-					Name: "csi",
-					VolumeSource: api.VolumeSource{
-						CSI: &api.CSIVolumeSource{
-							Driver:           "some-driver",
-							FSType:           &csiVolFSType,
-							ReadOnly:         &csiVolReadOnly,
-							VolumeAttributes: map[string]string{"key": "value"},
-						},
-					},
-				},
-				{Name: "repo", VolumeSource: api.VolumeSource{EmptyDir: &api.EmptyDirVolumeSource{}}},
-				{
-					Name: "scripts", VolumeSource: api.VolumeSource{
-						ConfigMap: &api.ConfigMapVolumeSource{
-							LocalObjectReference: api.LocalObjectReference{
-								Name: fakeConfigMap().Name,
+			Expected: func(featureFlagValue bool) []api.Volume {
+				v := []api.Volume{
+					{Name: "docker", VolumeSource: api.VolumeSource{HostPath: &api.HostPathVolumeSource{Path: "/var/run/docker.sock"}}},
+					{Name: "host-path", VolumeSource: api.VolumeSource{HostPath: &api.HostPathVolumeSource{Path: "/path/one"}}},
+					{Name: "host-subpath", VolumeSource: api.VolumeSource{HostPath: &api.HostPathVolumeSource{Path: "/path/one"}}},
+					{
+						Name: "secret",
+						VolumeSource: api.VolumeSource{
+							Secret: &api.SecretVolumeSource{
+								SecretName: "secret",
+								Items:      []api.KeyToPath{{Key: "secret_1", Path: "/path/to/secret_1"}},
 							},
-							DefaultMode: &mode,
-							Optional:    &optional,
 						},
 					},
-				},
-				{Name: "logs", VolumeSource: api.VolumeSource{EmptyDir: &api.EmptyDirVolumeSource{}}},
+					{
+						Name: "secret-subpath",
+						VolumeSource: api.VolumeSource{
+							Secret: &api.SecretVolumeSource{
+								SecretName: "secret-subpath",
+								Items:      []api.KeyToPath{{Key: "secret_1", Path: "/path/to/secret_1"}},
+							},
+						},
+					},
+					{Name: "PVC", VolumeSource: api.VolumeSource{PersistentVolumeClaim: &api.PersistentVolumeClaimVolumeSource{ClaimName: "PVC"}}},
+					{Name: "PVC-subpath", VolumeSource: api.VolumeSource{PersistentVolumeClaim: &api.PersistentVolumeClaimVolumeSource{ClaimName: "PVC-subpath"}}},
+					{
+						Name: "ConfigMap",
+						VolumeSource: api.VolumeSource{
+							ConfigMap: &api.ConfigMapVolumeSource{
+								LocalObjectReference: api.LocalObjectReference{Name: "ConfigMap"},
+								Items:                []api.KeyToPath{{Key: "key_1", Path: "/path/to/key_1"}},
+							},
+						},
+					},
+					{
+						Name: "ConfigMap-subpath",
+						VolumeSource: api.VolumeSource{
+							ConfigMap: &api.ConfigMapVolumeSource{
+								LocalObjectReference: api.LocalObjectReference{Name: "ConfigMap-subpath"},
+								Items:                []api.KeyToPath{{Key: "key_1", Path: "/path/to/key_1"}},
+							},
+						},
+					},
+					{Name: "emptyDir", VolumeSource: api.VolumeSource{EmptyDir: &api.EmptyDirVolumeSource{Medium: "Memory"}}},
+					{Name: "emptyDir-subpath", VolumeSource: api.VolumeSource{EmptyDir: &api.EmptyDirVolumeSource{Medium: "Memory"}}},
+					{
+						Name: "csi",
+						VolumeSource: api.VolumeSource{
+							CSI: &api.CSIVolumeSource{
+								Driver:           "some-driver",
+								FSType:           &csiVolFSType,
+								ReadOnly:         &csiVolReadOnly,
+								VolumeAttributes: map[string]string{"key": "value"},
+							},
+						},
+					},
+					{Name: "repo", VolumeSource: api.VolumeSource{EmptyDir: &api.EmptyDirVolumeSource{}}},
+				}
+
+				return addScriptsAndLogVolumes(featureFlagValue, v)
 			},
 		},
 		"default volume with build dir": {
@@ -578,20 +622,12 @@ func testVolumesFeatureFlag(t *testing.T, featureFlagName string, featureFlagVal
 			Build: &common.Build{
 				Runner: &common.RunnerConfig{},
 			},
-			Expected: []api.Volume{
-				{Name: "repo", VolumeSource: api.VolumeSource{EmptyDir: &api.EmptyDirVolumeSource{}}},
-				{
-					Name: "scripts", VolumeSource: api.VolumeSource{
-						ConfigMap: &api.ConfigMapVolumeSource{
-							LocalObjectReference: api.LocalObjectReference{
-								Name: fakeConfigMap().Name,
-							},
-							DefaultMode: &mode,
-							Optional:    &optional,
-						},
-					},
-				},
-				{Name: "logs", VolumeSource: api.VolumeSource{EmptyDir: &api.EmptyDirVolumeSource{}}},
+			Expected: func(featureFlagValue bool) []api.Volume {
+				v := []api.Volume{
+					{Name: "repo", VolumeSource: api.VolumeSource{EmptyDir: &api.EmptyDirVolumeSource{}}},
+				}
+
+				return addScriptsAndLogVolumes(featureFlagValue, v)
 			},
 		},
 		"user-provided volume with build dir": {
@@ -611,20 +647,12 @@ func testVolumesFeatureFlag(t *testing.T, featureFlagName string, featureFlagVal
 			Build: &common.Build{
 				Runner: &common.RunnerConfig{},
 			},
-			Expected: []api.Volume{
-				{Name: "user-provided", VolumeSource: api.VolumeSource{HostPath: &api.HostPathVolumeSource{Path: "/path/to/builds/dir"}}},
-				{
-					Name: "scripts", VolumeSource: api.VolumeSource{
-						ConfigMap: &api.ConfigMapVolumeSource{
-							LocalObjectReference: api.LocalObjectReference{
-								Name: fakeConfigMap().Name,
-							},
-							DefaultMode: &mode,
-							Optional:    &optional,
-						},
-					},
-				},
-				{Name: "logs", VolumeSource: api.VolumeSource{EmptyDir: &api.EmptyDirVolumeSource{}}},
+			Expected: func(featureFlagValue bool) []api.Volume {
+				v := []api.Volume{
+					{Name: "user-provided", VolumeSource: api.VolumeSource{HostPath: &api.HostPathVolumeSource{Path: "/path/to/builds/dir"}}},
+				}
+
+				return addScriptsAndLogVolumes(featureFlagValue, v)
 			},
 		},
 	}
@@ -641,7 +669,7 @@ func testVolumesFeatureFlag(t *testing.T, featureFlagName string, featureFlagVal
 			}
 
 			buildtest.SetBuildFeatureFlag(e.Build, featureFlagName, featureFlagValue)
-			assert.Equal(t, tt.Expected, e.getVolumes())
+			assert.Equal(t, tt.Expected(featureFlagValue), e.getVolumes())
 		})
 	}
 }
@@ -822,8 +850,6 @@ func TestCleanup(t *testing.T) {
 	podsEndpointURI := "/api/" + version + "/namespaces/" + objectMeta.Namespace + "/pods/" + objectMeta.Name
 	servicesEndpointURI := "/api/" + version + "/namespaces/" + objectMeta.Namespace + "/services/" + objectMeta.Name
 	secretsEndpointURI := "/api/" + version + "/namespaces/" + objectMeta.Namespace + "/secrets/" + objectMeta.Name
-	configMapsEndpointURI :=
-		"/api/" + version + "/namespaces/" + objectMeta.Namespace + "/configmaps/" + objectMeta.Name
 
 	tests := []struct {
 		Name        string
@@ -933,31 +959,6 @@ func TestCleanup(t *testing.T) {
 				}
 			},
 			Error: false,
-		},
-		{
-			Name:      "ConfigMap cleanup",
-			ConfigMap: &api.ConfigMap{ObjectMeta: objectMeta},
-			ClientFunc: func(t *testing.T, req *http.Request) (*http.Response, error) {
-				switch p, m := req.URL.Path, req.Method; {
-				case m == http.MethodDelete && p == configMapsEndpointURI:
-					return fakeKubeDeleteResponse(http.StatusOK), nil
-				default:
-					return nil, fmt.Errorf("unexpected request. method: %s, path: %s", m, p)
-				}
-			},
-		},
-		{
-			Name:      "ConfigMap cleanup failed",
-			ConfigMap: &api.ConfigMap{ObjectMeta: objectMeta},
-			ClientFunc: func(t *testing.T, req *http.Request) (*http.Response, error) {
-				switch p, m := req.URL.Path, req.Method; {
-				case m == http.MethodDelete && p == configMapsEndpointURI:
-					return fakeKubeDeleteResponse(http.StatusNotFound), nil
-				default:
-					return nil, fmt.Errorf("unexpected request. method: %s, path: %s", m, p)
-				}
-			},
-			Error: true,
 		},
 		{
 			Name: "Pod cleanup specifies GracePeriodSeconds with TerminationGracePeriodSeconds set",
@@ -4302,34 +4303,6 @@ func TestSetupBuildPod(t *testing.T) {
 				assert.Equal(t, e.pod.GetUID(), ownerReference.UID)
 			},
 		},
-		"supports adding ownerReferences to a configMap": {
-			RunnerConfig: common.RunnerConfig{
-				RunnerSettings: common.RunnerSettings{
-					Kubernetes: &common.KubernetesConfig{
-						HelperImage: "custom/helper-image",
-					},
-				},
-			},
-			Options: &kubernetesOptions{
-				Image: common.Image{
-					Name: "test-image",
-					Ports: []common.Port{
-						{
-							Number: 80,
-						},
-					},
-				},
-			},
-			VerifyExecutorFn: func(t *testing.T, test setupBuildPodTestDef, e *executor) {
-				require.Len(t, e.configMap.OwnerReferences, 1)
-
-				ownerReference := e.configMap.OwnerReferences[0]
-				assert.Equal(t, "v1", ownerReference.APIVersion)
-				assert.Equal(t, "Pod", ownerReference.Kind)
-				assert.Equal(t, e.pod.GetName(), ownerReference.Name)
-				assert.Equal(t, e.pod.GetUID(), ownerReference.UID)
-			},
-		},
 		"supports adding ownerReferences to a credentials": {
 			RunnerConfig: common.RunnerConfig{
 				RunnerSettings: common.RunnerSettings{
@@ -4372,6 +4345,14 @@ func TestSetupBuildPod(t *testing.T) {
 					Kubernetes: &common.KubernetesConfig{
 						HelperImage: "custom/helper-image",
 					},
+				},
+			},
+			Credentials: []common.Credentials{
+				{
+					Type:     "registry",
+					URL:      "http://example.com",
+					Username: "user",
+					Password: "password",
 				},
 			},
 			Options: &kubernetesOptions{
@@ -5183,7 +5164,9 @@ func TestExecutor_buildPermissionsInitContainer(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Equal(t, tt.expectedImage, c.Image)
 			assert.Equal(t, api.PullIfNotPresent, c.ImagePullPolicy)
-			assert.Len(t, c.VolumeMounts, 1)
+			// The default number of mount in Attach Mode is 3
+			// /build, /scripts and /logs
+			assert.Len(t, c.VolumeMounts, 3)
 			assert.Len(t, c.Command, 3)
 		})
 	}
