@@ -4,9 +4,9 @@ import (
 	"context"
 	"net"
 
+	"gitlab.com/gitlab-org/fleeting/fleeting/connector"
+	"gitlab.com/gitlab-org/fleeting/taskscaler"
 	"gitlab.com/gitlab-org/gitlab-runner/executors"
-	"gitlab.com/jobd/fleeting/fleeting/connector"
-	"gitlab.com/jobd/fleeting/taskscaler"
 )
 
 var _ executors.Environment = (*acqusitionRef)(nil)

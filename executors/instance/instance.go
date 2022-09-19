@@ -37,7 +37,7 @@ func (e *executor) Prepare(options common.ExecutorPrepareOptions) error {
 	e.Println("Dialing remote instance...")
 	e.client, err = environment.Dial(options.Context)
 	if err != nil {
-		return fmt.Errorf("conecting to remote environment: %w", err)
+		return fmt.Errorf("connecting to remote environment: %w", err)
 	}
 
 	return nil

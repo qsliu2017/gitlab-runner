@@ -9,9 +9,9 @@ import (
 	"github.com/sirupsen/logrus"
 	"gitlab.com/gitlab-org/gitlab-runner/common"
 
-	googlecompute "gitlab.com/jobd/fleeting/fleeting-plugin-googlecompute"
-	fleetingprovider "gitlab.com/jobd/fleeting/fleeting/provider"
-	"gitlab.com/jobd/fleeting/taskscaler"
+	googlecompute "gitlab.com/gitlab-org/fleeting/fleeting-plugin-googlecompute"
+	fleetingprovider "gitlab.com/gitlab-org/fleeting/fleeting/provider"
+	"gitlab.com/gitlab-org/fleeting/taskscaler"
 )
 
 type provider struct {
