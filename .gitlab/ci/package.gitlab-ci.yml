@@ -1,5 +1,6 @@
 .packages:
   extends:
+  - .default_image
   - .rules:merge_request_pipelines:no_docs
   stage: package
   environment:

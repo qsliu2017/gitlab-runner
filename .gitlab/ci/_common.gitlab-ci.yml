@@ -39,13 +39,15 @@ variables:
   UBI_FIPS_VERSION: "8.6-943"
 
 default:
-  image: $CI_IMAGE
   tags:
   - gitlab-org
   retry:
     max: 2
     when:
     - runner_system_failure
+
+.default_image:
+  image: $CI_IMAGE
 
 .no_cache:
   cache: {}

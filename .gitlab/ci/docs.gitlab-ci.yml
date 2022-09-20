@@ -1,6 +1,7 @@
 .review-docs:
   stage: docs
   extends:
+  - .default_image
   - .rules:docs:review
   - .no_cache_and_dependencies
   image: ruby:2.7-alpine

@@ -1,5 +1,6 @@
 .image_builder:
   extends:
+  - .default_image
   - .docker
   stage: prepare
   image: docker:${DOCKER_VERSION}-git
@@ -51,6 +52,7 @@ prepare alpine-id-overflow image:
 
 prepare helper-entrypoint image:
   extends:
+  - .default_image
   - .docker
   - .rules:prepare:gitlab-runner-helper-entrypoint:image:merge-requests
   stage: prepare
@@ -66,8 +68,9 @@ prepare helper-entrypoint image:
 
 prepare go fips:
   extends:
-    - .docker
-    - .rules:prepare:go-fips:image:merge-requests
+  - .default_image
+  - .docker
+  - .rules:prepare:go-fips:image:merge-requests
   stage: prepare
   image: docker:${DOCKER_VERSION}-git
   variables:
@@ -80,6 +83,7 @@ prepare go fips:
 prepare runner-incept variables:
   stage: prepare
   extends:
+    - .default_image
     - .rules:merge_request_pipelines:no_docs:only_canonical
   script:
     - echo "UPSTREAM_CI_COMMIT_REF=$(./ci/upstream_commit_ref)" >> incept.env

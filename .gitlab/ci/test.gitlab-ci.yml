@@ -27,6 +27,7 @@ gosec-sast:
 check version definition:
   stage: test
   extends:
+  - .default_image
   - .rules:merge_request_pipelines
   needs: []
   script:
@@ -37,6 +38,7 @@ docs lint markdown:
   image: registry.gitlab.com/gitlab-org/gitlab-docs/lint-markdown:alpine-3.16-vale-2.20.1-markdownlint-0.32.2
   stage: test
   extends:
+  - .default_image
   - .rules:merge_request_pipelines
   - .no_cache_and_dependencies
   needs: []
@@ -49,6 +51,7 @@ docs check links:
   image: registry.gitlab.com/gitlab-org/gitlab-docs/lint-html:alpine-3.16-ruby-2.7.6-0bc327a4
   stage: test
   extends:
+  - .default_image
   - .rules:merge_request_pipelines
   - .no_cache_and_dependencies
   needs: []
@@ -66,6 +69,7 @@ docs check links:
 check feature flags docs:
   stage: test
   extends:
+  - .default_image
   - .rules:merge_request_pipelines
   - .no_cache_and_dependencies
   script:
@@ -83,6 +87,7 @@ check feature flags docs:
 check modules:
   stage: test
   extends:
+  - .default_image
   - .rules:merge_request_pipelines:no_docs
   - .no_cache_and_dependencies
   needs:
@@ -93,6 +98,7 @@ check modules:
 check mocks:
   stage: test
   extends:
+  - .default_image
   - .rules:merge_request_pipelines:no_docs
   - .no_cache_and_dependencies
   needs:
@@ -103,6 +109,7 @@ check mocks:
 check test directives:
   stage: test
   extends:
+  - .default_image
   - .rules:merge_request_pipelines:no_docs
   - .no_cache_and_dependencies
   needs:
@@ -113,6 +120,7 @@ check test directives:
 .check windows test ignore list:
   stage: test
   extends:
+  - .default_image
   - .rules:merge_request_pipelines:no_docs
   script:
   - ./scripts/check_windows_test_ignore_list
@@ -123,17 +131,20 @@ check test directives:
 
 check windows 1809 test ignore list:
   extends:
+  - .default_image
   - .check windows test ignore list
   - .windows1809_variables
 
 check windows 2004 test ignore list:
   extends:
+  - .default_image
   - .check windows test ignore list
   - .windows2004_variables
 
 code_quality:
   stage: test
   extends:
+  - .default_image
   - .rules:merge_request_pipelines:no_docs
   - .no_dependencies
   # Use GOCACHE instead of GOLANGCI_LINT_CACHE
@@ -168,6 +179,7 @@ code_quality:
 
 .linux test:
   extends:
+  - .default_image
   - .rules:merge_request_pipelines:no_docs
   - .docker
   - .go-cache
@@ -200,6 +212,7 @@ unit test:
 
 unit test with race:
   extends:
+  - .default_image
   - unit test
   - .go-cache
   variables:
@@ -223,6 +236,7 @@ integration test:
 
 integration test with race:
   extends:
+  - .default_image
   - integration test
   - .go-cache
   variables:
@@ -233,6 +247,7 @@ integration test with race:
 
 fuzz variable mask:
   extends:
+  - .default_image
   - .fuzz_base
   - .rules:merge_request_pipelines:no_docs
   image: golang:1.17.9
@@ -374,6 +389,7 @@ windows 21H1 integration tests:
 
 git 1.8.3.1:
   extends:
+  - .default_image
   - .rules:merge_request_pipelines:no_docs
   - .go-cache
   image: centos:7
@@ -394,6 +410,7 @@ git 1.8.3.1:
 
 integration_k8s:
   extends:
+  - .default_image
   - .rules:merge_request_pipelines:no_docs
   - .docker
   needs:

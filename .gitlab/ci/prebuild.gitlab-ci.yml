@@ -1,5 +1,6 @@
 .helper images base:
   extends:
+  - .default_image
   - .docker
   - .go-cache-docker-qemu
   - .rules:merge_request_pipelines:no_docs
@@ -37,6 +38,7 @@ helper images fips:
 
 helper images binaries:
   extends:
+  - .default_image
   - .rules:merge_request_pipelines:no_docs
   stage: prebuild
   script:
@@ -48,6 +50,7 @@ helper images binaries:
 
 clone test repo:
   extends:
+  - .default_image
   - .rules:merge_request_pipelines:no_docs
   - .no_cache_and_dependencies
   stage: prebuild
@@ -65,6 +68,7 @@ clone test repo:
 
 .test definitions:
   extends:
+  - .default_image
   - .rules:merge_request_pipelines:no_docs
   - .go-cache
   stage: prebuild

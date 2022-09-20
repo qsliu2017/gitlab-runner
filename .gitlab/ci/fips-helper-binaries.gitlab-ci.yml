@@ -1,5 +1,6 @@
 fips helper binaries:
   extends:
+  - .default_image
   - .rules:merge_request_pipelines:no_docs
   - .go-cache
   stage: fips helper binaries
