@@ -1,7 +1,6 @@
 trigger UBI images build:
   stage: postrelease
   extends:
-  - .default_image
   - .rules:release:all
   variables:
     BUILD_RELEASE: ${CI_COMMIT_REF_NAME}
@@ -9,7 +8,6 @@ trigger UBI images build:
 
 trigger runner-incept tests:
   extends:
-  - .default_image
   - .rules:merge_request_pipelines:no_docs:only_canonical
   needs:
     - job: "prepare runner-incept variables"
