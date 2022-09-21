@@ -369,12 +369,12 @@ func (s *executor) Run(cmd common.ExecutorCommand) error {
 
 func (s *executor) runWithExecLegacy(cmd common.ExecutorCommand) error {
 	if s.pod == nil {
-		err := s.setupCredentials()
+		err := s.setupCredentials(cmd.Context)
 		if err != nil {
 			return err
 		}
 
-		err = s.setupBuildPod(nil)
+		err = s.setupBuildPod(cmd.Context, nil)
 		if err != nil {
 			return err
 		}
@@ -387,7 +387,7 @@ func (s *executor) runWithExecLegacy(cmd common.ExecutorCommand) error {
 		containerCommand = s.helperImageInfo.Cmd
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(cmd.Context)
 	defer cancel()
 
 	s.Debugln(fmt.Sprintf(
@@ -456,12 +456,12 @@ func (s *executor) ensurePodsConfigured(ctx context.Context) error {
 		return nil
 	}
 
-	err := s.setupCredentials()
+	err := s.setupCredentials(ctx)
 	if err != nil {
 		return fmt.Errorf("setting up credentials: %w", err)
 	}
 
-	err = s.setupScriptsConfigMap()
+	err = s.setupScriptsConfigMap(ctx)
 	if err != nil {
 		return fmt.Errorf("setting up scripts configMap: %w", err)
 	}
@@ -470,7 +470,7 @@ func (s *executor) ensurePodsConfigured(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("building permissions init container: %w", err)
 	}
-	err = s.setupBuildPod([]api.Container{permissionsInitContainer})
+	err = s.setupBuildPod(ctx, []api.Container{permissionsInitContainer})
 	if err != nil {
 		return fmt.Errorf("setting up build pod: %w", err)
 	}
@@ -676,7 +676,7 @@ func getExitCode(err error) int {
 	return unknownLogProcessorExitCode
 }
 
-func (s *executor) setupScriptsConfigMap() error {
+func (s *executor) setupScriptsConfigMap(ctx context.Context) error {
 	s.Debugln("Setting up scripts config map")
 
 	// After issue https://gitlab.com/gitlab-org/gitlab-runner/issues/10342 is resolved and
@@ -687,7 +687,7 @@ func (s *executor) setupScriptsConfigMap() error {
 		return err
 	}
 
-	scripts, err := s.generateScripts(shell)
+	scripts, err := s.generateScripts(ctx, shell)
 	if err != nil {
 		return err
 	}
@@ -700,11 +700,10 @@ func (s *executor) setupScriptsConfigMap() error {
 		Data: scripts,
 	}
 
-	// TODO: handle the context properly with https://gitlab.com/gitlab-org/gitlab-runner/-/issues/27932
 	s.configMap, err = s.kubeClient.
 		CoreV1().
 		ConfigMaps(s.configurationOverwrites.namespace).
-		Create(context.TODO(), configMap, metav1.CreateOptions{})
+		Create(ctx, configMap, metav1.CreateOptions{})
 	if err != nil {
 		return fmt.Errorf("generating scripts config map: %w", err)
 	}
@@ -726,7 +725,7 @@ func (s *executor) retrieveShell() (common.Shell, error) {
 	return shell, nil
 }
 
-func (s *executor) generateScripts(shell common.Shell) (map[string]string, error) {
+func (s *executor) generateScripts(ctx context.Context, shell common.Shell) (map[string]string, error) {
 	scripts := map[string]string{}
 	shellName := s.Shell().Shell
 	switch shellName {
@@ -737,7 +736,7 @@ func (s *executor) generateScripts(shell common.Shell) (map[string]string, error
 	}
 
 	for _, stage := range s.Build.BuildStages() {
-		script, err := shell.GenerateScript(stage, *s.Shell())
+		script, err := shell.GenerateScript(ctx, stage, *s.Shell())
 		if errors.Is(err, common.ErrSkipBuildStage) {
 			continue
 		} else if err != nil {
@@ -1277,7 +1276,7 @@ func (s *executor) isSharedBuildsDirRequired() bool {
 	return required
 }
 
-func (s *executor) setupCredentials() error {
+func (s *executor) setupCredentials(ctx context.Context) error {
 	s.Debugln("Setting up secrets")
 
 	authConfigs, err := auth.ResolveConfigs(s.Build.GetDockerAuthConfig(), s.Shell().User, s.Build.Credentials)
@@ -1306,11 +1305,10 @@ func (s *executor) setupCredentials() error {
 	secret.Data = map[string][]byte{}
 	secret.Data[api.DockerConfigKey] = dockerCfgContent
 
-	// TODO: handle the context properly with https://gitlab.com/gitlab-org/gitlab-runner/-/issues/27932
 	creds, err := s.kubeClient.
 		CoreV1().
 		Secrets(s.configurationOverwrites.namespace).
-		Create(context.TODO(), &secret, metav1.CreateOptions{})
+		Create(ctx, &secret, metav1.CreateOptions{})
 	if err != nil {
 		return err
 	}
@@ -1334,7 +1332,7 @@ func (s *executor) getHostAliases() ([]api.HostAlias, error) {
 	return createHostAliases(s.options.Services, s.Config.Kubernetes.GetHostAliases())
 }
 
-func (s *executor) setupBuildPod(initContainers []api.Container) error {
+func (s *executor) setupBuildPod(ctx context.Context, initContainers []api.Container) error {
 	s.Debugln("Setting up build pod")
 
 	prepareOpts, err := s.createPodConfigPrepareOpts(initContainers)
@@ -1348,18 +1346,17 @@ func (s *executor) setupBuildPod(initContainers []api.Container) error {
 	}
 
 	s.Debugln("Checking for ImagePullSecrets or ServiceAccount existence")
-	err = s.checkDependantResources()
+	err = s.checkDependantResources(ctx)
 	if err != nil {
 		return err
 	}
 
 	s.Debugln("Creating build pod")
 
-	// TODO: handle the context properly with https://gitlab.com/gitlab-org/gitlab-runner/-/issues/27932
 	pod, err := s.kubeClient.
 		CoreV1().
 		Pods(s.configurationOverwrites.namespace).
-		Create(context.TODO(), &podConfig, metav1.CreateOptions{})
+		Create(ctx, &podConfig, metav1.CreateOptions{})
 	if err != nil {
 		return err
 	}
@@ -1367,12 +1364,12 @@ func (s *executor) setupBuildPod(initContainers []api.Container) error {
 	s.pod = pod
 
 	ownerReferences := s.buildPodReferences()
-	err = s.setOwnerReferencesForResources(ownerReferences)
+	err = s.setOwnerReferencesForResources(ctx, ownerReferences)
 	if err != nil {
 		return fmt.Errorf("error setting ownerReferences: %w", err)
 	}
 
-	s.services, err = s.makePodProxyServices(ownerReferences)
+	s.services, err = s.makePodProxyServices(ctx, ownerReferences)
 	if err != nil {
 		return err
 	}
@@ -1380,14 +1377,14 @@ func (s *executor) setupBuildPod(initContainers []api.Container) error {
 	return nil
 }
 
-func (s *executor) checkDependantResources() error {
+func (s *executor) checkDependantResources(ctx context.Context) error {
 	if s.Config.Kubernetes.GetResourceAvailabilityCheckMaxAttempts() == 0 {
 		s.Debugln("Resources check has been disabled")
 		return nil
 	}
 
 	err := s.waitForResource(
-		context.TODO(),
+		ctx,
 		resourceTypeServiceAccount,
 		s.Config.Kubernetes.ServiceAccount,
 		s.serviceAccountExists(),
@@ -1398,7 +1395,7 @@ func (s *executor) checkDependantResources() error {
 
 	for _, secretName := range s.Config.Kubernetes.ImagePullSecrets {
 		err = s.waitForResource(
-			context.TODO(),
+			ctx,
 			resourceTypePullSecret,
 			secretName,
 			s.secretExists(),
@@ -1575,7 +1572,7 @@ func (s *executor) createBuildAndHelperContainers() (api.Container, api.Containe
 	return buildContainer, helperContainer, nil
 }
 
-func (s *executor) setOwnerReferencesForResources(ownerReferences []metav1.OwnerReference) error {
+func (s *executor) setOwnerReferencesForResources(ctx context.Context, ownerReferences []metav1.OwnerReference) error {
 	if s.credentials != nil {
 		credentials := s.credentials.DeepCopy()
 		credentials.SetOwnerReferences(ownerReferences)
@@ -1584,7 +1581,7 @@ func (s *executor) setOwnerReferencesForResources(ownerReferences []metav1.Owner
 		s.credentials, err = s.kubeClient.
 			CoreV1().
 			Secrets(s.configurationOverwrites.namespace).
-			Update(context.TODO(), credentials, metav1.UpdateOptions{})
+			Update(ctx, credentials, metav1.UpdateOptions{})
 
 		if err != nil {
 			return err
@@ -1599,7 +1596,7 @@ func (s *executor) setOwnerReferencesForResources(ownerReferences []metav1.Owner
 		s.configMap, err = s.kubeClient.
 			CoreV1().
 			ConfigMaps(s.configurationOverwrites.namespace).
-			Update(context.TODO(), configMap, metav1.UpdateOptions{})
+			Update(ctx, configMap, metav1.UpdateOptions{})
 
 		if err != nil {
 			return err
@@ -1625,7 +1622,6 @@ func (s *executor) waitForResource(
 	resourceType string,
 	resourceName string,
 	checkExists func(context.Context, string) bool,
-
 ) error {
 	attempt := -1
 
@@ -1701,7 +1697,10 @@ func (s *executor) getHelperImage() string {
 	return s.helperImageInfo.String()
 }
 
-func (s *executor) makePodProxyServices(ownerReferences []metav1.OwnerReference) ([]api.Service, error) {
+func (s *executor) makePodProxyServices(
+	ctx context.Context,
+	ownerReferences []metav1.OwnerReference,
+) ([]api.Service, error) {
 	s.Debugln("Creating pod proxy services")
 
 	ch := make(chan serviceCreateResponse)
@@ -1722,7 +1721,7 @@ func (s *executor) makePodProxyServices(ownerReferences []metav1.OwnerReference)
 		}
 
 		serviceConfig := s.prepareServiceConfig(serviceName, servicePorts, ownerReferences)
-		go s.createKubernetesService(&serviceConfig, serviceProxy.Settings, ch, &wg)
+		go s.createKubernetesService(ctx, &serviceConfig, serviceProxy.Settings, ch, &wg)
 	}
 
 	go func() {
@@ -1765,6 +1764,7 @@ func (s *executor) prepareServiceConfig(
 }
 
 func (s *executor) createKubernetesService(
+	ctx context.Context,
 	service *api.Service,
 	proxySettings *proxy.Settings,
 	ch chan<- serviceCreateResponse,
@@ -1772,11 +1772,10 @@ func (s *executor) createKubernetesService(
 ) {
 	defer wg.Done()
 
-	// TODO: handle the context properly with https://gitlab.com/gitlab-org/gitlab-runner/-/issues/27932
 	service, err := s.kubeClient.
 		CoreV1().
 		Services(s.pod.Namespace).
-		Create(context.TODO(), service, metav1.CreateOptions{})
+		Create(ctx, service, metav1.CreateOptions{})
 	if err == nil {
 		// Updating the internal service name reference and activating the proxy
 		proxySettings.ServiceName = service.Name
@@ -1801,7 +1800,7 @@ func (s *executor) watchPodStatus(ctx context.Context) <-chan error {
 			case <-ctx.Done():
 				return
 			case <-t.C:
-				err := s.checkPodStatus()
+				err := s.checkPodStatus(ctx)
 				if err != nil {
 					ch <- err
 					return
@@ -1813,12 +1812,11 @@ func (s *executor) watchPodStatus(ctx context.Context) <-chan error {
 	return ch
 }
 
-func (s *executor) checkPodStatus() error {
-	// TODO: handle the context properly with https://gitlab.com/gitlab-org/gitlab-runner/-/issues/27932
+func (s *executor) checkPodStatus(ctx context.Context) error {
 	pod, err := s.kubeClient.
 		CoreV1().
 		Pods(s.pod.Namespace).
-		Get(context.TODO(), s.pod.Name, metav1.GetOptions{})
+		Get(ctx, s.pod.Name, metav1.GetOptions{})
 	if IsKubernetesPodNotFoundError(err) {
 		return err
 	}

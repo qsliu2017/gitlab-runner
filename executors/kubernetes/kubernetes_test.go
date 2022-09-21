@@ -746,7 +746,7 @@ func testSetupBuildPodServiceCreationErrorFeatureFlag(t *testing.T, featureFlagN
 	err = ex.prepareOverwrites(make(common.JobVariables, 0))
 	assert.NoError(t, err)
 
-	err = ex.setupBuildPod(nil)
+	err = ex.setupBuildPod(context.Background(), nil)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "error creating the proxy service")
 }
@@ -808,7 +808,7 @@ func testSetupBuildPodFailureGetPullPolicyFeatureFlag(t *testing.T, featureFlagN
 			err := e.prepareOverwrites(make(common.JobVariables, 0))
 			assert.NoError(t, err)
 
-			err = e.setupBuildPod(nil)
+			err = e.setupBuildPod(context.Background(), nil)
 			assert.ErrorIs(t, err, assert.AnError)
 			assert.Error(t, err)
 		})
@@ -2406,7 +2406,7 @@ func TestSetupCredentials(t *testing.T) {
 			err := ex.prepareOverwrites(make(common.JobVariables, 0))
 			assert.NoError(t, err)
 
-			err = ex.setupCredentials()
+			err = ex.setupCredentials(context.Background())
 			assert.NoError(t, err)
 
 			if test.VerifyFn != nil {
@@ -2484,12 +2484,9 @@ func TestServiceAccountExists(t *testing.T) {
 				},
 			}
 
-			ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
-			defer cancel()
-
 			err := ex.prepareOverwrites(make(common.JobVariables, 0))
 			assert.NoError(t, err)
-			assert.Equal(t, tc.found, ex.serviceAccountExists()(ctx, tc.name))
+			assert.Equal(t, tc.found, ex.serviceAccountExists()(context.Background(), tc.name))
 		})
 	}
 }
@@ -2559,12 +2556,9 @@ func TestSecretExists(t *testing.T) {
 				},
 			}
 
-			ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
-			defer cancel()
-
 			err := ex.prepareOverwrites(make(common.JobVariables, 0))
 			assert.NoError(t, err)
-			assert.Equal(t, tc.found, ex.secretExists()(ctx, tc.name))
+			assert.Equal(t, tc.found, ex.secretExists()(context.Background(), tc.name))
 		})
 	}
 }
@@ -4649,11 +4643,11 @@ func TestSetupBuildPod(t *testing.T) {
 			assert.NoError(t, err, "error preparing overwrites")
 
 			if test.Credentials != nil {
-				err = ex.setupCredentials()
+				err = ex.setupCredentials(context.Background())
 				assert.NoError(t, err, "error setting up credentials")
 			}
 
-			err = ex.setupBuildPod(test.InitContainers)
+			err = ex.setupBuildPod(context.Background(), test.InitContainers)
 			if test.VerifySetupBuildPodErrFn == nil {
 				assert.NoError(t, err, "error setting up build pod")
 				assert.True(t, rt.executed, "RoundTrip for kubernetes client should be executed")
@@ -5061,7 +5055,7 @@ func TestGenerateScripts(t *testing.T) {
 			Maybe()
 
 		for _, s := range stages {
-			m.On("GenerateScript", s, e.ExecutorOptions.Shell).
+			m.On("GenerateScript", mock.Anything, s, e.ExecutorOptions.Shell).
 				Return("OK", nil).
 				Once()
 		}
@@ -5135,7 +5129,7 @@ func TestGenerateScripts(t *testing.T) {
 			setupMockShell: func(e *executor) *common.MockShell {
 				buildStages := e.Build.BuildStages()
 				m := new(common.MockShell)
-				m.On("GenerateScript", buildStages[0], e.ExecutorOptions.Shell).
+				m.On("GenerateScript", mock.Anything, buildStages[0], e.ExecutorOptions.Shell).
 					Return("", common.ErrSkipBuildStage).
 					Once()
 
@@ -5159,7 +5153,7 @@ func TestGenerateScripts(t *testing.T) {
 				m.On("GetConfiguration", mock.Anything).
 					Return(&common.ShellConfiguration{Extension: extension(e.Shell())}, nil).
 					Maybe()
-				m.On("GenerateScript", buildStages[0], e.ExecutorOptions.Shell).
+				m.On("GenerateScript", mock.Anything, buildStages[0], e.ExecutorOptions.Shell).
 					Return("", testErr).
 					Once()
 
@@ -5179,7 +5173,7 @@ func TestGenerateScripts(t *testing.T) {
 			m := tt.setupMockShell(e)
 			defer m.AssertExpectations(t)
 
-			scripts, err := e.generateScripts(m)
+			scripts, err := e.generateScripts(context.Background(), m)
 			assert.ErrorIs(t, err, tt.expectedErr)
 			assert.Equal(t, expectedScripts, scripts)
 		})
