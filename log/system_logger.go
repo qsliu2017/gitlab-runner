@@ -1,5 +1,8 @@
 package log
 
+//go:generate mockery --inpackage --name systemLogger
+//go:generate mockery --inpackage --name systemService
+
 import (
 	"github.com/kardianos/service"
 	"github.com/sirupsen/logrus"

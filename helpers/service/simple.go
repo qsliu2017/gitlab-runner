@@ -1,5 +1,7 @@
 package service_helpers
 
+//go:generate mockery --inpackage --name stopStarter
+
 import (
 	"errors"
 	"os"

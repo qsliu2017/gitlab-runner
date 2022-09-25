@@ -1,5 +1,10 @@
 package vault
 
+//go:generate mockery --inpackage --name Client
+//go:generate mockery --inpackage --name apiClient
+//go:generate mockery --inpackage --name apiClientSys
+//go:generate mockery --inpackage --name apiClientLogical
+
 import (
 	"errors"
 	"fmt"

@@ -6,6 +6,8 @@
 
 package ca_chain
 
+//go:generate mockery --inpackage --name fetcher
+
 import (
 	"crypto/x509"
 	"fmt"

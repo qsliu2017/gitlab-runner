@@ -1,5 +1,7 @@
 package docker
 
+//go:generate mockery --inpackage --name Machine
+
 import (
 	"time"
 )

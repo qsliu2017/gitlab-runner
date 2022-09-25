@@ -1,5 +1,7 @@
 package volumes
 
+//go:generate mockery --inpackage --name debugLogger
+
 import (
 	"crypto/md5"
 	"errors"

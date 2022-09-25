@@ -1,5 +1,9 @@
 package kubernetes
 
+//go:generate mockery --inpackage --name logStreamer
+//go:generate mockery --inpackage --name logProcessor
+//go:generate mockery --inpackage --name backoffCalculator
+
 import (
 	"bufio"
 	"context"

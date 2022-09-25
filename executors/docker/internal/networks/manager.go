@@ -1,5 +1,7 @@
 package networks
 
+//go:generate mockery --inpackage --name Manager
+
 import (
 	"context"
 	"errors"

@@ -1,5 +1,8 @@
 package helpers
 
+//go:generate mockery --inpackage --name logStreamProvider
+//go:generate mockery --inpackage --name logOutputWriter
+
 import (
 	"bufio"
 	"errors"

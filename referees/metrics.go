@@ -1,5 +1,7 @@
 package referees
 
+//go:generate mockery --inpackage --name MetricsExecutor
+
 import (
 	"bytes"
 	"context"

@@ -1,5 +1,7 @@
 package vault
 
+//go:generate mockery --inpackage --name Result
+
 import (
 	"errors"
 

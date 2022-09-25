@@ -1,5 +1,7 @@
 package process
 
+//go:generate mockery --inpackage --name Commander
+
 import (
 	"io"
 	"os"

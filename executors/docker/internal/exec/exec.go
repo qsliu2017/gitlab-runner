@@ -1,5 +1,9 @@
 package exec
 
+//go:generate mockery --inpackage --name conn
+//go:generate mockery --inpackage --name reader
+//go:generate mockery --inpackage --name Docker
+
 import (
 	"context"
 	"errors"

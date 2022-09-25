@@ -18,6 +18,8 @@ This file was modified by James Munnelly (https://gitlab.com/u/munnerz)
 
 package kubernetes
 
+//go:generate mockery --inpackage --name RemoteExecutor
+
 import (
 	"context"
 	"errors"

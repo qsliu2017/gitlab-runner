@@ -1,5 +1,7 @@
 package shells
 
+//go:generate mockery --inpackage --name ShellWriter
+
 import (
 	"gitlab.com/gitlab-org/gitlab-runner/common"
 )

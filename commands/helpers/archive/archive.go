@@ -1,5 +1,7 @@
 package archive
 
+//go:generate mockery --inpackage --name Archiver
+
 import (
 	"context"
 	"errors"

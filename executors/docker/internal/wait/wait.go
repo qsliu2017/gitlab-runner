@@ -1,5 +1,8 @@
 package wait
 
+//go:generate mockery --inpackage --name Waiter
+//go:generate mockery --inpackage --name KillWaiter
+
 import (
 	"context"
 	"errors"

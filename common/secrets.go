@@ -1,5 +1,9 @@
 package common
 
+//go:generate mockery --inpackage --name logger
+//go:generate mockery --inpackage --name SecretResolver
+//go:generate mockery --inpackage --name SecretsResolver
+
 import (
 	"errors"
 	"fmt"

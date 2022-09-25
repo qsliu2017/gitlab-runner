@@ -1,5 +1,7 @@
 package process
 
+//go:generate mockery --inpackage --name Logger
+
 import (
 	"github.com/sirupsen/logrus"
 )

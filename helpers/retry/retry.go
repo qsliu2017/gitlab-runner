@@ -1,5 +1,7 @@
 package retry
 
+//go:generate mockery --inpackage --name Retryable
+
 import (
 	"time"
 

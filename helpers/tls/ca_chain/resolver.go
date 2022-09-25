@@ -1,5 +1,7 @@
 package ca_chain
 
+//go:generate mockery --inpackage --name resolver
+
 import (
 	"crypto/x509"
 )

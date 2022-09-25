@@ -1,5 +1,7 @@
 package s3
 
+//go:generate mockery --inpackage --name minioClient
+
 import (
 	"context"
 	"errors"

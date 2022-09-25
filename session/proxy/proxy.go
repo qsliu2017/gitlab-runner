@@ -1,5 +1,7 @@
 package proxy
 
+//go:generate mockery --inpackage --name Requester
+
 import (
 	"errors"
 	"net/http"

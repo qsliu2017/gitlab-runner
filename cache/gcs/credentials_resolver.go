@@ -1,5 +1,9 @@
 package gcs
 
+//go:generate mockery --inpackage --name credentialsResolver
+//go:generate mockery --inpackage --name IamCredentialsClient
+//go:generate mockery --inpackage --name MetadataClient
+
 import (
 	"context"
 	"encoding/json"

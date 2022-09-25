@@ -1,5 +1,8 @@
 package pull
 
+//go:generate mockery --inpackage --name Manager
+//go:generate mockery --inpackage --name pullLogger
+
 import (
 	"context"
 	"fmt"

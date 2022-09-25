@@ -1,5 +1,7 @@
 package common
 
+//go:generate mockery --inpackage --name ConfigSaver
+
 import (
 	"bufio"
 	"bytes"

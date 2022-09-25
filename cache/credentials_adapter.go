@@ -1,5 +1,7 @@
 package cache
 
+//go:generate mockery --inpackage --name CredentialsAdapter
+
 import (
 	"fmt"
 	"sync"

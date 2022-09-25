@@ -1,5 +1,7 @@
 package kubernetes
 
+//go:generate mockery --inpackage --name featureChecker
+
 import (
 	"fmt"
 	"strings"

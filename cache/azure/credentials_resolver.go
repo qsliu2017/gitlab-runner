@@ -1,5 +1,7 @@
 package azure
 
+//go:generate mockery --inpackage --name credentialsResolver
+
 import (
 	"fmt"
 

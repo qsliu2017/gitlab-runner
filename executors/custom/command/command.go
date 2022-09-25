@@ -1,5 +1,7 @@
 package command
 
+//go:generate mockery --inpackage --name Command
+
 import (
 	"context"
 	"fmt"

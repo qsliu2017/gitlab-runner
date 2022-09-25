@@ -1,5 +1,8 @@
 package terminal
 
+//go:generate mockery --inpackage --name InteractiveTerminal
+//go:generate mockery --inpackage --name Conn
+
 import (
 	"errors"
 	"net/http"

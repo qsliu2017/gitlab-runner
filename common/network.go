@@ -1,5 +1,8 @@
 package common
 
+//go:generate mockery --inpackage --name Network
+//go:generate mockery --inpackage --name JobTrace
+
 import (
 	"context"
 	"fmt"

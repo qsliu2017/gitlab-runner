@@ -1,5 +1,8 @@
 package process
 
+//go:generate mockery --inpackage --name killer
+//go:generate mockery --inpackage --name KillWaiter
+
 import (
 	"errors"
 	"fmt"

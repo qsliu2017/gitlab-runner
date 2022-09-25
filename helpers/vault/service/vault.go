@@ -1,5 +1,10 @@
 package service
 
+//go:generate mockery --inpackage --name Auth
+//go:generate mockery --inpackage --name Engine
+//go:generate mockery --inpackage --name Secret
+//go:generate mockery --inpackage --name Vault
+
 import (
 	"fmt"
 

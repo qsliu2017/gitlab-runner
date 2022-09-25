@@ -1,5 +1,7 @@
 package parser
 
+//go:generate mockery --inpackage --name Parser
+
 type Parser interface {
 	ParseVolume(spec string) (*Volume, error)
 	Path() Path

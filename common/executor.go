@@ -1,5 +1,9 @@
 package common
 
+//go:generate mockery --inpackage --name ExecutorData
+//go:generate mockery --inpackage --name Executor
+//go:generate mockery --inpackage --name ExecutorProvider
+
 import (
 	"context"
 	"errors"
