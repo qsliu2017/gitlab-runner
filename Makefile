@@ -187,20 +187,8 @@ dockerfiles:
 
 .PHONY: mocks
 mocks: $(MOCKERY)
-	rm -rf ./helpers/service/mocks
 	find . -type f -name 'mock_*' -delete
-	$(MOCKERY) --dir=./network --name='requester' --inpackage
-	$(MOCKERY) --dir=./helpers --all --inpackage
-	$(MOCKERY) --dir=./executors/docker --all --inpackage
-	$(MOCKERY) --dir=./executors/kubernetes --all --inpackage
-	$(MOCKERY) --dir=./executors/custom --all --inpackage
-	$(MOCKERY) --dir=./cache --all --inpackage
-	$(MOCKERY) --dir=./common --all --inpackage
-	$(MOCKERY) --dir=./log --all --inpackage
-	$(MOCKERY) --dir=./referees --all --inpackage
-	$(MOCKERY) --dir=./session --all --inpackage
-	$(MOCKERY) --dir=./shells --all --inpackage
-	$(MOCKERY) --dir=./commands/helpers --all --inpackage
+	go generate ./...
 
 check_mocks:
 	# Checking if mocks are up-to-date
@@ -385,13 +373,8 @@ $(GOLANGLINT_GOARGS):
 	CGO_ENABLED=1 go build --trimpath --buildmode=plugin -o $(BUILD_DIR)/$(GOLANGLINT_GOARGS) plugin/analyzer.go
 	rm -rf $(TOOL_BUILD_DIR)
 
-$(MOCKERY): OS_TYPE ?= $(shell uname -s)
-$(MOCKERY): DOWNLOAD_URL = "https://github.com/vektra/mockery/releases/download/v$(MOCKERY_VERSION)/mockery_$(MOCKERY_VERSION)_$(OS_TYPE)_x86_64.tar.gz"
 $(MOCKERY):
-	# Installing $(DOWNLOAD_URL) as $(MOCKERY)
-	@mkdir -p $(shell dirname $(MOCKERY))
-	@curl -sL "$(DOWNLOAD_URL)" | tar xz -O mockery > $(MOCKERY)
-	@chmod +x "$(MOCKERY)"
+	go install github.com/vektra/mockery/v2@v2.14.0
 
 $(RELEASE_INDEX_GENERATOR): OS_TYPE ?= $(shell uname -s | tr '[:upper:]' '[:lower:]')
 $(RELEASE_INDEX_GENERATOR): DOWNLOAD_URL = "https://storage.googleapis.com/gitlab-runner-tools/release-index-generator/$(RELEASE_INDEX_GEN_VERSION)/release-index-gen-$(OS_TYPE)-amd64"
