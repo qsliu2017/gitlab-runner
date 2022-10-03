@@ -2,6 +2,7 @@ package log
 
 import (
 	"fmt"
+	"io"
 	"os"
 
 	"github.com/sirupsen/logrus"
@@ -96,6 +97,20 @@ func (l *Config) handleCliCtx(cliCtx *cli.Context) error {
 	l.ReloadConfiguration()
 
 	return nil
+}
+
+func (l *Config) Output() io.Writer {
+	return l.logger.Out
+}
+
+func (l *Config) Level() string {
+	return l.level.String()
+}
+
+func (l *Config) IsFormatJSON() bool {
+	_, ok := l.format.(*logrus.JSONFormatter)
+
+	return ok
 }
 
 func (l *Config) SetLevel(levelString string) error {

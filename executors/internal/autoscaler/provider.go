@@ -5,12 +5,15 @@ import (
 	"fmt"
 	"os"
 	"sync"
+	"time"
 
+	"github.com/hashicorp/go-hclog"
 	"gitlab.com/gitlab-org/fleeting/fleeting"
-	"gitlab.com/gitlab-org/gitlab-runner/common"
-
 	fleetingprovider "gitlab.com/gitlab-org/fleeting/fleeting/provider"
 	"gitlab.com/gitlab-org/fleeting/taskscaler"
+
+	"gitlab.com/gitlab-org/gitlab-runner/common"
+	"gitlab.com/gitlab-org/gitlab-runner/log"
 )
 
 type provider struct {
@@ -88,6 +91,18 @@ func (p *provider) init(ctx context.Context, config *common.RunnerConfig) (tasks
 		taskscaler.WithInstanceGroupSettings(fleetingprovider.Settings{
 			ConnectorConfig: instanceConnectConfig,
 		}),
+		taskscaler.WithLogger(
+			hclog.New(&hclog.LoggerOptions{
+				Level:      hclog.LevelFromString(log.Configuration().Level()),
+				Output:     log.Configuration().Output(),
+				TimeFn:     time.Now,
+				JSONFormat: log.Configuration().IsFormatJSON(),
+			}).
+				With(
+					"runner", config.ShortDescription(),
+					"runner_name", config.Name,
+				),
+		),
 	}
 
 	scaler, err = p.taskscalerNew(ctx, runner.InstanceGroup(), options...)
