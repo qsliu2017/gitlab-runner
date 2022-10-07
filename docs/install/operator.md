@@ -105,7 +105,7 @@ Follow the instructions at [OperatorHub.io](https://operatorhub.io/operator/gitl
    EOF
    ```
 
-   If you'd like to further customize the Runner's configuration you can either make use of [the `config.toml` configuration template](../configuration/configuring_runner_operator.html#customize-configtoml-with-a-configuration-template) for options that are empty by default (Empty strings, Nulls or/non existent entries, Zeroes) or you can use the [`env` operator property](../configuration/configuring_runner_operator.mdl#operator-properties) to specify a configmap with the options and values that you'd want to override similarly to what is done in the [Configure a Proxy Environment](../configuration/configuring_runner_operator.md#configure-a-proxy-environment). 
+   If you'd like to further customize the Runner's configuration you can either make use of [the `config.toml` configuration template](../configuration/configuring_runner_operator.md#customize-configtoml-with-a-configuration-template) for options that are empty by default (Empty strings, Nulls or/non existent entries, Zeroes) or you can use the [`env` operator property](../configuration/configuring_runner_operator.mdl#operator-properties) to specify a configmap with the options and values that you'd want to override similarly to what is done in the [Configure a Proxy Environment](../configuration/configuring_runner_operator.md#configure-a-proxy-environment). 
    For example, the following would create a configmap called `custom-env` containing the value `RUNNER_REQUEST_CONCURRENCY: 2` which will set the value of the ``[[runners]]` section option called `request_concurrency` to `2` instead of the default of `1`.
 
    ```shell
