@@ -35,6 +35,7 @@ type ShellWriter interface {
 	Warningf(fmt string, arguments ...interface{})
 	Errorf(fmt string, arguments ...interface{})
 	EmptyLine()
+	Exit(code int)
 
 	SectionStart(id, command string)
 	SectionEnd(id string)

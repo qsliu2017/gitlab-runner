@@ -291,6 +291,7 @@ type Artifacts []Artifact
 type Cache struct {
 	Key       string        `json:"key"`
 	Untracked bool          `json:"untracked"`
+	Required  bool          `json:"required"`
 	Policy    CachePolicy   `json:"policy"`
 	Paths     ArtifactPaths `json:"paths"`
 	When      CacheWhen     `json:"when"`

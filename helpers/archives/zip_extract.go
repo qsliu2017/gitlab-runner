@@ -5,6 +5,9 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
+	"strings"
+	"time"
 
 	"github.com/sirupsen/logrus"
 )
@@ -82,6 +85,13 @@ func extractZipFile(file *zip.File) (err error) {
 	return
 }
 
+	// this string is consistently used across platforms
+	// see https://github.com/golang/go/blob/go1.17.6/src/syscall/zerrors_linux_386.go#L1393 and other zerrors*.go
+	const errCannotAllocateMemory = "cannot allocate memory"
+	const memoryErrorRetries = 3
+	const memoryErrorWaitTime = time.Second
+
+
 func ExtractZipArchive(archive *zip.Reader) error {
 	tracker := newPathErrorTracker()
 
@@ -90,7 +100,24 @@ func ExtractZipArchive(archive *zip.Reader) error {
 			printGitArchiveWarning("extract")
 		}
 
-		if err := extractZipFile(file); tracker.actionable(err) {
+		// we sometimes get memory errors unzipping, do a retry
+		retries := memoryErrorRetries
+
+		for {
+
+			err := extractZipFile(file)
+			if err == nil || !tracker.actionable(err) {
+				break
+			}
+
+			logrus.Warningf("%s: %s (suppressing repeats)", file.Name, err)
+
+			err, retries = checkMemoryAllocRetry(err, retries)
+
+			if err != nil || retries <= 0 {
+				return err
+			}
+
 			logrus.Warningf("%s: %s (suppressing repeats)", file.Name, err)
 		}
 	}
@@ -108,6 +135,44 @@ func ExtractZipArchive(archive *zip.Reader) error {
 	}
 
 	return nil
+}
+
+var disableWait = false // for testing
+
+func checkMemoryAllocRetry(err error, retriesRemaining int) (error, int) {
+
+	// When running in containers, we will occasionally get errors allocating
+	// memory under pressure. So we retry a few times, then fail the extraction
+	//
+	// This is likely due to GC pressure, as the loop that calls this is dealing with
+	// Individual files and has to expand them individually in memory.
+	//
+	if err == nil || !strings.Contains(err.Error(), errCannotAllocateMemory) {
+		return err, 0
+	}
+
+	if retriesRemaining <= 0 {
+		return err, 0
+	}
+
+	mem := runtime.MemStats{}
+	runtime.ReadMemStats(&mem)
+
+	logrus.Warningf(
+		"Can't allocate memory, waiting %s, %d retries left (total used MB=%d)",
+		memoryErrorWaitTime.String(),
+		retriesRemaining,
+		mem.Sys/1024/1024,
+	)
+
+	if !disableWait {
+		time.Sleep(memoryErrorWaitTime)
+	}
+
+	// Force a GC to ensure we've cleaned up
+	runtime.GC()
+	retriesRemaining--
+	return nil, retriesRemaining
 }
 
 func ExtractZipFile(fileName string) error {
