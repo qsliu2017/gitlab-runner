@@ -1,11 +1,10 @@
-//go:build integration
-
 package shell_test
 
 import (
 	"bytes"
 	"errors"
 	"fmt"
+	"gitlab.com/gitlab-org/gitlab-runner/tests"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -13,6 +12,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -1706,5 +1706,104 @@ func TestBuildScriptSections(t *testing.T) {
 		build.JobResponse = successfulBuild
 		build.Runner.RunnerSettings.Shell = shell
 		buildtest.RunBuildWithSections(t, build)
+	})
+}
+
+type scriptEvent struct {
+	stage  common.BuildStage
+	script string
+}
+
+type bashTest struct {
+	shells.BashShell
+	onScript chan scriptEvent
+}
+
+func (b *bashTest) GenerateScript(buildStage common.BuildStage, info common.ShellScriptInfo) (string, error) {
+	script, err := b.BashShell.GenerateScript(buildStage, info)
+
+	b.onScript <- scriptEvent{
+		stage:  buildStage,
+		script: script,
+	}
+
+	if buildStage == common.BuildStageCleanup {
+		close(b.onScript)
+	}
+
+	return script, err
+}
+
+func (b *bashTest) GetName() string {
+	return fmt.Sprintf("%s+test", b.Shell)
+}
+
+func TestFieldsExpansion(t *testing.T) {
+	shellstest.OnEachShell(t, func(t *testing.T, shell string) {
+		if shell != "bash" {
+			t.Skip("only bash")
+		}
+
+		testShell := &bashTest{
+			BashShell: shells.BashShell{
+				Shell: "bash",
+			},
+			onScript: make(chan scriptEvent),
+		}
+
+		common.RegisterShell(testShell)
+
+		config := common.RunnerConfig{
+			Name: "shell-local",
+			RunnerCredentials: common.RunnerCredentials{
+				Token: "____",
+				URL:   "https://gitlab.com/",
+			},
+			RunnerSettings: common.RunnerSettings{
+				Environment: []string{
+					"GIT_SSL_NO_VERIFY=true",
+				},
+				Executor: "shell",
+				Shell:    fmt.Sprintf("%s+test", shell),
+			},
+		}
+
+		job := tests.GetRemoteBuildResponseFromServer(t, config)
+		build := &common.Build{
+			JobResponse: job,
+			Runner:      &config,
+		}
+
+		done := make(chan error)
+		go func() {
+			err := buildtest.RunBuildWithOptions(t, build, &common.Trace{Writer: new(bytes.Buffer)}, &common.Config{
+				Runners: []*common.RunnerConfig{&config},
+			})
+			select {
+			case done <- err:
+			default:
+			}
+		}()
+
+		scripts := make([]scriptEvent, 0)
+		go func() {
+			for s := range testShell.onScript {
+				scripts = append(scripts, s)
+			}
+
+			done <- nil
+		}()
+
+		if err := <-done; err != nil {
+			t.Fatal("build error", err)
+		}
+
+		re := regexp.MustCompile(`\${CI_VARIABLE_TEST_\w+}`)
+		for _, s := range scripts {
+			matches := re.FindAllString(s.script, -1)
+			if len(matches) > 0 {
+				fmt.Println(fmt.Sprintf("stage %s contains variables %v", s.stage, matches))
+			}
+		}
 	})
 }

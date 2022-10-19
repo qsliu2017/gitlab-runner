@@ -415,7 +415,7 @@ func (n *GitLabClient) RequestJob(
 	}
 
 	var response common.JobResponse
-	result, statusText, httpResponse := n.doJSON(
+	result, statusText, _ := n.doJSON(
 		ctx,
 		&config.RunnerCredentials,
 		http.MethodPost,
@@ -434,12 +434,12 @@ func (n *GitLabClient) RequestJob(
 			"repo_url": response.RepoCleanURL(),
 		}).Println("Checking for jobs...", "received")
 
-		tlsData, err := n.getResponseTLSData(&config.RunnerCredentials, httpResponse)
-		if err != nil {
-			config.Log().
-				WithError(err).Errorln("Error on fetching TLS Data from API response...", "error")
-		}
-		addTLSData(&response, tlsData)
+		//tlsData, err := n.getResponseTLSData(&config.RunnerCredentials, httpResponse)
+		//if err != nil {
+		//	config.Log().
+		//		WithError(err).Errorln("Error on fetching TLS Data from API response...", "error")
+		//}
+		//addTLSData(&response, tlsData)
 
 		return &response, true
 	case http.StatusForbidden:

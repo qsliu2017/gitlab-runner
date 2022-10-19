@@ -355,6 +355,8 @@ func (b *AbstractShell) writeRefspecFetchCmd(w ShellWriter, build *common.Build,
 		w.Noticef("Fetching changes...")
 	}
 
+	w.Variable(common.JobVariable{Key: "GIT_SSL_NO_VERIFY", Value: "true"})
+
 	// initializing
 	templateDir := w.MkTmpDir("git-template")
 	templateFile := w.Join(templateDir, "config")
