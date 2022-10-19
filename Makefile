@@ -72,6 +72,7 @@ all: deps runner-and-helper-bin
 include Makefile.runner_helper.mk
 include Makefile.build.mk
 include Makefile.package.mk
+include Makefile.local_build.mk
 
 .PHONY: help
 help:

@@ -1,0 +1,206 @@
+#!/usr/bin/env bash
+
+set -eEo pipefail
+
+SCRIPTPATH="$( cd "$(dirname "$0")" ; pwd -P )"
+
+# shellcheck source=ci/docker_commands
+source "${SCRIPTPATH}/docker_commands"
+
+declare -A checksums
+
+DOCKER_MACHINE_VERSION=${DOCKER_MACHINE_VERSION:-0.16.2}
+checksums['DOCKER_MACHINE_AMD64']=${DOCKER_MACHINE_LINUX_AMD64_CHECKSUM:-a7f7cbb842752b12123c5a5447d8039bf8dccf62ec2328853583e68eb4ffb097}
+checksums['DOCKER_MACHINE_ARM64']=${DOCKER_MACHINE_LINUX_ARM64_CHECKSUM:-109f534bfb8b9b852c938cad978e60a86b13f5ecf92da5e24320dacd2a7216ac}
+checksums['DOCKER_MACHINE_S390X']="" # No binary available yet for s390x, see https://gitlab.com/gitlab-org/gitlab-runner/-/issues/26551
+checksums['DOCKER_MACHINE_PPC64LE']="" # No binary available
+DUMB_INIT_VERSION=${DUMB_INIT_VERSION:-1.2.2}
+checksums['DUMB_INIT_AMD64']=${DUMB_INIT_LINUX_AMD64_CHECKSUM:-37f2c1f0372a45554f1b89924fbb134fc24c3756efaedf11e07f599494e0eff9}
+checksums['DUMB_INIT_ARM64']=${DUMB_INIT_LINUX_ARM64_CHECKSUM:-45b1bbf56cc03edda81e4220535a025bfe3ed6e93562222b9be4471005b3eeb3}
+checksums['DUMB_INIT_S390X']=${DUMB_INIT_LINUX_S390X_CHECKSUM:-8b3808c3c06d008b8f2eeb2789c7c99e0450b678d94fb50fd446b8f6a22e3a9d}
+checksums['DUMB_INIT_PPC64LE']=${DUMB_INIT_LINUX_PPC64LE_CHECKSUM:-88b02a3bd014e4c30d8d54389597adc4f5a36d1d6b49200b5a4f6a71026c2246}
+GIT_LFS_VERSION=${GIT_LFS_VERSION:-2.13.3}
+checksums['GIT_LFS_AMD64']=${GIT_LFS_LINUX_AMD64_CHECKSUM:-03197488f7be54cfc7b693f0ed6c75ac155f5aaa835508c64d68ec8f308b04c1}
+checksums['GIT_LFS_ARM64']=${GIT_LFS_LINUX_ARM64_CHECKSUM:-42baf1ec23e9fba197b1a62d09aab1d5dab744da6923009d6f9e4dc6d79df978}
+checksums['GIT_LFS_S390X']=${GIT_LFS_LINUX_S390X_CHECKSUM:-f2b261140e1d38324407e3c6e59d5facbe55ccc3baa83a0feb0031eb180e5651}
+checksums['GIT_LFS_PPC64LE']=${GIT_LFS_LINUX_PPC64LE_CHECKSUM:-bf6eafb1f9aedbdbfed6bed1b6007400d237a3ab82153908892de6ca7ad902f1}
+
+IMAGE_FLAVOR=${IMAGE_FLAVOR:-'ubuntu'}
+
+image_platform=""
+if [[ "${IMAGE_FLAVOR}" == ubuntu* ]]; then
+  image_platform="ubuntu"
+elif [[ "${IMAGE_FLAVOR}" == ubi-fips* ]]; then
+  image_platform="ubi-fips"
+else
+  image_platform="alpine"
+fi
+
+declare -A base_images_from_flavor
+base_images_from_flavor=(
+  ["ubuntu"]="ubuntu:${UBUNTU_VERSION}"
+  ["alpine3.12"]="alpine:${ALPINE_312_VERSION}"
+  ["alpine3.13"]="alpine:${ALPINE_313_VERSION}"
+  ["alpine3.14"]="alpine:${ALPINE_314_VERSION}"
+  ["alpine3.15"]="alpine:${ALPINE_315_VERSION}"
+  ["alpine-latest"]="alpine:latest"
+)
+
+get_image_version_from_flavor() {
+  local flavor="$1"
+  echo "${base_images_from_flavor[${flavor}]}"
+}
+
+# This marks the alpine3.15 to be aliased to alpine,
+# which makes 3.15 the default alpine version for users
+declare -A flavor_aliases
+flavor_aliases=( ["alpine3.15"]="alpine,alpine3.15" )
+
+get_flavor_aliases() {
+  local flavor="$1"
+  if [[ "${flavor_aliases[$flavor]}" != "" ]]; then
+      echo "${flavor_aliases[$flavor]}"
+  else
+      echo "$flavor"
+  fi
+}
+
+if [ -n "${TARGET_ARCHS}" ]; then
+    IFS=' ' read -r -a TARGET_ARCHS <<< "${TARGET_ARCHS}"
+else
+    TARGET_ARCHS=('amd64')
+fi
+
+if [[ "${PUSH_TO_ECR_PUBLIC}" == "true" ]] && [[ -n "${ECR_PUBLIC_USER}" ]]; then
+  ECR_PUBLIC_REGISTRY_PASSWORD=$(aws --region us-east-1 ecr-public get-login-password)
+fi
+
+join_by() {
+    local IFS="$1"
+    shift
+    echo "$*"
+}
+
+# buildx receives an array of tag names, and the context path as the last parameter
+buildx() {
+    local contextPath="$1"
+    local base_image="$2"
+    local platforms=()
+    local os
+    os=$(_docker version -f '{{.Server.Os}}')
+    for arch in "${TARGET_ARCHS[@]}"; do
+        platforms+=("${os}/${arch}")
+    done
+
+    shift
+    shift
+
+    local args=("$@")
+    local buildxFlags=()
+
+    # Build -t tag name options from remaining arguments
+    local tagOpts=()
+    for tagName in "${args[@]}"; do
+        tagOpts+=("--tag" "${tagName}")
+    done
+
+    echo -e "\033[1mBuilding and loading image: \033[32m${contextPath}\033[0m"
+    # But that is only possible if we are targeting a single platform
+    buildxFlags+=("--load")
+
+    trap cleanup_docker_context_trap ERR SIGINT SIGTERM
+    setup_docker_context
+
+    local formatted_platforms
+    formatted_platforms=$(join_by , "${platforms[@]}")
+    _docker_buildx build \
+        --build-arg DOCKER_MACHINE_VERSION="${DOCKER_MACHINE_VERSION}" \
+        --build-arg DUMB_INIT_VERSION="${DUMB_INIT_VERSION}" \
+        --build-arg GIT_LFS_VERSION="${GIT_LFS_VERSION}" \
+        --build-arg BASE_IMAGE="${base_image}" \
+        --platform "${formatted_platforms}" \
+        --no-cache \
+        "${tagOpts[@]}" \
+        "${buildxFlags[@]}" \
+        "${contextPath}"
+    trap - ERR SIGINT SIGTERM
+    cleanup_docker_context
+}
+
+add_tags() {
+    local -n add_to_tags=$1
+    local base_images="$2"
+    local repository="$3"
+    local default_image='ubuntu'
+
+    for base_image in ${base_images//,/ }; do
+      add_to_tags+=("${repository}:${base_image}-${ref_tag}")
+      if [[ "${base_image}" == "${default_image}" ]]; then
+          add_to_tags+=("${repository}:${ref_tag}")
+      fi
+      if [[ -n "${IS_LATEST}" ]]; then
+          add_to_tags+=("${repository}:${base_image}")
+          if [[ "${base_image}" == "${default_image}" ]]; then
+              add_to_tags+=("${repository}:latest")
+          fi
+      fi
+    done
+}
+
+[ "${#TARGET_ARCHS[@]}" -eq 0 ] && TARGET_ARCHS=("$(_docker version -f '{{.Server.Arch}}')")
+
+runner_home_dir="dockerfiles/runner"
+
+function writeChecksum() {
+  local binVarNamePrefix="$1"
+  local targetArch="$2"
+  local binFile="$3"
+  local archVarNameSuffix=$(echo "${targetArch}" | tr '[:lower:]' '[:upper:]')
+  local checksum="${checksums["${binVarNamePrefix}_${archVarNameSuffix}"]}"
+
+  [[ -n "${checksum}" ]] && echo "${checksum}  ${binFile}" >> "${runner_home_dir}/checksums-${targetArch}" || return 0
+}
+
+for arch in "${TARGET_ARCHS[@]}"; do
+    echo "${arch}:"
+    rm -f "${runner_home_dir}/checksums-${arch}"
+    writeChecksum 'DOCKER_MACHINE' "${arch}" '/usr/bin/docker-machine'
+    writeChecksum 'DUMB_INIT' "${arch}" '/usr/bin/dumb-init'
+    writeChecksum 'GIT_LFS' "${arch}" '/tmp/git-lfs.tar.gz'
+done
+
+cp "${runner_home_dir}/install-deps" "${runner_home_dir}/ubuntu/"
+cp "${runner_home_dir}/install-deps" "${runner_home_dir}/alpine/"
+cp "${runner_home_dir}/install-deps" "${runner_home_dir}/ubi-fips/"
+for arch in "${TARGET_ARCHS[@]}"; do
+    deb_arch=$(if [ "${arch}" == "ppc64le" ]; then echo "ppc64el"; else echo "${arch}"; fi)
+    cp "${runner_home_dir}/checksums-${arch}" "out/deb/gitlab-runner_${deb_arch}.deb" \
+        "${runner_home_dir}/ubuntu/"
+    cp "${runner_home_dir}/checksums-${arch}" "out/binaries/gitlab-runner-linux-${arch}" \
+        "${runner_home_dir}/alpine/"
+done
+
+tags=()
+aliases="$(get_flavor_aliases "$IMAGE_FLAVOR")"
+
+add_tags tags "${aliases}" "${DOCKER_HUB_NAMESPACE}/gitlab-runner" "${ref_tag}"
+
+# Build and publish multi-platform images using `docker buildx`
+# shellcheck disable=SC2154
+base_image="$(get_image_version_from_flavor "${IMAGE_FLAVOR}")"
+
+# Workaround for linux/s390x building problem when Go>=1.5 is used
+buildx_call_failed="false"
+ALLOW_IMAGE_BUILD_FAILURE=${ALLOW_IMAGE_BUILD_FAILURE:-"false"}
+
+buildx "${runner_home_dir}/${image_platform}" "$base_image" "${tags[@]}" || buildx_call_failed="true"
+
+if [[ "${buildx_call_failed}" == "true" ]]; then
+  echo -e "\033[2mImage build with buildx have failed!\033[0m"
+  if [[ "${ALLOW_IMAGE_BUILD_FAILURE}" == "true" ]]; then
+    echo "Ignoring the failure as ALLOW_IMAGE_BUILD_FAILURE is set to true"
+    exit 0
+  else
+    exit 1
+  fi
+fi
