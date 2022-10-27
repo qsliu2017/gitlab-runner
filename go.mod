@@ -6,8 +6,8 @@ require (
 	cloud.google.com/go v0.72.0
 	cloud.google.com/go/storage v1.12.0
 	github.com/Azure/azure-storage-blob-go v0.11.1-0.20201209121048-6df5d9af221d
+	github.com/BurntSushi/toml v1.2.1
 	github.com/Microsoft/go-winio v0.5.2 // indirect
-	github.com/BurntSushi/toml v1.0.0
 	github.com/bmatcuk/doublestar v1.3.0
 	github.com/creack/pty v1.1.11
 	github.com/docker/cli v20.10.12+incompatible
@@ -58,11 +58,6 @@ require (
 )
 
 require (
-<<<<<<< HEAD
-	cloud.google.com/go v0.72.0 // indirect
-	github.com/766b/go-outliner v0.0.0-20180511142203-fc6edecdadd7 // indirect
-=======
->>>>>>> b7648abfb (updated config_test.go to reduce string char size)
 	github.com/Azure/azure-pipeline-go v0.2.3 // indirect
 	github.com/Azure/go-ansiterm v0.0.0-20170929234023-d6e3b3328b78 // indirect
 	github.com/Azure/go-autorest v14.2.0+incompatible // indirect
@@ -73,7 +68,6 @@ require (
 	github.com/Azure/go-autorest/tracing v0.6.0 // indirect
 	github.com/Azure/go-ntlmssp v0.0.0-20211209120228-48547f28849e // indirect
 	github.com/ChrisTrenkamp/goxpath v0.0.0-20210404020558-97928f7e12b6 // indirect
-	github.com/Microsoft/go-winio v0.5.2 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
 	github.com/containerd/containerd v1.4.13 // indirect
