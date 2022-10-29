@@ -407,6 +407,8 @@ During the job's execution, if the cached data is needed, the runner checks to s
 - If not available, the cached data is downloaded from the configured storage and saved into the `cache dir` as a compressed file.
   The compressed file is then extracted into the `build` folder.
 
+As Kubernetes executors are distributed in nature, [distributed runners caching](../configuration/autoscale.md#distributed-runners-caching) must be enabled.
+
 ## Using volumes
 
 As described earlier, volumes can be mounted in the build container.
