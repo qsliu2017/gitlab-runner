@@ -74,6 +74,7 @@ const (
 	BuildStageGetSources               BuildStage = "get_sources"
 	BuildStageRestoreCache             BuildStage = "restore_cache"
 	BuildStageDownloadArtifacts        BuildStage = "download_artifacts"
+	BuildStageDownloadSecureFiles      BuildStage = "download_secure_files"
 	BuildStageAfterScript              BuildStage = "after_script"
 	BuildStageArchiveOnSuccessCache    BuildStage = "archive_cache"
 	BuildStageArchiveOnFailureCache    BuildStage = "archive_cache_on_failure"
@@ -92,6 +93,7 @@ var staticBuildStages = []BuildStage{
 	BuildStageGetSources,
 	BuildStageRestoreCache,
 	BuildStageDownloadArtifacts,
+	BuildStageDownloadSecureFiles,
 	BuildStageAfterScript,
 	BuildStageArchiveOnSuccessCache,
 	BuildStageArchiveOnFailureCache,
@@ -384,6 +386,7 @@ func getPredefinedEnv(buildStage BuildStage) bool {
 		BuildStageGetSources:               true,
 		BuildStageRestoreCache:             true,
 		BuildStageDownloadArtifacts:        true,
+		BuildStageDownloadSecureFiles:      true,
 		BuildStageAfterScript:              false,
 		BuildStageArchiveOnSuccessCache:    true,
 		BuildStageArchiveOnFailureCache:    true,
@@ -406,6 +409,7 @@ func GetStageDescription(stage BuildStage) string {
 		BuildStageGetSources:               "Getting source from Git repository",
 		BuildStageRestoreCache:             "Restoring cache",
 		BuildStageDownloadArtifacts:        "Downloading artifacts",
+		BuildStageDownloadSecureFiles:      "Downloading secure files",
 		BuildStageAfterScript:              "Running after_script",
 		BuildStageArchiveOnSuccessCache:    "Saving cache for successful job",
 		BuildStageArchiveOnFailureCache:    "Saving cache for failed job",
@@ -460,6 +464,9 @@ func (b *Build) executeScript(ctx context.Context, executor Executor) error {
 	}
 	if err == nil {
 		err = b.attemptExecuteStage(ctx, BuildStageDownloadArtifacts, executor, b.GetDownloadArtifactsAttempts())
+	}
+	if err == nil {
+		err = b.attemptExecuteStage(ctx, BuildStageDownloadSecureFiles, executor, b.GetDownloadSecureFilesAttempts())
 	}
 
 	if err == nil {
@@ -1177,6 +1184,10 @@ func (b *Build) GetAllVariables() JobVariables {
 	return b.allVariables
 }
 
+func (b *Build) GetAllSecureFiles() SecureFiles {
+	return b.JobResponse.SecureFiles
+}
+
 // GetRemoteURL checks if the default clone URL is overwritten by the runner
 // configuration option: 'CloneURL'. If it is, we use that to create the clone
 // URL.
@@ -1335,6 +1346,14 @@ func (b *Build) GetDownloadArtifactsAttempts() int {
 	retries, err := strconv.Atoi(b.GetAllVariables().Get("ARTIFACT_DOWNLOAD_ATTEMPTS"))
 	if err != nil {
 		return DefaultArtifactDownloadAttempts
+	}
+	return retries
+}
+
+func (b *Build) GetDownloadSecureFilesAttempts() int {
+	retries, err := strconv.Atoi(b.GetAllVariables().Get("SECURE_FILES_DOWNLOAD_ATTEMPTS"))
+	if err != nil {
+		return DefaultSecureFilesDownloadAttempts
 	}
 	return retries
 }

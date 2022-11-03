@@ -21,6 +21,7 @@ func RunBuildWithCancel(t *testing.T, config *common.RunnerConfig, setup BuildSe
 	cancelExcludeStages := []common.BuildStage{
 		common.BuildStageRestoreCache,
 		common.BuildStageDownloadArtifacts,
+		common.BuildStageDownloadSecureFiles,
 		common.BuildStageAfterScript,
 		common.BuildStageArchiveOnSuccessCache,
 		common.BuildStageArchiveOnFailureCache,

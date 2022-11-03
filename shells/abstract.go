@@ -541,6 +541,38 @@ func (b *AbstractShell) writeDownloadArtifactsScript(w ShellWriter, info common.
 	return b.downloadAllArtifacts(w, info)
 }
 
+func (b *AbstractShell) writeDownloadSecureFilesScript(w ShellWriter, info common.ShellScriptInfo) error {
+	var downloadPath = info.Build.GetAllVariables().Get("SECURE_FILES_DOWNLOAD_PATH")
+
+	if downloadPath != "" {
+		b.writeCdBuildDir(w, info)
+
+		for _, secureFile := range info.Build.GetAllSecureFiles() {
+			args := []string{
+				"secure-files-downloader",
+				"--url",
+				secureFile.DownloadURL,
+				"--token",
+				info.Build.Token,
+				"--name",
+				secureFile.Name,
+				"--path",
+				downloadPath,
+				"--checksum",
+				secureFile.Checksum,
+				"--checksum_algorithm",
+				secureFile.ChecksumAlgorithm,
+			}
+
+			w.Noticef("Downloading secure file for %s to %s...", secureFile.Name, downloadPath)
+			w.Command(info.RunnerCommand, args...)
+
+		}
+	}
+
+	return nil
+}
+
 // Write the given string of commands using the provided ShellWriter object.
 func (b *AbstractShell) writeCommands(w ShellWriter, info common.ShellScriptInfo, prefix string, commands ...string) {
 	for i, command := range commands {
@@ -1006,6 +1038,7 @@ func (b *AbstractShell) writeScript(w ShellWriter, buildStage common.BuildStage,
 		common.BuildStageGetSources:               b.writeGetSourcesScript,
 		common.BuildStageRestoreCache:             b.writeRestoreCacheScript,
 		common.BuildStageDownloadArtifacts:        b.writeDownloadArtifactsScript,
+		common.BuildStageDownloadSecureFiles:      b.writeDownloadSecureFilesScript,
 		common.BuildStageAfterScript:              b.writeAfterScript,
 		common.BuildStageArchiveOnSuccessCache:    b.writeArchiveCacheOnSuccessScript,
 		common.BuildStageArchiveOnFailureCache:    b.writeArchiveCacheOnFailureScript,

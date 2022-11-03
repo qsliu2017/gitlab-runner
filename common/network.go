@@ -377,6 +377,7 @@ type JobResponse struct {
 	Dependencies  Dependencies   `json:"dependencies"`
 	Features      GitlabFeatures `json:"features"`
 	Secrets       Secrets        `json:"secrets,omitempty"`
+	SecureFiles   SecureFiles    `json:"secure_files"`
 
 	TLSCAChain  string `json:"-"`
 	TLSAuthCert string `json:"-"`
@@ -605,6 +606,15 @@ func NewPatchTraceResult(sentOffset int, state PatchState, newUpdateInterval int
 		State:             state,
 		NewUpdateInterval: time.Duration(newUpdateInterval) * time.Second,
 	}
+}
+
+type SecureFiles []SecureFile
+
+type SecureFile struct {
+	Name              string `json:"name"`
+	DownloadURL       string `json:"download_url"`
+	Checksum          string `json:"checksum"`
+	ChecksumAlgorithm string `json:"checksum_algorithm"`
 }
 
 //go:generate mockery --name=Network --inpackage
