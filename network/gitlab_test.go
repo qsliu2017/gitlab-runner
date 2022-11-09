@@ -1365,8 +1365,8 @@ func TestUpdateJobAsKeepAlive(t *testing.T) {
 		},
 	}
 
-	for testName, tc := range testCases {
-		t.Run(testName, func(t *testing.T) {
+	for tn, tc := range testCases {
+		t.Run(tn, func(t *testing.T) {
 			h := newLogHook(logrus.InfoLevel, logrus.WarnLevel)
 			logrus.AddHook(&h)
 
@@ -1388,10 +1388,10 @@ var patchTraceContent = []byte("trace trace trace")
 func getPatchServer(
 	t *testing.T,
 	handler func(
-	w http.ResponseWriter,
-	r *http.Request,
-	body []byte,
-	offset, limit int),
+		w http.ResponseWriter,
+		r *http.Request,
+		body []byte,
+		offset, limit int),
 ) (*httptest.Server, *GitLabClient, RunnerConfig) {
 	patchHandler := func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/api/v4/jobs/1/trace" {
@@ -1548,6 +1548,21 @@ func TestRangeMismatchPatchTrace(t *testing.T) {
 		},
 	}
 
+	expectedLogs := []logrus.Entry{
+		{
+			Level:   logrus.WarnLevel,
+			Message: fmt.Sprint(appendingTraceToCoordinator, " ", rangeMismatch),
+		},
+		{
+			Level:   logrus.WarnLevel,
+			Message: fmt.Sprint(appendingTraceToCoordinator, " ", rangeMismatch),
+		},
+		{
+			Level:   logrus.InfoLevel,
+			Message: fmt.Sprint(appendingTraceToCoordinator, ok),
+		},
+	}
+
 	for _, tt := range tests {
 		t.Run(tt.remoteState, func(t *testing.T) {
 			handler := func(w http.ResponseWriter, r *http.Request, body []byte, offset, limit int) {
@@ -1574,21 +1589,6 @@ func TestRangeMismatchPatchTrace(t *testing.T) {
 
 			result = client.PatchTrace(config, &JobCredentials{ID: 1, Token: patchToken}, patchTraceContent[5:], 5)
 			assert.Equal(t, tt.expectedResult, result)
-
-			expectedLogs := []logrus.Entry{
-				{
-					Level:   logrus.WarnLevel,
-					Message: fmt.Sprint(appendingTraceToCoordinator, " ", rangeMismatch),
-				},
-				{
-					Level:   logrus.WarnLevel,
-					Message: fmt.Sprint(appendingTraceToCoordinator, " ", rangeMismatch),
-				},
-				{
-					Level:   logrus.InfoLevel,
-					Message: fmt.Sprint(appendingTraceToCoordinator, ok),
-				},
-			}
 
 			require.Len(t, h.entries, len(expectedLogs))
 			for i, l := range expectedLogs {
@@ -1928,12 +1928,12 @@ func TestUpdateIntervalHeaderHandling(t *testing.T) {
 		},
 	}
 
-	for tn, tt := range tests {
+	for tn, tc := range tests {
 		t.Run(tn, func(t *testing.T) {
 			t.Run("UpdateJob", func(t *testing.T) {
 				handler := func(w http.ResponseWriter, r *http.Request) {
-					if tt.sendUpdateIntervalHeader {
-						w.Header().Add(updateIntervalHeader, tt.updateIntervalHeaderValue)
+					if tc.sendUpdateIntervalHeader {
+						w.Header().Add(updateIntervalHeader, tc.updateIntervalHeaderValue)
 					}
 
 					testUpdateJobHandler(w, r, t)
@@ -1950,36 +1950,24 @@ func TestUpdateIntervalHeaderHandling(t *testing.T) {
 				}
 
 				result := NewGitLabClient().UpdateJob(config, &JobCredentials{ID: 10}, UpdateJobInfo{State: "success"})
-				assert.Equal(t, tt.expectedUpdateInterval, result.NewUpdateInterval)
-				var expectedLogs []logrus.Entry
-				// Invalid format header will result in an additional log
-				if tt.updateIntervalHeaderValue == "some text" {
-					expectedLogs = []logrus.Entry{
-						{
-							Level:   logrus.InfoLevel,
-							Message: updatingJob,
-						},
-						{
-							Level:   logrus.WarnLevel,
-							Message: fmt.Sprintf("Failed to parse %q header", updateIntervalHeader),
-						},
-						{
-							Level:   logrus.WarnLevel,
-							Message: fmt.Sprint(submittingJobToCoordinator, " ", notFound),
-						},
-					}
-				} else {
-					expectedLogs = []logrus.Entry{
-						{
-							Level:   logrus.InfoLevel,
-							Message: updatingJob,
-						},
-						{
-							Level:   logrus.WarnLevel,
-							Message: fmt.Sprint(submittingJobToCoordinator, " ", notFound),
-						},
-					}
+				assert.Equal(t, tc.expectedUpdateInterval, result.NewUpdateInterval)
+				expectedLogs := []logrus.Entry{
+					{
+						Level:   logrus.InfoLevel,
+						Message: updatingJob,
+					},
 				}
+				if tc.updateIntervalHeaderValue == "some text" {
+					// Invalid format header will expectedResult in an additional log
+					expectedLogs = append(expectedLogs, logrus.Entry{
+						Level:   logrus.WarnLevel,
+						Message: fmt.Sprintf("Failed to parse %q header", updateIntervalHeader),
+					})
+				}
+				expectedLogs = append(expectedLogs, logrus.Entry{
+					Level:   logrus.WarnLevel,
+					Message: fmt.Sprint(submittingJobToCoordinator, " ", notFound),
+				})
 
 				require.Len(t, h.entries, len(expectedLogs))
 				for i, l := range expectedLogs {
@@ -1990,8 +1978,8 @@ func TestUpdateIntervalHeaderHandling(t *testing.T) {
 
 			t.Run("PatchTrace", func(t *testing.T) {
 				handler := func(w http.ResponseWriter, r *http.Request, body []byte, offset, limit int) {
-					if tt.sendUpdateIntervalHeader {
-						w.Header().Add(updateIntervalHeader, tt.updateIntervalHeaderValue)
+					if tc.sendUpdateIntervalHeader {
+						w.Header().Add(updateIntervalHeader, tc.updateIntervalHeaderValue)
 					}
 
 					w.WriteHeader(http.StatusAccepted)
@@ -2004,7 +1992,7 @@ func TestUpdateIntervalHeaderHandling(t *testing.T) {
 				logrus.AddHook(&h)
 
 				result := client.PatchTrace(config, &JobCredentials{ID: 1, Token: patchToken}, patchTraceContent, 0)
-				assert.Equal(t, tt.expectedUpdateInterval, result.NewUpdateInterval)
+				assert.Equal(t, tc.expectedUpdateInterval, result.NewUpdateInterval)
 				require.Len(t, h.entries, 1)
 				assert.Equal(t, fmt.Sprint(appendingTraceToCoordinator, ok), h.entries[0].Message)
 			})
@@ -2013,54 +2001,50 @@ func TestUpdateIntervalHeaderHandling(t *testing.T) {
 }
 
 func TestAbortedPatchTrace(t *testing.T) {
-	tests := []struct {
-		status   string
-		result   PatchTraceResult
-		logEntry logrus.Entry
+	tests := map[string]struct {
+		expectedResult   PatchTraceResult
+		expectedLogEntry logrus.Entry
 	}{
-		{
-			status: statusCanceling,
-			result: PatchTraceResult{SentOffset: 17, CancelRequested: true, State: PatchSucceeded},
-			logEntry: logrus.Entry{
+		statusCanceling: {
+			expectedResult: PatchTraceResult{SentOffset: 17, CancelRequested: true, State: PatchSucceeded},
+			expectedLogEntry: logrus.Entry{
 				Level:   logrus.InfoLevel,
 				Message: fmt.Sprint(appendingTraceToCoordinator, ok),
 			},
 		},
-		{
-			status: statusCanceled,
-			result: PatchTraceResult{State: PatchAbort},
-			logEntry: logrus.Entry{
+		statusCanceled: {
+			expectedResult: PatchTraceResult{State: PatchAbort},
+			expectedLogEntry: logrus.Entry{
 				Level:   logrus.WarnLevel,
 				Message: fmt.Sprint(appendingTraceToCoordinator, " ", jobFailed),
 			},
 		},
-		{
-			status: statusFailed,
-			result: PatchTraceResult{State: PatchAbort},
-			logEntry: logrus.Entry{
+		statusFailed: {
+			expectedResult: PatchTraceResult{State: PatchAbort},
+			expectedLogEntry: logrus.Entry{
 				Level:   logrus.WarnLevel,
 				Message: fmt.Sprint(appendingTraceToCoordinator, " ", jobFailed),
 			},
 		},
 	}
 
-	for _, tc := range tests {
-		t.Run(tc.status, func(t *testing.T) {
+	for tn, tc := range tests {
+		t.Run(tn, func(t *testing.T) {
 			handler := func(w http.ResponseWriter, r *http.Request, body []byte, offset, limit int) {
-				w.Header().Set("Job-Status", tc.status)
+				w.Header().Set("Job-Status", tn)
 				w.WriteHeader(http.StatusAccepted)
 			}
 
 			server, client, config := getPatchServer(t, handler)
 			defer server.Close()
 
-			h := newLogHook(tc.logEntry.Level)
+			h := newLogHook(tc.expectedLogEntry.Level)
 			logrus.AddHook(&h)
 
 			result := client.PatchTrace(config, &JobCredentials{ID: 1, Token: patchToken}, patchTraceContent, 0)
-			assert.Equal(t, tc.result, result)
+			assert.Equal(t, tc.expectedResult, result)
 			require.Len(t, h.entries, 1)
-			assert.Equal(t, tc.logEntry.Message, h.entries[0].Message)
+			assert.Equal(t, tc.expectedLogEntry.Message, h.entries[0].Message)
 		})
 	}
 }
@@ -2628,11 +2612,11 @@ func TestArtifactsDownload(t *testing.T) {
 		},
 	}
 
-	for testName, testCase := range testCases {
-		t.Run(testName, func(t *testing.T) {
+	for tn, tc := range testCases {
+		t.Run(tn, func(t *testing.T) {
 			c := NewGitLabClient()
 
-			h := newLogHook(testCase.logEntry.Level)
+			h := newLogHook(tc.logEntry.Level)
 			logrus.AddHook(&h)
 
 			tempDir := t.TempDir()
@@ -2644,13 +2628,13 @@ func TestArtifactsDownload(t *testing.T) {
 
 			buf := bufio.NewWriter(file)
 
-			state := c.DownloadArtifacts(testCase.credentials, &nopWriteCloser{w: buf}, testCase.directDownload)
-			require.Equal(t, testCase.expectedState, state)
+			state := c.DownloadArtifacts(tc.credentials, &nopWriteCloser{w: buf}, tc.directDownload)
+			require.Equal(t, tc.expectedState, state)
 
 			require.Len(t, h.entries, 1)
-			assert.Equal(t, testCase.logEntry.Message, h.entries[0].Message)
+			assert.Equal(t, tc.logEntry.Message, h.entries[0].Message)
 
-			if testCase.expectedArtifact == "" {
+			if tc.expectedArtifact == "" {
 				return
 			}
 
@@ -2660,7 +2644,7 @@ func TestArtifactsDownload(t *testing.T) {
 			artifact, err := os.ReadFile(artifactsFileName)
 
 			assert.NoError(t, err)
-			assert.Equal(t, string(artifact), testCase.expectedArtifact)
+			assert.Equal(t, string(artifact), tc.expectedArtifact)
 		})
 	}
 }
