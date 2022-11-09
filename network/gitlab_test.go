@@ -1281,7 +1281,6 @@ func testUpdateJobKeepAliveHandler(w http.ResponseWriter, r *http.Request, t *te
 }
 
 func TestUpdateJobAsKeepAlive(t *testing.T) {
-
 	handler := func(w http.ResponseWriter, r *http.Request) {
 		testUpdateJobKeepAliveHandler(w, r, t)
 	}
