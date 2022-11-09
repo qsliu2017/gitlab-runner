@@ -58,6 +58,8 @@ const (
 	errorMsg              = "error"
 	failed                = "failed"
 	forbidden             = "forbidden"
+	isAlive               = "is alive"
+	isRemoved             = "is removed"
 	jobFailed             = "job failed"
 	notFound              = "not found"
 	nothing               = "nothing"
@@ -320,10 +322,10 @@ func (n *GitLabClient) VerifyRunner(runner common.RunnerCredentials) bool {
 	switch result {
 	case http.StatusOK:
 		// this is expected due to fact that we ask for non-existing job
-		runner.Log().Println(verifyingRunner, "is alive")
+		runner.Log().Println(verifyingRunner, isAlive)
 		return true
 	case http.StatusForbidden:
-		runner.Log().Errorln(verifyingRunner, "is removed")
+		runner.Log().Errorln(verifyingRunner, isRemoved)
 		return false
 	case clientError:
 		runner.Log().WithField("status", statusText).Errorln(verifyingRunner, errorMsg)
