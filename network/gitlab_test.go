@@ -192,9 +192,6 @@ func TestRegisterRunner(t *testing.T) {
 
 	c := NewGitLabClient()
 
-	h := newLogHook(logrus.InfoLevel, logrus.ErrorLevel)
-	logrus.AddHook(&h)
-
 	res := c.RegisterRunner(
 		validToken,
 		RegisterRunnerParameters{
@@ -272,39 +269,6 @@ func TestRegisterRunner(t *testing.T) {
 			Paused:      false,
 		})
 	assert.Nil(t, res)
-
-	expectedLogs := []logrus.Entry{
-		{
-			Level:   logrus.InfoLevel,
-			Message: fmt.Sprint(registeringRunner, " ", succeeded),
-		},
-		{
-			Level:   logrus.InfoLevel,
-			Message: fmt.Sprint(registeringRunner, " ", succeeded),
-		},
-		{
-			Level:   logrus.ErrorLevel,
-			Message: fmt.Sprint(registeringRunner, " ", failed),
-		},
-		{
-			Level:   logrus.ErrorLevel,
-			Message: fmt.Sprint(registeringRunner, " ", forbidden, " (check registration token)"),
-		},
-		{
-			Level:   logrus.ErrorLevel,
-			Message: fmt.Sprint(registeringRunner, " ", failed),
-		},
-		{
-			Level:   logrus.ErrorLevel,
-			Message: fmt.Sprint(registeringRunner, " ", errorMsg),
-		},
-	}
-
-	require.Len(t, h.entries, len(expectedLogs))
-	for i, l := range expectedLogs {
-		assert.Equal(t, l.Level, h.entries[i].Level)
-		assert.Equal(t, l.Message, h.entries[i].Message)
-	}
 }
 
 func TestRegisterRunnerOnRunnerLimitHit(t *testing.T) {
@@ -354,7 +318,7 @@ func TestRegisterRunnerOnRunnerLimitHit(t *testing.T) {
 				})
 			assert.Nil(t, res)
 			require.Len(t, h.entries, 1)
-			assert.Equal(t, fmt.Sprint(registeringRunner, " ", failed), h.entries[0].Message)
+			assert.Equal(t, "Registering runner... failed", h.entries[0].Message)
 			assert.Contains(t, h.entries[0].Data["status"], tc.expectedMessage)
 		})
 	}
@@ -431,9 +395,6 @@ func TestUnregisterRunner(t *testing.T) {
 
 	c := NewGitLabClient()
 
-	h := newLogHook(logrus.InfoLevel, logrus.ErrorLevel)
-	logrus.AddHook(&h)
-
 	state := c.UnregisterRunner(validToken)
 	assert.True(t, state)
 
@@ -445,31 +406,6 @@ func TestUnregisterRunner(t *testing.T) {
 
 	state = c.UnregisterRunner(brokenCredentials)
 	assert.False(t, state)
-
-	expectedLogs := []logrus.Entry{
-		{
-			Level:   logrus.InfoLevel,
-			Message: fmt.Sprint(unregisteringRunner, " ", succeeded),
-		},
-		{
-			Level:   logrus.ErrorLevel,
-			Message: fmt.Sprint(unregisteringRunner, " ", forbidden),
-		},
-		{
-			Level:   logrus.ErrorLevel,
-			Message: fmt.Sprint(unregisteringRunner, " ", failed),
-		},
-		{
-			Level:   logrus.ErrorLevel,
-			Message: fmt.Sprint(unregisteringRunner, " ", errorMsg),
-		},
-	}
-
-	require.Len(t, h.entries, len(expectedLogs))
-	for i, l := range expectedLogs {
-		assert.Equal(t, l.Level, h.entries[i].Level)
-		assert.Equal(t, l.Message, h.entries[i].Message)
-	}
 }
 
 func testVerifyRunnerHandler(w http.ResponseWriter, r *http.Request, t *testing.T) {
@@ -525,9 +461,6 @@ func TestVerifyRunner(t *testing.T) {
 
 	c := NewGitLabClient()
 
-	h := newLogHook(logrus.InfoLevel, logrus.ErrorLevel)
-	logrus.AddHook(&h)
-
 	state := c.VerifyRunner(validToken)
 	assert.True(t, state)
 
@@ -539,31 +472,6 @@ func TestVerifyRunner(t *testing.T) {
 
 	state = c.VerifyRunner(brokenCredentials)
 	assert.True(t, state, "in other cases where we can't explicitly say that runner is valid we say that it's")
-
-	expectedLogs := []logrus.Entry{
-		{
-			Level:   logrus.InfoLevel,
-			Message: fmt.Sprint(verifyingRunner, " ", isAlive),
-		},
-		{
-			Level:   logrus.ErrorLevel,
-			Message: fmt.Sprint(verifyingRunner, " ", isRemoved),
-		},
-		{
-			Level:   logrus.ErrorLevel,
-			Message: fmt.Sprint(verifyingRunner, " ", failed),
-		},
-		{
-			Level:   logrus.ErrorLevel,
-			Message: fmt.Sprint(verifyingRunner, " ", errorMsg),
-		},
-	}
-
-	require.Len(t, h.entries, len(expectedLogs))
-	for i, l := range expectedLogs {
-		assert.Equal(t, l.Level, h.entries[i].Level)
-		assert.Equal(t, l.Message, h.entries[i].Message)
-	}
 }
 
 func testResetTokenHandler(w http.ResponseWriter, r *http.Request, t *testing.T) {
@@ -648,9 +556,6 @@ func TestResetToken(t *testing.T) {
 
 	c := NewGitLabClient()
 
-	h := newLogHook(logrus.InfoLevel, logrus.ErrorLevel)
-	logrus.AddHook(&h)
-
 	res := c.ResetToken(validToken)
 	if assert.NotNil(t, res) {
 		assert.Equal(t, "reset-token", res.Token)
@@ -668,31 +573,6 @@ func TestResetToken(t *testing.T) {
 
 	res = c.ResetToken(otherToken)
 	assert.Nil(t, res)
-
-	expectedLogs := []logrus.Entry{
-		{
-			Level:   logrus.InfoLevel,
-			Message: fmt.Sprint(resettingRunnerToken, " ", succeeded),
-		},
-		{
-			Level:   logrus.InfoLevel,
-			Message: fmt.Sprint(resettingRunnerToken, " ", succeeded),
-		},
-		{
-			Level:   logrus.ErrorLevel,
-			Message: fmt.Sprint(resettingRunnerToken, " ", failed, " (check used token)"),
-		},
-		{
-			Level:   logrus.ErrorLevel,
-			Message: fmt.Sprint(resettingRunnerToken, " ", failed),
-		},
-	}
-
-	require.Len(t, h.entries, len(expectedLogs))
-	for i, l := range expectedLogs {
-		assert.Equal(t, l.Level, h.entries[i].Level)
-		assert.Equal(t, l.Message, h.entries[i].Message)
-	}
 }
 
 func testResetTokenWithPATHandler(w http.ResponseWriter, r *http.Request) {
@@ -788,9 +668,6 @@ func TestResetTokenWithPAT(t *testing.T) {
 
 	c := NewGitLabClient()
 
-	h := newLogHook(logrus.InfoLevel, logrus.ErrorLevel)
-	logrus.AddHook(&h)
-
 	res := c.ResetTokenWithPAT(validToken, "valid-pat")
 	if assert.NotNil(t, res) {
 		assert.Equal(t, validToken.Token, res.Token)
@@ -814,39 +691,6 @@ func TestResetTokenWithPAT(t *testing.T) {
 
 	res = c.ResetTokenWithPAT(otherToken, "valid-pat")
 	assert.Nil(t, res)
-
-	expectedLogs := []logrus.Entry{
-		{
-			Level:   logrus.InfoLevel,
-			Message: fmt.Sprint(resettingRunnerToken, " ", succeeded),
-		},
-		{
-			Level:   logrus.InfoLevel,
-			Message: fmt.Sprint(resettingRunnerToken, " ", succeeded),
-		},
-		{
-			Level:   logrus.ErrorLevel,
-			Message: fmt.Sprint(resettingRunnerToken, " ", failed),
-		},
-		{
-			Level:   logrus.ErrorLevel,
-			Message: fmt.Sprint(resettingRunnerToken, " ", failed, " (check used token)"),
-		},
-		{
-			Level:   logrus.ErrorLevel,
-			Message: fmt.Sprint(resettingRunnerToken, " ", failed),
-		},
-		{
-			Level:   logrus.ErrorLevel,
-			Message: fmt.Sprint(resettingRunnerToken, " ", failed),
-		},
-	}
-
-	require.Len(t, h.entries, len(expectedLogs))
-	for i, l := range expectedLogs {
-		assert.Equal(t, l.Level, h.entries[i].Level)
-		assert.Equal(t, l.Message, h.entries[i].Message)
-	}
 }
 
 func getRequestJobResponse() map[string]interface{} {
@@ -1101,7 +945,7 @@ func TestRequestJob(t *testing.T) {
 
 func setStateForUpdateJobHandlerResponse(w http.ResponseWriter, req map[string]interface{}) {
 	switch req["state"].(string) {
-	case statusRunning, statusCanceling:
+	case "running", "canceling":
 		w.WriteHeader(http.StatusOK)
 	case "failed":
 		failureReason, ok := req["failure_reason"].(string)
@@ -1440,13 +1284,8 @@ func TestUnknownPatchTrace(t *testing.T) {
 	server, client, config := getPatchServer(t, handler)
 	defer server.Close()
 
-	h := newLogHook(logrus.WarnLevel)
-	logrus.AddHook(&h)
-
 	result := client.PatchTrace(config, &JobCredentials{ID: 1, Token: patchToken}, patchTraceContent, 0)
 	assert.Equal(t, PatchNotFound, result.State)
-	require.Len(t, h.entries, 1)
-	assert.Equal(t, fmt.Sprint(appendingTraceToCoordinator, " ", notFound), h.entries[0].Message)
 }
 
 func TestForbiddenPatchTrace(t *testing.T) {
@@ -1457,13 +1296,8 @@ func TestForbiddenPatchTrace(t *testing.T) {
 	server, client, config := getPatchServer(t, handler)
 	defer server.Close()
 
-	h := newLogHook(logrus.WarnLevel)
-	logrus.AddHook(&h)
-
 	result := client.PatchTrace(config, &JobCredentials{ID: 1, Token: patchToken}, patchTraceContent, 0)
 	assert.Equal(t, PatchAbort, result.State)
-	require.Len(t, h.entries, 1)
-	assert.Equal(t, fmt.Sprint(appendingTraceToCoordinator, " ", jobFailed), h.entries[0].Message)
 }
 
 func TestPatchTrace(t *testing.T) {
@@ -1608,13 +1442,8 @@ func TestJobFailedStatePatchTrace(t *testing.T) {
 	server, client, config := getPatchServer(t, handler)
 	defer server.Close()
 
-	h := newLogHook(logrus.WarnLevel)
-	logrus.AddHook(&h)
-
 	result := client.PatchTrace(config, &JobCredentials{ID: 1, Token: patchToken}, patchTraceContent, 0)
 	assert.Equal(t, PatchAbort, result.State)
-	require.Len(t, h.entries, 1)
-	assert.Equal(t, fmt.Sprint(appendingTraceToCoordinator, " ", jobFailed), h.entries[0].Message)
 }
 
 func TestPatchTraceCantConnect(t *testing.T) {
@@ -2182,7 +2011,6 @@ func uploadArtifacts(
 	}
 	return client.UploadRawArtifacts(config, file, options)
 }
-
 func TestArtifactsUpload(t *testing.T) {
 	handler := func(w http.ResponseWriter, r *http.Request) {
 		testArtifactsUploadHandler(w, r, t)
@@ -2196,13 +2024,11 @@ func TestArtifactsUpload(t *testing.T) {
 		URL:   s.URL,
 		Token: "token",
 	}
-
 	invalidToken := JobCredentials{
 		ID:    10,
 		URL:   s.URL,
 		Token: "invalid-token",
 	}
-
 	redirectToken := JobCredentials{
 		ID:    10,
 		URL:   s.URL,
@@ -2216,153 +2042,58 @@ func TestArtifactsUpload(t *testing.T) {
 
 	c := NewGitLabClient()
 
-	type testCase struct {
-		credentials    JobCredentials
-		uploadState    UploadState
-		artifactFormat ArtifactFormat
-		artifactType   string
-		contentToWrite []byte
-		fileName       string
-		location       string
-		logEntry       logrus.Entry
-	}
+	require.NoError(t, os.WriteFile(tempFile.Name(), []byte("content"), 0o600))
+	state, location := uploadArtifacts(c, config, tempFile.Name(), "", ArtifactFormatDefault)
+	assert.Equal(t, UploadSucceeded, state, "Artifacts should be uploaded")
+	assert.Empty(t, location)
 
-	testCases := map[string]testCase{
-		"Artifacts should be uploaded": {
-			credentials:    config,
-			uploadState:    UploadSucceeded,
-			artifactFormat: ArtifactFormatDefault,
-			contentToWrite: []byte("content"),
-			fileName:       tempFile.Name(),
-			logEntry: logrus.Entry{
-				Level:   logrus.InfoLevel,
-				Message: fmt.Sprint(uploadingArtifactsToCoordinator, " 201 Created"),
-			},
-		},
-		"Artifacts should be not uploaded, because of too large archive": {
-			credentials:    config,
-			uploadState:    UploadTooLarge,
-			artifactFormat: ArtifactFormatDefault,
-			contentToWrite: []byte("too-large"),
-			fileName:       tempFile.Name(),
-			logEntry: logrus.Entry{
-				Level:   logrus.ErrorLevel,
-				Message: fmt.Sprint(uploadingArtifactsToCoordinator, " 413 Request Entity Too Large"),
-			},
-		},
-		"Artifacts should be uploaded, as zip": {
-			credentials:    config,
-			uploadState:    UploadSucceeded,
-			artifactFormat: ArtifactFormatZip,
-			contentToWrite: []byte("zip"),
-			fileName:       tempFile.Name(),
-			logEntry: logrus.Entry{
-				Level:   logrus.InfoLevel,
-				Message: fmt.Sprint(uploadingArtifactsToCoordinator, " 201 Created"),
-			},
-		},
-		"Artifacts should be uploaded, as gzip": {
-			credentials:    config,
-			uploadState:    UploadSucceeded,
-			artifactFormat: ArtifactFormatGzip,
-			contentToWrite: []byte("gzip"),
-			fileName:       tempFile.Name(),
-			logEntry: logrus.Entry{
-				Level:   logrus.InfoLevel,
-				Message: fmt.Sprint(uploadingArtifactsToCoordinator, " 201 Created"),
-			},
-		},
-		"JUnit artifacts should be uploaded, as gzip": {
-			credentials:    config,
-			uploadState:    UploadSucceeded,
-			artifactFormat: ArtifactFormatGzip,
-			artifactType:   "junit",
-			contentToWrite: []byte("gzip"),
-			fileName:       tempFile.Name(),
-			logEntry: logrus.Entry{
-				Level:   logrus.InfoLevel,
-				Message: fmt.Sprint(`Uploading artifacts as "junit" to coordinator...`, " 201 Created"),
-			},
-		},
-		"Artifacts should fail to be uploaded": {
-			credentials:    config,
-			uploadState:    UploadFailed,
-			artifactFormat: ArtifactFormatDefault,
-			fileName:       "not/existing/file",
-		},
-		"Artifacts should be rejected if invalid token": {
-			credentials:    invalidToken,
-			uploadState:    UploadForbidden,
-			artifactFormat: ArtifactFormatDefault,
-			fileName:       tempFile.Name(),
-			logEntry: logrus.Entry{
-				Level:   logrus.ErrorLevel,
-				Message: fmt.Sprint(uploadingArtifactsToCoordinator, " 403 Forbidden"),
-			},
-		},
-		"Artifacts should get service unavailable": {
-			credentials:    config,
-			uploadState:    UploadServiceUnavailable,
-			artifactFormat: ArtifactFormatDefault,
-			contentToWrite: []byte("service-unavailable"),
-			fileName:       tempFile.Name(),
-			logEntry: logrus.Entry{
-				Level:   logrus.ErrorLevel,
-				Message: fmt.Sprint(uploadingArtifactsToCoordinator, " 503 Service Unavailable"),
-			},
-		},
-		"Artifacts should fail to be uploaded with bad request": {
-			credentials:    config,
-			uploadState:    UploadFailed,
-			artifactFormat: ArtifactFormatDefault,
-			contentToWrite: []byte("bad-request"),
-			fileName:       tempFile.Name(),
-			logEntry: logrus.Entry{
-				Level:   logrus.WarnLevel,
-				Message: fmt.Sprint(uploadingArtifactsToCoordinator),
-			},
-		},
-		"Artifacts should fail to be uploaded with bad request not json": {
-			credentials:    config,
-			uploadState:    UploadFailed,
-			artifactFormat: ArtifactFormatDefault,
-			contentToWrite: []byte("bad-request-not-json"),
-			fileName:       tempFile.Name(),
-			logEntry: logrus.Entry{
-				Level:   logrus.WarnLevel,
-				Message: fmt.Sprint(uploadingArtifactsToCoordinator, " 400 Bad Request"),
-			},
-		},
-		"Artifacts upload should be redirected": {
-			credentials:    redirectToken,
-			uploadState:    UploadRedirected,
-			artifactFormat: ArtifactFormatDefault,
-			contentToWrite: []byte("content"),
-			fileName:       tempFile.Name(),
-			location:       "new-location",
-		},
-	}
+	require.NoError(t, os.WriteFile(tempFile.Name(), []byte("too-large"), 0o600))
+	state, location = uploadArtifacts(c, config, tempFile.Name(), "", ArtifactFormatDefault)
+	assert.Equal(t, UploadTooLarge, state, "Artifacts should be not uploaded, because of too large archive")
+	assert.Empty(t, location)
 
-	for testName, tc := range testCases {
-		t.Run(testName, func(t *testing.T) {
-			var h logHook
-			if tc.logEntry.Message != "" {
-				h = newLogHook(tc.logEntry.Level)
-				logrus.AddHook(&h)
-			}
+	require.NoError(t, os.WriteFile(tempFile.Name(), []byte("zip"), 0o600))
+	state, location = uploadArtifacts(c, config, tempFile.Name(), "", ArtifactFormatZip)
+	assert.Equal(t, UploadSucceeded, state, "Artifacts should be uploaded, as zip")
+	assert.Empty(t, location)
 
-			if tc.contentToWrite != nil {
-				require.NoError(t, os.WriteFile(tc.fileName, tc.contentToWrite, 0o600))
-			}
-			state, location := uploadArtifacts(c, tc.credentials, tc.fileName, tc.artifactType, tc.artifactFormat)
-			assert.Equal(t, tc.uploadState, state)
-			assert.Equal(t, tc.location, location)
-			if tc.logEntry.Message != "" {
-				require.Len(t, h.entries, 1)
-				assert.Contains(t, h.entries[0].Message, tc.logEntry.Message)
-			}
-		})
-	}
+	require.NoError(t, os.WriteFile(tempFile.Name(), []byte("gzip"), 0o600))
+	state, location = uploadArtifacts(c, config, tempFile.Name(), "", ArtifactFormatGzip)
+	assert.Equal(t, UploadSucceeded, state, "Artifacts should be uploaded, as gzip")
+	assert.Empty(t, location)
+
+	require.NoError(t, os.WriteFile(tempFile.Name(), []byte("junit"), 0o600))
+	state, location = uploadArtifacts(c, config, tempFile.Name(), "junit", ArtifactFormatGzip)
+	assert.Equal(t, UploadSucceeded, state, "Artifacts should be uploaded, as gzip")
+	assert.Empty(t, location)
+
+	state, location = uploadArtifacts(c, config, "not/existing/file", "", ArtifactFormatDefault)
+	assert.Equal(t, UploadFailed, state, "Artifacts should fail to be uploaded")
+	assert.Empty(t, location)
+
+	state, location = uploadArtifacts(c, invalidToken, tempFile.Name(), "", ArtifactFormatDefault)
+	assert.Equal(t, UploadForbidden, state, "Artifacts should be rejected if invalid token")
+	assert.Empty(t, location)
+
+	require.NoError(t, os.WriteFile(tempFile.Name(), []byte("service-unavailable"), 0o600))
+	state, location = uploadArtifacts(c, config, tempFile.Name(), "", ArtifactFormatDefault)
+	assert.Equal(t, UploadServiceUnavailable, state, "Artifacts should get service unavailable")
+	assert.Empty(t, location)
+
+	require.NoError(t, os.WriteFile(tempFile.Name(), []byte("bad-request"), 0o600))
+	state, location = uploadArtifacts(c, config, tempFile.Name(), "", ArtifactFormatDefault)
+	assert.Equal(t, UploadFailed, state, "Artifacts should fail to be uploaded")
+	assert.Empty(t, location)
+
+	require.NoError(t, os.WriteFile(tempFile.Name(), []byte("bad-request-not-json"), 0o600))
+	state, location = uploadArtifacts(c, config, tempFile.Name(), "", ArtifactFormatDefault)
+	assert.Equal(t, UploadFailed, state, "Artifacts should fail to be uploaded")
+	assert.Empty(t, location)
+
+	require.NoError(t, os.WriteFile(tempFile.Name(), []byte("content"), 0o600))
+	state, location = uploadArtifacts(c, redirectToken, tempFile.Name(), "", ArtifactFormatDefault)
+	assert.Equal(t, UploadRedirected, state, "Artifacts upload should be redirected")
+	assert.Equal(t, "new-location", location)
 }
 
 func checkTestArtifactsDownloadHandlerContent(w http.ResponseWriter, token string) {
@@ -2532,108 +2263,64 @@ func TestArtifactsDownload(t *testing.T) {
 		directDownload   *bool
 		expectedState    DownloadState
 		expectedArtifact string
-		logEntry         logrus.Entry
 	}{
 		"successful download": {
 			credentials:      validCredentials,
 			expectedState:    DownloadSucceeded,
 			expectedArtifact: "Artifact: direct_download=missing",
-			logEntry: logrus.Entry{
-				Level:   logrus.InfoLevel,
-				Message: fmt.Sprint(downloadingArtifactsFromCoordinator, " ", ok),
-			},
 		},
 		"properly handles direct_download=false": {
 			credentials:      validCredentials,
 			directDownload:   &falseValue,
 			expectedState:    DownloadSucceeded,
 			expectedArtifact: "Artifact: direct_download=false",
-			logEntry: logrus.Entry{
-				Level:   logrus.InfoLevel,
-				Message: fmt.Sprint(downloadingArtifactsFromCoordinator, " ", ok),
-			},
 		},
 		"properly handles direct_download=true": {
 			credentials:      validCredentials,
 			directDownload:   &trueValue,
 			expectedState:    DownloadSucceeded,
 			expectedArtifact: "Artifact: direct_download=true",
-			logEntry: logrus.Entry{
-				Level:   logrus.InfoLevel,
-				Message: fmt.Sprint(downloadingArtifactsFromCoordinator, " ", ok),
-			},
 		},
 		"forbidden should be generated for invalid credentials": {
 			credentials:    invalidTokenCredentials,
 			directDownload: &trueValue,
 			expectedState:  DownloadForbidden,
-			logEntry: logrus.Entry{
-				Level:   logrus.ErrorLevel,
-				Message: fmt.Sprint(downloadingArtifactsFromCoordinator, " ", forbidden),
-			},
 		},
 		"unauthorized should be generated for unauthorized credentials": {
 			credentials:    unauthorizedTokenCredentials,
 			directDownload: &trueValue,
 			expectedState:  DownloadUnauthorized,
-			logEntry: logrus.Entry{
-				Level:   logrus.ErrorLevel,
-				Message: fmt.Sprint(downloadingArtifactsFromCoordinator, " ", unauthorized),
-			},
 		},
 		"file should not be downloaded if not existing": {
 			credentials:    fileNotFoundTokenCredentials,
 			directDownload: &trueValue,
 			expectedState:  DownloadNotFound,
-			logEntry: logrus.Entry{
-				Level:   logrus.ErrorLevel,
-				Message: fmt.Sprint(downloadingArtifactsFromCoordinator, " ", notFound),
-			},
 		},
 		"forbidden should be generated for object storage forbidden error": {
 			credentials:    objectStorageForbiddenCredentials,
 			directDownload: &falseValue,
 			expectedState:  DownloadForbidden,
-			logEntry: logrus.Entry{
-				Level:   logrus.ErrorLevel,
-				Message: fmt.Sprint(downloadingArtifactsFromCoordinator, " ", forbidden),
-			},
 		},
 		"forbidden should be generated for object storage forbidden with bad JSON error": {
 			credentials:    objectStorageForbiddenJSONCredentials,
 			directDownload: &falseValue,
 			expectedState:  DownloadForbidden,
-			logEntry: logrus.Entry{
-				Level:   logrus.ErrorLevel,
-				Message: fmt.Sprint(downloadingArtifactsFromCoordinator, " ", forbidden),
-			},
 		},
 		"forbidden should be generated for object storage forbidden with bad XML error": {
 			credentials:    objectStorageForbiddenBadXMLCredentials,
 			directDownload: &falseValue,
 			expectedState:  DownloadForbidden,
-			logEntry: logrus.Entry{
-				Level:   logrus.ErrorLevel,
-				Message: fmt.Sprint(downloadingArtifactsFromCoordinator, " ", forbidden),
-			},
 		},
 		"forbidden should be generated for object storage forbidden with no error code in XML": {
 			credentials:    objectStorageForbiddenNoCodeInXMLCredentials,
 			directDownload: &falseValue,
 			expectedState:  DownloadForbidden,
-			logEntry: logrus.Entry{
-				Level:   logrus.ErrorLevel,
-				Message: fmt.Sprint(downloadingArtifactsFromCoordinator, " ", forbidden),
-			},
 		},
 	}
 
 	for testName, testCase := range testCases {
 		t.Run(testName, func(t *testing.T) {
 			c := NewGitLabClient()
-
-			h := newLogHook(testCase.logEntry.Level)
-			logrus.AddHook(&h)
 
 			tempDir := t.TempDir()
 
@@ -2646,9 +2333,6 @@ func TestArtifactsDownload(t *testing.T) {
 
 			state := c.DownloadArtifacts(testCase.credentials, &nopWriteCloser{w: buf}, testCase.directDownload)
 			require.Equal(t, testCase.expectedState, state)
-
-			require.Len(t, h.entries, 1)
-			assert.Equal(t, testCase.logEntry.Message, h.entries[0].Message)
 
 			if testCase.expectedArtifact == "" {
 				return
