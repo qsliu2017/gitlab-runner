@@ -46,26 +46,28 @@ const (
 	checkingForJobs                     = "Checking for jobs..."
 	downloadingArtifactsFromCoordinator = "Downloading artifacts from coordinator..."
 	registeringRunner                   = "Registering runner..."
+	resettingRunnerToken                = "Resetting runner token..."
 	submittingJobToCoordinator          = "Submitting job to coordinator..."
 	unregisteringRunner                 = "Unregistering runner from GitLab"
 	updatingJob                         = "Updating job..."
 	uploadingArtifactsToCoordinator     = "Uploading artifacts to coordinator..."
 	verifyingRunner                     = "Verifying runner..."
-	resettingRunnerToken                = "Resetting runner token..."
 
 	// Status
-	errorMsg          = "error"
-	failed            = "failed"
-	forbidden         = "forbidden"
-	jobFailed         = "job failed"
-	notFound          = "not found"
-	nothing           = "nothing"
-	ok                = "ok"
-	rangeMismatch     = "range mismatch"
-	received          = "received"
-	skippedEmptyPatch = "skipped due to empty patch"
-	succeeded         = "succeeded"
-	unauthorized      = "unauthorized"
+	acceptedNotCompleted  = "accepted, but not yet completed"
+	errorMsg              = "error"
+	failed                = "failed"
+	forbidden             = "forbidden"
+	jobFailed             = "job failed"
+	notFound              = "not found"
+	nothing               = "nothing"
+	ok                    = "ok"
+	rangeMismatch         = "range mismatch"
+	received              = "received"
+	skippedEmptyPatch     = "skipped due to empty patch"
+	succeeded             = "succeeded"
+	traceValidationFailed = "trace validation failed"
+	unauthorized          = "unauthorized"
 )
 
 type apiRequestStatusPermutation struct {
@@ -476,7 +478,7 @@ func (n *GitLabClient) RequestJob(
 		config.Log().Errorln(checkingForJobs, forbidden)
 		return nil, false
 	case http.StatusNoContent:
-		config.Log().Debugln(checkingForJobs, nothing)
+		config.Log().Info(checkingForJobs, nothing)
 		return nil, true
 	case clientError:
 		config.Log().WithField("status", statusText).Errorln(checkingForJobs, errorMsg)
@@ -550,10 +552,10 @@ func (n *GitLabClient) createUpdateJobResult(
 		log.Info(submittingJobToCoordinator, ok)
 		result.State = common.UpdateSucceeded
 	case statusCode == http.StatusAccepted:
-		log.Debugln(submittingJobToCoordinator, "accepted, but not yet completed")
+		log.Info(submittingJobToCoordinator, acceptedNotCompleted)
 		result.State = common.UpdateAcceptedButNotCompleted
 	case statusCode == http.StatusPreconditionFailed:
-		log.Debugln(submittingJobToCoordinator, "trace validation failed")
+		log.Info(submittingJobToCoordinator, traceValidationFailed)
 		result.State = common.UpdateTraceValidationFailed
 	case statusCode == http.StatusNotFound:
 		log.Warningln(submittingJobToCoordinator, notFound)
