@@ -28,7 +28,9 @@ func (lh *LogHook) Levels() []logrus.Level {
 }
 
 func (lh *LogHook) Fire(entry *logrus.Entry) error {
-	atomic.AddInt64(lh.errorsNumber[entry.Level], 1)
+	if int(entry.Level) < len(lh.errorsNumber) {
+		atomic.AddInt64(lh.errorsNumber[entry.Level], 1)
+	}
 	return nil
 }
 

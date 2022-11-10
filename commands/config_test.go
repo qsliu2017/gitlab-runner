@@ -4,9 +4,12 @@ package commands
 
 import (
 	"fmt"
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"gitlab.com/gitlab-org/gitlab-runner/common"
 )
 
@@ -212,6 +215,81 @@ func TestRunnerByURLAndID(t *testing.T) {
 				assert.Equal(t, tt.runners[tt.expectedIndex], runner)
 			}
 			assert.Equal(t, tt.expectedError, err)
+		})
+	}
+}
+
+func Test_loadConfig(t *testing.T) {
+	testCases := map[string]struct {
+		config      string
+		localConfig string
+		assertFn    func(
+			t *testing.T,
+			err error,
+			config *common.Config,
+			localConfig *common.LocalConfig,
+			localConfigFile *os.File,
+		)
+	}{
+		"generates and saves missing unique system IDs": {
+			config:      "",
+			localConfig: "",
+			assertFn: func(
+				t *testing.T,
+				err error,
+				config *common.Config,
+				localConfig *common.LocalConfig,
+				localConfigFile *os.File,
+			) {
+				assert.NoError(t, err)
+				assert.NotEmpty(t, localConfig.SystemID)
+				content, err := os.ReadFile(localConfigFile.Name())
+				require.NoError(t, err)
+				assert.Contains(t, fmt.Sprintf(`system_id = "%s"`, localConfig.SystemID), content)
+			},
+		},
+		"preserves existing unique system IDs": {
+			config: "",
+			localConfig: `
+			system_id = "some_system_id"
+`,
+			assertFn: func(
+				t *testing.T,
+				err error,
+				config *common.Config,
+				localConfig *common.LocalConfig,
+				localConfigFile *os.File,
+			) {
+				assert.NoError(t, err)
+				assert.Equal(t, "some_system_id", localConfig.SystemID)
+			},
+		},
+	}
+
+	configFile, err := os.CreateTemp(os.TempDir(), "config.toml")
+	require.NoError(t, err)
+	defer func() { _ = configFile.Close() }()
+	localConfigFile, err := os.CreateTemp(os.TempDir(), "config.local.toml")
+	require.NoError(t, err)
+	defer func() { _ = localConfigFile.Close() }()
+
+	defer func() {
+		_ = os.Remove(configFile.Name())
+		_ = os.Remove(localConfigFile.Name())
+	}()
+
+	for tn, tc := range testCases {
+		t.Run(tn, func(t *testing.T) {
+			require.NoError(t, configFile.Truncate(0))
+			require.NoError(t, localConfigFile.Truncate(0))
+			_, err := configFile.WriteString(tc.config)
+			require.NoError(t, err)
+			_, err = localConfigFile.WriteString(tc.localConfig)
+			require.NoError(t, err)
+
+			c := configOptions{ConfigFile: configFile.Name()}
+			err = c.loadConfig()
+			tc.assertFn(t, err, c.config, c.localConfig, localConfigFile)
 		})
 	}
 }

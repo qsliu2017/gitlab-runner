@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -25,6 +26,7 @@ func getDefaultCertificateDirectory() string {
 type configOptions struct {
 	configMutex sync.Mutex
 	config      *common.Config
+	localConfig *common.LocalConfig
 
 	ConfigFile string `short:"c" long:"config" env:"CONFIG_FILE" description:"Config file"`
 }
@@ -61,8 +63,48 @@ func (c *configOptions) loadConfig() error {
 	if err != nil {
 		return err
 	}
+
+	localConfig, err := c.loadLocalConfig(c.ConfigFile)
+	if err != nil {
+		return fmt.Errorf("loading local config file: %w", err)
+	}
+
+	for _, runner := range config.Runners {
+		runner.SystemID = localConfig.SystemID
+	}
+
 	c.config = config
+	c.localConfig = localConfig
 	return nil
+}
+
+func (c *configOptions) loadLocalConfig(configFile string) (*common.LocalConfig, error) {
+	ext := path.Ext(configFile)
+	localConfigPath := path.Join(
+		path.Dir(configFile),
+		strings.TrimSuffix(path.Base(configFile), ext)+".local"+ext,
+	)
+
+	localConfig := common.NewLocalConfig()
+	err := localConfig.LoadConfig(localConfigPath)
+	if err != nil {
+		return nil, err
+	}
+
+	// ensure we have a system ID
+	if localConfig.SystemID == "" {
+		err = localConfig.EnsureSystemID()
+		if err != nil {
+			return nil, err
+		}
+
+		err = localConfig.SaveConfig(localConfigPath)
+		if err != nil {
+			return nil, fmt.Errorf("saving local config file: %w", err)
+		}
+	}
+
+	return localConfig, nil
 }
 
 func (c *configOptions) RunnerByName(name string) (*common.RunnerConfig, error) {

@@ -6,6 +6,7 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"regexp"
 	"runtime"
 	"strings"
 	"testing"
@@ -77,7 +78,7 @@ func TestAccessLevelSetting(t *testing.T) {
 				"--access-level", string(testCase.accessLevel),
 			}
 
-			_, output, err := testRegisterCommandRun(t, network, nil, arguments...)
+			_, output, _, err := testRegisterCommandRun(t, network, nil, arguments...)
 
 			if testCase.failureExpected {
 				assert.EqualError(t, err, "command error: Given access-level is not valid. "+
@@ -120,7 +121,7 @@ func testRegisterCommandRun(
 	network common.Network,
 	env []kv,
 	args ...string,
-) (content, output string, err error) {
+) (content, output, systemID string, err error) {
 	config := &common.RunnerConfig{
 		RunnerCredentials: common.RunnerCredentials{
 			Token: "test-runner-token",
@@ -133,7 +134,7 @@ func testRegisterCommandRun(
 	for _, kv := range env {
 		err := os.Setenv(kv.key, kv.value)
 		if err != nil {
-			return "", "", err
+			return "", "", "", err
 		}
 	}
 
@@ -193,7 +194,7 @@ func testRegisterCommandRun(
 
 	err = commandErr
 
-	return string(fileContent), "", err
+	return string(fileContent), "", cmd.RunnerConfig.SystemID, err
 }
 
 func contains(args []string, s string) bool {
@@ -719,16 +720,22 @@ shutdown_timeout = 0
 
 			tt.networkAssertions(network)
 
-			fileContent, _, err := testRegisterCommandRun(t, network, nil, args...)
+			fileContent, _, systemID, err := testRegisterCommandRun(t, network, nil, args...)
 			if tt.errExpected {
 				require.Error(t, err)
 				return
 			}
 
+			assert.Regexp(t, regexp.MustCompile("[rs]_[0-9a-zA-Z]{12}"), systemID)
+
 			require.NoError(t, err)
 			name, err := os.Hostname()
 			require.NoError(t, err)
-			assert.Equal(t, fmt.Sprintf(tt.expectedFileContentFmt, name, time.Now().UTC().Format(time.RFC3339)), fileContent)
+			assert.Equal(
+				t,
+				fmt.Sprintf(tt.expectedFileContentFmt, name, time.Now().UTC().Format(time.RFC3339)),
+				fileContent,
+			)
 		})
 	}
 }
@@ -942,7 +949,7 @@ func TestRegisterCommand(t *testing.T) {
 				}).
 				Once()
 
-			gotConfig, _, err := testRegisterCommandRun(t, network, tc.environment, tc.arguments...)
+			gotConfig, _, _, err := testRegisterCommandRun(t, network, tc.environment, tc.arguments...)
 			require.NoError(t, err)
 
 			for _, expectedConfig := range tc.expectedConfigs {
@@ -984,7 +991,7 @@ func TestRegisterTokenExpiresAt(t *testing.T) {
 				}).
 				Once()
 
-			gotConfig, _, err := testRegisterCommandRun(t, network, []kv{}, "--name", "test-runner")
+			gotConfig, _, _, err := testRegisterCommandRun(t, network, []kv{}, "--name", "test-runner")
 			require.NoError(t, err)
 
 			assert.Contains(

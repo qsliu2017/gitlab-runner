@@ -954,6 +954,8 @@ type RunnerConfig struct {
 	OutputLimit        int    `toml:"output_limit,omitzero" long:"output-limit" env:"RUNNER_OUTPUT_LIMIT" description:"Maximum build trace size in kilobytes"`
 	RequestConcurrency int    `toml:"request_concurrency,omitzero" long:"request-concurrency" env:"RUNNER_REQUEST_CONCURRENCY" description:"Maximum concurrency for job requests"`
 
+	SystemID string `toml:"-"`
+
 	RunnerCredentials
 	RunnerSettings
 }
@@ -1590,6 +1592,14 @@ func (c *RunnerCredentials) SameAs(other *RunnerCredentials) bool {
 
 func (c *RunnerConfig) String() string {
 	return fmt.Sprintf("%v url=%v token=%v executor=%v", c.Name, c.URL, c.Token, c.Executor)
+}
+
+func (c *RunnerConfig) Log() *logrus.Entry {
+	logger := c.RunnerCredentials.Log()
+	if c.SystemID != "" {
+		logger = logger.WithField("system_id", c.SystemID)
+	}
+	return logger
 }
 
 func (c *RunnerConfig) GetRequestConcurrency() int {

@@ -235,6 +235,7 @@ func (s *RegisterCommand) addRunner(runner *common.RunnerConfig) {
 	s.configMutex.Lock()
 	defer s.configMutex.Unlock()
 
+	runner.SystemID = s.localConfig.SystemID
 	s.config.Runners = append(s.config.Runners, runner)
 }
 
@@ -423,7 +424,10 @@ func (s *RegisterCommand) Execute(context *cli.Context) {
 		logrus.Panicln(err)
 	}
 
-	logrus.Printf(
+	logrus.WithFields(logrus.Fields{
+		"runner":    s.ShortDescription(),
+		"system_id": s.SystemID,
+	}).Printf(
 		"Runner registered successfully. " +
 			"Feel free to start it, but if it's running already the config should be automatically reloaded!\n")
 	logrus.Printf("Configuration (with the authentication token) was saved in %q", s.ConfigFile)
