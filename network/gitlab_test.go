@@ -1147,14 +1147,14 @@ func TestUpdateJobAsKeepAlive(t *testing.T) {
 	type testCase struct {
 		updateJobInfo   UpdateJobInfo
 		updateJobResult UpdateJobResult
-		logs            []logrus.Entry
+		expectedLogs    []logrus.Entry
 	}
 
 	testCases := map[string]testCase{
 		"Update should continue when running": {
 			updateJobInfo:   UpdateJobInfo{ID: 10, State: Running},
 			updateJobResult: UpdateJobResult{State: UpdateSucceeded},
-			logs: []logrus.Entry{
+			expectedLogs: []logrus.Entry{
 				{
 					Level:   logrus.InfoLevel,
 					Message: fmt.Sprint("Updating job..."),
@@ -1168,7 +1168,7 @@ func TestUpdateJobAsKeepAlive(t *testing.T) {
 		"Update should be aborted when Job-Status=canceled": {
 			updateJobInfo:   UpdateJobInfo{ID: 11, State: Running},
 			updateJobResult: UpdateJobResult{State: UpdateAbort},
-			logs: []logrus.Entry{
+			expectedLogs: []logrus.Entry{
 				{
 					Level:   logrus.InfoLevel,
 					Message: fmt.Sprint("Updating job..."),
@@ -1182,7 +1182,7 @@ func TestUpdateJobAsKeepAlive(t *testing.T) {
 		"Update should continue when Job-Status=failed": {
 			updateJobInfo:   UpdateJobInfo{ID: 12, State: Running},
 			updateJobResult: UpdateJobResult{State: UpdateAbort},
-			logs: []logrus.Entry{
+			expectedLogs: []logrus.Entry{
 				{
 					Level:   logrus.InfoLevel,
 					Message: fmt.Sprint("Updating job..."),
@@ -1196,7 +1196,7 @@ func TestUpdateJobAsKeepAlive(t *testing.T) {
 		"Update should continue when Job-Status=canceling": {
 			updateJobInfo:   UpdateJobInfo{ID: 13, State: Running},
 			updateJobResult: UpdateJobResult{State: UpdateSucceeded, CancelRequested: true},
-			logs: []logrus.Entry{
+			expectedLogs: []logrus.Entry{
 				{
 					Level:   logrus.InfoLevel,
 					Message: fmt.Sprint("Updating job..."),
@@ -1216,8 +1216,8 @@ func TestUpdateJobAsKeepAlive(t *testing.T) {
 
 			result := c.UpdateJob(config, jobCredentials, tc.updateJobInfo)
 			assert.Equal(t, tc.updateJobResult, result)
-			require.Len(t, h.entries, len(tc.logs))
-			for i, l := range tc.logs {
+			require.Len(t, h.entries, len(tc.expectedLogs))
+			for i, l := range tc.expectedLogs {
 				assert.Equal(t, l.Level, h.entries[i].Level)
 				assert.Equal(t, l.Message, h.entries[i].Message)
 			}
