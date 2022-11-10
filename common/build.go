@@ -346,7 +346,7 @@ func (b *Build) evalGitlabEnvFile(ctx context.Context, executor Executor, shell 
 		return err
 	}
 
-	scanner := bufio.NewScanner(out)
+	scanner := bufio.NewScanner(io.LimitReader(out, size))
 	for {
 		select {
 		case <-ctx.Done():
