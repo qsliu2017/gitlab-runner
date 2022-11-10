@@ -39,39 +39,6 @@ const (
 	APIEndpointPatchTrace APIEndpoint = "patch_trace"
 )
 
-// Logging message constants
-const (
-	// Action prefix
-	appendingTraceToCoordinator         = "Appending trace to coordinator..."
-	checkingForJobs                     = "Checking for jobs..."
-	downloadingArtifactsFromCoordinator = "Downloading artifacts from coordinator..."
-	registeringRunner                   = "Registering runner..."
-	resettingRunnerToken                = "Resetting runner token..."
-	submittingJobToCoordinator          = "Submitting job to coordinator..."
-	unregisteringRunner                 = "Unregistering runner from GitLab"
-	updatingJob                         = "Updating job..."
-	uploadingArtifactsToCoordinator     = "Uploading artifacts to coordinator..."
-	verifyingRunner                     = "Verifying runner..."
-
-	// Status
-	acceptedNotCompleted  = "accepted, but not yet completed"
-	errorMsg              = "error"
-	failed                = "failed"
-	forbidden             = "forbidden"
-	isAlive               = "is alive"
-	isRemoved             = "is removed"
-	jobFailed             = "job failed"
-	notFound              = "not found"
-	nothing               = "nothing"
-	ok                    = "ok"
-	rangeMismatch         = "range mismatch"
-	received              = "received"
-	skippedEmptyPatch     = "skipped due to empty patch"
-	succeeded             = "succeeded"
-	traceValidationFailed = "trace validation failed"
-	unauthorized          = "unauthorized"
-)
-
 type apiRequestStatusPermutation struct {
 	runnerID string
 	endpoint APIEndpoint
@@ -287,16 +254,16 @@ func (n *GitLabClient) RegisterRunner(
 
 	switch result {
 	case http.StatusCreated:
-		runner.Log().Println(registeringRunner, succeeded)
+		runner.Log().Println("Registering runner...", "succeeded")
 		return &response
 	case http.StatusForbidden:
-		runner.Log().Errorln(registeringRunner, forbidden, "(check registration token)")
+		runner.Log().Errorln("Registering runner...", "forbidden (check registration token)")
 		return nil
 	case clientError:
-		runner.Log().WithField("status", statusText).Errorln(registeringRunner, errorMsg)
+		runner.Log().WithField("status", statusText).Errorln("Registering runner...", "error")
 		return nil
 	default:
-		runner.Log().WithField("status", statusText).Errorln(registeringRunner, failed)
+		runner.Log().WithField("status", statusText).Errorln("Registering runner...", "failed")
 		return nil
 	}
 }
@@ -322,16 +289,16 @@ func (n *GitLabClient) VerifyRunner(runner common.RunnerCredentials) bool {
 	switch result {
 	case http.StatusOK:
 		// this is expected due to fact that we ask for non-existing job
-		runner.Log().Println(verifyingRunner, isAlive)
+		runner.Log().Println("Verifying runner...", "is alive")
 		return true
 	case http.StatusForbidden:
-		runner.Log().Errorln(verifyingRunner, isRemoved)
+		runner.Log().Errorln("Verifying runner...", "is removed")
 		return false
 	case clientError:
-		runner.Log().WithField("status", statusText).Errorln(verifyingRunner, errorMsg)
+		runner.Log().WithField("status", statusText).Errorln("Verifying runner...", "error")
 		return true
 	default:
-		runner.Log().WithField("status", statusText).Errorln(verifyingRunner, failed)
+		runner.Log().WithField("status", statusText).Errorln("Verifying runner...", "failed")
 		return true
 	}
 }
@@ -354,18 +321,19 @@ func (n *GitLabClient) UnregisterRunner(runner common.RunnerCredentials) bool {
 		defer func() { _ = resp.Body.Close() }()
 	}
 
+	const baseLogText = "Unregistering runner from GitLab"
 	switch result {
 	case http.StatusNoContent:
-		runner.Log().Println(unregisteringRunner, succeeded)
+		runner.Log().Println(baseLogText, "succeeded")
 		return true
 	case http.StatusForbidden:
-		runner.Log().Errorln(unregisteringRunner, forbidden)
+		runner.Log().Errorln(baseLogText, "forbidden")
 		return false
 	case clientError:
-		runner.Log().WithField("status", statusText).Errorln(unregisteringRunner, errorMsg)
+		runner.Log().WithField("status", statusText).Errorln(baseLogText, "error")
 		return false
 	default:
-		runner.Log().WithField("status", statusText).Errorln(unregisteringRunner, failed)
+		runner.Log().WithField("status", statusText).Errorln(baseLogText, "failed")
 		return false
 	}
 }
@@ -401,19 +369,20 @@ func (n *GitLabClient) resetToken(runner common.RunnerCredentials, uri string, p
 		defer func() { _ = resp.Body.Close() }()
 	}
 
+	const baseLogText = "Resetting runner token..."
 	switch result {
 	case http.StatusCreated:
-		runner.Log().Println(resettingRunnerToken, succeeded)
+		runner.Log().Println(baseLogText, "succeeded")
 		response.TokenObtainedAt = time.Now().UTC()
 		return &response
 	case http.StatusForbidden:
-		runner.Log().Errorln(resettingRunnerToken, failed, "(check used token)")
+		runner.Log().Errorln(baseLogText, "failed (check used token)")
 		return nil
 	case clientError:
-		runner.Log().WithField("status", statusText).Errorln(resettingRunnerToken, errorMsg)
+		runner.Log().WithField("status", statusText).Errorln(baseLogText, "error")
 		return nil
 	default:
-		runner.Log().WithField("status", statusText).Errorln(resettingRunnerToken, failed)
+		runner.Log().WithField("status", statusText).Errorln(baseLogText, "failed")
 		return nil
 	}
 }
@@ -465,28 +434,28 @@ func (n *GitLabClient) RequestJob(
 		config.Log().WithFields(logrus.Fields{
 			"job":      response.ID,
 			"repo_url": response.RepoCleanURL(),
-		}).Println(checkingForJobs, received)
+		}).Println("Checking for jobs...", "received")
 
 		resolveFullChain := config.IsFeatureFlagOn(featureflags.ResolveFullTLSChain)
 		tlsData, err := n.getResponseTLSData(&config.RunnerCredentials, resolveFullChain, httpResponse)
 		if err != nil {
 			config.Log().
-				WithError(err).Errorln("Error on fetching TLS Data from API response...", errorMsg)
+				WithError(err).Errorln("Error on fetching TLS Data from API response...", "error")
 		}
 		addTLSData(&response, tlsData)
 
 		return &response, true
 	case http.StatusForbidden:
-		config.Log().Errorln(checkingForJobs, forbidden)
+		config.Log().Errorln("Checking for jobs...", "forbidden")
 		return nil, false
 	case http.StatusNoContent:
-		config.Log().Info(checkingForJobs, nothing)
+		config.Log().Info("Checking for jobs...", "nothing")
 		return nil, true
 	case clientError:
-		config.Log().WithField("status", statusText).Errorln(checkingForJobs, errorMsg)
+		config.Log().WithField("status", statusText).Errorln("Checking for jobs...", "error")
 		return nil, false
 	default:
-		config.Log().WithField("status", statusText).Warningln(checkingForJobs, failed)
+		config.Log().WithField("status", statusText).Warningln("Checking for jobs...", "failed")
 		return nil, true
 	}
 }
@@ -511,7 +480,7 @@ func (n *GitLabClient) UpdateJob(
 		WithField("checksum", request.Output.Checksum).
 		WithField("bytesize", request.Output.Bytesize)
 
-	log.Info(updatingJob)
+	log.Info("Updating job...")
 
 	statusCode, statusText, response := n.doJSON(
 		context.Background(),
@@ -548,28 +517,28 @@ func (n *GitLabClient) createUpdateJobResult(
 
 	switch {
 	case remoteJobStateResponse.IsFailed():
-		log.Warningln(submittingJobToCoordinator, jobFailed)
+		log.Warningln("Submitting job to coordinator...", "job failed")
 		result.State = common.UpdateAbort
 	case statusCode == http.StatusOK:
-		log.Info(submittingJobToCoordinator, ok)
+		log.Info("Submitting job to coordinator...", "ok")
 		result.State = common.UpdateSucceeded
 	case statusCode == http.StatusAccepted:
-		log.Info(submittingJobToCoordinator, acceptedNotCompleted)
+		log.Info("Submitting job to coordinator...", "accepted, but not yet completed")
 		result.State = common.UpdateAcceptedButNotCompleted
 	case statusCode == http.StatusPreconditionFailed:
-		log.Info(submittingJobToCoordinator, traceValidationFailed)
+		log.Info("Submitting job to coordinator...", "trace validation failed")
 		result.State = common.UpdateTraceValidationFailed
 	case statusCode == http.StatusNotFound:
-		log.Warningln(submittingJobToCoordinator, notFound)
+		log.Warningln("Submitting job to coordinator...", "not found")
 		result.State = common.UpdateAbort
 	case statusCode == http.StatusForbidden:
-		log.WithField("status", statusText).Errorln(submittingJobToCoordinator, forbidden)
+		log.WithField("status", statusText).Errorln("Submitting job to coordinator...", "forbidden")
 		result.State = common.UpdateAbort
 	case statusCode == clientError:
-		log.WithField("status", statusText).Errorln(submittingJobToCoordinator, errorMsg)
+		log.WithField("status", statusText).Errorln("Submitting job to coordinator...", "error")
 		result.State = common.UpdateAbort
 	default:
-		log.WithField("status", statusText).Warningln(submittingJobToCoordinator, failed)
+		log.WithField("status", statusText).Warningln("Submitting job to coordinator...", "failed")
 		result.State = common.UpdateFailed
 	}
 
@@ -586,7 +555,7 @@ func (n *GitLabClient) PatchTrace(
 
 	baseLog := config.Log().WithField("job", id)
 	if len(content) == 0 {
-		baseLog.Info(appendingTraceToCoordinator, skippedEmptyPatch)
+		baseLog.Info("Appending trace to coordinator...", "skipped due to empty patch")
 		return common.NewPatchTraceResult(startOffset, common.PatchSucceeded, 0)
 	}
 
@@ -610,7 +579,7 @@ func (n *GitLabClient) PatchTrace(
 		headers,
 	)
 	if err != nil {
-		config.Log().Errorln(appendingTraceToCoordinator, errorMsg, err.Error())
+		config.Log().Errorln("Appending trace to coordinator...", "error", err.Error())
 		return common.NewPatchTraceResult(startOffset, common.PatchFailed, 0)
 	}
 
@@ -653,39 +622,39 @@ func (n *GitLabClient) createPatchTraceResult(
 
 	switch {
 	case tracePatchResponse.IsFailed():
-		log.Warningln(appendingTraceToCoordinator, jobFailed)
+		log.Warningln("Appending trace to coordinator...", "job failed")
 		result.State = common.PatchAbort
 
 		return result
 
 	case response.StatusCode == http.StatusAccepted:
-		log.Info(appendingTraceToCoordinator, ok)
+		log.Info("Appending trace to coordinator...", "ok")
 		result.SentOffset = endOffset
 		result.State = common.PatchSucceeded
 
 		return result
 
 	case response.StatusCode == http.StatusNotFound:
-		log.Warningln(appendingTraceToCoordinator, notFound)
+		log.Warningln("Appending trace to coordinator...", "not-found")
 		result.State = common.PatchNotFound
 
 		return result
 
 	case response.StatusCode == http.StatusRequestedRangeNotSatisfiable:
-		log.Warningln(appendingTraceToCoordinator, rangeMismatch)
+		log.Warningln("Appending trace to coordinator...", "range mismatch")
 		result.SentOffset = tracePatchResponse.NewOffset()
 		result.State = common.PatchRangeMismatch
 
 		return result
 
 	case response.StatusCode == clientError:
-		log.Errorln(appendingTraceToCoordinator, errorMsg)
+		log.Errorln("Appending trace to coordinator...", "error")
 		result.State = common.PatchAbort
 
 		return result
 
 	default:
-		log.Warningln(appendingTraceToCoordinator, failed)
+		log.Warningln("Appending trace to coordinator...", "failed")
 		result.State = common.PatchFailed
 
 		return result
@@ -776,13 +745,13 @@ func (n *GitLabClient) UploadRawArtifacts(
 	closeWithLogging(log, pr, "pipe reader")
 	closeWithLogging(log, reader, "archive reader")
 
-	messagePrefix := uploadingArtifactsToCoordinator
+	messagePrefix := "Uploading artifacts to coordinator..."
 	if options.Type != "" {
 		messagePrefix = fmt.Sprintf("Uploading artifacts as %q to coordinator...", options.Type)
 	}
 
 	if err != nil {
-		log.WithError(err).Errorln(messagePrefix, errorMsg)
+		log.WithError(err).Errorln(messagePrefix, "error")
 		return common.UploadFailed, ""
 	}
 
@@ -871,7 +840,7 @@ func (n *GitLabClient) DownloadArtifacts(
 	}
 
 	if err != nil {
-		log.Errorln(downloadingArtifactsFromCoordinator, errorMsg, err.Error())
+		log.Errorln("Downloading artifacts from coordinator...", "error", err.Error())
 		return common.DownloadFailed
 	}
 	defer func() {
@@ -888,16 +857,16 @@ func (n *GitLabClient) DownloadArtifacts(
 		// response that might include important details why the request
 		// was rejected (e.g. Google VPC Service Controls).
 		statusText := getMessageFromJSONOrXMLResponse(res)
-		log.WithField("status", statusText).Errorln(downloadingArtifactsFromCoordinator, forbidden)
+		log.WithField("status", statusText).Errorln("Downloading artifacts from coordinator...", "forbidden")
 		return common.DownloadForbidden
 	case http.StatusUnauthorized:
-		log.WithField("status", res.Status).Errorln(downloadingArtifactsFromCoordinator, unauthorized)
+		log.WithField("status", res.Status).Errorln("Downloading artifacts from coordinator...", "unauthorized")
 		return common.DownloadUnauthorized
 	case http.StatusNotFound:
-		log.Errorln(downloadingArtifactsFromCoordinator, notFound)
+		log.Errorln("Downloading artifacts from coordinator...", "not found")
 		return common.DownloadNotFound
 	default:
-		log.WithField("status", res.Status).Warningln(downloadingArtifactsFromCoordinator, failed)
+		log.WithField("status", res.Status).Warningln("Downloading artifacts from coordinator...", "failed")
 		return common.DownloadFailed
 	}
 }
@@ -912,11 +881,11 @@ func (n *GitLabClient) downloadArtifactFile(
 	closeWithLogging(log, file, "file writer")
 
 	if err != nil {
-		log.WithError(err).Errorln(downloadingArtifactsFromCoordinator, errorMsg)
+		log.WithError(err).Errorln("Downloading artifacts from coordinator...", "error")
 		return common.DownloadFailed
 	}
 
-	log.Println(downloadingArtifactsFromCoordinator, ok)
+	log.Println("Downloading artifacts from coordinator...", "ok")
 
 	return common.DownloadSucceeded
 }
