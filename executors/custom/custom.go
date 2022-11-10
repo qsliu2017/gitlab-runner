@@ -286,6 +286,10 @@ func (e *executor) getCIJobServicesEnv() common.JobVariable {
 	}
 }
 
+func (e *executor) RunWithOutput(cmd common.ExecutorOutputCommand, out io.Writer) error {
+	return nil
+}
+
 func (e *executor) Run(cmd common.ExecutorCommand) error {
 	scriptDir, err := os.MkdirTemp(e.tempDir, "script")
 	if err != nil {

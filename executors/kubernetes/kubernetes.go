@@ -343,6 +343,31 @@ func (s *executor) prepareHelperImage() (helperimage.Info, error) {
 	return helperimage.Get(common.REVISION, config)
 }
 
+func (s *executor) RunWithOutput(cmd common.ExecutorOutputCommand, out io.Writer) error {
+	status, err := waitForPodRunning(cmd.Context, s.kubeClient, s.pod, s.Trace, s.Config.Kubernetes)
+	if err != nil {
+		return err
+	}
+
+	if status != api.PodRunning {
+		return fmt.Errorf("pod failed to enter running state: %s", status)
+	}
+
+	exec := ExecOptions{
+		PodName:       s.pod.Name,
+		Namespace:     s.pod.Namespace,
+		ContainerName: helperContainerName,
+		Command:       append([]string{cmd.Command}, cmd.Args...),
+		Out:           out,
+		Config:        s.kubeConfig,
+		Client:        s.kubeClient,
+		Executor:      &DefaultRemoteExecutor{},
+	}
+
+	retryable := retry.New(retry.WithBuildLog(&exec, &s.BuildLogger))
+	return retryable.Run()
+}
+
 func (s *executor) Run(cmd common.ExecutorCommand) error {
 	for attempt := 1; ; attempt++ {
 		var err error

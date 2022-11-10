@@ -3,6 +3,7 @@ package instance
 import (
 	"errors"
 	"fmt"
+	"io"
 	"strings"
 
 	"gitlab.com/gitlab-org/gitlab-runner/common"
@@ -40,6 +41,10 @@ func (e *executor) Prepare(options common.ExecutorPrepareOptions) error {
 		return fmt.Errorf("connecting to remote environment: %w", err)
 	}
 
+	return nil
+}
+
+func (e *executor) RunWithOutput(cmd common.ExecutorOutputCommand, out io.Writer) error {
 	return nil
 }
 

@@ -4,8 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
-
 	"github.com/sirupsen/logrus"
+	"io"
 )
 
 // ExecutorData is an empty interface representing free-form data
@@ -21,6 +21,12 @@ type ExecutorCommand struct {
 	Stage      BuildStage
 	Predefined bool
 	Context    context.Context
+}
+
+type ExecutorOutputCommand struct {
+	Command string
+	Args    []string
+	Context context.Context
 }
 
 // ExecutorStage represents a stage of build execution in the executor scope.
@@ -67,6 +73,8 @@ type Executor interface {
 	Prepare(options ExecutorPrepareOptions) error
 	// Run executes a command on the prepared environment.
 	Run(cmd ExecutorCommand) error
+	// RunWithOutput executes a command on the prepared environment and captures its output.
+	RunWithOutput(cmd ExecutorOutputCommand, out io.Writer) error
 	// Finish marks the build execution as finished.
 	Finish(err error)
 	// Cleanup cleans any resources left by build execution.

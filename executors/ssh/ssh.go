@@ -3,6 +3,7 @@ package ssh
 import (
 	"errors"
 	"fmt"
+	"io"
 
 	"gitlab.com/gitlab-org/gitlab-runner/common"
 	"gitlab.com/gitlab-org/gitlab-runner/executors"
@@ -44,6 +45,10 @@ func (s *executor) Prepare(options common.ExecutorPrepareOptions) error {
 		return fmt.Errorf("ssh command Connect() error: %w", err)
 	}
 
+	return nil
+}
+
+func (s *executor) RunWithOutput(cmd common.ExecutorOutputCommand, out io.Writer) error {
 	return nil
 }
 

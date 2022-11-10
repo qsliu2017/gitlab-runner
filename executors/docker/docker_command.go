@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"strings"
 	"sync"
 	"time"
@@ -77,6 +78,10 @@ func (s *commandExecutor) isUmaskDisabled() bool {
 	}
 
 	return true
+}
+
+func (s *commandExecutor) RunWithOutput(cmd common.ExecutorOutputCommand, out io.Writer) error {
+	return nil
 }
 
 func (s *commandExecutor) Run(cmd common.ExecutorCommand) error {

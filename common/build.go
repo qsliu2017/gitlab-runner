@@ -1,6 +1,8 @@
 package common
 
 import (
+	"bufio"
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -158,6 +160,8 @@ type Build struct {
 	secretsVariables JobVariables
 
 	createdAt time.Time
+
+	gitlabEnvPath string
 
 	Referees         []referees.Referee
 	ArtifactUploader func(config JobCredentials, reader io.ReadCloser, options ArtifactsOptions) (UploadState, string)
@@ -319,6 +323,52 @@ func (b *Build) StartBuild(rootDir, cacheDir string, customBuildDirEnabled, shar
 	return nil
 }
 
+func (b *Build) evalGitlabEnvFile(ctx context.Context, executor Executor, shell *ShellScriptInfo) error {
+	// disable $GITLAB_ENV
+	size := b.Runner.GetEnvFileSizeLimit()
+	if size < 0 {
+		return nil
+	}
+
+	out := new(bytes.Buffer)
+	err := executor.RunWithOutput(ExecutorOutputCommand{
+		Command: shell.RunnerCommand,
+		Args: []string{
+			"read-gitlab-env",
+			"--path",
+			b.GetAllVariables().Get("GITLAB_ENV"),
+			"--limit-size-bytes",
+			fmt.Sprint(size),
+		},
+		Context: ctx,
+	}, out)
+	if err != nil {
+		return err
+	}
+
+	scanner := bufio.NewScanner(out)
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		default:
+			if !scanner.Scan() {
+				return nil
+			}
+
+			variable, err := ParseVariable(scanner.Text())
+			if err != nil {
+				b.logger.Warningln("Parsing env from $GITLAB_ENV: %s", err)
+				continue
+			}
+
+			if !b.GetAllVariables().OverwriteKey(variable.Key, variable) {
+				b.allVariables = append(b.allVariables, variable)
+			}
+		}
+	}
+}
+
 func (b *Build) executeStage(ctx context.Context, buildStage BuildStage, executor Executor) error {
 	if ctx.Err() != nil {
 		return ctx.Err()
@@ -330,6 +380,14 @@ func (b *Build) executeStage(ctx context.Context, buildStage BuildStage, executo
 	shell := executor.Shell()
 	if shell == nil {
 		return errors.New("no shell defined")
+	}
+
+	if strings.HasPrefix(string(buildStage), "step_") ||
+		strings.HasPrefix(string(buildStage), "archive_cache") ||
+		buildStage == BuildStageAfterScript {
+		if err := b.evalGitlabEnvFile(ctx, executor, shell); err != nil {
+			b.Log().Warnln("Evaluating $GITLAB_ENV file: %s", err)
+		}
 	}
 
 	script, err := GenerateShellScript(buildStage, *shell)
@@ -1091,6 +1149,23 @@ func (b *Build) GetDefaultFeatureFlagsVariables() JobVariables {
 	return variables
 }
 
+func (b *Build) getGitlabEnvLocationVariable() *JobVariable {
+	if b.BuildDir == "" {
+		return nil
+	}
+
+	if b.gitlabEnvPath == "" {
+		uuid, _ := helpers.GenerateRandomUUID(8)
+		b.gitlabEnvPath = filepath.Join(b.TmpProjectDir(), uuid)
+	}
+
+	return &JobVariable{
+		Key:      "GITLAB_ENV",
+		Value:    b.gitlabEnvPath,
+		Internal: true,
+	}
+}
+
 func (b *Build) GetSharedEnvVariable() JobVariable {
 	env := JobVariable{Value: "true", Public: true, Internal: true, File: false}
 	if b.IsSharedEnv() {
@@ -1171,6 +1246,9 @@ func (b *Build) GetAllVariables() JobVariables {
 	variables = append(variables, b.GetSharedEnvVariable())
 	variables = append(variables, AppVersion.Variables()...)
 	variables = append(variables, b.secretsVariables...)
+	if envFile := b.getGitlabEnvLocationVariable(); envFile != nil {
+		variables = append(variables, *envFile)
+	}
 
 	b.allVariables = variables.Expand()
 

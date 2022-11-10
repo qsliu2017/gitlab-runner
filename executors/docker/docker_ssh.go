@@ -2,6 +2,7 @@ package docker
 
 import (
 	"errors"
+	"io"
 
 	"github.com/docker/docker/api/types"
 
@@ -62,6 +63,10 @@ func (s *sshExecutor) Prepare(options common.ExecutorPrepareOptions) error {
 	if err != nil {
 		return err
 	}
+	return nil
+}
+
+func (s *sshExecutor) RunWithOutput(cmd common.ExecutorOutputCommand, out io.Writer) error {
 	return nil
 }
 

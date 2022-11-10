@@ -3,6 +3,7 @@ package machine
 import (
 	"errors"
 	"fmt"
+	"io"
 	"sync"
 	"time"
 
@@ -81,6 +82,10 @@ func (m *machineProvider) runnerMachinesCoordinator(config *common.RunnerConfig)
 	}
 
 	return details, nil
+}
+
+func (s *machineExecutor) RunWithOutput(cmd common.ExecutorOutputCommand, out io.Writer) error {
+	return nil
 }
 
 func (m *machineProvider) create(config *common.RunnerConfig, state machineState) (*machineDetails, chan error) {

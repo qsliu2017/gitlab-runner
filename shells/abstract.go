@@ -799,6 +799,7 @@ func (b *AbstractShell) writeUploadArtifact(w ShellWriter, info common.ShellScri
 
 	args = append(args, archiverArgs...)
 
+	// TODO: this is executed before the new $GITLAB_ENV variables can be populated
 	if artifact.Name != "" {
 		args = append(args, "--name", info.Build.GetAllVariables().ExpandValue(artifact.Name))
 	}

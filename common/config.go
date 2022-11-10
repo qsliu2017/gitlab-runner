@@ -43,6 +43,8 @@ const (
 	DNSPolicyClusterFirstWithHostNet KubernetesDNSPolicy = "cluster-first-with-host-net"
 
 	GenerateArtifactsMetadataVariable = "RUNNER_GENERATE_ARTIFACTS_METADATA"
+
+	DefaultEnvFileSizeLimit = 1024 * 1024
 )
 
 // InvalidTimePeriodsError represents that the time period specified is not valid.
@@ -919,10 +921,11 @@ type RunnerSettings struct {
 
 	DebugTraceDisabled bool `toml:"debug_trace_disabled,omitempty" json:"debug_trace_disabled" long:"debug-trace-disabled" env:"RUNNER_DEBUG_TRACE_DISABLED" description:"When set to true Runner will disable the possibility of using the CI_DEBUG_TRACE feature"`
 
-	Shell          string           `toml:"shell,omitempty" json:"shell" long:"shell" env:"RUNNER_SHELL" description:"Select bash, sh, cmd, pwsh or powershell"`
-	CustomBuildDir *CustomBuildDir  `toml:"custom_build_dir,omitempty" json:"custom_build_dir" group:"custom build dir configuration" namespace:"custom_build_dir"`
-	Referees       *referees.Config `toml:"referees,omitempty" json:"referees" group:"referees configuration" namespace:"referees"`
-	Cache          *CacheConfig     `toml:"cache,omitempty" json:"cache" group:"cache configuration" namespace:"cache"`
+	Shell            string           `toml:"shell,omitempty" json:"shell" long:"shell" env:"RUNNER_SHELL" description:"Select bash, sh, cmd, pwsh or powershell"`
+	CustomBuildDir   *CustomBuildDir  `toml:"custom_build_dir,omitempty" json:"custom_build_dir" group:"custom build dir configuration" namespace:"custom_build_dir"`
+	Referees         *referees.Config `toml:"referees,omitempty" json:"referees" group:"referees configuration" namespace:"referees"`
+	Cache            *CacheConfig     `toml:"cache,omitempty" json:"cache" group:"cache configuration" namespace:"cache"`
+	EnvFileSizeLimit int64            `toml:"env_file_size_limit,omitempty" json:"env_file_size_limit,omitempty" long:"env_file_size_limit" description:"The maximum amount of data that will be read from the $GITLAB_ENV file. Defaults to 1MiB."`
 
 	// GracefulKillTimeout and ForceKillTimeout aren't exposed to the users yet
 	// because not every executor supports it. We also have to keep in mind that
@@ -1065,6 +1068,14 @@ func (r *RunnerSettings) IsFeatureFlagOn(name string) bool {
 	}
 
 	return false
+}
+
+func (r *RunnerSettings) GetEnvFileSizeLimit() int64 {
+	if r.EnvFileSizeLimit == 0 {
+		return DefaultEnvFileSizeLimit
+	}
+
+	return r.EnvFileSizeLimit
 }
 
 // IsFeatureFlagDefined checks if the feature flag is defined in the runner

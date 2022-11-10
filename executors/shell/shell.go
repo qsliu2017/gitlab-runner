@@ -1,6 +1,7 @@
 package shell
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -62,14 +63,13 @@ func (s *executor) Prepare(options common.ExecutorPrepareOptions) error {
 	return nil
 }
 
+func (s *executor) RunWithOutput(cmd common.ExecutorOutputCommand, out io.Writer) error {
+	c := newCommander(cmd.Command, cmd.Args, s.getProcessCommandOptions(out, nil, nil))
+	return s.startProcessWithAbort(cmd.Context, c)
+}
+
 func (s *executor) Run(cmd common.ExecutorCommand) error {
 	s.BuildLogger.Debugln("Using new shell command execution")
-	cmdOpts := process.CommandOptions{
-		Env:                             os.Environ(),
-		Stdout:                          s.Trace,
-		Stderr:                          s.Trace,
-		UseWindowsLegacyProcessStrategy: s.Build.IsFeatureFlagOn(featureflags.UseWindowsLegacyProcessStrategy),
-	}
 
 	args := s.BuildShell.Arguments
 	stdin, args, cleanup, err := s.shellScriptArgs(cmd, args)
@@ -78,13 +78,26 @@ func (s *executor) Run(cmd common.ExecutorCommand) error {
 	}
 	defer cleanup()
 
-	cmdOpts.Stdin = stdin
+	cmdOpts := s.getProcessCommandOptions(s.Trace, s.Trace, stdin)
 
 	// Create execution command
 	c := newCommander(s.BuildShell.Command, args, cmdOpts)
+	return s.startProcessWithAbort(cmd.Context, c)
+}
 
+func (s *executor) getProcessCommandOptions(out, err io.Writer, in io.Reader) process.CommandOptions {
+	return process.CommandOptions{
+		Env:                             os.Environ(),
+		Stdout:                          out,
+		Stderr:                          err,
+		Stdin:                           in,
+		UseWindowsLegacyProcessStrategy: s.Build.IsFeatureFlagOn(featureflags.UseWindowsLegacyProcessStrategy),
+	}
+}
+
+func (s *executor) startProcessWithAbort(ctx context.Context, c process.Commander) error {
 	// Start a process
-	err = c.Start()
+	err := c.Start()
 	if err != nil {
 		return fmt.Errorf("failed to start process: %w", err)
 	}
@@ -104,7 +117,7 @@ func (s *executor) Run(cmd common.ExecutorCommand) error {
 	select {
 	case err = <-waitCh:
 		return err
-	case <-cmd.Context.Done():
+	case <-ctx.Done():
 		logger := common.NewProcessLoggerAdapter(s.BuildLogger)
 		return newProcessKillWaiter(logger, s.Config.GetGracefulKillTimeout(), s.Config.GetForceKillTimeout()).
 			KillAndWait(c, waitCh)

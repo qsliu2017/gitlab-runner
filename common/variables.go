@@ -74,13 +74,15 @@ func (b JobVariables) Bool(key string) bool {
 }
 
 // OverwriteKey overwrites an existing key with a new variable.
-func (b JobVariables) OverwriteKey(key string, variable JobVariable) {
+func (b JobVariables) OverwriteKey(key string, variable JobVariable) bool {
 	for i, v := range b {
 		if v.Key == key {
 			b[i] = variable
-			return
+			return true
 		}
 	}
+
+	return false
 }
 
 func (b JobVariables) ExpandValue(value string) string {

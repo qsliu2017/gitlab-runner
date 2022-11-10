@@ -3,6 +3,7 @@ package parallels
 import (
 	"errors"
 	"fmt"
+	"io"
 	"time"
 
 	"gitlab.com/gitlab-org/gitlab-runner/common"
@@ -365,6 +366,10 @@ func (s *executor) sshConnect() error {
 
 	s.Debugln("Connecting to SSH server...")
 	return s.sshCommand.Connect()
+}
+
+func (s *executor) RunWithOutput(cmd common.ExecutorOutputCommand, out io.Writer) error {
+	return nil
 }
 
 func (s *executor) Run(cmd common.ExecutorCommand) error {
