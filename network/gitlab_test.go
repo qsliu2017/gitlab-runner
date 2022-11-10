@@ -276,27 +276,27 @@ func TestRegisterRunner(t *testing.T) {
 	expectedLogs := []logrus.Entry{
 		{
 			Level:   logrus.InfoLevel,
-			Message: fmt.Sprint("Registering runner...", " ", "succeeded"),
+			Message: fmt.Sprint(registeringRunner, " ", succeeded),
 		},
 		{
 			Level:   logrus.InfoLevel,
-			Message: fmt.Sprint("Registering runner...", " ", "succeeded"),
+			Message: fmt.Sprint(registeringRunner, " ", succeeded),
 		},
 		{
 			Level:   logrus.ErrorLevel,
-			Message: fmt.Sprint("Registering runner...", " ", "failed"),
+			Message: fmt.Sprint(registeringRunner, " ", failed),
 		},
 		{
 			Level:   logrus.ErrorLevel,
-			Message: fmt.Sprint("Registering runner...", " ", "forbidden", " (check registration token)"),
+			Message: fmt.Sprint(registeringRunner, " ", forbidden, " (check registration token)"),
 		},
 		{
 			Level:   logrus.ErrorLevel,
-			Message: fmt.Sprint("Registering runner...", " ", "failed"),
+			Message: fmt.Sprint(registeringRunner, " ", failed),
 		},
 		{
 			Level:   logrus.ErrorLevel,
-			Message: fmt.Sprint("Registering runner...", " ", "error"),
+			Message: fmt.Sprint(registeringRunner, " ", errorMsg),
 		},
 	}
 
@@ -354,7 +354,7 @@ func TestRegisterRunnerOnRunnerLimitHit(t *testing.T) {
 				})
 			assert.Nil(t, res)
 			require.Len(t, h.entries, 1)
-			assert.Equal(t, fmt.Sprint("Registering runner...", " ", "failed"), h.entries[0].Message)
+			assert.Equal(t, fmt.Sprint(registeringRunner, " ", failed), h.entries[0].Message)
 			assert.Contains(t, h.entries[0].Data["status"], tc.expectedMessage)
 		})
 	}
@@ -449,19 +449,19 @@ func TestUnregisterRunner(t *testing.T) {
 	expectedLogs := []logrus.Entry{
 		{
 			Level:   logrus.InfoLevel,
-			Message: fmt.Sprint("Unregistering runner from GitLab", " ", "succeeded"),
+			Message: fmt.Sprint(unregisteringRunner, " ", succeeded),
 		},
 		{
 			Level:   logrus.ErrorLevel,
-			Message: fmt.Sprint("Unregistering runner from GitLab", " ", "forbidden"),
+			Message: fmt.Sprint(unregisteringRunner, " ", forbidden),
 		},
 		{
 			Level:   logrus.ErrorLevel,
-			Message: fmt.Sprint("Unregistering runner from GitLab", " ", "failed"),
+			Message: fmt.Sprint(unregisteringRunner, " ", failed),
 		},
 		{
 			Level:   logrus.ErrorLevel,
-			Message: fmt.Sprint("Unregistering runner from GitLab", " ", "error"),
+			Message: fmt.Sprint(unregisteringRunner, " ", errorMsg),
 		},
 	}
 
@@ -543,19 +543,19 @@ func TestVerifyRunner(t *testing.T) {
 	expectedLogs := []logrus.Entry{
 		{
 			Level:   logrus.InfoLevel,
-			Message: fmt.Sprint("Verifying runner...", " ", "is alive"),
+			Message: fmt.Sprint(verifyingRunner, " ", isAlive),
 		},
 		{
 			Level:   logrus.ErrorLevel,
-			Message: fmt.Sprint("Verifying runner...", " ", "is removed"),
+			Message: fmt.Sprint(verifyingRunner, " ", isRemoved),
 		},
 		{
 			Level:   logrus.ErrorLevel,
-			Message: fmt.Sprint("Verifying runner...", " ", "failed"),
+			Message: fmt.Sprint(verifyingRunner, " ", failed),
 		},
 		{
 			Level:   logrus.ErrorLevel,
-			Message: fmt.Sprint("Verifying runner...", " ", "error"),
+			Message: fmt.Sprint(verifyingRunner, " ", errorMsg),
 		},
 	}
 
@@ -672,19 +672,19 @@ func TestResetToken(t *testing.T) {
 	expectedLogs := []logrus.Entry{
 		{
 			Level:   logrus.InfoLevel,
-			Message: fmt.Sprint("Resetting runner token...", " ", "succeeded"),
+			Message: fmt.Sprint(resettingRunnerToken, " ", succeeded),
 		},
 		{
 			Level:   logrus.InfoLevel,
-			Message: fmt.Sprint("Resetting runner token...", " ", "succeeded"),
+			Message: fmt.Sprint(resettingRunnerToken, " ", succeeded),
 		},
 		{
 			Level:   logrus.ErrorLevel,
-			Message: fmt.Sprint("Resetting runner token...", " ", "failed", " (check used token)"),
+			Message: fmt.Sprint(resettingRunnerToken, " ", failed, " (check used token)"),
 		},
 		{
 			Level:   logrus.ErrorLevel,
-			Message: fmt.Sprint("Resetting runner token...", " ", "failed"),
+			Message: fmt.Sprint(resettingRunnerToken, " ", failed),
 		},
 	}
 
@@ -818,27 +818,27 @@ func TestResetTokenWithPAT(t *testing.T) {
 	expectedLogs := []logrus.Entry{
 		{
 			Level:   logrus.InfoLevel,
-			Message: fmt.Sprint("Resetting runner token...", " ", "succeeded"),
+			Message: fmt.Sprint(resettingRunnerToken, " ", succeeded),
 		},
 		{
 			Level:   logrus.InfoLevel,
-			Message: fmt.Sprint("Resetting runner token...", " ", "succeeded"),
+			Message: fmt.Sprint(resettingRunnerToken, " ", succeeded),
 		},
 		{
 			Level:   logrus.ErrorLevel,
-			Message: fmt.Sprint("Resetting runner token...", " ", "failed"),
+			Message: fmt.Sprint(resettingRunnerToken, " ", failed),
 		},
 		{
 			Level:   logrus.ErrorLevel,
-			Message: fmt.Sprint("Resetting runner token...", " ", "failed", " (check used token)"),
+			Message: fmt.Sprint(resettingRunnerToken, " ", failed, " (check used token)"),
 		},
 		{
 			Level:   logrus.ErrorLevel,
-			Message: fmt.Sprint("Resetting runner token...", " ", "failed"),
+			Message: fmt.Sprint(resettingRunnerToken, " ", failed),
 		},
 		{
 			Level:   logrus.ErrorLevel,
-			Message: fmt.Sprint("Resetting runner token...", " ", "failed"),
+			Message: fmt.Sprint(resettingRunnerToken, " ", failed),
 		},
 	}
 
@@ -1076,19 +1076,19 @@ func TestRequestJob(t *testing.T) {
 	expectedLogs := []logrus.Entry{
 		{
 			Level:   logrus.InfoLevel,
-			Message: fmt.Sprint("Checking for jobs...", " ", "received"),
+			Message: fmt.Sprint(checkingForJobs, " ", received),
 		},
 		{
 			Level:   logrus.InfoLevel,
-			Message: fmt.Sprint("Checking for jobs...", "nothing"),
+			Message: fmt.Sprint(checkingForJobs, nothing),
 		},
 		{
 			Level:   logrus.ErrorLevel,
-			Message: fmt.Sprint("Checking for jobs...", " ", "forbidden"),
+			Message: fmt.Sprint(checkingForJobs, " ", forbidden),
 		},
 		{
 			Level:   logrus.ErrorLevel,
-			Message: fmt.Sprint("Checking for jobs...", " ", "error"),
+			Message: fmt.Sprint(checkingForJobs, " ", errorMsg),
 		},
 	}
 
@@ -1166,7 +1166,7 @@ func TestUpdateJob(t *testing.T) {
 		"Update continues when running": {
 			updateJobInfo:   UpdateJobInfo{ID: 200, State: Running, Output: output},
 			updateJobResult: UpdateJobResult{State: UpdateSucceeded},
-			additionalLog:   &logrus.Entry{Message: fmt.Sprint("Submitting job to coordinator...", "ok")},
+			additionalLog:   &logrus.Entry{Message: fmt.Sprint(submittingJobToCoordinator, ok)},
 		},
 		"Update aborts if the access is forbidden": {
 			updateJobInfo:   UpdateJobInfo{ID: 403, State: Success, Output: output},
@@ -1183,17 +1183,17 @@ func TestUpdateJob(t *testing.T) {
 		"Update returns accepted, but not completed if server returns `202 StatusAccepted`": {
 			updateJobInfo:   UpdateJobInfo{ID: 202, State: Success, Output: output},
 			updateJobResult: UpdateJobResult{State: UpdateAcceptedButNotCompleted},
-			additionalLog:   &logrus.Entry{Message: fmt.Sprint("Submitting job to coordinator...", "accepted, but not yet completed")},
+			additionalLog:   &logrus.Entry{Message: fmt.Sprint(submittingJobToCoordinator, acceptedNotCompleted)},
 		},
 		"Update returns reset content requested if server returns `412 Precondition Failed`": {
 			updateJobInfo:   UpdateJobInfo{ID: 412, State: Success, Output: output},
 			updateJobResult: UpdateJobResult{State: UpdateTraceValidationFailed},
-			additionalLog:   &logrus.Entry{Message: fmt.Sprint("Submitting job to coordinator...", "trace validation failed")},
+			additionalLog:   &logrus.Entry{Message: fmt.Sprint(submittingJobToCoordinator, traceValidationFailed)},
 		},
 		"Update should continue when script fails": {
 			updateJobInfo:   UpdateJobInfo{ID: 200, State: Failed, FailureReason: ScriptFailure, Output: output},
 			updateJobResult: UpdateJobResult{State: UpdateSucceeded},
-			additionalLog:   &logrus.Entry{Message: fmt.Sprint("Submitting job to coordinator...", "ok")},
+			additionalLog:   &logrus.Entry{Message: fmt.Sprint(submittingJobToCoordinator, ok)},
 		},
 		"Update fails for invalid failure reason": {
 			updateJobInfo: UpdateJobInfo{
@@ -1238,7 +1238,7 @@ func TestUpdateJob(t *testing.T) {
 				entriesLen++
 			}
 			require.Len(t, h.entries, entriesLen)
-			assert.Equal(t, "Updating job...", h.entries[0].Message)
+			assert.Equal(t, updatingJob, h.entries[0].Message)
 			assert.Equal(t, tc.updateJobInfo.ID, h.entries[0].Data["job"])
 			assert.Equal(t, tc.updateJobInfo.Output.Bytesize, h.entries[0].Data["bytesize"])
 			assert.Equal(t, tc.updateJobInfo.Output.Checksum, h.entries[0].Data["checksum"])
@@ -1313,11 +1313,11 @@ func TestUpdateJobAsKeepAlive(t *testing.T) {
 			logs: []logrus.Entry{
 				{
 					Level:   logrus.InfoLevel,
-					Message: fmt.Sprint("Updating job..."),
+					Message: fmt.Sprint(updatingJob),
 				},
 				{
 					Level:   logrus.InfoLevel,
-					Message: fmt.Sprint("Submitting job to coordinator...", "ok"),
+					Message: fmt.Sprint(submittingJobToCoordinator, ok),
 				},
 			},
 		},
@@ -1327,11 +1327,11 @@ func TestUpdateJobAsKeepAlive(t *testing.T) {
 			logs: []logrus.Entry{
 				{
 					Level:   logrus.InfoLevel,
-					Message: fmt.Sprint("Updating job..."),
+					Message: fmt.Sprint(updatingJob),
 				},
 				{
 					Level:   logrus.WarnLevel,
-					Message: fmt.Sprint("Submitting job to coordinator...", " ", "job failed"),
+					Message: fmt.Sprint(submittingJobToCoordinator, " ", jobFailed),
 				},
 			},
 		},
@@ -1341,11 +1341,11 @@ func TestUpdateJobAsKeepAlive(t *testing.T) {
 			logs: []logrus.Entry{
 				{
 					Level:   logrus.InfoLevel,
-					Message: fmt.Sprint("Updating job..."),
+					Message: fmt.Sprint(updatingJob),
 				},
 				{
 					Level:   logrus.WarnLevel,
-					Message: fmt.Sprint("Submitting job to coordinator...", " ", "job failed"),
+					Message: fmt.Sprint(submittingJobToCoordinator, " ", jobFailed),
 				},
 			},
 		},
@@ -1355,11 +1355,11 @@ func TestUpdateJobAsKeepAlive(t *testing.T) {
 			logs: []logrus.Entry{
 				{
 					Level:   logrus.InfoLevel,
-					Message: fmt.Sprint("Updating job..."),
+					Message: fmt.Sprint(updatingJob),
 				},
 				{
 					Level:   logrus.InfoLevel,
-					Message: fmt.Sprint("Submitting job to coordinator...", "ok"),
+					Message: fmt.Sprint(submittingJobToCoordinator, ok),
 				},
 			},
 		},
@@ -1388,10 +1388,10 @@ var patchTraceContent = []byte("trace trace trace")
 func getPatchServer(
 	t *testing.T,
 	handler func(
-	w http.ResponseWriter,
-	r *http.Request,
-	body []byte,
-	offset, limit int),
+		w http.ResponseWriter,
+		r *http.Request,
+		body []byte,
+		offset, limit int),
 ) (*httptest.Server, *GitLabClient, RunnerConfig) {
 	patchHandler := func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/api/v4/jobs/1/trace" {
@@ -1446,7 +1446,7 @@ func TestUnknownPatchTrace(t *testing.T) {
 	result := client.PatchTrace(config, &JobCredentials{ID: 1, Token: patchToken}, patchTraceContent, 0)
 	assert.Equal(t, PatchNotFound, result.State)
 	require.Len(t, h.entries, 1)
-	assert.Equal(t, fmt.Sprint("Appending trace to coordinator...", " ", "not found"), h.entries[0].Message)
+	assert.Equal(t, fmt.Sprint(appendingTraceToCoordinator, " ", notFound), h.entries[0].Message)
 }
 
 func TestForbiddenPatchTrace(t *testing.T) {
@@ -1463,7 +1463,7 @@ func TestForbiddenPatchTrace(t *testing.T) {
 	result := client.PatchTrace(config, &JobCredentials{ID: 1, Token: patchToken}, patchTraceContent, 0)
 	assert.Equal(t, PatchAbort, result.State)
 	require.Len(t, h.entries, 1)
-	assert.Equal(t, fmt.Sprint("Appending trace to coordinator...", " ", "job failed"), h.entries[0].Message)
+	assert.Equal(t, fmt.Sprint(appendingTraceToCoordinator, " ", jobFailed), h.entries[0].Message)
 }
 
 func TestPatchTrace(t *testing.T) {
@@ -1519,7 +1519,7 @@ func TestPatchTrace(t *testing.T) {
 
 			require.Len(t, h.entries, 3)
 			for _, entry := range h.entries {
-				assert.Equal(t, entry.Message, fmt.Sprint("Appending trace to coordinator...", "ok"))
+				assert.Equal(t, entry.Message, fmt.Sprint(appendingTraceToCoordinator, ok))
 			}
 		})
 	}
@@ -1551,15 +1551,15 @@ func TestRangeMismatchPatchTrace(t *testing.T) {
 	expectedLogs := []logrus.Entry{
 		{
 			Level:   logrus.WarnLevel,
-			Message: fmt.Sprint("Appending trace to coordinator...", " ", "range mismatch"),
+			Message: fmt.Sprint(appendingTraceToCoordinator, " ", rangeMismatch),
 		},
 		{
 			Level:   logrus.WarnLevel,
-			Message: fmt.Sprint("Appending trace to coordinator...", " ", "range mismatch"),
+			Message: fmt.Sprint(appendingTraceToCoordinator, " ", rangeMismatch),
 		},
 		{
 			Level:   logrus.InfoLevel,
-			Message: fmt.Sprint("Appending trace to coordinator...", "ok"),
+			Message: fmt.Sprint(appendingTraceToCoordinator, ok),
 		},
 	}
 
@@ -1614,7 +1614,7 @@ func TestJobFailedStatePatchTrace(t *testing.T) {
 	result := client.PatchTrace(config, &JobCredentials{ID: 1, Token: patchToken}, patchTraceContent, 0)
 	assert.Equal(t, PatchAbort, result.State)
 	require.Len(t, h.entries, 1)
-	assert.Equal(t, fmt.Sprint("Appending trace to coordinator...", " ", "job failed"), h.entries[0].Message)
+	assert.Equal(t, fmt.Sprint(appendingTraceToCoordinator, " ", jobFailed), h.entries[0].Message)
 }
 
 func TestPatchTraceCantConnect(t *testing.T) {
@@ -1759,9 +1759,9 @@ func TestPatchTraceUpdatedTrace(t *testing.T) {
 			assert.Equal(t, update.expectedResult, result)
 			require.Len(t, h.entries, 1)
 			if update.expectedContentRange == "" || update.expectedContentLength == 0 {
-				assert.Equal(t, fmt.Sprint("Appending trace to coordinator...", "skipped due to empty patch"), h.entries[0].Message)
+				assert.Equal(t, fmt.Sprint(appendingTraceToCoordinator, skippedEmptyPatch), h.entries[0].Message)
 			} else {
-				assert.Equal(t, fmt.Sprint("Appending trace to coordinator...", "ok"), h.entries[0].Message)
+				assert.Equal(t, fmt.Sprint(appendingTraceToCoordinator, ok), h.entries[0].Message)
 			}
 
 			sentTrace = result.SentOffset
@@ -1855,9 +1855,9 @@ func TestPatchTraceContentRangeAndLength(t *testing.T) {
 			assert.Equal(t, test.expectedResult, result)
 			require.Len(t, h.entries, 1)
 			if test.expectedContentRange == "" || test.expectedContentLength == 0 {
-				assert.Equal(t, fmt.Sprint("Appending trace to coordinator...", "skipped due to empty patch"), h.entries[0].Message)
+				assert.Equal(t, fmt.Sprint(appendingTraceToCoordinator, skippedEmptyPatch), h.entries[0].Message)
 			} else {
-				assert.Equal(t, fmt.Sprint("Appending trace to coordinator...", "ok"), h.entries[0].Message)
+				assert.Equal(t, fmt.Sprint(appendingTraceToCoordinator, ok), h.entries[0].Message)
 			}
 		})
 	}
@@ -1888,7 +1888,7 @@ func TestPatchTraceContentRangeHeaderValues(t *testing.T) {
 
 	client.PatchTrace(config, &JobCredentials{ID: 1, Token: patchToken}, patchTraceContent, 0)
 	require.Len(t, h.entries, 1)
-	assert.Equal(t, fmt.Sprint("Appending trace to coordinator...", "ok"), h.entries[0].Message)
+	assert.Equal(t, fmt.Sprint(appendingTraceToCoordinator, ok), h.entries[0].Message)
 }
 
 func TestUpdateIntervalHeaderHandling(t *testing.T) {
@@ -1954,7 +1954,7 @@ func TestUpdateIntervalHeaderHandling(t *testing.T) {
 				expectedLogs := []logrus.Entry{
 					{
 						Level:   logrus.InfoLevel,
-						Message: "Updating job...",
+						Message: updatingJob,
 					},
 				}
 				if tc.updateIntervalHeaderValue == "some text" {
@@ -1966,7 +1966,7 @@ func TestUpdateIntervalHeaderHandling(t *testing.T) {
 				}
 				expectedLogs = append(expectedLogs, logrus.Entry{
 					Level:   logrus.WarnLevel,
-					Message: fmt.Sprint("Submitting job to coordinator...", " ", "not found"),
+					Message: fmt.Sprint(submittingJobToCoordinator, " ", notFound),
 				})
 
 				require.Len(t, h.entries, len(expectedLogs))
@@ -1994,7 +1994,7 @@ func TestUpdateIntervalHeaderHandling(t *testing.T) {
 				result := client.PatchTrace(config, &JobCredentials{ID: 1, Token: patchToken}, patchTraceContent, 0)
 				assert.Equal(t, tc.expectedUpdateInterval, result.NewUpdateInterval)
 				require.Len(t, h.entries, 1)
-				assert.Equal(t, fmt.Sprint("Appending trace to coordinator...", "ok"), h.entries[0].Message)
+				assert.Equal(t, fmt.Sprint(appendingTraceToCoordinator, ok), h.entries[0].Message)
 			})
 		})
 	}
@@ -2009,21 +2009,21 @@ func TestAbortedPatchTrace(t *testing.T) {
 			expectedResult: PatchTraceResult{SentOffset: 17, CancelRequested: true, State: PatchSucceeded},
 			expectedLogEntry: logrus.Entry{
 				Level:   logrus.InfoLevel,
-				Message: fmt.Sprint("Appending trace to coordinator...", "ok"),
+				Message: fmt.Sprint(appendingTraceToCoordinator, ok),
 			},
 		},
 		statusCanceled: {
 			expectedResult: PatchTraceResult{State: PatchAbort},
 			expectedLogEntry: logrus.Entry{
 				Level:   logrus.WarnLevel,
-				Message: fmt.Sprint("Appending trace to coordinator...", " ", "job failed"),
+				Message: fmt.Sprint(appendingTraceToCoordinator, " ", jobFailed),
 			},
 		},
 		statusFailed: {
 			expectedResult: PatchTraceResult{State: PatchAbort},
 			expectedLogEntry: logrus.Entry{
 				Level:   logrus.WarnLevel,
-				Message: fmt.Sprint("Appending trace to coordinator...", " ", "job failed"),
+				Message: fmt.Sprint(appendingTraceToCoordinator, " ", jobFailed),
 			},
 		},
 	}
@@ -2220,7 +2220,7 @@ func TestArtifactsUpload(t *testing.T) {
 			fileName:       tempFile.Name(),
 			logEntry: logrus.Entry{
 				Level:   logrus.InfoLevel,
-				Message: fmt.Sprint("Uploading artifacts to coordinator...", " 201 Created"),
+				Message: fmt.Sprint(uploadingArtifactsToCoordinator, " 201 Created"),
 			},
 		},
 		"Artifacts should be not uploaded, because of too large archive": {
@@ -2231,7 +2231,7 @@ func TestArtifactsUpload(t *testing.T) {
 			fileName:       tempFile.Name(),
 			logEntry: logrus.Entry{
 				Level:   logrus.ErrorLevel,
-				Message: fmt.Sprint("Uploading artifacts to coordinator...", " 413 Request Entity Too Large"),
+				Message: fmt.Sprint(uploadingArtifactsToCoordinator, " 413 Request Entity Too Large"),
 			},
 		},
 		"Artifacts should be uploaded, as zip": {
@@ -2242,7 +2242,7 @@ func TestArtifactsUpload(t *testing.T) {
 			fileName:       tempFile.Name(),
 			logEntry: logrus.Entry{
 				Level:   logrus.InfoLevel,
-				Message: fmt.Sprint("Uploading artifacts to coordinator...", " 201 Created"),
+				Message: fmt.Sprint(uploadingArtifactsToCoordinator, " 201 Created"),
 			},
 		},
 		"Artifacts should be uploaded, as gzip": {
@@ -2253,7 +2253,7 @@ func TestArtifactsUpload(t *testing.T) {
 			fileName:       tempFile.Name(),
 			logEntry: logrus.Entry{
 				Level:   logrus.InfoLevel,
-				Message: fmt.Sprint("Uploading artifacts to coordinator...", " 201 Created"),
+				Message: fmt.Sprint(uploadingArtifactsToCoordinator, " 201 Created"),
 			},
 		},
 		"JUnit artifacts should be uploaded, as gzip": {
@@ -2281,7 +2281,7 @@ func TestArtifactsUpload(t *testing.T) {
 			fileName:       tempFile.Name(),
 			logEntry: logrus.Entry{
 				Level:   logrus.ErrorLevel,
-				Message: fmt.Sprint("Uploading artifacts to coordinator...", " 403 Forbidden"),
+				Message: fmt.Sprint(uploadingArtifactsToCoordinator, " 403 Forbidden"),
 			},
 		},
 		"Artifacts should get service unavailable": {
@@ -2292,7 +2292,7 @@ func TestArtifactsUpload(t *testing.T) {
 			fileName:       tempFile.Name(),
 			logEntry: logrus.Entry{
 				Level:   logrus.ErrorLevel,
-				Message: fmt.Sprint("Uploading artifacts to coordinator...", " 503 Service Unavailable"),
+				Message: fmt.Sprint(uploadingArtifactsToCoordinator, " 503 Service Unavailable"),
 			},
 		},
 		"Artifacts should fail to be uploaded with bad request": {
@@ -2303,7 +2303,7 @@ func TestArtifactsUpload(t *testing.T) {
 			fileName:       tempFile.Name(),
 			logEntry: logrus.Entry{
 				Level:   logrus.WarnLevel,
-				Message: fmt.Sprint("Uploading artifacts to coordinator..."),
+				Message: fmt.Sprint(uploadingArtifactsToCoordinator),
 			},
 		},
 		"Artifacts should fail to be uploaded with bad request not json": {
@@ -2314,7 +2314,7 @@ func TestArtifactsUpload(t *testing.T) {
 			fileName:       tempFile.Name(),
 			logEntry: logrus.Entry{
 				Level:   logrus.WarnLevel,
-				Message: fmt.Sprint("Uploading artifacts to coordinator...", " 400 Bad Request"),
+				Message: fmt.Sprint(uploadingArtifactsToCoordinator, " 400 Bad Request"),
 			},
 		},
 		"Artifacts upload should be redirected": {
@@ -2524,7 +2524,7 @@ func TestArtifactsDownload(t *testing.T) {
 			expectedArtifact: "Artifact: direct_download=missing",
 			logEntry: logrus.Entry{
 				Level:   logrus.InfoLevel,
-				Message: fmt.Sprint("Downloading artifacts from coordinator...", " ", "ok"),
+				Message: fmt.Sprint(downloadingArtifactsFromCoordinator, " ", ok),
 			},
 		},
 		"properly handles direct_download=false": {
@@ -2534,7 +2534,7 @@ func TestArtifactsDownload(t *testing.T) {
 			expectedArtifact: "Artifact: direct_download=false",
 			logEntry: logrus.Entry{
 				Level:   logrus.InfoLevel,
-				Message: fmt.Sprint("Downloading artifacts from coordinator...", " ", "ok"),
+				Message: fmt.Sprint(downloadingArtifactsFromCoordinator, " ", ok),
 			},
 		},
 		"properly handles direct_download=true": {
@@ -2544,7 +2544,7 @@ func TestArtifactsDownload(t *testing.T) {
 			expectedArtifact: "Artifact: direct_download=true",
 			logEntry: logrus.Entry{
 				Level:   logrus.InfoLevel,
-				Message: fmt.Sprint("Downloading artifacts from coordinator...", " ", "ok"),
+				Message: fmt.Sprint(downloadingArtifactsFromCoordinator, " ", ok),
 			},
 		},
 		"forbidden should be generated for invalid credentials": {
@@ -2553,7 +2553,7 @@ func TestArtifactsDownload(t *testing.T) {
 			expectedState:  DownloadForbidden,
 			logEntry: logrus.Entry{
 				Level:   logrus.ErrorLevel,
-				Message: fmt.Sprint("Downloading artifacts from coordinator...", " ", "forbidden"),
+				Message: fmt.Sprint(downloadingArtifactsFromCoordinator, " ", forbidden),
 			},
 		},
 		"unauthorized should be generated for unauthorized credentials": {
@@ -2562,7 +2562,7 @@ func TestArtifactsDownload(t *testing.T) {
 			expectedState:  DownloadUnauthorized,
 			logEntry: logrus.Entry{
 				Level:   logrus.ErrorLevel,
-				Message: fmt.Sprint("Downloading artifacts from coordinator...", " ", "unauthorized"),
+				Message: fmt.Sprint(downloadingArtifactsFromCoordinator, " ", unauthorized),
 			},
 		},
 		"file should not be downloaded if not existing": {
@@ -2571,7 +2571,7 @@ func TestArtifactsDownload(t *testing.T) {
 			expectedState:  DownloadNotFound,
 			logEntry: logrus.Entry{
 				Level:   logrus.ErrorLevel,
-				Message: fmt.Sprint("Downloading artifacts from coordinator...", " ", "not found"),
+				Message: fmt.Sprint(downloadingArtifactsFromCoordinator, " ", notFound),
 			},
 		},
 		"forbidden should be generated for object storage forbidden error": {
@@ -2580,7 +2580,7 @@ func TestArtifactsDownload(t *testing.T) {
 			expectedState:  DownloadForbidden,
 			logEntry: logrus.Entry{
 				Level:   logrus.ErrorLevel,
-				Message: fmt.Sprint("Downloading artifacts from coordinator...", " ", "forbidden"),
+				Message: fmt.Sprint(downloadingArtifactsFromCoordinator, " ", forbidden),
 			},
 		},
 		"forbidden should be generated for object storage forbidden with bad JSON error": {
@@ -2589,7 +2589,7 @@ func TestArtifactsDownload(t *testing.T) {
 			expectedState:  DownloadForbidden,
 			logEntry: logrus.Entry{
 				Level:   logrus.ErrorLevel,
-				Message: fmt.Sprint("Downloading artifacts from coordinator...", " ", "forbidden"),
+				Message: fmt.Sprint(downloadingArtifactsFromCoordinator, " ", forbidden),
 			},
 		},
 		"forbidden should be generated for object storage forbidden with bad XML error": {
@@ -2598,7 +2598,7 @@ func TestArtifactsDownload(t *testing.T) {
 			expectedState:  DownloadForbidden,
 			logEntry: logrus.Entry{
 				Level:   logrus.ErrorLevel,
-				Message: fmt.Sprint("Downloading artifacts from coordinator...", " ", "forbidden"),
+				Message: fmt.Sprint(downloadingArtifactsFromCoordinator, " ", forbidden),
 			},
 		},
 		"forbidden should be generated for object storage forbidden with no error code in XML": {
@@ -2607,7 +2607,7 @@ func TestArtifactsDownload(t *testing.T) {
 			expectedState:  DownloadForbidden,
 			logEntry: logrus.Entry{
 				Level:   logrus.ErrorLevel,
-				Message: fmt.Sprint("Downloading artifacts from coordinator...", " ", "forbidden"),
+				Message: fmt.Sprint(downloadingArtifactsFromCoordinator, " ", forbidden),
 			},
 		},
 	}
