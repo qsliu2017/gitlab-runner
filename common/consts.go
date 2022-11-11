@@ -61,6 +61,16 @@ const (
 	IncompatiblePullPolicy          = "pull_policy (%v) defined in %s is not one of the allowed_pull_policies (%v)"
 )
 
+const (
+	CustomExecutor        = "custom"
+	ShellExecutor         = "shell"
+	SSHExecutor           = "ssh"
+	KubernetesExecutor    = "kubernetes"
+	DockerExecutor        = "docker"
+	DockerMachineExecutor = "docker+machine"
+	DockerWindowsExecutor = "docker-windows"
+)
+
 type PullPolicySource string
 
 const (

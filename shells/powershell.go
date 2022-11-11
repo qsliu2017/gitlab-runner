@@ -15,8 +15,6 @@ import (
 )
 
 const (
-	dockerWindowsExecutor = "docker-windows"
-
 	SNPwsh       = "pwsh"
 	SNPowershell = "powershell"
 
@@ -437,7 +435,7 @@ func (b *PowerShell) GetName() string {
 func (b *PowerShell) GetConfiguration(info common.ShellScriptInfo) (*common.ShellConfiguration, error) {
 	script := &common.ShellConfiguration{
 		Command:       b.Shell,
-		PassFile:      b.Shell != SNPwsh && info.Build.Runner.Executor != dockerWindowsExecutor,
+		PassFile:      b.isPassFile(runtime.GOOS, info),
 		Extension:     "ps1",
 		DockerCommand: PowershellDockerCmd(b.Shell),
 	}
@@ -467,6 +465,29 @@ func (b *PowerShell) GetConfiguration(info common.ShellScriptInfo) (*common.Shel
 	script.CmdLine = strings.Join(append([]string{script.Command}, script.Arguments...), " ")
 
 	return script, nil
+}
+
+// Based on the MR https://gitlab.com/gitlab-org/gitlab-runner/-/merge_requests/3298
+// and the issue https://gitlab.com/gitlab-org/gitlab-runner/-/issues/29000,
+// this is a summary of the condition needed to pass jobs scripts to executors as file.
+// |------------|---------------|-----------------------------------------------------------|
+// | OS 		| shell			| Executors													|
+// |------------|---------------|-----------------------------------------------------------|
+// | Linux		| powershell	| all but docker+windows									|
+// | Windows	| all			| ssh, shell, custom, docker+machine						|
+// |------------|---------------|-----------------------------------------------------------|
+// For all other combinations of OSs, shells and executors, scripts are passed via stdin
+// When the manager is running on a darwin OS the behavior expected is similar to windows OS
+// as the runtime.GOOS returns darwin (not linux)
+func (b *PowerShell) isPassFile(os string, info common.ShellScriptInfo) bool {
+	executor := info.Build.Runner.Executor
+
+	if os == OSLinux {
+		return b.Shell != SNPwsh && executor != common.DockerWindowsExecutor
+	}
+
+	return executor == common.DockerMachineExecutor ||
+		executor == common.ShellExecutor || executor == common.SSHExecutor || executor == common.CustomExecutor
 }
 
 func (b *PowerShell) scriptArgs(script *common.ShellConfiguration) []string {
