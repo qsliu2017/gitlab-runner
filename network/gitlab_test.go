@@ -1359,7 +1359,6 @@ func TestPatchTrace(t *testing.T) {
 
 			require.Len(t, h.entries, 3)
 			for _, entry := range h.entries {
-
 				assert.Equal(t, entry.Message, "Appending trace to coordinator...ok")
 			}
 		})
@@ -1596,7 +1595,6 @@ func TestPatchTraceUpdatedTrace(t *testing.T) {
 			assert.Equal(t, update.expectedResult, result)
 			require.Len(t, h.entries, 1)
 			if update.expectedContentRange == "" || update.expectedContentLength == 0 {
-
 				assert.Equal(t, "Appending trace to coordinator...skipped due to empty patch", h.entries[0].Message)
 			} else {
 				assert.Equal(t, "Appending trace to coordinator...ok", h.entries[0].Message)
@@ -1693,7 +1691,6 @@ func TestPatchTraceContentRangeAndLength(t *testing.T) {
 			assert.Equal(t, test.expectedResult, result)
 			require.Len(t, h.entries, 1)
 			if test.expectedContentRange == "" || test.expectedContentLength == 0 {
-
 				assert.Equal(t, "Appending trace to coordinator...skipped due to empty patch", h.entries[0].Message)
 			} else {
 				assert.Equal(t, "Appending trace to coordinator...ok", h.entries[0].Message)
