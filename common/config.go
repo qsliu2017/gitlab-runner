@@ -434,6 +434,7 @@ type KubernetesConfig struct {
 	AllowedServices                                   []string                           `toml:"allowed_services,omitempty" json:"allowed_services" long:"allowed-services" env:"KUBERNETES_ALLOWED_SERVICES" description:"Service allowlist"`
 	PullPolicy                                        StringOrArray                      `toml:"pull_policy,omitempty" json:"pull_policy" long:"pull-policy" env:"KUBERNETES_PULL_POLICY" description:"Policy for if/when to pull a container image (never, if-not-present, always). The cluster default will be used if not set"`
 	NodeSelector                                      map[string]string                  `toml:"node_selector,omitempty" json:"node_selector" long:"node-selector" env:"KUBERNETES_NODE_SELECTOR" description:"A toml table/json object of key:value. Value is expected to be a string. When set this will create pods on k8s nodes that match all the key:value pairs. Only one selector is supported through environment variable configuration."`
+	NodeSelectorOverwriteAllowed                      string                             `toml:"node_selector_overwrite_allowed" json:"node_selector_overwrite_allowed" long:"node_selector_overwrite_allowed" env:"KUBERNETES_NODE_SELECTOR_OVERWRITE_ALLOWED" description:"Regex to validate 'KUBERNETES_NODE_SELECTOR_*' values"`
 	NodeTolerations                                   map[string]string                  `toml:"node_tolerations,omitempty" json:"node_tolerations" long:"node-tolerations" env:"KUBERNETES_NODE_TOLERATIONS" description:"A toml table/json object of key=value:effect. Value and effect are expected to be strings. When set, pods will tolerate the given taints. Only one toleration is supported through environment variable configuration."`
 	Affinity                                          KubernetesAffinity                 `toml:"affinity,omitempty" json:"affinity" long:"affinity" description:"Kubernetes Affinity setting that is used to select the node that spawns a pod"`
 	ImagePullSecrets                                  []string                           `toml:"image_pull_secrets,omitempty" json:"image_pull_secrets" long:"image-pull-secrets" env:"KUBERNETES_IMAGE_PULL_SECRETS" description:"A list of image pull secrets that are used for pulling docker image"`
@@ -750,8 +751,8 @@ type KubernetesLifecycleTCPSocket struct {
 
 // ToKubernetesLifecycleHandler converts our lifecycle structs to the ones from the Kubernetes API.
 // We can't use them directly since they don't suppor toml.
-func (h *KubernetesLifecycleHandler) ToKubernetesLifecycleHandler() *api.Handler {
-	kubeHandler := &api.Handler{}
+func (h *KubernetesLifecycleHandler) ToKubernetesLifecycleHandler() *api.LifecycleHandler {
+	kubeHandler := &api.LifecycleHandler{}
 
 	if h.Exec != nil {
 		kubeHandler.Exec = &api.ExecAction{
@@ -977,6 +978,8 @@ type Config struct {
 	SentryDSN     *string         `toml:"sentry_dsn"`
 	ModTime       time.Time       `toml:"-"`
 	Loaded        bool            `toml:"-"`
+
+	ShutdownTimeout int `toml:"shutdown_timeout,omitempty" json:"shutdown_timeout" description:"Number of seconds after which the forceful shutdown operation will timeout and process will exit"`
 
 	configSaver ConfigSaver
 }
@@ -1712,6 +1715,14 @@ func (c *Config) GetCheckInterval() time.Duration {
 		return time.Duration(c.CheckInterval) * time.Second
 	}
 	return CheckInterval
+}
+
+func (c *Config) GetShutdownTimeout() time.Duration {
+	if c.ShutdownTimeout > 0 {
+		return time.Duration(c.ShutdownTimeout) * time.Second
+	}
+
+	return DefaultShutdownTimeout
 }
 
 // GetPullPolicySource returns the source (i.e. file) of the pull_policy

@@ -106,17 +106,23 @@ func TestPowershell_IsDefault(t *testing.T) {
 
 //nolint:lll
 func TestPowershell_GetConfiguration(t *testing.T) {
+	const (
+		powershellStdinExpectedLine = "powershell -NoProfile -NoLogo -InputFormat text -OutputFormat text -NonInteractive -ExecutionPolicy Bypass -EncodedCommand JABPAHUAdABwAHUAdABFAG4AYwBvAGQAaQBuAGcAIAA9ACAAWwBjAG8AbgBzAG8AbABlAF0AOgA6AEkAbgBwAHUAdABFAG4AYwBvAGQAaQBuAGcAIAA9ACAAWwBjAG8AbgBzAG8AbABlAF0AOgA6AE8AdQB0AHAAdQB0AEUAbgBjAG8AZABpAG4AZwAgAD0AIABOAGUAdwAtAE8AYgBqAGUAYwB0ACAAUwB5AHMAdABlAG0ALgBUAGUAeAB0AC4AVQBUAEYAOABFAG4AYwBvAGQAaQBuAGcADQAKAHAAbwB3AGUAcgBzAGgAZQBsAGwAIAAtAEMAbwBtAG0AYQBuAGQAIAAtAA0ACgA="
+		pwshStdinExpectedLine       = "pwsh -NoProfile -NoLogo -InputFormat text -OutputFormat text -NonInteractive -ExecutionPolicy Bypass -EncodedCommand JABPAHUAdABwAHUAdABFAG4AYwBvAGQAaQBuAGcAIAA9ACAAWwBjAG8AbgBzAG8AbABlAF0AOgA6AEkAbgBwAHUAdABFAG4AYwBvAGQAaQBuAGcAIAA9ACAAWwBjAG8AbgBzAG8AbABlAF0AOgA6AE8AdQB0AHAAdQB0AEUAbgBjAG8AZABpAG4AZwAgAD0AIABOAGUAdwAtAE8AYgBqAGUAYwB0ACAAUwB5AHMAdABlAG0ALgBUAGUAeAB0AC4AVQBUAEYAOABFAG4AYwBvAGQAaQBuAGcADQAKAHAAdwBzAGgAIAAtAEMAbwBtAG0AYQBuAGQAIAAtAA0ACgA="
+	)
+
 	testCases := map[string]struct {
 		shell    string
 		executor string
 		user     string
 		os       string
+		passFile bool
 
 		expectedError        error
 		expectedPassFile     bool
 		expectedCommand      string
 		expectedCmdLine      string
-		getExpectedArguments func() []string
+		getExpectedArguments func(shell string) []string
 	}{
 		"powershell on docker-windows": {
 			shell:    SNPowershell,
@@ -125,7 +131,7 @@ func TestPowershell_GetConfiguration(t *testing.T) {
 			expectedPassFile:     false,
 			expectedCommand:      SNPowershell,
 			getExpectedArguments: stdinCmdArgs,
-			expectedCmdLine:      "powershell -NoProfile -NoLogo -InputFormat text -OutputFormat text -NonInteractive -ExecutionPolicy Bypass -Command -",
+			expectedCmdLine:      powershellStdinExpectedLine,
 		},
 		"pwsh on docker-windows": {
 			shell:    SNPwsh,
@@ -134,7 +140,7 @@ func TestPowershell_GetConfiguration(t *testing.T) {
 			expectedPassFile:     false,
 			expectedCommand:      SNPwsh,
 			getExpectedArguments: stdinCmdArgs,
-			expectedCmdLine:      "pwsh -NoProfile -NoLogo -InputFormat text -OutputFormat text -NonInteractive -ExecutionPolicy Bypass -Command -",
+			expectedCmdLine:      pwshStdinExpectedLine,
 		},
 		"pwsh on docker": {
 			shell:    SNPwsh,
@@ -143,7 +149,7 @@ func TestPowershell_GetConfiguration(t *testing.T) {
 			expectedPassFile:     false,
 			expectedCommand:      SNPwsh,
 			getExpectedArguments: stdinCmdArgs,
-			expectedCmdLine:      "pwsh -NoProfile -NoLogo -InputFormat text -OutputFormat text -NonInteractive -ExecutionPolicy Bypass -Command -",
+			expectedCmdLine:      pwshStdinExpectedLine,
 		},
 		"pwsh on kubernetes": {
 			shell:    SNPwsh,
@@ -152,7 +158,7 @@ func TestPowershell_GetConfiguration(t *testing.T) {
 			expectedPassFile:     false,
 			expectedCommand:      SNPwsh,
 			getExpectedArguments: stdinCmdArgs,
-			expectedCmdLine:      "pwsh -NoProfile -NoLogo -InputFormat text -OutputFormat text -NonInteractive -ExecutionPolicy Bypass -Command -",
+			expectedCmdLine:      pwshStdinExpectedLine,
 		},
 		"pwsh on shell": {
 			shell:    SNPwsh,
@@ -161,16 +167,7 @@ func TestPowershell_GetConfiguration(t *testing.T) {
 			expectedPassFile:     false,
 			expectedCommand:      SNPwsh,
 			getExpectedArguments: stdinCmdArgs,
-			expectedCmdLine:      "pwsh -NoProfile -NoLogo -InputFormat text -OutputFormat text -NonInteractive -ExecutionPolicy Bypass -Command -",
-		},
-		"powershell on shell": {
-			shell:    SNPowershell,
-			executor: "shell",
-
-			expectedPassFile:     true,
-			expectedCommand:      SNPowershell,
-			getExpectedArguments: fileCmdArgs,
-			expectedCmdLine:      "powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command",
+			expectedCmdLine:      pwshStdinExpectedLine,
 		},
 		"pwsh on shell with custom user (linux)": {
 			shell:    SNPwsh,
@@ -180,9 +177,22 @@ func TestPowershell_GetConfiguration(t *testing.T) {
 
 			expectedPassFile: false,
 			expectedCommand:  "su",
-			expectedCmdLine:  "su -s /usr/bin/pwsh custom -c pwsh -NoProfile -NoLogo -InputFormat text -OutputFormat text -NonInteractive -ExecutionPolicy Bypass -Command -",
-			getExpectedArguments: func() []string {
-				return []string{"-s", "/usr/bin/" + SNPwsh, "custom", "-c", SNPwsh + " " + strings.Join(stdinCmdArgs(), " ")}
+			expectedCmdLine:  "su -s /usr/bin/pwsh custom -c " + pwshStdinExpectedLine,
+			getExpectedArguments: func(shell string) []string {
+				return []string{"-s", "/usr/bin/pwsh", "custom", "-c", SNPwsh + " " + strings.Join(stdinCmdArgs(shell), " ")}
+			},
+		},
+		"pwsh on shell with custom user (darwin)": {
+			shell:    SNPwsh,
+			executor: "shell",
+			user:     "custom",
+			os:       "darwin",
+
+			expectedPassFile: false,
+			expectedCommand:  "su",
+			expectedCmdLine:  "su custom -c " + pwshStdinExpectedLine,
+			getExpectedArguments: func(shell string) []string {
+				return []string{"custom", "-c", SNPwsh + " " + strings.Join(stdinCmdArgs(shell), " ")}
 			},
 		},
 		"pwsh on shell with custom user (windows)": {
@@ -193,20 +203,33 @@ func TestPowershell_GetConfiguration(t *testing.T) {
 
 			expectedPassFile: false,
 			expectedCommand:  "su",
-			expectedCmdLine:  "su custom -c pwsh -NoProfile -NoLogo -InputFormat text -OutputFormat text -NonInteractive -ExecutionPolicy Bypass -Command -",
-			getExpectedArguments: func() []string {
-				return []string{"-s", "custom", "-c", SNPwsh + " " + strings.Join(stdinCmdArgs(), " ")}
+			expectedCmdLine:  "su custom -c " + pwshStdinExpectedLine,
+			getExpectedArguments: func(shell string) []string {
+				return []string{"-s", "custom", "-c", SNPwsh + " " + strings.Join(stdinCmdArgs(shell), " ")}
 			},
 		},
-		"powershell docker-windows change user": {
+		"powershell on shell - FF_DISABLE_POWERSHELL_STDIN true": {
 			shell:    SNPowershell,
-			executor: "anything-but-docker-windows",
-			user:     "custom",
+			executor: "shell",
+			passFile: true,
 
-			expectedError: &powershellChangeUserError{
-				shell:    SNPowershell,
-				executor: "anything-but-docker-windows",
+			expectedPassFile: true,
+			expectedCommand:  SNPowershell,
+			getExpectedArguments: func(_ string) []string {
+				return fileCmdArgs()
 			},
+			expectedCmdLine: "powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command",
+		},
+		"powershell on shell - FF_DISABLE_POWERSHELL_STDIN false": {
+			shell:    SNPowershell,
+			executor: "shell",
+
+			expectedPassFile: false,
+			expectedCommand:  SNPowershell,
+			getExpectedArguments: func(_ string) []string {
+				return stdinCmdArgs(SNPowershell)
+			},
+			expectedCmdLine: powershellStdinExpectedLine,
 		},
 	}
 
@@ -224,6 +247,17 @@ func TestPowershell_GetConfiguration(t *testing.T) {
 					Runner: &common.RunnerConfig{},
 				},
 			}
+
+			if tc.passFile {
+				info.Build.JobResponse.Variables = append(
+					info.Build.JobResponse.Variables,
+					common.JobVariable{
+						Key:   "FF_DISABLE_POWERSHELL_STDIN",
+						Value: "true",
+					},
+				)
+			}
+
 			info.Build.Runner.Executor = tc.executor
 
 			shellConfig, err := shell.GetConfiguration(info)
@@ -233,7 +267,7 @@ func TestPowershell_GetConfiguration(t *testing.T) {
 			}
 
 			require.NoError(t, err)
-			assert.Equal(t, tc.getExpectedArguments(), shellConfig.Arguments)
+			assert.Equal(t, tc.getExpectedArguments(tc.shell), shellConfig.Arguments)
 			assert.Equal(t, tc.expectedCommand, shellConfig.Command)
 			assert.Equal(t, PowershellDockerCmd(tc.shell), shellConfig.DockerCommand)
 			assert.Equal(t, tc.expectedCmdLine, shellConfig.CmdLine)
@@ -247,7 +281,7 @@ func TestPowershellCmdArgs(t *testing.T) {
 	for _, tc := range []string{SNPwsh, SNPowershell} {
 		t.Run(tc, func(t *testing.T) {
 			args := PowershellDockerCmd(tc)
-			assert.Equal(t, append([]string{tc}, stdinCmdArgs()...), args)
+			assert.Equal(t, append([]string{tc}, stdinCmdArgs(tc)...), args)
 		})
 	}
 }
