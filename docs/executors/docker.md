@@ -6,249 +6,146 @@ info: To determine the technical writer assigned to the Stage/Group associated w
 
 # The Docker executor **(FREE)**
 
-GitLab Runner can use Docker to run jobs on user provided images. This is
-possible with the use of **Docker** executor.
+GitLab Runner uses the Docker executor to run jobs on Docker images.
 
-The **Docker** executor when used with GitLab CI, connects to [Docker Engine](https://www.docker.com/products/container-runtime/)
-and runs each build in a separate and isolated container using the predefined
-image that is [set up in `.gitlab-ci.yml`](https://docs.gitlab.com/ee/ci/yaml/index.html) and in accordance in
-[`config.toml`](../commands/index.md#configuration-file).
+You can use the Docker executor to:
 
-That way you can have a simple and reproducible build environment that can also
-run on your workstation. The added benefit is that you can test all the
-commands that we will explore later from your shell, rather than having to test
-them on a dedicated CI server.
+- Use reproducible build environments that also run on your workstation.
+- Test commands from your shell instead of testing them on a dedicated CI/CD server.
 
-The following configurations are supported:
+The Docker executor uses [Docker Engine](https://www.docker.com/products/container-runtime/)
+to run each build in a separate and isolated container.
 
-| Runner is installed on:  | Executor is:     | Container is running: |
-|--------------------------|------------------|------------------------|
-| Windows                  | `docker-windows` | Windows                |
-| Windows                  | `docker`         | Linux                  |
-| Linux                    | `docker`         | Linux                  |
+To connect to Docker Engine, the Docker executor uses:
+
+- The image and services you define in [`.gitlab-ci.yml`](https://docs.gitlab.com/ee/ci/yaml/index.html).
+- The configurations you define in [`config.toml`](../commands/index.md#configuration-file).
+
+## Docker executor workflow
+
+The Docker executor divides a job into multiple steps:
+
+1. **Prepare**: Creates and starts the [services](https://docs.gitlab.com/ee/ci/yaml/#services).
+1. **Pre-job**: Clones, restores the [cache](https://docs.gitlab.com/ee/ci/yaml/#cache),
+   and downloads [artifacts](https://docs.gitlab.com/ee/ci/yaml/#artifacts) from previous
+   stages. This job runs on a special Docker image.
+1. **Job**: User build. This job runs on your defined Docker image.
+1. **Post-job**: Create cache and upload artifacts to GitLab. This job runs on
+   a special Docker Image.
+
+The special Docker image is based on [Alpine Linux](https://alpinelinux.org/), and contains the tools
+to run the prepare, pre-job, and post-job steps. For the definition of the special Docker image, see
+[the GitLab Runner repository](https://gitlab.com/gitlab-org/gitlab-runner/-/tree/v13.4.1/dockerfiles/runner-helper).
+
+## Supported configurations
+
+The Docker executor supports the following configurations:
+
+| GitLab Runner is installed on:   | Docker executor is:     | Container is running on: |
+|----------------------------------|-------------------------|--------------------------|
+| Windows                          | `docker-windows`        | Windows                  |
+| Windows                          | `docker`                | Linux                    |
+| Linux                            | `docker`                | Linux                    |
 
 These configurations are **not** supported:
 
-| Runner is installed on:  | Executor is:     | Container is running: |
-|--------------------------|------------------|------------------------|
-| Linux                    | `docker-windows` | Linux                  |
-| Linux                    | `docker`         | Windows                |
-| Linux                    | `docker-windows` | Windows                |
-| Windows                  | `docker`         | Windows                |
-| Windows                  | `docker-windows` | Linux                  |
+| GitLab Runner is installed on:   | Docker executor is:     | Container is running on: |
+|----------------------------------|-------------------------|--------------------------|
+| Linux                            | `docker-windows`        | Linux                    |
+| Linux                            | `docker`                | Windows                  |
+| Linux                            | `docker-windows`        | Windows                  |
+| Windows                          | `docker`                | Windows                  |
+| Windows                          | `docker-windows`        | Linux                    |
 
 NOTE:
 GitLab Runner uses Docker Engine API
-[v1.25](https://docs.docker.com/engine/api/v1.25/) to talk to the Docker
-Engine. This means the
-[minimum supported version](https://docs.docker.com/engine/api/#api-version-matrix)
-of Docker on a Linux server is `1.13.0`,
-[on Windows Server it needs to be more recent](#supported-docker-versions)
-to identify the Windows Server version.
+[v1.25](https://docs.docker.com/engine/api/v1.25/) to communicate with the Docker
+Engine. This means that the [minimum supported version](https://docs.docker.com/engine/api/#api-version-matrix)
+of Docker on a Linux server is `1.13.0`. The supported Windows Server needs to be more [recent](#supported-docker-versions).
 
-## Using Windows containers
+### Supported shells
 
-> [Introduced](https://gitlab.com/groups/gitlab-org/-/epics/535) in GitLab Runner 11.11.
+To run your build with the `image` directive on your Docker image, you must
+have a working shell with its operating system `PATH`.
 
-To use Windows containers with the Docker executor, note the following
-information about limitations, supported Windows versions, and
-configuring a Windows Docker executor.
+GitLab Runner supports the following shells:
 
-### Nanoserver support
+- Windows
+  - PowerShell
+- Linux
+  - `sh`
+  - `bash`
+  - `pwsh`. [Available in GitLab Runner 13.9 and later](https://gitlab.com/gitlab-org/gitlab-runner/-/issues/4021).
 
-> [Introduced](https://gitlab.com/gitlab-org/gitlab-runner/-/merge_requests/2492) in GitLab Runner 13.6.
+GitLab Runner cannot execute a command using the underlying OS system calls, such as `exec`.
 
-With the support for Powershell Core introduced in the Windows helper image, it is now possible to leverage
-the `nanoserver` variants for the helper image.
+## Docker executor network configurations
 
-### Limitations of Docker executor on Windows
+You must configure a network to connect services to a CI/CD job. You can also configure a network to run jobs in user-defined networks.
 
-The following are some limitations of using Windows containers with
-Docker executor:
+To configure a network, you can either:
 
-- Docker-in-Docker is not supported, since it's
-  [not supported](https://github.com/docker-library/docker/issues/49) by
-  Docker itself.
-- Interactive web terminals are not supported.
-- Host device mounting not supported.
-- When mounting a volume directory it has to exist, or Docker will fail
-  to start the container, see
-  [#3754](https://gitlab.com/gitlab-org/gitlab-runner/-/issues/3754) for
-  additional detail.
-- `docker-windows` executor can be run only using GitLab Runner running
-  on Windows.
-- [Linux containers on Windows](https://learn.microsoft.com/en-us/virtualization/windowscontainers/deploy-containers/linux-containers)
-  are not supported, since they are still experimental. Read
-  [the relevant issue](https://gitlab.com/gitlab-org/gitlab-runner/-/issues/4373) for
-  more details.
-- Because of a [limitation in Docker](https://github.com/MicrosoftDocs/Virtualization-Documentation/issues/334),
-  if the destination path drive letter is not `c:`, paths are not supported for:
+- Configure a runner to create a network per build. Recommended.
+- Define container links. Container links are a legacy feature of Docker.
 
-  - [`builds_dir`](../configuration/advanced-configuration.md#the-runners-section)
-  - [`cache_dir`](../configuration/advanced-configuration.md#the-runners-section)
-  - [`volumes`](../configuration/advanced-configuration.md#volumes-in-the-runnersdocker-section)
+### Configure the runner to create a network per job
 
-  This means values such as `f:\\cache_dir` are not supported, but `f:` is supported.
-  However, if the destination path is on the `c:` drive, paths are also supported
-  (for example `c:\\cache_dir`).
+> [Introduced](https://gitlab.com/gitlab-org/gitlab-runner/-/issues/1042) in GitLab Runner 12.9.
 
-### Supported Windows versions
+- Prerequisites:
+  - You must enable the [`FF_NETWORK_PER_BUILD` feature flag](../configuration/feature-flags.md)
 
-GitLab Runner only supports the following versions of Windows which
-follows our [support lifecycle for Windows](../install/windows.md#windows-version-support-policy):
-
-- Windows Server 21H1/LTSC2022.
-- Windows Server 20H2.
-- Windows Server 2004.
-- Windows Server 1809.
-
-For future Windows Server versions, we have a
-[future version support policy](../install/windows.md#windows-version-support-policy).
-
-You can only run containers based on the same OS version that the Docker
-daemon is running on. For example, the following [`Windows Server Core`](https://hub.docker.com/_/microsoft-windows-servercore) images can
-be used:
-
-- `mcr.microsoft.com/windows/servercore:ltsc2022`
-- `mcr.microsoft.com/windows/servercore:ltsc2022-amd64`
-- `mcr.microsoft.com/windows/servercore:20H2`
-- `mcr.microsoft.com/windows/servercore:20H2-amd64`
-- `mcr.microsoft.com/windows/servercore:2004`
-- `mcr.microsoft.com/windows/servercore:2004-amd64`
-- `mcr.microsoft.com/windows/servercore:1809`
-- `mcr.microsoft.com/windows/servercore:1809-amd64`
-- `mcr.microsoft.com/windows/servercore:ltsc2019`
-
-### Supported Docker versions
-
-A Windows Server running GitLab Runner must be running a recent version of Docker
-because GitLab Runner uses Docker to detect what version of Windows Server is running.
-
-A known version of Docker that doesn't work with GitLab Runner is `Docker 17.06`
-since Docker does not identify the version of Windows Server resulting in the
-following error:
-
-```plaintext
-unsupported Windows Version: Windows Server Datacenter
-```
-
-[Read more about troubleshooting this](../install/windows.md#docker-executor-unsupported-windows-version).
-
-### Configuring a Windows Docker executor
-
-NOTE:
-When a runner is registered with `c:\\cache`
-as a source directory when passing the `--docker-volumes` or
-`DOCKER_VOLUMES` environment variable, there is a
-[known issue](https://gitlab.com/gitlab-org/gitlab-runner/-/issues/4312).
-
-Below is an example of the configuration for a simple Docker
-executor running Windows.
+To configure the runner to create a bridge network for each job, set the `FF_NETWORK_PER_BUILD` variable
+in `config.toml`.
 
 ```toml
-[[runners]]
-  name = "windows-docker-2019"
-  url = "https://gitlab.com/"
-  token = "xxxxxxx"
-  executor = "docker-windows"
-  [runners.docker]
-    image = "mcr.microsoft.com/windows/servercore:1809_amd64"
-    volumes = ["c:\\cache"]
+
 ```
 
-For other configuration options for the Docker executor, see the
-[advanced configuration](../configuration/advanced-configuration.md#the-runnersdocker-section)
-section.
+To set the default Docker address pool, use `default-address-pool` in
+[`dockerd`](https://docs.docker.com/engine/reference/commandline/dockerd/). If CIDR ranges are already
+in use, Docker networks might conflict with other networks on the host, including other Docker networks.
 
-### Services
+To enable IPv6 support for this network, set `enable_ipv6` to `true` in the Docker configuration.
+This feature works only when the Docker daemon is configured with IPv6 enabled. To enable IPv6 support on your host, see the [Docker documentation](https://docs.docker.com/config/daemon/ipv6/).
 
-In [GitLab Runner 12.9 and later](https://gitlab.com/gitlab-org/gitlab-runner/-/issues/1042),
-you can use [services](https://docs.gitlab.com/ee/ci/services/) by
-enabling [a network for each job](#create-a-network-for-each-job).
+The job container is resolvable by using the `build` alias as well, because the hostname is assigned by GitLab.
 
-## Workflow
+#### How network per job works
 
-The Docker executor divides the job into multiple steps:
+When a job starts, the runner creates a bridge network similar to `docker network create <network>`.
+After the bridge network is created, it connects to the service and build job containers.
+Unlike [container links](#legacy-container-links),
+Docker environment variables are not shared across the containers.
 
-1. **Prepare**: Create and start the [services](https://docs.gitlab.com/ee/ci/yaml/#services).
-1. **Pre-job**: Clone, restore [cache](https://docs.gitlab.com/ee/ci/yaml/#cache)
-   and download [artifacts](https://docs.gitlab.com/ee/ci/yaml/#artifacts) from previous
-   stages. This is run on a special Docker image.
-1. **Job**: User build. This is run on the user-provided Docker image.
-1. **Post-job**: Create cache, upload artifacts to GitLab. This is run on
-   a special Docker Image.
+The container running the job and the containers running the service
+resolve each other's hostnames and aliases. This functionality is
+[provided by Docker](https://docs.docker.com/network/bridge/#differences-between-user-defined-bridges-and-the-default-bridge).
 
-The special Docker image is based on [Alpine Linux](https://alpinelinux.org/) and contains all the tools
-required to run the prepare, pre-job, and post-job steps, like the Git and the
-GitLab Runner binaries for supporting caching and artifacts. You can find the definition of
-this special image [in the official GitLab Runner repository](https://gitlab.com/gitlab-org/gitlab-runner/-/tree/v13.4.1/dockerfiles/runner-helper).
+The network is removed at the end of the job.
 
-## The `image` keyword
+For more information about user-defined bridge
+networks, see [the Docker documentation](https://docs.docker.com/network/bridge/).
 
-The `image` keyword is the name of the Docker image that is present in the
-local Docker Engine (list all images with `docker images`) or any image that
-can be found at [Docker Hub](https://hub.docker.com/). For more information about images and Docker
-Hub please read the [Docker overview](https://docs.docker.com/get-started/overview/) documentation.
+### Configure a network with container links
 
-In short, with `image` we refer to the Docker image, which will be used to
-create a container on which your build will run.
+The default network mode uses Docker [legacy container links](https://docs.docker.com/network/links/) and the
+the default Docker `bridge` to link the job container with the services.
 
-If you don't specify the namespace, Docker implies `library` which includes all
-[official images](https://hub.docker.com/u/library/). That's why you'll see
-many times the `library` part omitted in `.gitlab-ci.yml` and `config.toml`.
-For example you can define an image like `image: ruby:2.7`, which is a shortcut
-for `image: library/ruby:2.7`.
+To configure the network, in the `config.toml` file, in the `[runners.docker]` section, update the `network_mode`. Use
+one for the following Docker [networking mode](https://docs.docker.com/engine/reference/run/#network-settings) values:
 
-Then, for each Docker image there are tags, denoting the version of the image.
-These are defined with a colon (`:`) after the image name. For example, for
-Ruby you can see the supported tags at <https://hub.docker.com/_/ruby/>. If you
-don't specify a tag (like `image: ruby`), `latest` is implied.
+- `bridge`: Use the bridge network. Default.
+- `host`: Use the host's network stack inside the container.
+- `none`: No networking. Not recommended.
 
-The image you choose to run your build in via `image` directive must have a
-working shell in its operating system `PATH`. Supported shells are `sh`,
-`bash`, and `pwsh` ([since 13.9](https://gitlab.com/gitlab-org/gitlab-runner/-/issues/4021))
-for Linux, and PowerShell for Windows.
-GitLab Runner cannot execute a command using the underlying OS system calls
-(such as `exec`).
+```toml
+[runners.docker]
+  network_mode = "bridge"
+```
 
-## The `services` keyword
-
-The `services` keyword defines just another Docker image that is run during
-your build and is linked to the Docker image that the `image` keyword defines.
-This allows you to access the service image during build time.
-
-The service image can run any application, but the most common use case is to
-run a database container, e.g., `mysql`. It's easier and faster to use an
-existing image and run it as an additional container than install `mysql` every
-time the project is built.
-
-You can see some widely used services examples in the relevant documentation of
-[CI services examples](https://docs.gitlab.com/ee/ci/services/).
-
-If needed, you can [assign an alias](https://docs.gitlab.com/ee/ci/docker/using_docker_images.html#available-settings-for-services)
-to each service.
-
-## Networking
-
-Networking is required to connect services to a CI/CD job. Networking can also be used to run jobs in user-defined
-networks. You can use either legacy container links, or create a network for each job.
-We recommend creating a network for each job.
-
-### Legacy container links
-
-The default network mode uses [Legacy container links](https://docs.docker.com/network/links/) with
-the default Docker `bridge` mode to link the job container with the services.
-
-This mode can be used to configure how the networking stack is set up for the containers by using `network_mode`
-[configuration parameter](../configuration/advanced-configuration.md#the-runnersdocker-section)
-with one of the following values:
-
-- One of the standard Docker [networking modes](https://docs.docker.com/engine/reference/run/#network-settings):
-  - `bridge`: use the bridge network (default)
-  - `host`: use the host's network stack inside the container
-  - `none`: no networking (not recommended)
-- Any other `network_mode` value is taken as the name of an already existing
-  Docker network, which the build container should connect to.
+If you use any other `network_mode` value, these are taken as the name of an already existing
+Docker network, which the build container should connect to.
 
 For name resolution to work, Docker manipulates the `/etc/hosts` file in the
 container to include the service container hostname and alias. However,
@@ -257,45 +154,30 @@ name. To resolve the container name, create a network for each job.
 
 Linked containers share their environment variables.
 
-### Create a network for each job
+## Use the Docker executor
 
-> [Introduced](https://gitlab.com/gitlab-org/gitlab-runner/-/issues/1042) in GitLab Runner 12.9.
+To use the Docker executor, in `config.toml`, define Docker as the executor:
 
-NOTE:
-To enable network-per-build, set the `FF_NETWORK_PER_BUILD` variable. Do not set the `network_mode` variable in the `config.toml` file.
+```toml
+[[runners]]
+  executor = "docker"
+```
 
-This networking mode creates and uses a new user-defined Docker bridge network for each job.
-[User-defined bridge networks](https://docs.docker.com/network/bridge/) are covered in detail in the Docker documentation.
+## Define Docker images and services in `.gitlab-ci.yml`
 
-Unlike [legacy container links](#legacy-container-links) used in other network modes,
-Docker environment variables are **not** shared across the containers.
+To configure the Docker executor, you define the Docker images and services in `.gitlab-ci.yml`.
+If you don't define an `image` in `.gitlab-ci.yml`, the executor uses the `image` defined in `config.toml`.
 
-Docker networks might conflict with other networks on the host, including other Docker networks,
-if the CIDR ranges are already in use. The default Docker address pool can be configured
-by using `default-address-pool` in [`dockerd`](https://docs.docker.com/engine/reference/commandline/dockerd/).
+Use the following keywords:
 
-To enable this mode you must enable the [`FF_NETWORK_PER_BUILD` feature flag](../configuration/feature-flags.md).
+- `image`: The name of the Docker image that the executor uses to run jobs.
+   - You can enter an image from the local Docker Engine, or any image in
+   Docker Hub. For more information, see the [Docker documentation](https://docs.docker.com/get-started/overview/).
+   - To define the image version, use a colon (`:`) to add a tag. If you don't specify a tag,
+   Docker implies `latest` as the version.
+- `services`: The additional image that creates another container and links to the `image`. For more information about types of services, see [Services](https://docs.gitlab.com/ee/ci/services/).
 
-When a job starts, a bridge network is created (similar to `docker network create <network>`).
-Upon creation, the service containers and the
-build job container are connected to this network.
-
-Both the container running the job and the containers running the service can
-resolve each other's hostnames and aliases. This functionality is
-[provided by Docker](https://docs.docker.com/network/bridge/#differences-between-user-defined-bridges-and-the-default-bridge).
-
-The job container is resolvable by using the `build` alias as well, because the hostname is assigned by GitLab.
-
-The network is removed at the end of the job.
-
-To enable IPv6 support for this network, set `enable_ipv6` to `true` inside the Docker config.
-This feature works only when the Docker daemon is configured with IPv6 enabled.
-To enable IPv6 support on your host, see the [Docker documentation](https://docs.docker.com/config/daemon/ipv6/).
-
-## Define image and services from `.gitlab-ci.yml`
-
-You can simply define an image that will be used for all jobs and a list of
-services that you want to use during build time.
+Example:
 
 ```yaml
 image: ruby:2.7
@@ -311,7 +193,7 @@ test:
   - bundle exec rake spec
 ```
 
-It is also possible to define different images and services per job:
+To define different images and services per job:
 
 ```yaml
 before_script:
@@ -332,9 +214,33 @@ test:2.7:
   - bundle exec rake spec
 ```
 
-## Define image and services in `config.toml`
+If you don't specify the namespace, Docker implies `library`, which includes all
+[official images](https://hub.docker.com/u/library/). This means that you can omit
+`library` in `.gitlab-ci.yml` and `config.toml`. For example, you can define an image like
+`image: ruby:2.7`, which is a shortcut for `image: library/ruby:2.7`.
 
-Look for the `[runners.docker]` section:
+### Define an image from a private registry
+
+Prerequisites:
+
+- To access images from a private registry, you must [authenticate GitLab Runner](https://docs.gitlab.com/ee/ci/docker/using_docker_images.html#access-an-image-from-a-private-container-registry).
+
+To define images from private registries, provide the registry name and the image in `.gitlab-ci.yml`.
+
+Example:
+
+```yaml
+image: my.registry.tld:5000/namepace/image:tag
+```
+
+In this example, GitLab Runner searches the registry `my.registry.tld:5000` for the
+image `namespace/image:tag`.
+
+## Define images and services in `config.toml`
+
+To add images and services to all builds run by a runner, update `[runners.docker]` in the `config.toml`.
+
+Example:
 
 ```toml
 [runners.docker]
@@ -349,30 +255,7 @@ Look for the `[runners.docker]` section:
   alias = "cache"
 ```
 
-The example above uses the [array of tables syntax](https://toml.io/en/v0.4.0#array-of-tables).
-
-The image and services defined this way will be added to all builds run by
-that runner, so even if you don't define an `image` inside `.gitlab-ci.yml`,
-the one defined in `config.toml` will be used.
-
-## Define an image from a private Docker registry
-
-Starting with GitLab Runner 0.6.0, you are able to define images located to
-private registries that could also require authentication.
-
-All you have to do is be explicit on the image definition in `.gitlab-ci.yml`.
-
-```yaml
-image: my.registry.tld:5000/namepace/image:tag
-```
-
-In the example above, GitLab Runner will look at `my.registry.tld:5000` for the
-image `namespace/image:tag`.
-
-If the repository is private you need to authenticate your GitLab Runner in the
-registry. Read more on [using a private Docker registry](../configuration/advanced-configuration.md#use-a-private-container-registry).
-
-## Restricting Docker images and services
+## Restrict Docker images and services
 
 You can restrict the Docker images that can run your jobs.
 To do this, you specify wildcard patterns. For example, to allow images
@@ -1009,3 +892,108 @@ Docker-SSH then connects to the SSH server that is running inside the container
 using its internal IP.
 
 This executor is no longer maintained and will be removed in the near future.
+
+## Using Windows containers with the Docker executor
+
+> [Introduced](https://gitlab.com/groups/gitlab-org/-/epics/535) in GitLab Runner 11.11.
+
+The Docker executor does not support:
+
+ - Interactive web terminal.
+ - Host device mounting.
+ - Docker-in-Docker because Docker [do not support it]((https://github.com/docker-library/docker/issues/49)).
+ - Linux containers on Windows because they are experimental. For more information, see [this issue](https://gitlab.com/gitlab-org/gitlab-runner/-/issues/4373).
+
+ ### Windows versions supported by GitLab Runner
+
+GitLab Runner only supports the following versions of Windows which
+follows our [support lifecycle for Windows](../install/windows.md#windows-version-support-policy):
+
+- Windows Server 21H1/LTSC2022.
+- Windows Server 20H2.
+- Windows Server 2004.
+- Windows Server 1809.
+
+For future Windows Server versions, GitLab has a
+[future version support policy](../install/windows.md#windows-version-support-policy).
+
+You can only run containers based on the same OS version that the Docker
+daemon is running on. For example, the following [`Windows Server Core`](https://hub.docker.com/_/microsoft-windows-servercore) images can
+be used:
+
+- `mcr.microsoft.com/windows/servercore:ltsc2022`
+- `mcr.microsoft.com/windows/servercore:ltsc2022-amd64`
+- `mcr.microsoft.com/windows/servercore:20H2`
+- `mcr.microsoft.com/windows/servercore:20H2-amd64`
+- `mcr.microsoft.com/windows/servercore:2004`
+- `mcr.microsoft.com/windows/servercore:2004-amd64`
+- `mcr.microsoft.com/windows/servercore:1809`
+- `mcr.microsoft.com/windows/servercore:1809-amd64`
+- `mcr.microsoft.com/windows/servercore:ltsc2019`
+
+### Supported Docker versions
+
+Windows Server must use a recent version of Docker so that GitLab Runner can use Docker to
+check the Windows Server version.
+
+GitLab Runner does not support Docker v17.06 because it cannot identify the Windows Server version and causes the following error:
+
+```plaintext
+unsupported Windows Version: Windows Server Datacenter
+```
+
+For troubleshooting information about this error, see [Docker executor: `unsupported Windows Version`](../install/windows.md#docker-executor-unsupported-windows-version).
+
+### Nanoserver support
+
+> [Introduced](https://gitlab.com/gitlab-org/gitlab-runner/-/merge_requests/2492) in GitLab Runner 13.6.
+
+With Powershell Core support in the Windows helper image, you can leverage `nanoserver` variants for the helper image.
+
+### Known issues for Docker executor on Windows
+
+The following known issues apply to Windows containers with
+Docker executor:
+
+- The volume directory must exist when it is mounted, otherwise Docker fails to start the container. For more information, see
+  [#3754](https://gitlab.com/gitlab-org/gitlab-runner/-/issues/3754).
+- `docker-windows` executor can be run only when GitLab Runner is running on Windows.
+- If the destination path drive letter is not `c:`, paths are not supported for:
+
+  - [`builds_dir`](../configuration/advanced-configuration.md#the-runners-section)
+  - [`cache_dir`](../configuration/advanced-configuration.md#the-runners-section)
+  - [`volumes`](../configuration/advanced-configuration.md#volumes-in-the-runnersdocker-section)
+
+  This means values like `f:\\cache_dir` are not supported, but `f:` is supported.
+  If the destination path is on the `c:` drive, paths are also supported. For example, `c:\\cache_dir`.
+  This is due to a [limitation in Docker](https://github.com/MicrosoftDocs/Virtualization-Documentation/issues/334).
+
+### Configure a Docker executor in a Windows container
+
+To configure a Docker executor in a Windows container, use the following configuration example.
+For more advanced configuration options for the Docker executor, see the
+[advanced configuration](../configuration/advanced-configuration.md#the-runnersdocker-section)
+section.
+
+```toml
+[[runners]]
+  name = "windows-docker-2019"
+  url = "https://gitlab.com/"
+  token = "xxxxxxx"
+  executor = "docker-windows"
+  [runners.docker]
+    image = "mcr.microsoft.com/windows/servercore:1809_amd64"
+    volumes = ["c:\\cache"]
+```
+
+NOTE:
+When a runner is registered with `c:\\cache`
+as a source directory when passing the `--docker-volumes` or
+`DOCKER_VOLUMES` environment variable, there is a
+[known issue](https://gitlab.com/gitlab-org/gitlab-runner/-/issues/4312).
+
+### Services
+
+In [GitLab Runner 12.9 and later](https://gitlab.com/gitlab-org/gitlab-runner/-/issues/1042),
+you can use [services](https://docs.gitlab.com/ee/ci/services/) by
+enabling [a network for each job](#create-a-network-for-each-job).
