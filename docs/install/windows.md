@@ -106,7 +106,7 @@ This means that we support:
   these versions after mainstream support ends.
 
 This is the case for both the [Windows binaries](#installation) that we
-distribute, and also for the [Docker executor](../executors/docker.md#supported-windows-versions).
+distribute, and also for the [Docker executor](../executors/docker.md#windows-versions-supported-by-gitlab-runner).
 
 NOTE:
 The Docker executor for Windows containers has strict version
@@ -380,7 +380,7 @@ of your drive instead.
 
 To use services with Windows containers:
 
-- Use the networking mode that [creates a network for each job](../executors/docker.md#create-a-network-for-each-job).
+- Use the networking mode that [creates a network for each job](../executors/docker.md#configure-the-runner-to-create-a-network-per-job).
 - Ensure that the `FF_NETWORK_PER_BUILD` feature flag is enabled.
 
 ### The job cannot create a build directory and fails with an error

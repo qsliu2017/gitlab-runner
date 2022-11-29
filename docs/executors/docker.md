@@ -111,7 +111,7 @@ The job container is resolvable by using the `build` alias as well, because the 
 
 When a job starts, the runner creates a bridge network similar to `docker network create <network>`.
 After the bridge network is created, it connects to the service and build job containers.
-Unlike [container links](#legacy-container-links),
+Unlike [container links](#configure-a-network-with-container-links),
 Docker environment variables are not shared across the containers.
 
 The container running the job and the containers running the service
@@ -582,7 +582,7 @@ Prerequisites:
 
 - [Podman](https://podman.io/) v4.2.0 or later.
 - To run [services](#services) with Podman as an executor, enable the
-  [`FF_NETWORK_PER_BUILD` feature flag](#create-a-network-for-each-job).
+  [`FF_NETWORK_PER_BUILD` feature flag](#configure-the-runner-to-create-a-network-per-job).
   [Docker container links](https://docs.docker.com/network/links/) are legacy
   and are not supported by [Podman](https://podman.io/).
 
@@ -989,4 +989,4 @@ as a source directory when passing the `--docker-volumes` or
 
 In [GitLab Runner 12.9 and later](https://gitlab.com/gitlab-org/gitlab-runner/-/issues/1042),
 you can use [services](https://docs.gitlab.com/ee/ci/services/) by
-enabling [a network for each job](#create-a-network-for-each-job).
+enabling [a network for each job](#configure-the-runner-to-create-a-network-per-job).
