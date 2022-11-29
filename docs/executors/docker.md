@@ -98,10 +98,6 @@ To configure a network, you can either:
 To configure the runner to create a bridge network for each job, set the `FF_NETWORK_PER_BUILD` variable
 in `config.toml`.
 
-```toml
-
-```
-
 To set the default Docker address pool, use `default-address-pool` in
 [`dockerd`](https://docs.docker.com/engine/reference/commandline/dockerd/). If CIDR ranges are already
 in use, Docker networks might conflict with other networks on the host, including other Docker networks.
@@ -122,10 +118,7 @@ The container running the job and the containers running the service
 resolve each other's hostnames and aliases. This functionality is
 [provided by Docker](https://docs.docker.com/network/bridge/#differences-between-user-defined-bridges-and-the-default-bridge).
 
-The network is removed at the end of the job.
-
-For more information about user-defined bridge
-networks, see [the Docker documentation](https://docs.docker.com/network/bridge/).
+The runner removes the network at the end of the job.
 
 ### Configure a network with container links
 
@@ -147,10 +140,10 @@ one for the following Docker [networking mode](https://docs.docker.com/engine/re
 If you use any other `network_mode` value, these are taken as the name of an already existing
 Docker network, which the build container should connect to.
 
-For name resolution to work, Docker manipulates the `/etc/hosts` file in the
-container to include the service container hostname and alias. However,
+For name resolution to work, Docker updates the `/etc/hosts` file in the
+container with the service container hostname and alias. However,
 the service container is **not** able to resolve the container
-name. To resolve the container name, create a network for each job.
+name. To resolve the container name, you must create a network for each job.
 
 Linked containers share their environment variables.
 
@@ -171,9 +164,9 @@ If you don't define an `image` in `.gitlab-ci.yml`, the executor uses the `image
 Use the following keywords:
 
 - `image`: The name of the Docker image that the executor uses to run jobs.
-   - You can enter an image from the local Docker Engine, or any image in
+  - You can enter an image from the local Docker Engine, or any image in
    Docker Hub. For more information, see the [Docker documentation](https://docs.docker.com/get-started/overview/).
-   - To define the image version, use a colon (`:`) to add a tag. If you don't specify a tag,
+  - To define the image version, use a colon (`:`) to add a tag. If you don't specify a tag,
    Docker implies `latest` as the version.
 - `services`: The additional image that creates another container and links to the `image`. For more information about types of services, see [Services](https://docs.gitlab.com/ee/ci/services/).
 
@@ -899,12 +892,12 @@ This executor is no longer maintained and will be removed in the near future.
 
 The Docker executor does not support:
 
- - Interactive web terminal.
- - Host device mounting.
- - Docker-in-Docker because Docker [do not support it]((https://github.com/docker-library/docker/issues/49)).
- - Linux containers on Windows because they are experimental. For more information, see [this issue](https://gitlab.com/gitlab-org/gitlab-runner/-/issues/4373).
+- Interactive web terminal.
+- Host device mounting.
+- Docker-in-Docker because Docker [do not support it]((https://github.com/docker-library/docker/issues/49)).
+- Linux containers on Windows because they are experimental. For more information, see [this issue](https://gitlab.com/gitlab-org/gitlab-runner/-/issues/4373).
 
- ### Windows versions supported by GitLab Runner
+### Windows versions supported by GitLab Runner
 
 GitLab Runner only supports the following versions of Windows which
 follows our [support lifecycle for Windows](../install/windows.md#windows-version-support-policy):
