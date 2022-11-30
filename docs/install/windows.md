@@ -111,7 +111,7 @@ distribute, and also for the [Docker executor](../executors/docker.md#windows-ve
 NOTE:
 The Docker executor for Windows containers has strict version
 requirements, because containers have to match the version of the host
-OS. See the [list of supported Windows containers](../executors/docker.md#supported-windows-versions)
+OS. See the [list of supported Windows containers](../executors/docker.md#windows-versions-supported-by-gitlab-runner)
 for more information.
 
 After a Windows version no longer receives mainstream support from
