@@ -130,6 +130,24 @@ func (c *fileArchiver) add(path string) error {
 
 func (c *fileArchiver) processPaths() {
 	for _, path := range c.Paths {
+		abs, err := filepath.Abs(path)
+		if err != nil {
+			logrus.Warningf("Could not resolve artifact absolute path %s: %v", path, err)
+			continue
+		}
+
+		rel, err := filepath.Rel(c.wd, abs)
+		if err != nil {
+			logrus.Warningf("Could not resolve artifact relative path %s: %v", path, err)
+			continue
+		}
+
+		// If fully resolved relative path begins with ".." it is not a subpath of our working directory
+		if strings.HasPrefix(rel, "..") {
+			logrus.Warningf("Artifact path is not a subpath of project directory: %s", path)
+			continue
+		}
+
 		matches, err := doublestar.Glob(path)
 		if err != nil {
 			logrus.Warningf("%s: %v", path, err)
@@ -156,7 +174,7 @@ func (c *fileArchiver) processPaths() {
 				path,
 			)
 		} else {
-			logrus.Infof("%s: found %d matching files and directories", path, found)
+			logrus.Infof("%s: found %d matching artifact files and directories", path, found)
 		}
 	}
 }
