@@ -128,6 +128,7 @@ func (c *fileArchiver) add(path string) error {
 	return err
 }
 
+//nolint:gocognit
 func (c *fileArchiver) processPaths() {
 	for _, path := range c.Paths {
 		if !c.pathIsInProject(path) {
