@@ -13,7 +13,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/bmatcuk/doublestar"
+	"github.com/bmatcuk/doublestar/v4"
 	"github.com/sirupsen/logrus"
 )
 
@@ -128,64 +128,68 @@ func (c *fileArchiver) add(path string) error {
 	return err
 }
 
-//nolint:gocognit
 func (c *fileArchiver) processPaths() {
 	for _, path := range c.Paths {
-		if !c.pathIsInProject(path) {
-			continue
-		}
-
-		matches, err := doublestar.Glob(path)
-		if err != nil {
-			logrus.Warningf("%s: %v", path, err)
-			continue
-		}
-
-		found := 0
-
-		for _, match := range matches {
-			err := filepath.Walk(match, func(path string, info os.FileInfo, err error) error {
-				if c.process(path) {
-					found++
-				}
-				return nil
-			})
-			if err != nil {
-				logrus.Warningln("Walking", match, err)
-			}
-		}
-
-		if found == 0 {
-			logrus.Warningf(
-				"%s: no matching files. Ensure that the artifact path is relative to the working directory",
-				path,
-			)
-		} else {
-			logrus.Infof("%s: found %d matching artifact files and directories", path, found)
-		}
+		c.processPath(path)
 	}
 }
 
-func (c *fileArchiver) pathIsInProject(path string) bool {
+func (c *fileArchiver) processPath(path string) {
+	base, _ := doublestar.SplitPattern(path)
+	pathInProject, reason := c.pathIsInProject(base)
+	if !pathInProject {
+		logrus.Warningf(reason)
+		return
+	}
+
+	fsys := os.DirFS(c.wd)
+	matches, err := doublestar.Glob(fsys, path)
+	if err != nil {
+		logrus.Warningf("%s: %v", path, err)
+		return
+	}
+
+	found := 0
+
+	for _, match := range matches {
+		err := filepath.Walk(match, func(path string, info os.FileInfo, err error) error {
+			if c.process(path) {
+				found++
+			}
+			return nil
+		})
+		if err != nil {
+			logrus.Warningln("Walking", match, err)
+		}
+	}
+
+	if found == 0 {
+		logrus.Warningf(
+			"%s: no matching files. Ensure that the artifact path is relative to the working directory",
+			path,
+		)
+	} else {
+		logrus.Infof("%s: found %d matching artifact files and directories", path, found)
+	}
+}
+
+func (c *fileArchiver) pathIsInProject(path string) (pathInProject bool, reason string) {
 	abs, err := filepath.Abs(path)
 	if err != nil {
-		logrus.Warningf("Could not resolve artifact absolute path %s: %v", path, err)
-		return false
+		return false, fmt.Sprintf("Could not resolve artifact absolute path %s: %v", path, err)
 	}
 
 	rel, err := filepath.Rel(c.wd, abs)
 	if err != nil {
-		logrus.Warningf("Could not resolve artifact relative path %s: %v", path, err)
-		return false
+		return false, fmt.Sprintf("Could not resolve artifact relative path %s: %v", path, err)
 	}
 
 	// If fully resolved relative path begins with ".." it is not a subpath of our working directory
-	if strings.HasPrefix(rel, "..") {
-		logrus.Warningf("Artifact path is not a subpath of project directory: %s", path)
-		return false
+	if strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		return false, fmt.Sprintf("Artifact path is not a subpath of project directory: %s", path)
 	}
 
-	return true
+	return true, ""
 }
 
 func (c *fileArchiver) processUntracked() {

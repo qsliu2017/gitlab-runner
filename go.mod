@@ -9,6 +9,7 @@ require (
 	github.com/Azure/azure-sdk-for-go/sdk/storage/azblob v0.4.1
 	github.com/BurntSushi/toml v0.3.1
 	github.com/bmatcuk/doublestar v1.3.0
+	github.com/bmatcuk/doublestar/v4 v4.4.0
 	github.com/creack/pty v1.1.11
 	github.com/docker/cli v20.10.12+incompatible
 	github.com/docker/distribution v2.7.1+incompatible
