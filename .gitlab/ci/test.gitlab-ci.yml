@@ -276,7 +276,7 @@ fuzz variable mask:
   allow_failure:
     exit_codes: 1
 
-.windows unit test:
+.windows unit test: #need
   extends:
   - .windows test
   needs:
@@ -296,7 +296,7 @@ fuzz variable mask:
 
 # Only test the oldest supported version in merge requests,
 # but test all versions in the default branch.
-windows 1809 unit tests:
+windows 1809 unit tests: #need
   extends:
   - .windows unit test
   - .windows1809
@@ -308,7 +308,7 @@ windows 21H1 unit tests:
   - .windows21H1
   - .rules:merge_request_pipelines:no_docs:no-community-mr
 
-windows 1809 integration tests:
+windows 1809 integration tests: #need
   extends:
   - .windows integration test
   - .windows1809

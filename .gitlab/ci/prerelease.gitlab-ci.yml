@@ -1,4 +1,4 @@
-.release_windows_docker_images:
+.release_windows_docker_images: #need
   extends:
     - .windows-dependency-checksums
   stage: prerelease
@@ -14,7 +14,7 @@
     - .\ci\build_release_windows_images.ps1
   retry: 2
 
-development servercore1809 helper docker images:
+development servercore1809 helper docker images: #need
   extends:
     - .windows1809
     - .release_windows_docker_images

@@ -194,7 +194,7 @@ stable packagecloud:
       - fedora
       - amazon
 
-.docker_images_registry_base_variables_overwrite:
+.docker_images_registry_base_variables_overwrite: #need
   variables:
     # Setting the CI_PROJECT_ID and CI_REGISTRY_IMAGE variable explicitly because we're
     # running this job also from the https://gitlab.com/gitlab-org/security/gitlab-runner
