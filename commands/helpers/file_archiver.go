@@ -136,9 +136,9 @@ func (c *fileArchiver) processPaths() {
 
 func (c *fileArchiver) processPath(path string) {
 	base, _ := doublestar.SplitPattern(path)
-	pathInProject, reason := c.pathIsInProject(base)
-	if !pathInProject {
-		logrus.Warningf(reason)
+	if err := c.assertPathInProject(base); err != nil {
+		// Do not fail job when a file is invalid or not found.
+		logrus.Warningf(err.Error())
 		return
 	}
 
@@ -173,23 +173,23 @@ func (c *fileArchiver) processPath(path string) {
 	}
 }
 
-func (c *fileArchiver) pathIsInProject(path string) (pathInProject bool, reason string) {
+func (c *fileArchiver) assertPathInProject(path string) error {
 	abs, err := filepath.Abs(path)
 	if err != nil {
-		return false, fmt.Sprintf("Could not resolve artifact absolute path %s: %v", path, err)
+		return fmt.Errorf("could not resolve artifact absolute path %s: %v", path, err)
 	}
 
 	rel, err := filepath.Rel(c.wd, abs)
 	if err != nil {
-		return false, fmt.Sprintf("Could not resolve artifact relative path %s: %v", path, err)
+		return fmt.Errorf("could not resolve artifact relative path %s: %v", path, err)
 	}
 
 	// If fully resolved relative path begins with ".." it is not a subpath of our working directory
 	if strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
-		return false, fmt.Sprintf("Artifact path is not a subpath of project directory: %s", path)
+		return fmt.Errorf("artifact path is not a subpath of project directory: %s", path)
 	}
 
-	return true, ""
+	return nil
 }
 
 func (c *fileArchiver) processUntracked() {

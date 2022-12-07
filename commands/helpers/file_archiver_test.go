@@ -203,35 +203,38 @@ func TestFileArchiver_pathIsInProject(t *testing.T) {
 	}
 
 	testCases := map[string]struct {
-		path      string
-		inProject bool
-		reason    string
+		path          string
+		inProject     bool
+		errorExpected bool
 	}{
 		`relative path in project`: {
 			path:      "in/the/project/for/realzy",
 			inProject: true,
 		},
 		`relative path not in project`: {
-			path:      "../nope",
-			inProject: false,
-			reason:    "Artifact path is not a subpath of project directory: ../nope",
+			path:          "../nope",
+			inProject:     false,
+			errorExpected: true,
 		},
 		`absolute path in project`: {
 			path:      filepath.Join(wd, "yo/i/am/in"),
 			inProject: true,
 		},
 		`absolute path not in project`: {
-			path:      "/totally/not/in/the/project",
-			inProject: false,
-			reason:    "Artifact path is not a subpath of project directory: /totally/not/in/the/project",
+			path:          "/totally/not/in/the/project",
+			inProject:     false,
+			errorExpected: true,
 		},
 	}
 
 	for n, tc := range testCases {
 		t.Run(n, func(t *testing.T) {
-			pathInProject, reason := c.pathIsInProject(tc.path)
-			assert.Equal(t, tc.inProject, pathInProject)
-			assert.Equal(t, tc.reason, reason)
+			err := c.assertPathInProject(tc.path)
+			if tc.errorExpected {
+				assert.Error(t, err)
+				return
+			}
+			assert.NoError(t, err)
 		})
 	}
 }
