@@ -161,7 +161,7 @@ func TestFileArchiverToFailOnAbsoluteFile(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Empty(t, f.sortedFiles())
 	require.Len(t, h.entries, 1)
-	assert.Contains(t, h.entries[0].Message, "Artifact path is not a subpath of project directory")
+	assert.Contains(t, h.entries[0].Message, "artifact path is not a subpath of project directory")
 }
 
 func TestFileArchiverToNotAddFilePathOutsideProjectDirectory(t *testing.T) {
@@ -176,7 +176,7 @@ func TestFileArchiverToNotAddFilePathOutsideProjectDirectory(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Empty(t, f.sortedFiles())
 	require.Len(t, h.entries, 1)
-	assert.Contains(t, h.entries[0].Message, "Artifact path is not a subpath of project directory")
+	assert.Contains(t, h.entries[0].Message, "artifact path is not a subpath of project directory")
 }
 
 func TestFileArchiverToFailOnRelativeFile(t *testing.T) {
@@ -191,7 +191,7 @@ func TestFileArchiverToFailOnRelativeFile(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Empty(t, f.sortedFiles())
 	require.Len(t, h.entries, 1)
-	assert.Contains(t, h.entries[0].Message, "Artifact path is not a subpath of project directory")
+	assert.Contains(t, h.entries[0].Message, "artifact path is not a subpath of project directory")
 }
 
 func TestFileArchiver_pathIsInProject(t *testing.T) {
