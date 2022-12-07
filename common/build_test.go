@@ -32,7 +32,7 @@ import (
 func init() {
 	s := MockShell{}
 	s.On("GetName").Return("script-shell")
-	s.On("GenerateScript", mock.Anything, mock.Anything).Return("script", nil)
+	s.On("GenerateScript", mock.Anything, mock.Anything, mock.Anything).Return("script", nil)
 	RegisterShell(&s)
 }
 
@@ -1330,7 +1330,7 @@ func TestSkipBuildStageFeatureFlag(t *testing.T) {
 			e := &MockExecutor{}
 			defer e.AssertExpectations(t)
 
-			s.On("GenerateScript", mock.Anything, mock.Anything).Return("script", ErrSkipBuildStage)
+			s.On("GenerateScript", mock.Anything, mock.Anything, mock.Anything).Return("script", ErrSkipBuildStage)
 			e.On("Shell").Return(&ShellScriptInfo{Shell: "skip-build-stage-shell"})
 
 			if !build.IsFeatureFlagOn(featureflags.SkipNoOpBuildStages) {
@@ -2001,12 +2001,8 @@ func setupSuccessfulMockExecutor(
 	executor.On("Run", matchBuildStage("step_script")).Return(nil).Once()
 	executor.On("Run", matchBuildStage(BuildStageAfterScript)).Return(nil).Once()
 	executor.On("Run", matchBuildStage(BuildStageArchiveOnSuccessCache)).Return(nil).Once()
-	executor.On("Run", matchBuildStage(BuildStageUploadOnSuccessArtifacts)).
-		Return(nil).
-		Once()
-	executor.On("Run", matchBuildStage(BuildStageCleanup)).
-		Return(nil).
-		Once()
+	executor.On("Run", matchBuildStage(BuildStageUploadOnSuccessArtifacts)).Return(nil).Once()
+	executor.On("Run", matchBuildStage(BuildStageCleanup)).Return(nil).Once()
 
 	return provider, assertFn
 }

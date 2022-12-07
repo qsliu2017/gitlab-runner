@@ -1,6 +1,8 @@
 package shells
 
 import (
+	"context"
+
 	"gitlab.com/gitlab-org/gitlab-runner/common"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers/featureflags"
 )
@@ -9,7 +11,11 @@ type BashTrapShell struct {
 	*BashShell
 }
 
-func (b *BashTrapShell) GenerateScript(buildStage common.BuildStage, info common.ShellScriptInfo) (string, error) {
+func (b *BashTrapShell) GenerateScript(
+	ctx context.Context,
+	buildStage common.BuildStage,
+	info common.ShellScriptInfo,
+) (string, error) {
 	w := &BashWriter{
 		TemporaryPath:      info.Build.TmpProjectDir(),
 		Shell:              b.Shell,
@@ -20,5 +26,5 @@ func (b *BashTrapShell) GenerateScript(buildStage common.BuildStage, info common
 		useJSONTermination: true,
 	}
 
-	return b.generateScript(w, buildStage, info)
+	return b.generateScript(ctx, w, buildStage, info)
 }

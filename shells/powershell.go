@@ -2,6 +2,7 @@ package shells
 
 import (
 	"bytes"
+	"context"
 	"encoding/base64"
 	"fmt"
 	"os"
@@ -548,7 +549,11 @@ func (b *PowerShell) passAsFile(info common.ShellScriptInfo) bool {
 	return false
 }
 
-func (b *PowerShell) GenerateScript(buildStage common.BuildStage, info common.ShellScriptInfo) (string, error) {
+func (b *PowerShell) GenerateScript(
+	ctx context.Context,
+	buildStage common.BuildStage,
+	info common.ShellScriptInfo,
+) (string, error) {
 	w := &PsWriter{
 		Shell:         b.Shell,
 		EOL:           b.EOL,
@@ -557,16 +562,17 @@ func (b *PowerShell) GenerateScript(buildStage common.BuildStage, info common.Sh
 		resolvePaths:  info.Build.IsFeatureFlagOn(featureflags.UsePowershellPathResolver),
 	}
 
-	return b.generateScript(w, buildStage, info)
+	return b.generateScript(ctx, w, buildStage, info)
 }
 
 func (b *PowerShell) generateScript(
+	ctx context.Context,
 	w ShellWriter,
 	buildStage common.BuildStage,
 	info common.ShellScriptInfo,
 ) (string, error) {
 	b.ensurePrepareStageHostnameMessage(w, buildStage, info)
-	err := b.writeScript(w, buildStage, info)
+	err := b.writeScript(ctx, w, buildStage, info)
 	if err != nil {
 		return "", err
 	}
