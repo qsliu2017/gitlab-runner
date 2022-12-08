@@ -2,7 +2,7 @@ binaries:
   extends:
   - .rules:merge_request_pipelines:no_docs
   - .go-cache
-  stage: build
+  stage: runner binaries
   needs:
   - 'prepare done'
   script:
@@ -28,7 +28,7 @@ binaries-fips:
   extends:
   - .rules:merge_request_pipelines:no_docs
   - .go-cache
-  stage: build
+  stage: runner binaries
   image: $GO_FIPS_IMAGE
   needs:
   - job: 'prepare go fips'

@@ -5,7 +5,8 @@ stages:
 - prerelease
 - test
 - coverage
-- build
+- runner binaries
+- build runner images
 - package
 - release
 - postrelease

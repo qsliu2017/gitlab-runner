@@ -2,6 +2,7 @@
 
 set -eEo pipefail
 
+SCRIPTPATH="$( cd "$(dirname "$0")" ; pwd -P )"
 
 # shellcheck source=ci/docker_commands
 source "${SCRIPTPATH}/docker_commands"
@@ -18,11 +19,11 @@ checksums['DUMB_INIT_AMD64']=${DUMB_INIT_LINUX_AMD64_CHECKSUM:-37f2c1f0372a45554
 checksums['DUMB_INIT_ARM64']=${DUMB_INIT_LINUX_ARM64_CHECKSUM:-45b1bbf56cc03edda81e4220535a025bfe3ed6e93562222b9be4471005b3eeb3}
 checksums['DUMB_INIT_S390X']=${DUMB_INIT_LINUX_S390X_CHECKSUM:-8b3808c3c06d008b8f2eeb2789c7c99e0450b678d94fb50fd446b8f6a22e3a9d}
 checksums['DUMB_INIT_PPC64LE']=${DUMB_INIT_LINUX_PPC64LE_CHECKSUM:-88b02a3bd014e4c30d8d54389597adc4f5a36d1d6b49200b5a4f6a71026c2246}
-GIT_LFS_VERSION=${GIT_LFS_VERSION:-3.2.0}
-checksums['GIT_LFS_AMD64']=${GIT_LFS_LINUX_AMD64_CHECKSUM:-d6730b8036d9d99f872752489a331995930fec17b61c87c7af1945c65a482a50}
-checksums['GIT_LFS_ARM64']=${GIT_LFS_LINUX_ARM64_CHECKSUM:-8186f0c0f69c30b55863d698e0a20cf79447a81df006b88221c2033d1e893638}
-checksums['GIT_LFS_S390X']=${GIT_LFS_LINUX_S390X_CHECKSUM:-16556f0b2e1097a69e75a6e1bcabfa7bfd2e7ee9b02fe6e5414e1038a223ab97}
-checksums['GIT_LFS_PPC64LE']=${GIT_LFS_LINUX_PPC64LE_CHECKSUM:-ff1eeaddde5d964d10ce607f039154fe033073f43b8ff5e7f4eb407293fe1be3}
+GIT_LFS_VERSION=${GIT_LFS_VERSION:-2.13.3}
+checksums['GIT_LFS_AMD64']=${GIT_LFS_LINUX_AMD64_CHECKSUM:-03197488f7be54cfc7b693f0ed6c75ac155f5aaa835508c64d68ec8f308b04c1}
+checksums['GIT_LFS_ARM64']=${GIT_LFS_LINUX_ARM64_CHECKSUM:-42baf1ec23e9fba197b1a62d09aab1d5dab744da6923009d6f9e4dc6d79df978}
+checksums['GIT_LFS_S390X']=${GIT_LFS_LINUX_S390X_CHECKSUM:-f2b261140e1d38324407e3c6e59d5facbe55ccc3baa83a0feb0031eb180e5651}
+checksums['GIT_LFS_PPC64LE']=${GIT_LFS_LINUX_PPC64LE_CHECKSUM:-bf6eafb1f9aedbdbfed6bed1b6007400d237a3ab82153908892de6ca7ad902f1}
 
 IMAGE_FLAVOR=${IMAGE_FLAVOR:-'ubuntu'}
 
@@ -37,13 +38,13 @@ fi
 
 declare -A base_images_from_flavor
 base_images_from_flavor=(
-  ["ubuntu"]="ubuntu:${UBUNTU_VERSION}"
-  ["alpine3.12"]="alpine:${ALPINE_312_VERSION}"
-  ["alpine3.13"]="alpine:${ALPINE_313_VERSION}"
-  ["alpine3.14"]="alpine:${ALPINE_314_VERSION}"
-  ["alpine3.15"]="alpine:${ALPINE_315_VERSION}"
+  ["ubuntu"]="ubuntu:20.04"
+  ["alpine3.12"]="alpine:3.12.12"
+  ["alpine3.13"]="alpine:3.13.10"
+  ["alpine3.14"]="alpine:3.14.6"
+  ["alpine3.15"]="alpine:3.15.4"
   ["alpine-latest"]="alpine:latest"
-  ["ubi-fips"]="redhat/ubi8:${UBI_FIPS_VERSION}"
+  ["ubi-fips"]="redhat/ubi8:8.6-754"
 )
 
 get_image_version_from_flavor() {
@@ -69,10 +70,6 @@ if [ -n "${TARGET_ARCHS}" ]; then
     IFS=' ' read -r -a TARGET_ARCHS <<< "${TARGET_ARCHS}"
 else
     TARGET_ARCHS=('amd64')
-fi
-
-if [[ "${PUSH_TO_ECR_PUBLIC}" == "true" ]] && [[ -n "${ECR_PUBLIC_USER}" ]]; then
-  ECR_PUBLIC_REGISTRY_PASSWORD=$(aws --region us-east-1 ecr-public get-login-password)
 fi
 
 join_by() {
@@ -104,20 +101,6 @@ buildx() {
         tagOpts+=("--tag" "${tagName}")
     done
 
-    if [[ "${PUBLISH_IMAGES}" == "true" ]]; then
-        echo -e "\033[1mBuilding and pushing image: \033[32m${contextPath}\033[0m"
-        buildxFlags+=("--push")
-    else
-        # If not pushing, just load the resulting image to local Docker
-        if [ ${#TARGET_ARCHS[@]} -eq 1 ]; then
-            echo -e "\033[1mBuilding and loading image: \033[32m${contextPath}\033[0m"
-            # But that is only possible if we are targeting a single platform
-            buildxFlags+=("--load")
-        else
-            echo -e "\033[1mBuilding image: \033[32m${contextPath}\033[0m"
-        fi
-    fi
-
     trap cleanup_docker_context_trap ERR SIGINT SIGTERM
     setup_docker_context
 
@@ -127,9 +110,8 @@ buildx() {
     if [[ "${PUSH_TO_DOCKER_HUB}" == "true" ]] && [[ -n "${DOCKER_HUB_USER}" ]] && [[ -n "${DOCKER_HUB_PASSWORD}" ]]; then
         login "${DOCKER_HUB_USER}" "${DOCKER_HUB_PASSWORD}"
     fi
-    if [[ "${PUSH_TO_ECR_PUBLIC}" == "true" ]] && [[ -n "${ECR_PUBLIC_USER}" ]] && [[ -n "${ECR_PUBLIC_REGISTRY_PASSWORD}" ]]; then
-        ECR_PUBLIC_REGISTRY_PASSWORD=$(aws --region us-east-1 ecr-public get-login-password)
-        login "${ECR_PUBLIC_USER}" "${ECR_PUBLIC_REGISTRY_PASSWORD}" "${ECR_PUBLIC_REGISTRY}"
+    if [[ "${PUSH_TO_ECR_PUBLIC}" == "true" ]] && [[ -n "${ECR_PUBLIC_USER}" ]] && [[ -n "${ECR_PUBLIC_PASSWORD}" ]]; then
+        login "${ECR_PUBLIC_USER}" "${ECR_PUBLIC_PASSWORD}" "${ECR_PUBLIC_REGISTRY}"
     fi
 
     local formatted_platforms
@@ -141,15 +123,16 @@ buildx() {
         --build-arg BASE_IMAGE="${base_image}" \
         --platform "${formatted_platforms}" \
         --no-cache \
+        --output "type=local,dest=out/runner-images/${IMAGE_FLAVOR}-${TARGET_ARCHS}" \
         "${tagOpts[@]}" \
         "${buildxFlags[@]}" \
         "${contextPath}"
     trap - ERR SIGINT SIGTERM
     cleanup_docker_context
 
-    if [[ -z "${PUBLISH_IMAGES}" ]] || [[ "${PUBLISH_IMAGES}" != "true" ]]; then
-        echo "Skipping images pushing"
-    fi
+#    if [[ -z "${PUBLISH_IMAGES}" ]] || [[ "${PUBLISH_IMAGES}" != "true" ]]; then
+#        echo "Skipping images pushing"
+#    fi
 
     if [[ "${PUBLISH_IMAGES}" == "true" ]] && [[ -n "${CI_REGISTRY_USER}" ]] && [[ -n "${CI_REGISTRY_PASSWORD}" ]]; then
         logout "${CI_REGISTRY}"
@@ -157,7 +140,7 @@ buildx() {
     if [[ "${PUSH_TO_DOCKER_HUB}" == "true" ]] && [[ -n "${DOCKER_HUB_USER}" ]] && [[ -n "${DOCKER_HUB_PASSWORD}" ]]; then
         logout
     fi
-    if [[ "${PUSH_TO_ECR_PUBLIC}" == "true" ]] && [[ -n "${ECR_PUBLIC_USER}" ]] && [[ -n "${ECR_PUBLIC_REGISTRY_PASSWORD}" ]]; then
+    if [[ "${PUSH_TO_ECR_PUBLIC}" == "true" ]] && [[ -n "${ECR_PUBLIC_USER}" ]] && [[ -n "${ECR_PUBLIC_PASSWORD}" ]]; then
         logout "${ECR_PUBLIC_REGISTRY}"
     fi
 }
@@ -239,7 +222,7 @@ if [[ "${PUBLISH_IMAGES}" == "true" ]] && [[ "${PUSH_TO_DOCKER_HUB}" == "true" ]
 fi
 
 if [[ "${PUBLISH_IMAGES}" == "true" ]] && [[ "${PUSH_TO_ECR_PUBLIC}" == "true" ]]; then
-   add_tags tags "${aliases}" "${ECR_PUBLIC_USER}" "${ECR_PUBLIC_REGISTRY_PASSWORD}" "${ECR_PUBLIC_REGISTRY}/gitlab-runner" "${ref_tag}"
+   add_tags tags "${aliases}" "${ECR_PUBLIC_USER}" "${ECR_PUBLIC_PASSWORD}" "${ECR_PUBLIC_REGISTRY}/gitlab-runner" "${ref_tag}"
 fi
 
 # Build and publish multi-platform images using `docker buildx`

@@ -1,9 +1,5 @@
 .release_docker_images_base:
   stage: release
-  extends:
-  - .docker
-  - .docker_qemu
-  - .linux-dependency-checksums
   variables:
     PUBLISH_IMAGES: "true"
     PUSH_TO_DOCKER_HUB: "false"
@@ -11,31 +7,6 @@
   before_script:
   - source ci/touch_make_dependencies
   retry: 2
-
-.release_docker_images:
-  extends:
-  - .release_docker_images_base
-  dependencies:
-  - 'binaries'
-  - 'package-deb'
-  - 'binaries-fips'
-  - 'package-rpm: [package-rpm-fips]'
-  script:
-  - make release_docker_images
-  parallel:
-    matrix:
-    - IMAGE_FLAVOR: ubi-fips
-      TARGET_ARCHS: amd64
-    - IMAGE_FLAVOR: ubuntu
-      TARGET_ARCHS: amd64 arm64 ppc64le s390x
-    - IMAGE_FLAVOR: alpine3.12
-      TARGET_ARCHS: amd64 arm64 ppc64le s390x
-    - IMAGE_FLAVOR: alpine3.13
-      TARGET_ARCHS: amd64 arm64 ppc64le s390x
-    - IMAGE_FLAVOR: alpine3.14
-      TARGET_ARCHS: amd64 arm64 ppc64le s390x
-    - IMAGE_FLAVOR: alpine3.15
-      TARGET_ARCHS: amd64 arm64 ppc64le s390x
 
 .release_helper_docker_images:
   extends:
@@ -62,6 +33,91 @@
       IMAGE_TAG: ["ubuntu-"]
     - IMAGE_FLAVOR: "ubi-fips"
       IMAGE_TAG: ["ubi-fips-"]
+
+.release_runner_images:
+  extends:
+  - .docker
+  dependencies:
+  - 'build runner images'
+  script:
+  - make something
+  parallel:
+    matrix:
+    - IMAGE_FLAVOR: ubi-fips
+      IMAGE_ARCHS: amd64
+    - IMAGE_FLAVOR: ubuntu
+      IMAGE_ARCHS: amd64 arm64 ppc64le s390x
+    - IMAGE_FLAVOR: alpine3.12
+      IMAGE_ARCHS: amd64 arm64 ppc64le s390x
+    - IMAGE_FLAVOR: alpine3.13
+      IMAGE_ARCHS: amd64 arm64 ppc64le s390x
+    - IMAGE_FLAVOR: alpine3.14
+      IMAGE_ARCHS: amd64 arm64 ppc64le s390x
+    - IMAGE_FLAVOR: alpine3.15
+      IMAGE_ARCHS: amd64 arm64 ppc64le s390x
+
+development docker images:
+  extends:
+  - .release_docker_images
+  - .rules:release:development:merge-requests
+  variables:
+    PUBLISH_IMAGES: "false"
+    PUSH_TO_ECR_PUBLIC: "false"
+
+development helper docker images:
+  extends:
+  - .release_helper_docker_images
+  - .rules:release:development:merge-requests
+  variables:
+    PUBLISH_IMAGES: "false"
+    PUSH_TO_ECR_PUBLIC: "false"
+
+.bleding_edge_docker_images_base:
+  extends:
+  - .rules:release:bleeding-edge
+  environment:
+    name: bleeding_edge/docker_images/linux
+    url: https://hub.docker.com/r/gitlab/gitlab-runner/tags/
+
+bleeding edge docker images:
+  extends:
+  - .bleding_edge_docker_images_base
+  - .release_docker_images
+  variables:
+    PUSH_TO_DOCKER_HUB: "true"
+
+bleeding edge helper docker images:
+  extends:
+  - .bleding_edge_docker_images_base
+  - .release_helper_docker_images
+
+.docker_images_registry_base_variables_overwrite:
+  variables:
+    # Setting the CI_PROJECT_ID and CI_REGISTRY_IMAGE variable explicitly because we're
+    # running this job also from the https://gitlab.com/gitlab-org/security/gitlab-runner
+    # fork. But it should still create the release entry in the canonical one.
+    CI_REGISTRY: registry.gitlab.com
+    CI_REGISTRY_IMAGE: registry.gitlab.com/gitlab-org/gitlab-runner
+
+.stable_docker_images_base:
+  extends:
+  - .rules:release:stable:branch
+  - .docker_images_registry_base_variables_overwrite
+  environment:
+    name: stable/docker_images/linux
+    url: https://hub.docker.com/r/gitlab/gitlab-runner/tags/
+
+stable docker images:
+  extends:
+  - .stable_docker_images_base
+  - .release_docker_images
+  variables:
+    PUSH_TO_DOCKER_HUB: "true"
+
+stable helper docker images:
+  extends:
+  - .stable_docker_images_base
+  - .release_helper_docker_images
 
 .release:
   stage: release
@@ -108,22 +164,6 @@ development S3:
     name: development/s3/${CI_COMMIT_REF_NAME}
     url: https://gitlab-runner-downloads.s3.amazonaws.com/${CI_COMMIT_REF_NAME}/index.html
 
-development docker images:
-  extends:
-  - .release_docker_images
-  - .rules:release:development:merge-requests
-  variables:
-    PUBLISH_IMAGES: "false"
-    PUSH_TO_ECR_PUBLIC: "false"
-
-development helper docker images:
-  extends:
-  - .release_helper_docker_images
-  - .rules:release:development:merge-requests
-  variables:
-    PUBLISH_IMAGES: "false"
-    PUSH_TO_ECR_PUBLIC: "false"
-
 bleeding edge S3:
   extends:
   - .release_s3
@@ -147,25 +187,6 @@ bleeding edge packagecloud:
       - el
       - fedora
       - amazon
-
-.bleding_edge_docker_images_base:
-  extends:
-  - .rules:release:bleeding-edge
-  environment:
-    name: bleeding_edge/docker_images/linux
-    url: https://hub.docker.com/r/gitlab/gitlab-runner/tags/
-
-bleeding edge docker images:
-  extends:
-  - .bleding_edge_docker_images_base
-  - .release_docker_images
-  variables:
-    PUSH_TO_DOCKER_HUB: "true"
-
-bleeding edge helper docker images:
-  extends:
-  - .bleding_edge_docker_images_base
-  - .release_helper_docker_images
 
 stable S3:
   extends:
@@ -193,34 +214,6 @@ stable packagecloud:
       - ol
       - fedora
       - amazon
-
-.docker_images_registry_base_variables_overwrite:
-  variables:
-    # Setting the CI_PROJECT_ID and CI_REGISTRY_IMAGE variable explicitly because we're
-    # running this job also from the https://gitlab.com/gitlab-org/security/gitlab-runner
-    # fork. But it should still create the release entry in the canonical one.
-    CI_REGISTRY: registry.gitlab.com
-    CI_REGISTRY_IMAGE: registry.gitlab.com/gitlab-org/gitlab-runner
-
-.stable_docker_images_base:
-  extends:
-  - .rules:release:stable:branch
-  - .docker_images_registry_base_variables_overwrite
-  environment:
-    name: stable/docker_images/linux
-    url: https://hub.docker.com/r/gitlab/gitlab-runner/tags/
-
-stable docker images:
-  extends:
-  - .stable_docker_images_base
-  - .release_docker_images
-  variables:
-    PUSH_TO_DOCKER_HUB: "true"
-
-stable helper docker images:
-  extends:
-  - .stable_docker_images_base
-  - .release_helper_docker_images
 
 stable gitlab release:
   stage: postrelease

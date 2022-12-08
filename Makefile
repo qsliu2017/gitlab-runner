@@ -299,6 +299,9 @@ prepare_index: $(RELEASE_INDEX_GENERATOR)
 								-gpg-key-env GPG_KEY \
 								-gpg-password-env GPG_PASSPHRASE
 
+build_docker_images:
+	@./ci/build_docker_images
+
 release_docker_images:
 	# Releasing GitLab Runner images
 	@./ci/release_docker_images
