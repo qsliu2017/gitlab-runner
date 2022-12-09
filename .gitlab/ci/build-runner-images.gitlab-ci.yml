@@ -1,4 +1,4 @@
-build runner images:
+build:
   stage: build runner images
   extends:
   - .docker
