@@ -4,6 +4,7 @@ build runner images:
   - .docker
   - .docker_qemu
   - .linux-dependency-checksums
+  - .rules:merge_request_pipelines:no_docs
   dependencies:
   - 'binaries'
   - 'package-deb'
