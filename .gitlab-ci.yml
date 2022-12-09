@@ -5,7 +5,7 @@ stages:
 - prerelease
 - test
 - coverage
-- runner binaries
+- build runner binaries
 - build runner images
 - package
 - release
@@ -21,7 +21,8 @@ include:
 - local: /.gitlab/ci/prerelease.gitlab-ci.yml
 - local: /.gitlab/ci/test.gitlab-ci.yml
 - local: /.gitlab/ci/coverage.gitlab-ci.yml
-- local: /.gitlab/ci/build.gitlab-ci.yml
+- local: /.gitlab/ci/build-runner-images.gitlab-ci.yml
+- local: /.gitlab/ci/build-runner-binaries.gitlab-ci.yml
 - local: /.gitlab/ci/package.gitlab-ci.yml
 - local: /.gitlab/ci/release.gitlab-ci.yml
 - local: /.gitlab/ci/postrelease.gitlab-ci.yml

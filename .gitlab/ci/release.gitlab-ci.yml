@@ -37,10 +37,11 @@
 .release_runner_images:
   extends:
   - .docker
+  - .release_docker_images_base
   dependencies:
   - 'build runner images'
   script:
-  - make something
+  - make todo_release_runner_images
   parallel:
     matrix:
     - IMAGE_FLAVOR: ubi-fips
@@ -58,7 +59,7 @@
 
 development docker images:
   extends:
-  - .release_docker_images
+  - .release_runner_images
   - .rules:release:development:merge-requests
   variables:
     PUBLISH_IMAGES: "false"
@@ -82,7 +83,7 @@ development helper docker images:
 bleeding edge docker images:
   extends:
   - .bleding_edge_docker_images_base
-  - .release_docker_images
+  - .release_runner_images
   variables:
     PUSH_TO_DOCKER_HUB: "true"
 
@@ -110,7 +111,7 @@ bleeding edge helper docker images:
 stable docker images:
   extends:
   - .stable_docker_images_base
-  - .release_docker_images
+  - .release_runner_images
   variables:
     PUSH_TO_DOCKER_HUB: "true"
 
