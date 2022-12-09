@@ -6,8 +6,8 @@ stages:
 - test
 - coverage
 - build runner binaries
-- build runner images
 - package
+- build runner images
 - release
 - postrelease
 - docs
