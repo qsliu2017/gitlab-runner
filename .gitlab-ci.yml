@@ -1,27 +1,418 @@
+.check windows test failures:
+  artifacts:
+    expire_in: 7d
+    paths:
+      - .test-failures.*.txt.updated
+  script:
+    - ./scripts/check_windows_failures
+  stage: coverage
+.docker_images_registry_base_variables_overwrite:
+  variables:
+    CI_REGISTRY: registry.gitlab.com
+    CI_REGISTRY_IMAGE: registry.gitlab.com/gitlab-org/gitlab-runner
+.go-cache:
+  before_script:
+    - mkdir -p "$GOCACHE"
+  cache:
+    key: ${CI_JOB_NAME}-${CI_COMMIT_REF_SLUG}
+    paths:
+      - $CI_PROJECT_DIR/.gocache-false/
+  variables:
+    GOCACHE: $CI_PROJECT_DIR/.gocache-$CI_COMMIT_REF_PROTECTED
+.go-cache-windows:
+  before_script:
+    - New-Item -Path "$Env:GOCACHE" -Type Directory -Force
+  cache:
+    key: ${CI_JOB_NAME}-${CI_COMMIT_REF_SLUG}
+    paths:
+      - $CI_PROJECT_DIR\.gocache-false\
+  variables:
+    GOCACHE: $CI_PROJECT_DIR\.gocache-$CI_COMMIT_REF_PROTECTED
+.no_cache:
+  cache: {}
+.no_cache_and_dependencies:
+  extends:
+    - .no_cache
+    - .no_dependencies
+.no_dependencies:
+  dependencies: []
+.release_windows_docker_images:
+  dependencies:
+    - helper images binaries
+  extends:
+    - .windows-dependency-checksums
+  retry: 2
+  script:
+    - choco install awscli -y
+    - $env:Path += ";C:\Program Files\Amazon\AWSCLIV2"
+    - .\ci\build_release_windows_images.ps1
+  stage: prerelease
+  variables:
+    PUBLISH_IMAGES: "true"
+    PUSH_TO_ECR_PUBLIC: "false"
+    PWSH_VERSION: 7.1.1
+.rules:merge_request_pipelines:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && ($CI_PROJECT_PATH == "gitlab-org/gitlab-runner"
+        || $CI_PROJECT_PATH == "gitlab-org/security/gitlab-runner")
+    - if: $CI_COMMIT_REF_NAME =~ /\A[0-9]+-[0-9]+-stable\z/ && ($CI_PROJECT_PATH ==
+        "gitlab-org/gitlab-runner" || $CI_PROJECT_PATH == "gitlab-org/security/gitlab-runner")
+    - if: $CI_COMMIT_REF_NAME =~ /\Av[0-9]+\.[0-9]+\.[0-9]+(-rc[0-9]+)?\z/ && $CI_PROJECT_PATH
+        == "gitlab-org/gitlab-runner"
+    - if: $CI_COMMIT_REF_NAME =~ /\Av[0-9]+\.[0-9]+\.[0-9]+?\z/ && $CI_PROJECT_PATH
+        == "gitlab-org/security/gitlab-runner"
+.rules:merge_request_pipelines:no_docs:
+  rules:
+    - changes:
+        - .gitlab-ci.yml
+        - .golangci.yml
+        - .gitlab/ci/**/*
+        - .gitattributes
+        - Makefile*
+        - '**/*.go'
+        - '{ci,dockerfiles,packaging,scripts,tests}/**/*'
+        - '**/testdata/**/*'
+        - go.*
+        - tmp/gitlab-test/**
+        - VERSION
+      if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - changes:
+        - .gitlab-ci.yml
+        - .golangci.yml
+        - .gitlab/ci/**/*
+        - .gitattributes
+        - Makefile*
+        - '**/*.go'
+        - '{ci,dockerfiles,packaging,scripts,tests}/**/*'
+        - '**/testdata/**/*'
+        - go.*
+        - tmp/gitlab-test/**
+        - VERSION
+      if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && ($CI_PROJECT_PATH == "gitlab-org/gitlab-runner"
+        || $CI_PROJECT_PATH == "gitlab-org/security/gitlab-runner")
+    - changes:
+        - .gitlab-ci.yml
+        - .golangci.yml
+        - .gitlab/ci/**/*
+        - .gitattributes
+        - Makefile*
+        - '**/*.go'
+        - '{ci,dockerfiles,packaging,scripts,tests}/**/*'
+        - '**/testdata/**/*'
+        - go.*
+        - tmp/gitlab-test/**
+        - VERSION
+      if: $CI_COMMIT_REF_NAME =~ /\A[0-9]+-[0-9]+-stable\z/ && ($CI_PROJECT_PATH ==
+        "gitlab-org/gitlab-runner" || $CI_PROJECT_PATH == "gitlab-org/security/gitlab-runner")
+    - changes:
+        - .gitlab-ci.yml
+        - .golangci.yml
+        - .gitlab/ci/**/*
+        - .gitattributes
+        - Makefile*
+        - '**/*.go'
+        - '{ci,dockerfiles,packaging,scripts,tests}/**/*'
+        - '**/testdata/**/*'
+        - go.*
+        - tmp/gitlab-test/**
+        - VERSION
+      if: $CI_COMMIT_REF_NAME =~ /\Av[0-9]+\.[0-9]+\.[0-9]+(-rc[0-9]+)?\z/ && $CI_PROJECT_PATH
+        == "gitlab-org/gitlab-runner"
+    - changes:
+        - .gitlab-ci.yml
+        - .golangci.yml
+        - .gitlab/ci/**/*
+        - .gitattributes
+        - Makefile*
+        - '**/*.go'
+        - '{ci,dockerfiles,packaging,scripts,tests}/**/*'
+        - '**/testdata/**/*'
+        - go.*
+        - tmp/gitlab-test/**
+        - VERSION
+      if: $CI_COMMIT_REF_NAME =~ /\Av[0-9]+\.[0-9]+\.[0-9]+?\z/ && $CI_PROJECT_PATH
+        == "gitlab-org/security/gitlab-runner"
+.rules:release-or-security:bleeding-edge:
+  rules:
+    - changes:
+        - .gitlab-ci.yml
+        - .golangci.yml
+        - .gitlab/ci/**/*
+        - .gitattributes
+        - Makefile*
+        - '**/*.go'
+        - '{ci,dockerfiles,packaging,scripts,tests}/**/*'
+        - '**/testdata/**/*'
+        - go.*
+        - tmp/gitlab-test/**
+        - VERSION
+      if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && ($CI_PROJECT_PATH == "gitlab-org/gitlab-runner"
+        || $CI_PROJECT_PATH == "gitlab-org/security/gitlab-runner")
+    - changes:
+        - .gitlab-ci.yml
+        - .golangci.yml
+        - .gitlab/ci/**/*
+        - .gitattributes
+        - Makefile*
+        - '**/*.go'
+        - '{ci,dockerfiles,packaging,scripts,tests}/**/*'
+        - '**/testdata/**/*'
+        - go.*
+        - tmp/gitlab-test/**
+        - VERSION
+      if: $CI_COMMIT_REF_NAME =~ /\Av[0-9]+\.[0-9]+\.[0-9]+-rc[0-9]+\z/ && ($CI_PROJECT_PATH
+        == "gitlab-org/gitlab-runner" || $CI_PROJECT_PATH == "gitlab-org/security/gitlab-runner")
+.rules:release:development:merge-requests:
+  rules:
+    - changes:
+        - .gitlab-ci.yml
+        - .golangci.yml
+        - .gitlab/ci/**/*
+        - .gitattributes
+        - Makefile*
+        - '**/*.go'
+        - '{ci,dockerfiles,packaging,scripts,tests}/**/*'
+        - '**/testdata/**/*'
+        - go.*
+        - tmp/gitlab-test/**
+        - VERSION
+      if: $CI_PIPELINE_SOURCE == "merge_request_event" && $CI_PROJECT_PATH == "gitlab-org/gitlab-runner"
+    - changes:
+        - .gitlab-ci.yml
+        - .golangci.yml
+        - .gitlab/ci/**/*
+        - .gitattributes
+        - Makefile*
+        - '**/*.go'
+        - '{ci,dockerfiles,packaging,scripts,tests}/**/*'
+        - '**/testdata/**/*'
+        - go.*
+        - tmp/gitlab-test/**
+        - VERSION
+      if: $CI_PIPELINE_SOURCE == "merge_request_event" && $CI_PROJECT_PATH == "gitlab-org/security/gitlab-runner"
+.rules:release:stable:branch:
+  rules:
+    - changes:
+        - .gitlab-ci.yml
+        - .golangci.yml
+        - .gitlab/ci/**/*
+        - .gitattributes
+        - Makefile*
+        - '**/*.go'
+        - '{ci,dockerfiles,packaging,scripts,tests}/**/*'
+        - '**/testdata/**/*'
+        - go.*
+        - tmp/gitlab-test/**
+        - VERSION
+      if: $CI_COMMIT_REF_NAME =~ /\Av[0-9]+\.[0-9]+\.[0-9]+?\z/ && $CI_PROJECT_PATH
+        == "gitlab-org/gitlab-runner"
+    - changes:
+        - .gitlab-ci.yml
+        - .golangci.yml
+        - .gitlab/ci/**/*
+        - .gitattributes
+        - Makefile*
+        - '**/*.go'
+        - '{ci,dockerfiles,packaging,scripts,tests}/**/*'
+        - '**/testdata/**/*'
+        - go.*
+        - tmp/gitlab-test/**
+        - VERSION
+      if: $CI_COMMIT_REF_NAME =~ /\Av[0-9]+\.[0-9]+\.[0-9]+?\z/ && $CI_PROJECT_PATH
+        == "gitlab-org/security/gitlab-runner"
+.stage_done:
+  extends:
+    - .no_cache_and_dependencies
+    - .rules:merge_request_pipelines
+  image: alpine:latest
+  script:
+    - exit 0
+  variables:
+    GIT_STRATEGY: none
+.test definitions:
+  artifacts:
+    expire_in: 7d
+    paths:
+      - $TESTSDEFINITIONSPATH
+  extends:
+    - .rules:merge_request_pipelines:no_docs
+    - .go-cache
+  script:
+    - apt-get update
+    - apt-get install -y make
+    - source ci/touch_make_dependencies
+    - mkdir -p $(dirname $TESTSDEFINITIONSPATH)
+    - make parallel_test_prepare
+  stage: prebuild
+.windows integration test:
+  extends:
+    - .windows test
+  variables:
+    TESTFLAGS: -tags=integration
+    TESTSDEFINITIONSPATH: integration\testsdefinitions.txt
+.windows test:
+  allow_failure:
+    exit_codes: 1
+  artifacts:
+    expire_in: 7d
+    paths:
+      - .testoutput/
+    when: always
+  before_script:
+    - Set-MpPreference -DisableRealtimeMonitoring $true
+    - git config --system core.longpaths true
+    - New-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\FileSystem" ` -Name
+      "LongPathsEnabled" -Value 1 -PropertyType DWORD -Force
+    - go version
+    - curl -o golang.msi "https://go.dev/dl/go1.18.8.windows-amd64.msi"
+    - Start-Process msiexec.exe -Wait -ArgumentList '/I golang.msi /quiet'
+    - $env:Path = "C:\Program Files\Go\bin;$env:Path"
+    - go version
+    - - New-Item -Path .gocache-$CI_COMMIT_REF_PROTECTED -Type Directory -Force
+  extends:
+    - .rules:merge_request_pipelines:no_docs
+    - .go-cache-windows
+  parallel: 6
+  script:
+    - .\ci\test_windows.ps1 $TESTSDEFINITIONSPATH
+  stage: test
+.windows-dependency-checksums:
+  variables:
+    GIT_LFS_WINDOWS_AMD64_CHECKSUM: c2ee1f7b22d98f614cab94e1033052143f4dbf1207c09ce57e9390acc4bbf86e
+    GIT_WINDOWS_AMD64_CHECKSUM: 77b14610d92e717ac025e5409e2e713553435bfad224753baf6858ebd0f7d96d
+    PWSH_WINDOWS_AMD64_CHECKSUM: D234CFD6E9DD4A2CA68BFBC64C416DE42F31760E954812E8ADE02B6D57FE243F
+.windows1809:
+  extends:
+    - .windows1809_variables
+  tags:
+    - shared-windows
+    - windows
+    - windows-1809
+.windows1809_variables:
+  variables:
+    WINDOWS_VERSION: servercore1809
+bleeding edge servercore1809 helper docker images:
+  environment:
+    name: bleeding_edge/docker_images/windows1809
+    url: https://hub.docker.com/r/gitlab/gitlab-runner/tags/
+  extends:
+    - .windows1809
+    - .release_windows_docker_images
+    - .rules:release-or-security:bleeding-edge
+    - .docker_images_registry_base_variables_overwrite
+check windows 1809 integration test failures:
+  extends:
+    - .check windows test failures
+    - .windows1809_variables
+    - .rules:merge_request_pipelines:no_docs
+  needs:
+    - windows 1809 integration tests
+clone test repo:
+  artifacts:
+    expire_in: 7d
+    paths:
+      - tmp/gitlab-test
+  extends:
+    - .rules:merge_request_pipelines:no_docs
+    - .no_cache_and_dependencies
+  script:
+    - mkdir tmp
+    - succeed=0
+    - for i in {1..3}; do git clone https://gitlab.com/gitlab-org/ci-cd/gitlab-runner-pipeline-tests/gitlab-test
+      tmp/gitlab-test && succeed=1 && break; echo "retrying"; done
+    - '[[ "$succeed" -eq 1 ]]'
+  stage: prebuild
+  variables:
+    GIT_STRATEGY: none
+default:
+  image: $CI_IMAGE
+  retry:
+    max: 2
+    when:
+      - runner_system_failure
+  tags:
+    - gitlab-org
+development servercore1809 helper docker images:
+  extends:
+    - .windows1809
+    - .release_windows_docker_images
+    - .rules:release:development:merge-requests
+    - .docker_images_registry_base_variables_overwrite
+  variables:
+    PUSH_TO_ECR_PUBLIC: "false"
+integration test definitions:
+  extends:
+    - .test definitions
+  variables:
+    TESTFLAGS: -cover -tags=integration
+    TESTSDEFINITIONSPATH: integration/testsdefinitions.txt
+prepare done:
+  extends:
+    - .stage_done
+  stage: prebuild
+stable servercore1809 helper docker images:
+  environment:
+    name: stable/docker_images/windows1809
+    url: https://hub.docker.com/r/gitlab/gitlab-runner/tags/
+  extends:
+    - .windows1809
+    - .release_windows_docker_images
+    - .rules:release:stable:branch
+    - .docker_images_registry_base_variables_overwrite
 stages:
-- prepare
-- fips helper binaries
-- prebuild
-- prerelease
-- test
-- coverage
-- build
-- package
-- release
-- postrelease
-- docs
-
-include:
-- local: /.gitlab/ci/_common.gitlab-ci.yml
-- local: /.gitlab/ci/_rules.gitlab-ci.yml
-- local: /.gitlab/ci/prepare.gitlab-ci.yml
-- local: /.gitlab/ci/fips-helper-binaries.gitlab-ci.yml
-- local: /.gitlab/ci/prebuild.gitlab-ci.yml
-- local: /.gitlab/ci/prerelease.gitlab-ci.yml
-- local: /.gitlab/ci/test.gitlab-ci.yml
-- local: /.gitlab/ci/coverage.gitlab-ci.yml
-- local: /.gitlab/ci/build.gitlab-ci.yml
-- local: /.gitlab/ci/package.gitlab-ci.yml
-- local: /.gitlab/ci/release.gitlab-ci.yml
-- local: /.gitlab/ci/postrelease.gitlab-ci.yml
-- local: /.gitlab/ci/docs.gitlab-ci.yml
+  - prepare
+  - fips helper binaries
+  - prebuild
+  - prerelease
+  - test
+  - coverage
+  - build
+  - package
+  - release
+  - postrelease
+  - docs
+variables:
+  ALPINE_312_VERSION: 3.12.12
+  ALPINE_313_VERSION: 3.13.12
+  ALPINE_314_VERSION: 3.14.8
+  ALPINE_315_VERSION: 3.15.6
+  AWS_CLI_VERSION: 2.4.19
+  BUILDX_VERSION: 0.7.1
+  CI_IMAGE: registry.gitlab.com/gitlab-org/gitlab-runner/ci:1.18.8-1
+  DEPENDENCY_SCANNING_DISABLED: "true"
+  DOCKER_MACHINE_VERSION: 0.16.2
+  DOCKER_VERSION: 20.10.12
+  DOCS_GITLAB_REPO_SUFFIX: runner
+  DUMB_INIT_VERSION: 1.2.2
+  FF_SCRIPT_SECTIONS: "true"
+  FF_USE_FASTZIP: "true"
+  FF_USE_NEW_BASH_EVAL_STRATEGY: "true"
+  GIT_LFS_VERSION: 3.2.0
+  GIT_VERSION: 2.38.1
+  GIT_VERSION_BUILD: "1"
+  GO_FIPS_IMAGE: registry.gitlab.com/gitlab-org/gitlab-runner/go-fips:$GO_FIPS_VERSION
+  GO_FIPS_VERSION: "1.18"
+  GO111MODULE: "on"
+  KUBECTL_VERSION: 1.23.0
+  LICENSE_MANAGEMENT_SETUP_CMD: echo "Skip setup. Dependency already vendored"
+  RELEASE_INDEX_GEN_VERSION: latest
+  SAST_DISABLED: "true"
+  TRANSFER_METER_FREQUENCY: 5s
+  UBI_FIPS_VERSION: 8.7-929
+  UBUNTU_VERSION: "20.04"
+windows 1809 integration tests:
+  extends:
+    - .windows integration test
+    - .windows1809
+    - .rules:merge_request_pipelines:no_docs
+  needs:
+    - integration test definitions
+    - clone test repo
+    - prepare done
+    - job: development servercore1809 helper docker images
+      optional: true
+    - job: bleeding edge servercore1809 helper docker images
+      optional: true
+    - job: stable servercore1809 helper docker images
+      optional: true
