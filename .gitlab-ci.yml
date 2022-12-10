@@ -341,6 +341,16 @@ development servercore1809 helper docker images:
     - .docker_images_registry_base_variables_overwrite
   variables:
     PUSH_TO_ECR_PUBLIC: "false"
+helper images binaries:
+  artifacts:
+    expire_in: 7d
+    paths:
+      - out/binaries/gitlab-runner-helper/gitlab-runner-helper*
+  extends:
+    - .rules:merge_request_pipelines:no_docs
+  script:
+    - make helper-bin
+  stage: prebuild
 integration test definitions:
   extends:
     - .test definitions
