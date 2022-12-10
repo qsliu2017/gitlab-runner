@@ -1,3 +1,18 @@
+.coverage_job:
+  extends:
+    - .rules:merge_request_pipelines:no_docs:always
+  stage: coverage
+.docker:
+  services:
+    - docker:${DOCKER_VERSION}-dind
+  tags:
+    - gitlab-org-docker
+  variables:
+    DOCKER_CERT_PATH: /certs/client
+    DOCKER_DRIVER: overlay2
+    DOCKER_HOST: tcp://docker:2376
+    DOCKER_TLS_CERTDIR: /certs
+    DOCKER_TLS_VERIFY: 1
 .go-cache:
   before_script:
     - mkdir -p "$GOCACHE"
@@ -7,10 +22,63 @@
       - $CI_PROJECT_DIR/.gocache-false/
   variables:
     GOCACHE: $CI_PROJECT_DIR/.gocache-$CI_COMMIT_REF_PROTECTED
+.go-cache-docker-qemu:
+  before_script:
+    - - docker run --privileged --rm tonistiigi/binfmt --install all
+    - mkdir -p "$GOCACHE"
+  extends:
+    - .go-cache
+.helper images base:
+  artifacts:
+    expire_in: 7d
+    paths:
+      - out/helper-images/
+  extends:
+    - .docker
+    - .go-cache-docker-qemu
+    - .rules:merge_request_pipelines:no_docs
+  retry: 2
+  script:
+    - make "helper-dockerarchive-${IMAGE_BASE}"
+  stage: prebuild
+  variables:
+    TAR_XZ_ARGS: -f -9
+.linux test:
+  artifacts:
+    expire_in: 7d
+    paths:
+      - .cover/
+      - .testoutput/
+    when: always
+  extends:
+    - .rules:merge_request_pipelines:no_docs
+    - .docker
+    - .go-cache
+  script:
+    - source ci/touch_make_dependencies
+    - make pull_images_for_tests
+    - eval $(make export_test_env)
+    - ./scripts/go_test_with_coverage_report execute
+  stage: test
 .no_cache:
   cache: {}
+.no_cache_and_dependencies:
+  extends:
+    - .no_cache
+    - .no_dependencies
 .no_dependencies:
   dependencies: []
+.rules:merge_request_pipelines:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && ($CI_PROJECT_PATH == "gitlab-org/gitlab-runner"
+        || $CI_PROJECT_PATH == "gitlab-org/security/gitlab-runner")
+    - if: $CI_COMMIT_REF_NAME =~ /\A[0-9]+-[0-9]+-stable\z/ && ($CI_PROJECT_PATH ==
+        "gitlab-org/gitlab-runner" || $CI_PROJECT_PATH == "gitlab-org/security/gitlab-runner")
+    - if: $CI_COMMIT_REF_NAME =~ /\Av[0-9]+\.[0-9]+\.[0-9]+(-rc[0-9]+)?\z/ && $CI_PROJECT_PATH
+        == "gitlab-org/gitlab-runner"
+    - if: $CI_COMMIT_REF_NAME =~ /\Av[0-9]+\.[0-9]+\.[0-9]+?\z/ && $CI_PROJECT_PATH
+        == "gitlab-org/security/gitlab-runner"
 .rules:merge_request_pipelines:no_docs:
   rules:
     - changes:
@@ -82,34 +150,123 @@
         - VERSION
       if: $CI_COMMIT_REF_NAME =~ /\Av[0-9]+\.[0-9]+\.[0-9]+?\z/ && $CI_PROJECT_PATH
         == "gitlab-org/security/gitlab-runner"
-code_quality:
-  allow_failure: true
+.rules:merge_request_pipelines:no_docs:always:
+  rules:
+    - changes:
+        - .gitlab-ci.yml
+        - .golangci.yml
+        - .gitlab/ci/**/*
+        - .gitattributes
+        - Makefile*
+        - '**/*.go'
+        - '{ci,dockerfiles,packaging,scripts,tests}/**/*'
+        - '**/testdata/**/*'
+        - go.*
+        - tmp/gitlab-test/**
+        - VERSION
+      if: $CI_PIPELINE_SOURCE == "merge_request_event"
+      when: always
+    - changes:
+        - .gitlab-ci.yml
+        - .golangci.yml
+        - .gitlab/ci/**/*
+        - .gitattributes
+        - Makefile*
+        - '**/*.go'
+        - '{ci,dockerfiles,packaging,scripts,tests}/**/*'
+        - '**/testdata/**/*'
+        - go.*
+        - tmp/gitlab-test/**
+        - VERSION
+      if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && ($CI_PROJECT_PATH == "gitlab-org/gitlab-runner"
+        || $CI_PROJECT_PATH == "gitlab-org/security/gitlab-runner")
+      when: always
+    - changes:
+        - .gitlab-ci.yml
+        - .golangci.yml
+        - .gitlab/ci/**/*
+        - .gitattributes
+        - Makefile*
+        - '**/*.go'
+        - '{ci,dockerfiles,packaging,scripts,tests}/**/*'
+        - '**/testdata/**/*'
+        - go.*
+        - tmp/gitlab-test/**
+        - VERSION
+      if: $CI_COMMIT_REF_NAME =~ /\A[0-9]+-[0-9]+-stable\z/ && ($CI_PROJECT_PATH ==
+        "gitlab-org/gitlab-runner" || $CI_PROJECT_PATH == "gitlab-org/security/gitlab-runner")
+      when: always
+    - changes:
+        - .gitlab-ci.yml
+        - .golangci.yml
+        - .gitlab/ci/**/*
+        - .gitattributes
+        - Makefile*
+        - '**/*.go'
+        - '{ci,dockerfiles,packaging,scripts,tests}/**/*'
+        - '**/testdata/**/*'
+        - go.*
+        - tmp/gitlab-test/**
+        - VERSION
+      if: $CI_COMMIT_REF_NAME =~ /\Av[0-9]+\.[0-9]+\.[0-9]+(-rc[0-9]+)?\z/ && $CI_PROJECT_PATH
+        == "gitlab-org/gitlab-runner"
+      when: always
+    - changes:
+        - .gitlab-ci.yml
+        - .golangci.yml
+        - .gitlab/ci/**/*
+        - .gitattributes
+        - Makefile*
+        - '**/*.go'
+        - '{ci,dockerfiles,packaging,scripts,tests}/**/*'
+        - '**/testdata/**/*'
+        - go.*
+        - tmp/gitlab-test/**
+        - VERSION
+      if: $CI_COMMIT_REF_NAME =~ /\Av[0-9]+\.[0-9]+\.[0-9]+?\z/ && $CI_PROJECT_PATH
+        == "gitlab-org/security/gitlab-runner"
+      when: always
+.stage_done:
+  extends:
+    - .no_cache_and_dependencies
+    - .rules:merge_request_pipelines
+  image: alpine:latest
+  script:
+    - exit 0
+  variables:
+    GIT_STRATEGY: none
+.test definitions:
   artifacts:
     expire_in: 7d
     paths:
-      - ${REPORT_FILE}
-    reports:
-      codequality: ${REPORT_FILE}
-    when: always
-  before_script:
-    - source ci/touch_make_dependencies
-    - mkdir .tmp && ln -s /usr/lib/goargs.so .tmp/goargs.so
-    - cp $(which golangci-lint) .tmp/golangci-lint
+      - $TESTSDEFINITIONSPATH
   extends:
     - .rules:merge_request_pipelines:no_docs
-    - .no_dependencies
     - .go-cache
-  image: registry.gitlab.com/gitlab-org/ci-cd/runner-tools/runner-linters:1.46.2-go1.18
-  needs: []
   script:
-    - make --silent lint | tee ${REPORT_FILE}
-  stage: test
-  timeout: 15 minutes
+    - apt-get update
+    - apt-get install -y make
+    - source ci/touch_make_dependencies
+    - mkdir -p $(dirname $TESTSDEFINITIONSPATH)
+    - make parallel_test_prepare
+  stage: prebuild
+clone test repo:
+  artifacts:
+    expire_in: 7d
+    paths:
+      - tmp/gitlab-test
+  extends:
+    - .rules:merge_request_pipelines:no_docs
+    - .no_cache_and_dependencies
+  script:
+    - mkdir tmp
+    - succeed=0
+    - for i in {1..3}; do git clone https://gitlab.com/gitlab-org/ci-cd/gitlab-runner-pipeline-tests/gitlab-test
+      tmp/gitlab-test && succeed=1 && break; echo "retrying"; done
+    - '[[ "$succeed" -eq 1 ]]'
+  stage: prebuild
   variables:
-    GOLANGLINT_VERSION: ""
-    LINT_FLAGS: --color never --deadline 15m
-    OUT_FORMAT: code-climate
-    REPORT_FILE: gl-code-quality-report.json
+    GIT_STRATEGY: none
 default:
   image: $CI_IMAGE
   retry:
@@ -118,6 +275,57 @@ default:
       - runner_system_failure
   tags:
     - gitlab-org
+helper images:
+  extends:
+    - .helper images base
+  parallel:
+    matrix:
+      - IMAGE_BASE: alpine
+      - IMAGE_BASE: alpine3.13
+      - IMAGE_BASE: alpine3.14
+      - IMAGE_BASE: alpine3.15
+      - IMAGE_BASE: alpine-latest
+      - IMAGE_BASE: ubuntu
+integration test:
+  extends:
+    - .linux test
+  needs:
+    - integration test definitions
+    - clone test repo
+    - helper images
+    - prepare done
+  parallel: 4
+  variables:
+    TESTFLAGS: -cover -tags=integration
+    TESTSDEFINITIONSPATH: integration/testsdefinitions.txt
+integration test definitions:
+  extends:
+    - .test definitions
+  variables:
+    TESTFLAGS: -cover -tags=integration
+    TESTSDEFINITIONSPATH: integration/testsdefinitions.txt
+integration test with race:
+  allow_failure:
+    exit_codes: 99
+  extends:
+    - integration test
+    - .go-cache
+  variables:
+    CGO_ENABLED: "1"
+    TESTFLAGS: -cover -tags=integration -race
+prepare done:
+  extends:
+    - .stage_done
+  stage: prebuild
+race conditions detector:
+  extends:
+    - .coverage_job
+  needs:
+    - unit test with race
+    - integration test with race
+  script:
+    - source ci/touch_make_dependencies
+    - make check_race_conditions
 stages:
   - prepare
   - fips helper binaries
@@ -130,20 +338,32 @@ stages:
   - release
   - postrelease
   - docs
-static QA:
+unit test:
   extends:
-    - .rules:merge_request_pipelines:no_docs
-    - .no_cache
-  image: alpine:3.14.2
+    - .linux test
   needs:
-    - code_quality
-  script: |
-    if [ "$(cat gl-code-quality-report.json)" != "[]" ] ; then
-      apk add -U --no-cache jq > /dev/null
-      jq -C . gl-code-quality-report.json
-      exit 1
-    fi
-  stage: postrelease
+    - unit test definitions
+    - clone test repo
+    - prepare done
+  parallel: 2
+  variables:
+    TESTFLAGS: -cover
+    TESTSDEFINITIONSPATH: unit/testsdefinitions.txt
+unit test definitions:
+  extends:
+    - .test definitions
+  variables:
+    TESTFLAGS: -cover
+    TESTSDEFINITIONSPATH: unit/testsdefinitions.txt
+unit test with race:
+  allow_failure:
+    exit_codes: 99
+  extends:
+    - unit test
+    - .go-cache
+  variables:
+    CGO_ENABLED: "1"
+    TESTFLAGS: -cover -race
 variables:
   ALPINE_312_VERSION: 3.12.12
   ALPINE_313_VERSION: 3.13.12
