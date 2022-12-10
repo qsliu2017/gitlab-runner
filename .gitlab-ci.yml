@@ -267,6 +267,34 @@ clone test repo:
   stage: prebuild
   variables:
     GIT_STRATEGY: none
+code_quality:
+  allow_failure: true
+  artifacts:
+    expire_in: 7d
+    paths:
+      - ${REPORT_FILE}
+    reports:
+      codequality: ${REPORT_FILE}
+    when: always
+  before_script:
+    - source ci/touch_make_dependencies
+    - mkdir .tmp && ln -s /usr/lib/goargs.so .tmp/goargs.so
+    - cp $(which golangci-lint) .tmp/golangci-lint
+  extends:
+    - .rules:merge_request_pipelines:no_docs
+    - .no_dependencies
+    - .go-cache
+  image: registry.gitlab.com/gitlab-org/ci-cd/runner-tools/runner-linters:1.46.2-go1.18
+  needs: []
+  script:
+    - make --silent lint | tee ${REPORT_FILE}
+  stage: test
+  timeout: 15 minutes
+  variables:
+    GOLANGLINT_VERSION: ""
+    LINT_FLAGS: --color never --deadline 15m
+    OUT_FORMAT: code-climate
+    REPORT_FILE: gl-code-quality-report.json
 default:
   image: $CI_IMAGE
   retry:
@@ -338,6 +366,20 @@ stages:
   - release
   - postrelease
   - docs
+static QA:
+  extends:
+    - .rules:merge_request_pipelines:no_docs
+    - .no_cache
+  image: alpine:3.14.2
+  needs:
+    - code_quality
+  script: |
+    if [ "$(cat gl-code-quality-report.json)" != "[]" ] ; then
+      apk add -U --no-cache jq > /dev/null
+      jq -C . gl-code-quality-report.json
+      exit 1
+    fi
+  stage: postrelease
 unit test:
   extends:
     - .linux test
