@@ -14,7 +14,7 @@ build runner images:
   - make build_docker_images
   artifacts:
     paths:
-    - out/runner-images
+    - out/runner-images/*.tar
     expire_in: 7d
   parallel:
     matrix:
