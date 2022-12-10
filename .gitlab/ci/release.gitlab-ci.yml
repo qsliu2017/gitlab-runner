@@ -41,7 +41,7 @@
   dependencies:
   - 'build runner images'
   script:
-  - make todo_release_runner_images
+  - make release_docker_images
   parallel:
     matrix:
     - IMAGE_FLAVOR: ubi-fips

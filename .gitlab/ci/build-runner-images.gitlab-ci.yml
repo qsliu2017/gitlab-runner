@@ -19,33 +19,33 @@ build runner images:
   parallel:
     matrix:
     - IMAGE_FLAVOR: ubi-fips
-      TARGET_ARCHS: amd64
+      TARGET_ARCH: amd64
     - IMAGE_FLAVOR: ubuntu
-      TARGET_ARCHS:
+      TARGET_ARCH:
       - amd64
       - arm64
       - ppc64le
       - s390x
     - IMAGE_FLAVOR: alpine3.12
-      TARGET_ARCHS:
+      TARGET_ARCH:
       - amd64
       - arm64
       - ppc64le
       - s390x
     - IMAGE_FLAVOR: alpine3.13
-      TARGET_ARCHS:
+      TARGET_ARCH:
       - amd64
       - arm64
       - ppc64le
       - s390x
     - IMAGE_FLAVOR: alpine3.14
-      TARGET_ARCHS:
+      TARGET_ARCH:
       - amd64
       - arm64
       - ppc64le
       - s390x
     - IMAGE_FLAVOR: alpine3.15
-      TARGET_ARCHS:
+      TARGET_ARCH:
       - amd64
       - arm64
       - ppc64le

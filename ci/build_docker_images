@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+#!/opt/homebrew/bin/bash
 
 set -eEo pipefail
 
@@ -66,15 +67,13 @@ get_flavor_aliases() {
   fi
 }
 
-if [ -n "${TARGET_ARCHS}" ]; then
-    IFS=' ' read -r -a TARGET_ARCHS <<< "${TARGET_ARCHS}"
-else
-    TARGET_ARCHS=('amd64')
+if [ -z "${TARGET_ARCH}" ]; then
+    TARGET_ARCH="amd64"
 fi
 
-if [[ "${PUSH_TO_ECR_PUBLIC}" == "true" ]] && [[ -n "${ECR_PUBLIC_USER}" ]]; then
+#if [[ "${PUSH_TO_ECR_PUBLIC}" == "true" ]] && [[ -n "${ECR_PUBLIC_USER}" ]]; then
 #  ECR_PUBLIC_REGISTRY_PASSWORD=$(aws --region us-east-1 ecr-public get-login-password)
-fi
+#fi
 
 join_by() {
     local IFS="$1"
@@ -86,12 +85,8 @@ join_by() {
 buildx() {
     local contextPath="$1"
     local base_image="$2"
-    local platforms=()
     local os
     os=$(_docker version -f '{{.Server.Os}}')
-    for arch in "${TARGET_ARCHS[@]}"; do
-        platforms+=("${os}/${arch}")
-    done
 
     shift
     shift
@@ -105,62 +100,63 @@ buildx() {
         tagOpts+=("--tag" "${tagName}")
     done
 
-    if [[ "${PUBLISH_IMAGES}" == "true" ]]; then
-        echo -e "\033[1mBuilding and pushing image: \033[32m${contextPath}\033[0m"
-        buildxFlags+=("--push")
-    else
-        # If not pushing, just load the resulting image to local Docker
-        if [ ${#TARGET_ARCHS[@]} -eq 1 ]; then
-            echo -e "\033[1mBuilding and loading image: \033[32m${contextPath}\033[0m"
-            # But that is only possible if we are targeting a single platform
-            buildxFlags+=("--load")
-        else
-            echo -e "\033[1mBuilding image: \033[32m${contextPath}\033[0m"
-        fi
-    fi
+#    if [[ "${PUBLISH_IMAGES}" == "true" ]]; then
+#        echo -e "\033[1mBuilding and pushing image: \033[32m${contextPath}\033[0m"
+#        buildxFlags+=("--push")
+#    else
+      # If not pushing, just load the resulting image to local Docker
+#      if [ ${#TARGET_ARCHS[@]} -eq 1 ]; then
+#          echo -e "\033[1mBuilding and loading image: \033[32m${contextPath}\033[0m"
+#          # But that is only possible if we are targeting a single platform
+#          buildxFlags+=("--load")
+#      else
+          echo -e "\033[1mBuilding image: \033[32m${contextPath} for ${TARGET_ARCH}\033[0m"
+#      fi
+#    fi
 
     trap cleanup_docker_context_trap ERR SIGINT SIGTERM
     setup_docker_context
 
-    if [[ "${PUBLISH_IMAGES}" == "true" ]] && [[ -n "${CI_REGISTRY_USER}" ]] && [[ -n "${CI_REGISTRY_PASSWORD}" ]]; then
+#    if [[ "${PUBLISH_IMAGES}" == "true" ]] && [[ -n "${CI_REGISTRY_USER}" ]] && [[ -n "${CI_REGISTRY_PASSWORD}" ]]; then
 #        login "${CI_REGISTRY_USER}" "${CI_REGISTRY_PASSWORD}" "${CI_REGISTRY}"
-    fi
-    if [[ "${PUSH_TO_DOCKER_HUB}" == "true" ]] && [[ -n "${DOCKER_HUB_USER}" ]] && [[ -n "${DOCKER_HUB_PASSWORD}" ]]; then
+#    fi
+#    if [[ "${PUSH_TO_DOCKER_HUB}" == "true" ]] && [[ -n "${DOCKER_HUB_USER}" ]] && [[ -n "${DOCKER_HUB_PASSWORD}" ]]; then
 #        login "${DOCKER_HUB_USER}" "${DOCKER_HUB_PASSWORD}"
-    fi
-    if [[ "${PUSH_TO_ECR_PUBLIC}" == "true" ]] && [[ -n "${ECR_PUBLIC_USER}" ]] && [[ -n "${ECR_PUBLIC_REGISTRY_PASSWORD}" ]]; then
+#    fi
+#    if [[ "${PUSH_TO_ECR_PUBLIC}" == "true" ]] && [[ -n "${ECR_PUBLIC_USER}" ]] && [[ -n "${ECR_PUBLIC_REGISTRY_PASSWORD}" ]]; then
 #        ECR_PUBLIC_REGISTRY_PASSWORD=$(aws --region us-east-1 ecr-public get-login-password)
 #        login "${ECR_PUBLIC_USER}" "${ECR_PUBLIC_REGISTRY_PASSWORD}" "${ECR_PUBLIC_REGISTRY}"
-    fi
+#    fi
 
-    local formatted_platforms
-    formatted_platforms=$(join_by , "${platforms[@]}")
+    output="out/runner-images/$IMAGE_FLAVOR-$TARGET_ARCH.tar"
+    platform="${os}/${TARGET_ARCH}"
     _docker_buildx build \
         --build-arg DOCKER_MACHINE_VERSION="${DOCKER_MACHINE_VERSION}" \
         --build-arg DUMB_INIT_VERSION="${DUMB_INIT_VERSION}" \
         --build-arg GIT_LFS_VERSION="${GIT_LFS_VERSION}" \
         --build-arg BASE_IMAGE="${base_image}" \
-        --platform "${formatted_platforms}" \
+        --platform "${platform}" \
         --no-cache \
+        --output "type=tar,dest=${output}" \
         "${tagOpts[@]}" \
         "${buildxFlags[@]}" \
         "${contextPath}"
     trap - ERR SIGINT SIGTERM
     cleanup_docker_context
 
-    if [[ -z "${PUBLISH_IMAGES}" ]] || [[ "${PUBLISH_IMAGES}" != "true" ]]; then
-        echo "Skipping images pushing"
-    fi
-
-    if [[ "${PUBLISH_IMAGES}" == "true" ]] && [[ -n "${CI_REGISTRY_USER}" ]] && [[ -n "${CI_REGISTRY_PASSWORD}" ]]; then
-        logout "${CI_REGISTRY}"
-    fi
-    if [[ "${PUSH_TO_DOCKER_HUB}" == "true" ]] && [[ -n "${DOCKER_HUB_USER}" ]] && [[ -n "${DOCKER_HUB_PASSWORD}" ]]; then
-        logout
-    fi
-    if [[ "${PUSH_TO_ECR_PUBLIC}" == "true" ]] && [[ -n "${ECR_PUBLIC_USER}" ]] && [[ -n "${ECR_PUBLIC_REGISTRY_PASSWORD}" ]]; then
-        logout "${ECR_PUBLIC_REGISTRY}"
-    fi
+#    if [[ -z "${PUBLISH_IMAGES}" ]] || [[ "${PUBLISH_IMAGES}" != "true" ]]; then
+#        echo "Skipping images pushing"
+#    fi
+#
+#    if [[ "${PUBLISH_IMAGES}" == "true" ]] && [[ -n "${CI_REGISTRY_USER}" ]] && [[ -n "${CI_REGISTRY_PASSWORD}" ]]; then
+#        logout "${CI_REGISTRY}"
+#    fi
+#    if [[ "${PUSH_TO_DOCKER_HUB}" == "true" ]] && [[ -n "${DOCKER_HUB_USER}" ]] && [[ -n "${DOCKER_HUB_PASSWORD}" ]]; then
+#        logout
+#    fi
+#    if [[ "${PUSH_TO_ECR_PUBLIC}" == "true" ]] && [[ -n "${ECR_PUBLIC_USER}" ]] && [[ -n "${ECR_PUBLIC_REGISTRY_PASSWORD}" ]]; then
+#        logout "${ECR_PUBLIC_REGISTRY}"
+#    fi
 }
 
 add_tags() {
@@ -189,8 +185,6 @@ add_tags() {
     done
 }
 
-[ "${#TARGET_ARCHS[@]}" -eq 0 ] && TARGET_ARCHS=("$(_docker version -f '{{.Server.Arch}}')")
-
 runner_home_dir="dockerfiles/runner"
 
 function writeChecksum() {
@@ -203,30 +197,25 @@ function writeChecksum() {
   [[ -n "${checksum}" ]] && echo "${checksum}  ${binFile}" >> "${runner_home_dir}/checksums-${targetArch}" || return 0
 }
 
-for arch in "${TARGET_ARCHS[@]}"; do
-    echo "${arch}:"
-    rm -f "${runner_home_dir}/checksums-${arch}"
-    writeChecksum 'DOCKER_MACHINE' "${arch}" '/usr/bin/docker-machine'
-    writeChecksum 'DUMB_INIT' "${arch}" '/usr/bin/dumb-init'
-    writeChecksum 'GIT_LFS' "${arch}" '/tmp/git-lfs.tar.gz'
-done
+rm -f "${runner_home_dir}/checksums-${TARGET_ARCH}"
+writeChecksum 'DOCKER_MACHINE' "${TARGET_ARCH}" '/usr/bin/docker-machine'
+writeChecksum 'DUMB_INIT' "${TARGET_ARCH}" '/usr/bin/dumb-init'
+writeChecksum 'GIT_LFS' "${TARGET_ARCH}" '/tmp/git-lfs.tar.gz'
 
 cp "${runner_home_dir}/install-deps" "${runner_home_dir}/ubuntu/"
 cp "${runner_home_dir}/install-deps" "${runner_home_dir}/alpine/"
 cp "${runner_home_dir}/install-deps" "${runner_home_dir}/ubi-fips/"
-for arch in "${TARGET_ARCHS[@]}"; do
-    deb_arch=$(if [ "${arch}" == "ppc64le" ]; then echo "ppc64el"; else echo "${arch}"; fi)
-    cp "${runner_home_dir}/checksums-${arch}" "out/deb/gitlab-runner_${deb_arch}.deb" \
-        "${runner_home_dir}/ubuntu/"
-    cp "${runner_home_dir}/checksums-${arch}" "out/binaries/gitlab-runner-linux-${arch}" \
-        "${runner_home_dir}/alpine/"
-    if [[ $arch == "amd64" ]]; then
-        cp "${runner_home_dir}/checksums-${arch}" \
-           "out/binaries/gitlab-runner-linux-${arch}-fips" \
-           "out/rpm/gitlab-runner_${arch}-fips.rpm" \
-           "${runner_home_dir}/ubi-fips/"
-    fi
-done
+deb_arch=$(if [ "${TARGET_ARCH}" == "ppc64le" ]; then echo "ppc64el"; else echo "${TARGET_ARCH}"; fi)
+cp "${runner_home_dir}/checksums-${TARGET_ARCH}" "out/deb/gitlab-runner_${deb_arch}.deb" \
+    "${runner_home_dir}/ubuntu/"
+cp "${runner_home_dir}/checksums-${TARGET_ARCH}" "out/binaries/gitlab-runner-linux-${TARGET_ARCH}" \
+    "${runner_home_dir}/alpine/"
+if [[ ${TARGET_ARCH} == "amd64" ]]; then
+    cp "${runner_home_dir}/checksums-${TARGET_ARCH}" \
+       "out/binaries/gitlab-runner-linux-${TARGET_ARCH}-fips" \
+       "out/rpm/gitlab-runner_${TARGET_ARCH}-fips.rpm" \
+       "${runner_home_dir}/ubi-fips/"
+fi
 
 tags=()
 aliases="$(get_flavor_aliases "$IMAGE_FLAVOR")"
