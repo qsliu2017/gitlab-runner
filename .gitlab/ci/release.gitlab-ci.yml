@@ -39,6 +39,10 @@
   - .docker
   - .release_docker_images_base
   dependencies:
+  - 'binaries'
+  - 'package-deb'
+  - 'binaries-fips'
+  - 'package-rpm: [package-rpm-fips]'
   - 'build runner images'
   script:
   - make build_docker_images
