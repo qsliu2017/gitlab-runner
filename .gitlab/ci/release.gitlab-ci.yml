@@ -41,7 +41,7 @@
   dependencies:
   - 'build runner images'
   script:
-  - make release_docker_images
+  - make build_docker_images
   parallel:
     matrix:
     - IMAGE_FLAVOR: ubi-fips
@@ -62,7 +62,7 @@ push development docker images:
   - .release_runner_images
   - .rules:release:development:merge-requests
   variables:
-    PUBLISH_IMAGES: "false"
+    PUBLISH_IMAGES: "true"
     PUSH_TO_ECR_PUBLIC: "false"
 
 push development helper docker images:

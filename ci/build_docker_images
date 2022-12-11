@@ -1,9 +1,12 @@
-#!/usr/bin/env bash
 #!/opt/homebrew/bin/bash
+#!/usr/bin/env bash
 
 set -eEo pipefail
 
-SCRIPTPATH="$( cd "$(dirname "$0")" ; pwd -P )"
+SCRIPTPATH="$(
+    cd "$(dirname "$0")"
+    pwd -P
+)"
 
 # shellcheck source=ci/docker_commands
 source "${SCRIPTPATH}/docker_commands"
@@ -13,7 +16,7 @@ declare -A checksums
 DOCKER_MACHINE_VERSION=${DOCKER_MACHINE_VERSION:-0.16.2}
 checksums['DOCKER_MACHINE_AMD64']=${DOCKER_MACHINE_LINUX_AMD64_CHECKSUM:-a7f7cbb842752b12123c5a5447d8039bf8dccf62ec2328853583e68eb4ffb097}
 checksums['DOCKER_MACHINE_ARM64']=${DOCKER_MACHINE_LINUX_ARM64_CHECKSUM:-109f534bfb8b9b852c938cad978e60a86b13f5ecf92da5e24320dacd2a7216ac}
-checksums['DOCKER_MACHINE_S390X']="" # No binary available yet for s390x, see https://gitlab.com/gitlab-org/gitlab-runner/-/issues/26551
+checksums['DOCKER_MACHINE_S390X']=""   # No binary available yet for s390x, see https://gitlab.com/gitlab-org/gitlab-runner/-/issues/26551
 checksums['DOCKER_MACHINE_PPC64LE']="" # No binary available
 DUMB_INIT_VERSION=${DUMB_INIT_VERSION:-1.2.2}
 checksums['DUMB_INIT_AMD64']=${DUMB_INIT_LINUX_AMD64_CHECKSUM:-37f2c1f0372a45554f1b89924fbb134fc24c3756efaedf11e07f599494e0eff9}
@@ -28,47 +31,35 @@ checksums['GIT_LFS_PPC64LE']=${GIT_LFS_LINUX_PPC64LE_CHECKSUM:-ff1eeaddde5d964d1
 
 IMAGE_FLAVOR=${IMAGE_FLAVOR:-'ubuntu'}
 
-image_platform=""
+imagePlatform=""
 if [[ "${IMAGE_FLAVOR}" == ubuntu* ]]; then
-  image_platform="ubuntu"
+    imagePlatform="ubuntu"
 elif [[ "${IMAGE_FLAVOR}" == ubi-fips* ]]; then
-  image_platform="ubi-fips"
+    imagePlatform="ubi-fips"
 else
-  image_platform="alpine"
+    imagePlatform="alpine"
 fi
 
 declare -A base_images_from_flavor
 base_images_from_flavor=(
-  ["ubuntu"]="ubuntu:${UBUNTU_VERSION}"
-  ["alpine3.12"]="alpine:${ALPINE_312_VERSION}"
-  ["alpine3.13"]="alpine:${ALPINE_313_VERSION}"
-  ["alpine3.14"]="alpine:${ALPINE_314_VERSION}"
-  ["alpine3.15"]="alpine:${ALPINE_315_VERSION}"
-  ["alpine-latest"]="alpine:latest"
-  ["ubi-fips"]="redhat/ubi8:${UBI_FIPS_VERSION}"
+    ["ubuntu"]="ubuntu:${UBUNTU_VERSION}"
+    ["alpine3.12"]="alpine:${ALPINE_312_VERSION}"
+    ["alpine3.13"]="alpine:${ALPINE_313_VERSION}"
+    ["alpine3.14"]="alpine:${ALPINE_314_VERSION}"
+    ["alpine3.15"]="alpine:${ALPINE_315_VERSION}"
+    ["alpine-latest"]="alpine:latest"
+    ["ubi-fips"]="redhat/ubi8:${UBI_FIPS_VERSION}"
 )
 
 get_image_version_from_flavor() {
-  local flavor="$1"
-  echo "${base_images_from_flavor[${flavor}]}"
+    local flavor="$1"
+    echo "${base_images_from_flavor[${flavor}]}"
 }
 
-# This marks the alpine3.15 to be aliased to alpine,
-# which makes 3.15 the default alpine version for users
-declare -A flavor_aliases
-flavor_aliases=( ["alpine3.15"]="alpine,alpine3.15" )
-
-get_flavor_aliases() {
-  local flavor="$1"
-  if [[ "${flavor_aliases[$flavor]}" != "" ]]; then
-      echo "${flavor_aliases[$flavor]}"
-  else
-      echo "$flavor"
-  fi
-}
-
-if [ -z "${TARGET_ARCH}" ]; then
-    TARGET_ARCH="amd64"
+if [ -n "${TARGET_ARCHS}" ]; then
+    IFS=' ' read -r -a TARGET_ARCHS <<<"${TARGET_ARCHS}"
+else
+    TARGET_ARCHS=('amd64')
 fi
 
 #if [[ "${PUSH_TO_ECR_PUBLIC}" == "true" ]] && [[ -n "${ECR_PUBLIC_USER}" ]]; then
@@ -81,14 +72,129 @@ join_by() {
     echo "$*"
 }
 
-# buildx receives an array of tag names, and the context path as the last parameter
-buildx() {
+buildx_cache() {
     local contextPath="$1"
-    local base_image="$2"
+    local targetArch="$2"
+    local tagName="$3"
     local os
     os=$(_docker version -f '{{.Server.Os}}')
 
-    shift
+    echo -e "\033[1mBuilding image: \033[32m$tagName from ${contextPath}\033[0m"
+
+    trap cleanup_docker_context_trap ERR SIGINT SIGTERM
+    setup_docker_context
+
+    local baseImage
+    baseImage="$(get_image_version_from_flavor "${IMAGE_FLAVOR}")"
+
+    mkdir -p out/runner-images
+    cache_output="out/runner-images/${IMAGE_FLAVOR}-${targetArch}-cache"
+    platform="${os}/${targetArch}"
+    _docker_buildx build \
+        --build-arg DOCKER_MACHINE_VERSION="${DOCKER_MACHINE_VERSION}" \
+        --build-arg DUMB_INIT_VERSION="${DUMB_INIT_VERSION}" \
+        --build-arg GIT_LFS_VERSION="${GIT_LFS_VERSION}" \
+        --build-arg BASE_IMAGE="${baseImage}" \
+        --platform "${platform}" \
+        --no-cache \
+        --cache-to "type=local,dest=${cache_output}" \
+        --tag "${tagName}" \
+        "${contextPath}"
+    trap - ERR SIGINT SIGTERM
+    cleanup_docker_context
+}
+
+runnerHomeDir="dockerfiles/runner"
+
+function writeChecksum() {
+    local binVarNamePrefix="$1"
+    local targetArch="$2"
+    local binFile="$3"
+    local archVarNameSuffix=$(echo "${targetArch}" | tr '[:lower:]' '[:upper:]')
+    local checksum="${checksums["${binVarNamePrefix}_${archVarNameSuffix}"]}"
+
+    [[ -n "${checksum}" ]] && echo "${checksum}  ${binFile}" >>"${runnerHomeDir}/checksums-${targetArch}" || return 0
+}
+
+for arch in "${TARGET_ARCHS[@]}"; do
+    rm -f "${runnerHomeDir}/checksums-${arch}"
+    writeChecksum 'DOCKER_MACHINE' "${arch}" '/usr/bin/docker-machine'
+    writeChecksum 'DUMB_INIT' "${arch}" '/usr/bin/dumb-init'
+    writeChecksum 'GIT_LFS' "${arch}" '/tmp/git-lfs.tar.gz'
+done
+
+cp "${runnerHomeDir}/install-deps" "${runnerHomeDir}/ubuntu/"
+cp "${runnerHomeDir}/install-deps" "${runnerHomeDir}/alpine/"
+cp "${runnerHomeDir}/install-deps" "${runnerHomeDir}/ubi-fips/"
+for arch in "${TARGET_ARCHS[@]}"; do
+    debArch=$(if [ "${arch}" == "ppc64le" ]; then echo "ppc64el"; else echo "${arch}"; fi)
+    cp "${runnerHomeDir}/checksums-${arch}" "out/deb/gitlab-runner_${debArch}.deb" \
+        "${runnerHomeDir}/ubuntu/"
+    cp "${runnerHomeDir}/checksums-${arch}" "out/binaries/gitlab-runner-linux-${arch}" \
+        "${runnerHomeDir}/alpine/"
+    if [[ $arch == "amd64" ]]; then
+        cp "${runnerHomeDir}/checksums-${arch}" \
+            "out/binaries/gitlab-runner-linux-${arch}-fips" \
+            "out/rpm/gitlab-runner_${arch}-fips.rpm" \
+            "${runnerHomeDir}/ubi-fips/"
+    fi
+done
+
+# Builds images cache in the "build runner images" jobs
+if [ "$BUILD_ONLY" == "true" ]; then
+    targetArch=${TARGET_ARCHS[0]}
+    tagName="gitlab-runner:${IMAGE_FLAVOR}-${targetArch}-${ref_tag}"
+    buildx_cache "${runnerHomeDir}/${imagePlatform}" "${targetArch}" "${tagName}"
+    exit 0
+fi
+
+tags=()
+
+add_tags() {
+    local -n add_to_tags=$1
+    local base_images="$2"
+    local repository="$3"
+    local default_image='ubuntu'
+
+    for baseImage in ${base_images//,/ }; do
+        add_to_tags+=("${repository}:${baseImage}-${ref_tag}")
+        if [[ "${baseImage}" == "${default_image}" ]]; then
+            add_to_tags+=("${repository}:${ref_tag}")
+        fi
+        if [[ -n "${IS_LATEST}" ]]; then
+            add_to_tags+=("${repository}:${baseImage}")
+            if [[ "${baseImage}" == "${default_image}" ]]; then
+                add_to_tags+=("${repository}:latest")
+            fi
+        fi
+    done
+}
+
+# This marks the alpine3.15 to be aliased to alpine,
+# which makes 3.15 the default alpine version for users
+declare -A flavor_aliases
+flavor_aliases=(["alpine3.15"]="alpine,alpine3.15")
+
+get_flavor_aliases() {
+    local flavor="$1"
+    if [[ "${flavor_aliases[$flavor]}" != "" ]]; then
+        echo "${flavor_aliases[$flavor]}"
+    else
+        echo "$flavor"
+    fi
+}
+
+aliases="$(get_flavor_aliases "$IMAGE_FLAVOR")"
+
+buildx() {
+    local contextPath="$1"
+    local platforms=()
+    local os
+    os=$(_docker version -f '{{.Server.Os}}')
+    for arch in "${TARGET_ARCHS[@]}"; do
+        platforms+=("${os}/${arch}")
+    done
+
     shift
 
     local args=("$@")
@@ -100,141 +206,82 @@ buildx() {
         tagOpts+=("--tag" "${tagName}")
     done
 
-#    if [[ "${PUBLISH_IMAGES}" == "true" ]]; then
-#        echo -e "\033[1mBuilding and pushing image: \033[32m${contextPath}\033[0m"
-#        buildxFlags+=("--push")
-#    else
-      # If not pushing, just load the resulting image to local Docker
-#      if [ ${#TARGET_ARCHS[@]} -eq 1 ]; then
-#          echo -e "\033[1mBuilding and loading image: \033[32m${contextPath}\033[0m"
-#          # But that is only possible if we are targeting a single platform
-#          buildxFlags+=("--load")
-#      else
-          echo -e "\033[1mBuilding image: \033[32m${contextPath} for ${TARGET_ARCH}\033[0m"
-#      fi
-#    fi
+    local caches=()
+    for arch in "${TARGET_ARCHS[@]}"; do
+        caches+=("--cache-from" "type=local,src=out/runner-images/${IMAGE_FLAVOR}-${arch}-cache")
+    done
+
+    local baseImage
+    baseImage="$(get_image_version_from_flavor "${IMAGE_FLAVOR}")"
+
+    if [[ "${PUBLISH_IMAGES}" == "true" ]]; then
+        echo -e "\033[1mBuilding and pushing image: \033[32m${contextPath}\033[0m"
+        buildxFlags+=("--push")
+    else
+        # If not pushing, just load the resulting image to local Docker
+        if [ ${#TARGET_ARCHS[@]} -eq 1 ]; then
+            echo -e "\033[1mBuilding and loading image: \033[32m${contextPath}\033[0m"
+            # But that is only possible if we are targeting a single platform
+            buildxFlags+=("--load")
+        else
+            echo -e "\033[1mBuilding image: \033[32m${contextPath}\033[0m"
+        fi
+    fi
 
     trap cleanup_docker_context_trap ERR SIGINT SIGTERM
     setup_docker_context
 
-#    if [[ "${PUBLISH_IMAGES}" == "true" ]] && [[ -n "${CI_REGISTRY_USER}" ]] && [[ -n "${CI_REGISTRY_PASSWORD}" ]]; then
-#        login "${CI_REGISTRY_USER}" "${CI_REGISTRY_PASSWORD}" "${CI_REGISTRY}"
-#    fi
-#    if [[ "${PUSH_TO_DOCKER_HUB}" == "true" ]] && [[ -n "${DOCKER_HUB_USER}" ]] && [[ -n "${DOCKER_HUB_PASSWORD}" ]]; then
-#        login "${DOCKER_HUB_USER}" "${DOCKER_HUB_PASSWORD}"
-#    fi
-#    if [[ "${PUSH_TO_ECR_PUBLIC}" == "true" ]] && [[ -n "${ECR_PUBLIC_USER}" ]] && [[ -n "${ECR_PUBLIC_REGISTRY_PASSWORD}" ]]; then
-#        ECR_PUBLIC_REGISTRY_PASSWORD=$(aws --region us-east-1 ecr-public get-login-password)
-#        login "${ECR_PUBLIC_USER}" "${ECR_PUBLIC_REGISTRY_PASSWORD}" "${ECR_PUBLIC_REGISTRY}"
-#    fi
-
-    mkdir -p out/runner-images
-    output="out/runner-images/$IMAGE_FLAVOR-$TARGET_ARCH.tar"
-    platform="${os}/${TARGET_ARCH}"
+    local formatted_platforms
+    formatted_platforms=$(join_by , "${platforms[@]}")
     _docker_buildx build \
         --build-arg DOCKER_MACHINE_VERSION="${DOCKER_MACHINE_VERSION}" \
         --build-arg DUMB_INIT_VERSION="${DUMB_INIT_VERSION}" \
         --build-arg GIT_LFS_VERSION="${GIT_LFS_VERSION}" \
-        --build-arg BASE_IMAGE="${base_image}" \
-        --platform "${platform}" \
-        --no-cache \
-        --output "type=tar,dest=${output}" \
+        --build-arg BASE_IMAGE="${baseImage}" \
+        --platform "${formatted_platforms}" \
+        "${caches[@]}" \
         "${tagOpts[@]}" \
         "${buildxFlags[@]}" \
         "${contextPath}"
     trap - ERR SIGINT SIGTERM
     cleanup_docker_context
 
-#    if [[ -z "${PUBLISH_IMAGES}" ]] || [[ "${PUBLISH_IMAGES}" != "true" ]]; then
-#        echo "Skipping images pushing"
-#    fi
-#
-#    if [[ "${PUBLISH_IMAGES}" == "true" ]] && [[ -n "${CI_REGISTRY_USER}" ]] && [[ -n "${CI_REGISTRY_PASSWORD}" ]]; then
-#        logout "${CI_REGISTRY}"
-#    fi
-#    if [[ "${PUSH_TO_DOCKER_HUB}" == "true" ]] && [[ -n "${DOCKER_HUB_USER}" ]] && [[ -n "${DOCKER_HUB_PASSWORD}" ]]; then
-#        logout
-#    fi
-#    if [[ "${PUSH_TO_ECR_PUBLIC}" == "true" ]] && [[ -n "${ECR_PUBLIC_USER}" ]] && [[ -n "${ECR_PUBLIC_REGISTRY_PASSWORD}" ]]; then
-#        logout "${ECR_PUBLIC_REGISTRY}"
-#    fi
-}
-
-add_tags() {
-    local -n add_to_tags=$1
-    local base_images="$2"
-    local user="$3"
-    local password="$4"
-    local repository="$5"
-    local default_image='ubuntu'
-
-    if [[ -z "${user}" ]] || [[ -z "${password}" ]]; then
-        return
+    if [[ -z "${PUBLISH_IMAGES}" ]] || [[ "${PUBLISH_IMAGES}" != "true" ]]; then
+        echo "Skipping images pushing"
     fi
 
-    for base_image in ${base_images//,/ }; do
-      add_to_tags+=("${repository}:${base_image}-${ref_tag}")
-      if [[ "${base_image}" == "${default_image}" ]]; then
-          add_to_tags+=("${repository}:${ref_tag}")
-      fi
-      if [[ -n "${IS_LATEST}" ]]; then
-          add_to_tags+=("${repository}:${base_image}")
-          if [[ "${base_image}" == "${default_image}" ]]; then
-              add_to_tags+=("${repository}:latest")
-          fi
-      fi
-    done
+    if [[ "${PUBLISH_IMAGES}" == "true" ]] && [[ -n "${CI_REGISTRY_USER}" ]] && [[ -n "${CI_REGISTRY_PASSWORD}" ]]; then
+        login "${CI_REGISTRY_USER}" "${CI_REGISTRY_PASSWORD}" "${CI_REGISTRY}"
+    fi
+    if [[ "${PUSH_TO_DOCKER_HUB}" == "true" ]] && [[ -n "${DOCKER_HUB_USER}" ]] && [[ -n "${DOCKER_HUB_PASSWORD}" ]]; then
+        login "${DOCKER_HUB_USER}" "${DOCKER_HUB_PASSWORD}"
+    fi
+    if [[ "${PUSH_TO_ECR_PUBLIC}" == "true" ]] && [[ -n "${ECR_PUBLIC_USER}" ]] && [[ -n "${ECR_PUBLIC_REGISTRY_PASSWORD}" ]]; then
+        ECR_PUBLIC_REGISTRY_PASSWORD=$(aws --region us-east-1 ecr-public get-login-password)
+        login "${ECR_PUBLIC_USER}" "${ECR_PUBLIC_REGISTRY_PASSWORD}" "${ECR_PUBLIC_REGISTRY}"
+    fi
+
+    if [[ "${PUBLISH_IMAGES}" == "true" ]] && [[ -n "${CI_REGISTRY_USER}" ]] && [[ -n "${CI_REGISTRY_PASSWORD}" ]]; then
+        logout "${CI_REGISTRY}"
+    fi
+    if [[ "${PUSH_TO_DOCKER_HUB}" == "true" ]] && [[ -n "${DOCKER_HUB_USER}" ]] && [[ -n "${DOCKER_HUB_PASSWORD}" ]]; then
+        logout
+    fi
+    if [[ "${PUSH_TO_ECR_PUBLIC}" == "true" ]] && [[ -n "${ECR_PUBLIC_USER}" ]] && [[ -n "${ECR_PUBLIC_REGISTRY_PASSWORD}" ]]; then
+        logout "${ECR_PUBLIC_REGISTRY}"
+    fi
 }
-
-runner_home_dir="dockerfiles/runner"
-
-function writeChecksum() {
-  local binVarNamePrefix="$1"
-  local targetArch="$2"
-  local binFile="$3"
-  local archVarNameSuffix=$(echo "${targetArch}" | tr '[:lower:]' '[:upper:]')
-  local checksum="${checksums["${binVarNamePrefix}_${archVarNameSuffix}"]}"
-
-  [[ -n "${checksum}" ]] && echo "${checksum}  ${binFile}" >> "${runner_home_dir}/checksums-${targetArch}" || return 0
-}
-
-rm -f "${runner_home_dir}/checksums-${TARGET_ARCH}"
-writeChecksum 'DOCKER_MACHINE' "${TARGET_ARCH}" '/usr/bin/docker-machine'
-writeChecksum 'DUMB_INIT' "${TARGET_ARCH}" '/usr/bin/dumb-init'
-writeChecksum 'GIT_LFS' "${TARGET_ARCH}" '/tmp/git-lfs.tar.gz'
-
-cp "${runner_home_dir}/install-deps" "${runner_home_dir}/ubuntu/"
-cp "${runner_home_dir}/install-deps" "${runner_home_dir}/alpine/"
-cp "${runner_home_dir}/install-deps" "${runner_home_dir}/ubi-fips/"
-deb_arch=$(if [ "${TARGET_ARCH}" == "ppc64le" ]; then echo "ppc64el"; else echo "${TARGET_ARCH}"; fi)
-cp "${runner_home_dir}/checksums-${TARGET_ARCH}" "out/deb/gitlab-runner_${deb_arch}.deb" \
-    "${runner_home_dir}/ubuntu/"
-cp "${runner_home_dir}/checksums-${TARGET_ARCH}" "out/binaries/gitlab-runner-linux-${TARGET_ARCH}" \
-    "${runner_home_dir}/alpine/"
-if [[ ${TARGET_ARCH} == "amd64" ]]; then
-    cp "${runner_home_dir}/checksums-${TARGET_ARCH}" \
-       "out/binaries/gitlab-runner-linux-${TARGET_ARCH}-fips" \
-       "out/rpm/gitlab-runner_${TARGET_ARCH}-fips.rpm" \
-       "${runner_home_dir}/ubi-fips/"
-fi
-
-tags=()
-aliases="$(get_flavor_aliases "$IMAGE_FLAVOR")"
 
 if [[ "${PUBLISH_IMAGES}" == "true" ]] && [[ -n "${CI_REGISTRY}" ]] && [[ -n "${CI_REGISTRY_IMAGE}" ]]; then
-   add_tags tags "${aliases}" "${CI_REGISTRY_USER}" "${CI_REGISTRY_PASSWORD}" "${CI_REGISTRY_IMAGE}" "${ref_tag}"
+    add_tags tags "${aliases}" "${CI_REGISTRY_IMAGE}" "${ref_tag}"
 fi
 
 if [[ "${PUBLISH_IMAGES}" == "true" ]] && [[ "${PUSH_TO_DOCKER_HUB}" == "true" ]]; then
-   add_tags tags "${aliases}" "${DOCKER_HUB_USER}" "${DOCKER_HUB_PASSWORD}" "${DOCKER_HUB_NAMESPACE}/gitlab-runner" "${ref_tag}"
+    add_tags tags "${aliases}" "${DOCKER_HUB_NAMESPACE}/gitlab-runner" "${ref_tag}"
 fi
 
 if [[ "${PUBLISH_IMAGES}" == "true" ]] && [[ "${PUSH_TO_ECR_PUBLIC}" == "true" ]]; then
-   add_tags tags "${aliases}" "${ECR_PUBLIC_USER}" "${ECR_PUBLIC_REGISTRY_PASSWORD}" "${ECR_PUBLIC_REGISTRY}/gitlab-runner" "${ref_tag}"
+    add_tags tags "${aliases}" "${ECR_PUBLIC_REGISTRY}/gitlab-runner" "${ref_tag}"
 fi
 
-# Build and publish multi-platform images using `docker buildx`
-# shellcheck disable=SC2154
-base_image="$(get_image_version_from_flavor "${IMAGE_FLAVOR}")"
-
-buildx "${runner_home_dir}/${image_platform}" "$base_image" "${tags[@]}"
+buildx "${runnerHomeDir}/${imagePlatform}" "${tags[@]}"

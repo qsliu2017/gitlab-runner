@@ -10,42 +10,44 @@ build runner images:
   - 'package-deb'
   - 'binaries-fips'
   - 'package-rpm: [package-rpm-fips]'
+  variables:
+    BUILD_ONLY: "true"
   script:
   - make build_docker_images
   artifacts:
     paths:
-    - out/runner-images/*.tar
+    - out/runner-images/
     expire_in: 7d
   parallel:
     matrix:
     - IMAGE_FLAVOR: ubi-fips
-      TARGET_ARCH: amd64
+      TARGET_ARCHS: amd64
     - IMAGE_FLAVOR: ubuntu
-      TARGET_ARCH:
+      TARGET_ARCHS:
       - amd64
       - arm64
       - ppc64le
       - s390x
     - IMAGE_FLAVOR: alpine3.12
-      TARGET_ARCH:
+      TARGET_ARCHS:
       - amd64
       - arm64
       - ppc64le
       - s390x
     - IMAGE_FLAVOR: alpine3.13
-      TARGET_ARCH:
+      TARGET_ARCHS:
       - amd64
       - arm64
       - ppc64le
       - s390x
     - IMAGE_FLAVOR: alpine3.14
-      TARGET_ARCH:
+      TARGET_ARCHS:
       - amd64
       - arm64
       - ppc64le
       - s390x
     - IMAGE_FLAVOR: alpine3.15
-      TARGET_ARCH:
+      TARGET_ARCHS:
       - amd64
       - arm64
       - ppc64le
