@@ -1,5 +1,5 @@
-#!/opt/homebrew/bin/bash
 #!/usr/bin/env bash
+#!/opt/homebrew/bin/bash
 
 set -eEo pipefail
 
