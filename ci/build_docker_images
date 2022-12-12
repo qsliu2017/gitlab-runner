@@ -97,7 +97,7 @@ buildx_cache() {
         --build-arg BASE_IMAGE="${baseImage}" \
         --platform "${platform}" \
         --no-cache \
-        --cache-to "type=local,dest=${cache_output}" \
+        --cache-to "type=local,dest=${cache_output},mode=max" \
         --tag "${tagName}" \
         "${contextPath}"
     trap - ERR SIGINT SIGTERM
@@ -116,17 +116,17 @@ function writeChecksum() {
     [[ -n "${checksum}" ]] && echo "${checksum}  ${binFile}" >>"${runnerHomeDir}/checksums-${targetArch}" || return 0
 }
 
-for arch in "${TARGET_ARCHS[@]}"; do
-    rm -f "${runnerHomeDir}/checksums-${arch}"
-    writeChecksum 'DOCKER_MACHINE' "${arch}" '/usr/bin/docker-machine'
-    writeChecksum 'DUMB_INIT' "${arch}" '/usr/bin/dumb-init'
-    writeChecksum 'GIT_LFS' "${arch}" '/tmp/git-lfs.tar.gz'
-done
-
 cp "${runnerHomeDir}/install-deps" "${runnerHomeDir}/ubuntu/"
 cp "${runnerHomeDir}/install-deps" "${runnerHomeDir}/alpine/"
 cp "${runnerHomeDir}/install-deps" "${runnerHomeDir}/ubi-fips/"
 for arch in "${TARGET_ARCHS[@]}"; do
+    echo "Preparing arch files ${arch}..."
+
+    rm -f "${runnerHomeDir}/checksums-${arch}"
+    writeChecksum 'DOCKER_MACHINE' "${arch}" '/usr/bin/docker-machine'
+    writeChecksum 'DUMB_INIT' "${arch}" '/usr/bin/dumb-init'
+    writeChecksum 'GIT_LFS' "${arch}" '/tmp/git-lfs.tar.gz'
+
     debArch=$(if [ "${arch}" == "ppc64le" ]; then echo "ppc64el"; else echo "${arch}"; fi)
     cp "${runnerHomeDir}/checksums-${arch}" "out/deb/gitlab-runner_${debArch}.deb" \
         "${runnerHomeDir}/ubuntu/"
@@ -194,6 +194,7 @@ buildx() {
     for arch in "${TARGET_ARCHS[@]}"; do
         platforms+=("${os}/${arch}")
     done
+    echo "Platforms: ${platforms[*]}"
 
     shift
 
@@ -205,27 +206,23 @@ buildx() {
     for tagName in "${args[@]}"; do
         tagOpts+=("--tag" "${tagName}")
     done
+    echo "Tags: ${tagOpts[*]}"
 
     local caches=()
     for arch in "${TARGET_ARCHS[@]}"; do
         caches+=("--cache-from" "type=local,src=out/runner-images/${IMAGE_FLAVOR}-${arch}-cache")
     done
+    echo "Caches: ${caches[*]}"
 
     local baseImage
     baseImage="$(get_image_version_from_flavor "${IMAGE_FLAVOR}")"
+    echo "Base Image: ${baseImage[*]}"
 
     if [[ "${PUBLISH_IMAGES}" == "true" ]]; then
-        echo -e "\033[1mBuilding and pushing image: \033[32m${contextPath}\033[0m"
+        echo -e "\033[Assembling and pushing image\033[0m"
         buildxFlags+=("--push")
     else
-        # If not pushing, just load the resulting image to local Docker
-        if [ ${#TARGET_ARCHS[@]} -eq 1 ]; then
-            echo -e "\033[1mBuilding and loading image: \033[32m${contextPath}\033[0m"
-            # But that is only possible if we are targeting a single platform
-            buildxFlags+=("--load")
-        else
-            echo -e "\033[1mBuilding image: \033[32m${contextPath}\033[0m"
-        fi
+        echo -e "\033[1mBuilding image\033[0m"
     fi
 
     if [[ "${PUBLISH_IMAGES}" == "true" ]] && [[ -n "${CI_REGISTRY_USER}" ]] && [[ -n "${CI_REGISTRY_PASSWORD}" ]]; then
