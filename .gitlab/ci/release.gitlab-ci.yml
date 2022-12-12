@@ -52,17 +52,17 @@
   parallel:
     matrix:
     - IMAGE_FLAVOR: ubi-fips
-      IMAGE_ARCHS: amd64
+      TARGET_ARCHS: amd64
     - IMAGE_FLAVOR: ubuntu
-      IMAGE_ARCHS: amd64 arm64 ppc64le s390x
+      TARGET_ARCHS: amd64 arm64 ppc64le s390x
     - IMAGE_FLAVOR: alpine3.12
-      IMAGE_ARCHS: amd64 arm64 ppc64le s390x
+      TARGET_ARCHS: amd64 arm64 ppc64le s390x
     - IMAGE_FLAVOR: alpine3.13
-      IMAGE_ARCHS: amd64 arm64 ppc64le s390x
+      TARGET_ARCHS: amd64 arm64 ppc64le s390x
     - IMAGE_FLAVOR: alpine3.14
-      IMAGE_ARCHS: amd64 arm64 ppc64le s390x
+      TARGET_ARCHS: amd64 arm64 ppc64le s390x
     - IMAGE_FLAVOR: alpine3.15
-      IMAGE_ARCHS: amd64 arm64 ppc64le s390x
+      TARGET_ARCHS: amd64 arm64 ppc64le s390x
 
 push development docker images:
   extends:

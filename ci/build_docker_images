@@ -62,17 +62,13 @@ else
     TARGET_ARCHS=('amd64')
 fi
 
-#if [[ "${PUSH_TO_ECR_PUBLIC}" == "true" ]] && [[ -n "${ECR_PUBLIC_USER}" ]]; then
-#  ECR_PUBLIC_REGISTRY_PASSWORD=$(aws --region us-east-1 ecr-public get-login-password)
-#fi
-
 join_by() {
     local IFS="$1"
     shift
     echo "$*"
 }
 
-buildx_cache() {
+buildx_to_cache() {
     local contextPath="$1"
     local targetArch="$2"
     local tagName="$3"
@@ -144,7 +140,7 @@ done
 if [ "$BUILD_ONLY" == "true" ]; then
     targetArch=${TARGET_ARCHS[0]}
     tagName="gitlab-runner:${IMAGE_FLAVOR}-${targetArch}-${ref_tag}"
-    buildx_cache "${runnerHomeDir}/${imagePlatform}" "${targetArch}" "${tagName}"
+    buildx_to_cache "${runnerHomeDir}/${imagePlatform}" "${targetArch}" "${tagName}"
     exit 0
 fi
 
@@ -186,7 +182,7 @@ get_flavor_aliases() {
 
 aliases="$(get_flavor_aliases "$IMAGE_FLAVOR")"
 
-buildx() {
+buildx_from_cache() {
     local contextPath="$1"
     local platforms=()
     local os
@@ -281,4 +277,4 @@ if [[ "${PUBLISH_IMAGES}" == "true" ]] && [[ "${PUSH_TO_ECR_PUBLIC}" == "true" ]
     add_tags tags "${aliases}" "${ECR_PUBLIC_REGISTRY}/gitlab-runner" "${ref_tag}"
 fi
 
-buildx "${runnerHomeDir}/${imagePlatform}" "${tags[@]}"
+buildx_from_cache "${runnerHomeDir}/${imagePlatform}" "${tags[@]}"
