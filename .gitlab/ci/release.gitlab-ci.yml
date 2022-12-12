@@ -124,7 +124,7 @@ development helper docker images:
     PUBLISH_IMAGES: "false"
     PUSH_TO_ECR_PUBLIC: "true" # can be removed later
   environment: # can be removed later
-    name: development/s3/${CI_COMMIT_REF_NAME} # can be removed later
+    name: development/docker_images/${CI_COMMIT_REF_NAME} # can be removed later
 
 bleeding edge S3:
   extends:

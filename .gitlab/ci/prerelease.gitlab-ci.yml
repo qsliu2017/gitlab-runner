@@ -39,7 +39,7 @@ development servercore20H2 helper docker images:
   variables:
     PUSH_TO_ECR_PUBLIC: "true" # can be removed later
   environment: # can be removed later
-    name: development/s3/${CI_COMMIT_REF_NAME} # can be removed later
+    name: development/docker_images/${CI_COMMIT_REF_NAME} # can be removed later
 
 development servercore21H1 helper docker images:
   extends:
