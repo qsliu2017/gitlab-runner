@@ -1,4 +1,8 @@
 .release_docker_images_base:
+  extends:
+  - .docker
+  - .docker_qemu
+  - .linux-dependency-checksums
   stage: release
   variables:
     PUBLISH_IMAGES: "true"
@@ -36,7 +40,6 @@
 
 .release_runner_images:
   extends:
-  - .docker
   - .release_docker_images_base
   dependencies:
   - 'binaries'
