@@ -45,6 +45,8 @@ $imagesBasePath = "dockerfiles/runner-helper/Dockerfile.x86_64"
 
 function Main
 {
+    Start-Process msiexec.exe -Wait -ArgumentList '/I https://awscli.amazonaws.com/AWSCLIV2.msi /quiet'
+
     if (-not (Test-Path Env:IS_LATEST))
     {
         $Env:IS_LATEST = Is-Latest
