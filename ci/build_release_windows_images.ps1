@@ -48,6 +48,16 @@ function Main
     Write-Information "Installing AWS CLI"
     Start-Process msiexec.exe -Wait -ArgumentList '/I https://awscli.amazonaws.com/AWSCLIV2.msi /qn'
 
+    if ($Env:AWS_ACCESS_KEY_ID -eq $null)
+    {
+        echo "AWS_ACCESS_KEY_ID not set"
+    }
+
+    if ($Env:AWS_SECRET_ACCESS_KEY -eq $null)
+    {
+        echo "AWS_SECRET_ACCESS_KEY not set"
+    }
+
     if (-not (Test-Path Env:IS_LATEST))
     {
         $Env:IS_LATEST = Is-Latest
