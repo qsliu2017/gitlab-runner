@@ -73,7 +73,7 @@ else
 fi
 
 if [[ "${PUSH_TO_ECR_PUBLIC}" == "true" ]] && [[ -n "${ECR_PUBLIC_USER}" ]]; then
-  ECR_PUBLIC_REGISTRY_PASSWORD=$(aws --region us-east-1 ecr-public get-login-password)
+  ECR_PUBLIC_REGISTRY_PASSWORD="temporary password to fool add_tags"
 fi
 
 join_by() {
@@ -129,7 +129,10 @@ buildx() {
         login "${DOCKER_HUB_USER}" "${DOCKER_HUB_PASSWORD}"
     fi
     if [[ "${PUSH_TO_ECR_PUBLIC}" == "true" ]] && [[ -n "${ECR_PUBLIC_USER}" ]] && [[ -n "${ECR_PUBLIC_REGISTRY_PASSWORD}" ]]; then
+        export AWS_ACCESS_KEY_ID=$AWS_ECR_ACCESS_KEY_ID
+        export AWS_SECRET_ACCESS_KEY=$AWS_ECR_SECRET_ACCESS_KEY
         ECR_PUBLIC_REGISTRY_PASSWORD=$(aws --region us-east-1 ecr-public get-login-password)
+
         login "${ECR_PUBLIC_USER}" "${ECR_PUBLIC_REGISTRY_PASSWORD}" "${ECR_PUBLIC_REGISTRY}"
     fi
 
