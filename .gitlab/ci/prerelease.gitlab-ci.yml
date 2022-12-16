@@ -39,7 +39,6 @@ development servercore20H2 helper docker images:
   variables:
     PUSH_TO_ECR_PUBLIC: "false"
 
-
 development servercore21H1 helper docker images:
   extends:
     - .windows21H1

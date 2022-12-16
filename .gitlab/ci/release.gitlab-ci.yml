@@ -114,7 +114,7 @@ development docker images:
   - .rules:release:development:merge-requests
   variables:
     PUBLISH_IMAGES: "false"
-    PUSH_TO_ECR_PUBLIC: "false"
+    PUSH_TO_ECR_PUBLIC: "true"
 
 development helper docker images:
   extends:
@@ -122,9 +122,7 @@ development helper docker images:
   - .rules:release:development:merge-requests
   variables:
     PUBLISH_IMAGES: "false"
-    PUSH_TO_ECR_PUBLIC: "true" # can be removed later
-  environment: # can be removed later
-    name: ecr_public_distribution/$CI_COMMIT_REF_SLUG # can be removed later
+    PUSH_TO_ECR_PUBLIC: "true"
 
 bleeding edge S3:
   extends:
