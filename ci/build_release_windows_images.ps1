@@ -46,7 +46,7 @@ $imagesBasePath = "dockerfiles/runner-helper/Dockerfile.x86_64"
 function Main
 {
     Write-Information "Installing AWS CLI"
-    Start-Process msiexec.exe -Wait -ArgumentList '/I https://awscli.amazonaws.com/AWSCLIV2.msi'
+    Start-Process msiexec.exe -Wait -ArgumentList '/I https://awscli.amazonaws.com/AWSCLIV2.msi /qn'
 
     if (-not (Test-Path Env:IS_LATEST))
     {
@@ -75,7 +75,7 @@ function Main
     if ($Env:PUSH_TO_ECR_PUBLIC -eq "true")
     {
         $ecrPublicRegistry = ECR-Public-Registry
-        $ecrPublicRegistryPassword = & aws --region us-east-1 ecr-public get-login-password
+        $ecrPublicRegistryPassword = & 'C:\Program Files\Amazon\AWSCLIV2\aws' --region us-east-1 ecr-public get-login-password
 
         Connect-Registry AWS $ecrPublicRegistryPassword $ecrPublicRegistry
 
