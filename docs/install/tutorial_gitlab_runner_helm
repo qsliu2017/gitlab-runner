@@ -1,0 +1,38 @@
+---
+stage: none
+group: Tutorials
+info: For assistance with this tutorial, see https://about.gitlab.com/handbook/product/ux/technical-writing/#assignments-to-other-projects-and-subjects.
+---
+
+# Tutorial: Use template-in-template Helm configuration to install Gitlab Runner **(SELF)**
+
+This tutorial shows how to configure a GitLab Runner Helm Chart with a complex template configuration. The challenge this tutorial solves is to use definitions, that contain go-template definitions in itself, into the Helm values file. 
+
+To build a complex runner configuration:
+
+1. [Do the first task](#do-the-first-task)
+1. [Do the second task](#do-the-second-task)
+
+Prerequisites (optional):
+
+- Thing 1
+- Thing 2
+- Thing 3
+
+## Do the first task
+
+To do step 1:
+
+1. First step.
+1. Another step.
+1. Another step.
+
+## Do the second task
+
+Before you begin, make sure you have [done the first task](#do-the-first-task).
+
+To do step 2:
+
+1. First step.
+1. Another step.
+1. Another step.
