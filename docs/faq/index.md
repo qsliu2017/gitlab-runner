@@ -311,7 +311,7 @@ for how to set this value correctly depending on the platform.
 
 ## WARNING: Failed to process runner builds=0 error=open /tmp/traceXXXXXXXX: read-only file system executor=kubernetes runner=XXXXXXXX
 
-Due to the fact that we [store traces on disk](https://gitlab.com/gitlab-org/gitlab-runner/-/merge_requests/1315), this error will appear if `readOnlyFileSystem: true` is forced in `PodSecurityPolicy`. As a workaround for this, add following to your `config.toml` runner configuration file:
+Due to the fact that we [store traces on disk](https://gitlab.com/gitlab-org/gitlab-runner/-/merge_requests/1315), this error will appear if `readOnlyRootFileSystem: true` is forced in `PodSecurityPolicy`. As a workaround for this, add following to your `config.toml` runner configuration file:
 
 ```yaml
 volumes:
