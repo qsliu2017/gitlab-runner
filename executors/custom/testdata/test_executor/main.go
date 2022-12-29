@@ -42,29 +42,32 @@ var knownBuildStages = map[string]struct{}{
 
 func setBuildFailure(msg string, args ...interface{}) {
 	fmt.Println("setting build failure")
-	setFailure(api.BuildFailureExitCodeVariable, msg, args...)
+	setFailure(parseExitCode(api.BuildFailureExitCodeVariable), msg, args...)
 }
 
 func setSystemFailure(msg string, args ...interface{}) {
 	fmt.Println("setting system failure")
-	setFailure(api.SystemFailureExitCodeVariable, msg, args...)
+	setFailure(parseExitCode(api.SystemFailureExitCodeVariable), msg, args...)
 }
 
-func setFailure(failureType string, msg string, args ...interface{}) {
-	fmt.Println()
-	fmt.Printf(msg, args...)
-	fmt.Println()
-
-	exitCode := os.Getenv(failureType)
-
+func parseExitCode(env string) int {
+	exitCode := os.Getenv(env)
 	code, err := strconv.Atoi(exitCode)
 	if err != nil {
 		panic(fmt.Sprintf("Error while parsing the variable: %v", err))
 	}
 
-	fmt.Printf("Exitting with code %d\n", code)
+	return code
+}
 
-	os.Exit(code)
+func setFailure(exitCode int, msg string, args ...interface{}) {
+	fmt.Println()
+	fmt.Printf(msg, args...)
+	fmt.Println()
+
+	fmt.Printf("Exitting with code %d\n", exitCode)
+
+	os.Exit(exitCode)
 }
 
 func printJobResponseDetails() {
@@ -193,11 +196,19 @@ func run(shell string, args []string) {
 	fmt.Printf("Executing: %#v\n\n", cmd)
 
 	err := cmd.Run()
-	if err != nil {
-		setBuildFailure("Job script exited with: %v", err)
+	if output.Len() > 0 {
+		fmt.Printf(">>>>>>>>>>\n%s\n<<<<<<<<<<\n\n", output.String())
+	}
+	if err == nil {
+		return
 	}
 
-	fmt.Printf(">>>>>>>>>>\n%s\n<<<<<<<<<<\n\n", output.String())
+	eerr, ok := err.(*exec.ExitError)
+	if ok {
+		setFailure(eerr.ExitCode(), "Job script exited with: %v", eerr)
+	} else {
+		setBuildFailure("Job script exited with: %v", err)
+	}
 }
 
 func mockError() {
