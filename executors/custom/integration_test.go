@@ -636,3 +636,48 @@ func TestCleanupProjectGitSubmoduleRecursive(t *testing.T) {
 		buildtest.RunBuildWithCleanupNormalSubmoduleStrategy(t, build, untrackedFile, untrackedSubmoduleFile)
 	})
 }
+
+func TestExitCode(t *testing.T) {
+	tests := map[string]int{
+		"exit 15": 15,
+		"exit 1":  1,
+		"exit 0":  0,
+	}
+
+	shellstest.OnEachShell(t, func(t *testing.T, shell string) {
+		if shell == "cmd" {
+			t.Skip("This test doesn't support Windows CMD (which is deprecated)")
+		}
+
+		for testName, tt := range tests {
+			t.Run(testName, func(t *testing.T) {
+				successfulBuild, err := common.GetSuccessfulBuild()
+				require.NoError(t, err)
+
+				successfulBuild.Steps[0].Script = common.StepScript{
+					fmt.Sprintf("exit %d", tt),
+				}
+
+				build := newBuild(t, successfulBuild, shell)
+
+				out, err := buildtest.RunBuildReturningOutput(t, build)
+				if tt > 0 {
+					assert.Error(t, err)
+					if tt == 1 {
+						buildErr, ok := err.(*common.BuildError)
+						require.True(t, ok)
+						assert.Equal(t, tt, buildErr.ExitCode)
+					} else {
+						unknownErr, ok := err.(*command.ErrUnknownFailure)
+						require.True(t, ok)
+						assert.Equal(t, tt, unknownErr.ExitCode)
+					}
+				} else {
+					assert.NoError(t, err)
+				}
+
+				fmt.Println(out)
+			})
+		}
+	})
+}
