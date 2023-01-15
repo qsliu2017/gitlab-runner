@@ -216,7 +216,7 @@ var flags = []FeatureFlag{
 	},
 	{
 		Name:         DisablePowershellStdin,
-		DefaultValue: false,
+		DefaultValue: true,
 		Deprecated:   false,
 		Description: "When enabled, Powershell scripts for shell and custom executors are passed by " +
 			"file, rather than passed and executed via stdin.",

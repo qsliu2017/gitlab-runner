@@ -249,12 +249,12 @@ func TestPowershell_GetConfiguration(t *testing.T) {
 				},
 			}
 
-			if tc.passFile {
+			if !tc.passFile {
 				info.Build.JobResponse.Variables = append(
 					info.Build.JobResponse.Variables,
 					common.JobVariable{
 						Key:   "FF_DISABLE_POWERSHELL_STDIN",
-						Value: "true",
+						Value: "false",
 					},
 				)
 			}
