@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"path"
 	"runtime"
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -108,8 +107,8 @@ func TestPowershell_IsDefault(t *testing.T) {
 //nolint:lll
 func TestPowershell_GetConfiguration(t *testing.T) {
 	const (
-		powershellStdinExpectedLine = "powershell -NoProfile -NoLogo -InputFormat text -OutputFormat text -NonInteractive -ExecutionPolicy Bypass -EncodedCommand JABPAHUAdABwAHUAdABFAG4AYwBvAGQAaQBuAGcAIAA9ACAAWwBjAG8AbgBzAG8AbABlAF0AOgA6AEkAbgBwAHUAdABFAG4AYwBvAGQAaQBuAGcAIAA9ACAAWwBjAG8AbgBzAG8AbABlAF0AOgA6AE8AdQB0AHAAdQB0AEUAbgBjAG8AZABpAG4AZwAgAD0AIABOAGUAdwAtAE8AYgBqAGUAYwB0ACAAUwB5AHMAdABlAG0ALgBUAGUAeAB0AC4AVQBUAEYAOABFAG4AYwBvAGQAaQBuAGcADQAKAHAAbwB3AGUAcgBzAGgAZQBsAGwAIAAtAEMAbwBtAG0AYQBuAGQAIAAtAA0ACgA="
-		pwshStdinExpectedLine       = "pwsh -NoProfile -NoLogo -InputFormat text -OutputFormat text -NonInteractive -ExecutionPolicy Bypass -EncodedCommand JABPAHUAdABwAHUAdABFAG4AYwBvAGQAaQBuAGcAIAA9ACAAWwBjAG8AbgBzAG8AbABlAF0AOgA6AEkAbgBwAHUAdABFAG4AYwBvAGQAaQBuAGcAIAA9ACAAWwBjAG8AbgBzAG8AbABlAF0AOgA6AE8AdQB0AHAAdQB0AEUAbgBjAG8AZABpAG4AZwAgAD0AIABOAGUAdwAtAE8AYgBqAGUAYwB0ACAAUwB5AHMAdABlAG0ALgBUAGUAeAB0AC4AVQBUAEYAOABFAG4AYwBvAGQAaQBuAGcADQAKAHAAdwBzAGgAIAAtAEMAbwBtAG0AYQBuAGQAIAAtAA0ACgA="
+		powershellStdinExpectedLine = "powershell -NoProfile -NoLogo -InputFormat text -OutputFormat text -NonInteractive -ExecutionPolicy Bypass -Command '$OutputEncoding = [console]::InputEncoding = [console]::OutputEncoding = New-Object System.Text.UTF8Encoding\r\npowershell -Command -\r\n'"
+		pwshStdinExpectedLine       = "pwsh -NoProfile -NoLogo -InputFormat text -OutputFormat text -NonInteractive -ExecutionPolicy Bypass -Command '$OutputEncoding = [console]::InputEncoding = [console]::OutputEncoding = New-Object System.Text.UTF8Encoding\r\npwsh -Command -\r\n'"
 	)
 
 	testCases := map[string]struct {
@@ -178,9 +177,9 @@ func TestPowershell_GetConfiguration(t *testing.T) {
 
 			expectedPassFile: false,
 			expectedCommand:  "su",
-			expectedCmdLine:  "su -s /usr/bin/pwsh custom -c " + pwshStdinExpectedLine,
+			expectedCmdLine:  simpleCmdQuote("su -s /usr/bin/pwsh custom -c", []string{pwshStdinExpectedLine}),
 			getExpectedArguments: func(shell string) []string {
-				return []string{"-s", "/usr/bin/pwsh", "custom", "-c", SNPwsh + " " + strings.Join(stdinCmdArgs(shell), " ")}
+				return []string{"-s", "/usr/bin/pwsh", "custom", "-c", simpleCmdQuote(SNPwsh, stdinCmdArgs(shell))}
 			},
 		},
 		"pwsh on shell with custom user (darwin)": {
@@ -191,9 +190,9 @@ func TestPowershell_GetConfiguration(t *testing.T) {
 
 			expectedPassFile: false,
 			expectedCommand:  "su",
-			expectedCmdLine:  "su custom -c " + pwshStdinExpectedLine,
+			expectedCmdLine:  simpleCmdQuote("su custom -c", []string{pwshStdinExpectedLine}),
 			getExpectedArguments: func(shell string) []string {
-				return []string{"custom", "-c", SNPwsh + " " + strings.Join(stdinCmdArgs(shell), " ")}
+				return []string{"custom", "-c", simpleCmdQuote(SNPwsh, stdinCmdArgs(shell))}
 			},
 		},
 		"pwsh on shell with custom user (windows)": {
@@ -204,9 +203,9 @@ func TestPowershell_GetConfiguration(t *testing.T) {
 
 			expectedPassFile: false,
 			expectedCommand:  "su",
-			expectedCmdLine:  "su custom -c " + pwshStdinExpectedLine,
+			expectedCmdLine:  simpleCmdQuote("su custom -c", []string{pwshStdinExpectedLine}),
 			getExpectedArguments: func(shell string) []string {
-				return []string{"-s", "custom", "-c", SNPwsh + " " + strings.Join(stdinCmdArgs(shell), " ")}
+				return []string{"custom", "-c", simpleCmdQuote(SNPwsh, stdinCmdArgs(shell))}
 			},
 		},
 		"powershell on shell - FF_DISABLE_POWERSHELL_STDIN true": {

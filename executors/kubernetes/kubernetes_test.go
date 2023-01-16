@@ -1767,9 +1767,9 @@ func TestPrepare(t *testing.T) {
 						"-NonInteractive",
 						"-ExecutionPolicy",
 						"Bypass",
-						"-EncodedCommand",
+						"-Command",
 						//nolint:lll
-						"JABPAHUAdABwAHUAdABFAG4AYwBvAGQAaQBuAGcAIAA9ACAAWwBjAG8AbgBzAG8AbABlAF0AOgA6AEkAbgBwAHUAdABFAG4AYwBvAGQAaQBuAGcAIAA9ACAAWwBjAG8AbgBzAG8AbABlAF0AOgA6AE8AdQB0AHAAdQB0AEUAbgBjAG8AZABpAG4AZwAgAD0AIABOAGUAdwAtAE8AYgBqAGUAYwB0ACAAUwB5AHMAdABlAG0ALgBUAGUAeAB0AC4AVQBUAEYAOABFAG4AYwBvAGQAaQBuAGcADQAKAHAAbwB3AGUAcgBzAGgAZQBsAGwAIAAtAEMAbwBtAG0AYQBuAGQAIAAtAA0ACgA=",
+						"$OutputEncoding = [console]::InputEncoding = [console]::OutputEncoding = New-Object System.Text.UTF8Encoding\r\npowershell -Command -\r\n",
 					},
 				},
 			},

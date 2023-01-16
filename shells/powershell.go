@@ -2,7 +2,6 @@ package shells
 
 import (
 	"bytes"
-	"encoding/base64"
 	"fmt"
 	"os"
 	"path"
@@ -13,7 +12,6 @@ import (
 	"gitlab.com/gitlab-org/gitlab-runner/common"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers/featureflags"
-	"golang.org/x/text/encoding/unicode"
 )
 
 const (
@@ -66,8 +64,6 @@ type PsWriter struct {
 	resolvePaths  bool
 }
 
-var encoder = unicode.UTF16(unicode.LittleEndian, unicode.IgnoreBOM).NewEncoder()
-
 func stdinCmdArgs(shell string) []string {
 	// The stdin script we pass is always UTF-8 encoded, however, depending on
 	// how powershell is configured, it may not be expecting UTF-8.
@@ -77,20 +73,10 @@ func stdinCmdArgs(shell string) []string {
 	//
 	// The initialization script then calls '<shell> -Command -', so that our
 	// main script is executed by it being passed to stdin like usual.
-	//
-	// The initilization script itself is encoded so that it can be passed with
-	// -EncodeCommand, to avoid potential issues of passing script as an
-	// argument. Confusingly, -EncodeCommand expects our initialization script
-	// to be base64-encoded utf16.
-	//
-	// Note: the encoded script, depending on powershell configurations, can be
-	// limited to a certain length. The minimum maximum length is 8190. This
-	// encoded initialization script should be kept small.
 	var sb strings.Builder
 	//nolint:lll
 	sb.WriteString("$OutputEncoding = [console]::InputEncoding = [console]::OutputEncoding = New-Object System.Text.UTF8Encoding\r\n")
 	sb.WriteString(shell + " -Command -\r\n")
-	encoded, _ := encoder.String(sb.String())
 
 	return []string{
 		"-NoProfile",
@@ -102,8 +88,8 @@ func stdinCmdArgs(shell string) []string {
 		"-NonInteractive",
 		"-ExecutionPolicy",
 		"Bypass",
-		"-EncodedCommand",
-		base64.StdEncoding.EncodeToString([]byte(encoded)),
+		"-Command",
+		sb.String(),
 	}
 }
 
@@ -509,15 +495,34 @@ func (b *PowerShell) GetConfiguration(info common.ShellScriptInfo) (*common.Shel
 			script.Arguments,
 			info.User,
 			"-c",
-			b.Shell+" "+strings.Join(stdinCmdArgs(b.Shell), " "),
+			simpleCmdQuote(b.Shell, stdinCmdArgs(b.Shell)),
 		)
 	} else {
 		script.Arguments = b.scriptArgs(script)
 	}
 
-	script.CmdLine = strings.Join(append([]string{script.Command}, script.Arguments...), " ")
+	script.CmdLine = simpleCmdQuote(script.Command, script.Arguments)
 
 	return script, nil
+}
+
+// simpleCmdQuote quotes arguments that include spaces, designed for hard-coded
+// arguments that we know don't need complicated escaping rules.
+func simpleCmdQuote(cmd string, args []string) string {
+	var sb strings.Builder
+	sb.WriteString(cmd)
+	for _, arg := range args {
+		// a single quote can be escaped by converting it to two single quotes
+		arg = strings.ReplaceAll(arg, "'", "''")
+
+		if strings.Contains(arg, " ") {
+			sb.WriteString(" '" + arg + "'")
+		} else {
+			sb.WriteString(" " + arg)
+		}
+	}
+
+	return sb.String()
 }
 
 func (b *PowerShell) scriptArgs(script *common.ShellConfiguration) []string {
