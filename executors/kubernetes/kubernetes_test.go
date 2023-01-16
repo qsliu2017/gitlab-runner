@@ -1720,7 +1720,6 @@ func TestPrepare(t *testing.T) {
 							nodeSelectorWindowsBuildLabel: "10.0.19041",
 						},
 					},
-					Shell: "pwsh",
 				},
 			},
 			Build: &common.Build{
@@ -1758,7 +1757,7 @@ func TestPrepare(t *testing.T) {
 					Tag:                     fmt.Sprintf("x86_64-%s-servercore2004", helperImageTag),
 					IsSupportingLocalImport: false,
 					Cmd: []string{
-						"pwsh",
+						"powershell",
 						"-NoProfile",
 						"-NoLogo",
 						"-InputFormat",
@@ -1770,7 +1769,7 @@ func TestPrepare(t *testing.T) {
 						"Bypass",
 						"-EncodedCommand",
 						//nolint:lll
-						"JABPAHUAdABwAHUAdABFAG4AYwBvAGQAaQBuAGcAIAA9ACAAWwBjAG8AbgBzAG8AbABlAF0AOgA6AEkAbgBwAHUAdABFAG4AYwBvAGQAaQBuAGcAIAA9ACAAWwBjAG8AbgBzAG8AbABlAF0AOgA6AE8AdQB0AHAAdQB0AEUAbgBjAG8AZABpAG4AZwAgAD0AIABOAGUAdwAtAE8AYgBqAGUAYwB0ACAAUwB5AHMAdABlAG0ALgBUAGUAeAB0AC4AVQBUAEYAOABFAG4AYwBvAGQAaQBuAGcADQAKAHAAdwBzAGgAIAAtAEMAbwBtAG0AYQBuAGQAIAAtAA0ACgA=",
+						"JABPAHUAdABwAHUAdABFAG4AYwBvAGQAaQBuAGcAIAA9ACAAWwBjAG8AbgBzAG8AbABlAF0AOgA6AEkAbgBwAHUAdABFAG4AYwBvAGQAaQBuAGcAIAA9ACAAWwBjAG8AbgBzAG8AbABlAF0AOgA6AE8AdQB0AHAAdQB0AEUAbgBjAG8AZABpAG4AZwAgAD0AIABOAGUAdwAtAE8AYgBqAGUAYwB0ACAAUwB5AHMAdABlAG0ALgBUAGUAeAB0AC4AVQBUAEYAOABFAG4AYwBvAGQAaQBuAGcADQAKAHAAbwB3AGUAcgBzAGgAZQBsAGwAIAAtAEMAbwBtAG0AYQBuAGQAIAAtAA0ACgA=",
 					},
 				},
 			},
