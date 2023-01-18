@@ -139,8 +139,9 @@ func (c *fileArchiver) processPaths() {
 }
 
 func (c *fileArchiver) processPath(path string) {
+	path = filepath.ToSlash(path)
 	base, patt := doublestar.SplitPattern(path)
-	rel, err := c.assertPathInProject(base)
+	rel, err := c.findRelativePathInProject(base)
 	if err != nil {
 		// Do not fail job when a file is invalid or not found.
 		logrus.Warningf(err.Error())
@@ -151,7 +152,6 @@ func (c *fileArchiver) processPath(path string) {
 
 	// Relative path is needed now that our fsys "root" is at the working directory
 	path = filepath.Join(rel, patt)
-	path = filepath.ToSlash(path)
 	if err != nil {
 		logrus.Warningf("%s: %v", path, err)
 		return
@@ -187,7 +187,7 @@ func (c *fileArchiver) processPath(path string) {
 	}
 }
 
-func (c *fileArchiver) assertPathInProject(path string) (rel string, err error) {
+func (c *fileArchiver) findRelativePathInProject(path string) (rel string, err error) {
 	abs, err := filepath.Abs(path)
 	if err != nil {
 		return "", fmt.Errorf("could not resolve artifact absolute path %s: %v", path, err)
