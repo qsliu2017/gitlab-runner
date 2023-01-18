@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -133,14 +134,14 @@ func (c *fileArchiver) add(path string) error {
 }
 
 func (c *fileArchiver) processPaths() {
-	for _, path := range c.Paths {
-		c.processPath(path)
+	for _, artifactPath := range c.Paths {
+		c.processPath(artifactPath)
 	}
 }
 
-func (c *fileArchiver) processPath(path string) {
-	path = filepath.ToSlash(path)
-	base, patt := doublestar.SplitPattern(path)
+func (c *fileArchiver) processPath(artifactsPath string) {
+	artifactsPath = filepath.ToSlash(artifactsPath)
+	base, patt := doublestar.SplitPattern(artifactsPath)
 	rel, err := c.findRelativePathInProject(base)
 	if err != nil {
 		// Do not fail job when a file is invalid or not found.
@@ -151,14 +152,14 @@ func (c *fileArchiver) processPath(path string) {
 	fsys := os.DirFS(c.wd)
 
 	// Relative path is needed now that our fsys "root" is at the working directory
-	path = filepath.Join(rel, patt)
+	artifactsPath = path.Join(rel, patt)
 	if err != nil {
-		logrus.Warningf("%s: %v", path, err)
+		logrus.Warningf("%s: %v", artifactsPath, err)
 		return
 	}
-	matches, err := doublestar.Glob(fsys, path)
+	matches, err := doublestar.Glob(fsys, artifactsPath)
 	if err != nil {
-		logrus.Warningf("%s: %v", path, err)
+		logrus.Warningf("%s: %v", artifactsPath, err)
 		return
 	}
 
@@ -179,11 +180,11 @@ func (c *fileArchiver) processPath(path string) {
 	if found == 0 {
 		logrus.Warningf(
 			"%s: no matching files. Ensure that the artifact path is relative to the working directory (%s)",
-			path,
+			artifactsPath,
 			c.wd,
 		)
 	} else {
-		logrus.Infof("%s: found %d matching artifact files and directories", path, found)
+		logrus.Infof("%s: found %d matching artifact files and directories", artifactsPath, found)
 	}
 }
 
