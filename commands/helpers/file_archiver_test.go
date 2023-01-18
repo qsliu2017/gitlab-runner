@@ -34,6 +34,7 @@ func TestGlobbedFilePaths(t *testing.T) {
 	defer os.RemoveAll(strings.Split(fileArchiverGlobPath, "/")[0])
 
 	workingDirectory, err := os.Getwd()
+	require.NoError(t, err)
 	fileArchiverAbsoluteFilePath := filepath.Join(workingDirectory, "foo/bar/*.bin")
 
 	expectedMatchingFiles := []string{
