@@ -367,7 +367,7 @@ $(GOLANGLINT): $(GOLANGLINT_GOARGS)
 $(GOLANGLINT_GOARGS): TOOL_BUILD_DIR := .tmp/build/goargs
 $(GOLANGLINT_GOARGS):
 	rm -rf $(TOOL_BUILD_DIR)
-	git clone https://gitlab.com/gitlab-org/language-tools/go/linters/goargs.git --no-tags --depth 1 $(TOOL_BUILD_DIR)
+	git clone https://gitlab.com/gitlab-org/language-tools/go/linters/goargs.git --branch dbickford-update-import-path --no-tags --depth 1 $(TOOL_BUILD_DIR)
 	cd $(TOOL_BUILD_DIR) && \
 	CGO_ENABLED=1 go build --trimpath --buildmode=plugin -o $(BUILD_DIR)/$(GOLANGLINT_GOARGS) plugin/analyzer.go
 	rm -rf $(TOOL_BUILD_DIR)
