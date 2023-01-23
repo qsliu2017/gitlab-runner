@@ -26,16 +26,16 @@
     matrix:
     - IMAGE_FLAVOR: ubi-fips
       TARGET_ARCHS: amd64
-    - IMAGE_FLAVOR: ubuntu
-      TARGET_ARCHS: amd64 arm64 ppc64le s390x
-    - IMAGE_FLAVOR: alpine3.12
-      TARGET_ARCHS: amd64 arm64 ppc64le s390x
-    - IMAGE_FLAVOR: alpine3.13
-      TARGET_ARCHS: amd64 arm64 ppc64le s390x
-    - IMAGE_FLAVOR: alpine3.14
-      TARGET_ARCHS: amd64 arm64 ppc64le s390x
-    - IMAGE_FLAVOR: alpine3.15
-      TARGET_ARCHS: amd64 arm64 ppc64le s390x
+    # - IMAGE_FLAVOR: ubuntu
+    #   TARGET_ARCHS: amd64 arm64 ppc64le s390x
+    # - IMAGE_FLAVOR: alpine3.12
+    #   TARGET_ARCHS: amd64 arm64 ppc64le s390x
+    # - IMAGE_FLAVOR: alpine3.13
+    #   TARGET_ARCHS: amd64 arm64 ppc64le s390x
+    # - IMAGE_FLAVOR: alpine3.14
+    #   TARGET_ARCHS: amd64 arm64 ppc64le s390x
+    # - IMAGE_FLAVOR: alpine3.15
+    #   TARGET_ARCHS: amd64 arm64 ppc64le s390x
 
 .release_helper_docker_images:
   extends:
@@ -48,18 +48,18 @@
   - make release_helper_docker_images
   parallel:
     matrix:
-    - IMAGE_FLAVOR: "alpine"
-      IMAGE_TAG: ["alpine3.12-"]
-    - IMAGE_FLAVOR: "alpine3.13"
-      IMAGE_TAG: ["alpine3.13-"]
-    - IMAGE_FLAVOR: "alpine3.14"
-      IMAGE_TAG: ["alpine3.14-"]
-    - IMAGE_FLAVOR: "alpine3.15"
-      IMAGE_TAG: ["", "alpine3.15-"]
-    - IMAGE_FLAVOR: "alpine-latest"
-      IMAGE_TAG: ["alpine-latest-"]
-    - IMAGE_FLAVOR: "ubuntu"
-      IMAGE_TAG: ["ubuntu-"]
+    # - IMAGE_FLAVOR: "alpine"
+    #   IMAGE_TAG: ["alpine3.12-"]
+    # - IMAGE_FLAVOR: "alpine3.13"
+    #   IMAGE_TAG: ["alpine3.13-"]
+    # - IMAGE_FLAVOR: "alpine3.14"
+    #   IMAGE_TAG: ["alpine3.14-"]
+    # - IMAGE_FLAVOR: "alpine3.15"
+    #   IMAGE_TAG: ["", "alpine3.15-"]
+    # - IMAGE_FLAVOR: "alpine-latest"
+    #   IMAGE_TAG: ["alpine-latest-"]
+    # - IMAGE_FLAVOR: "ubuntu"
+    #   IMAGE_TAG: ["ubuntu-"]
     - IMAGE_FLAVOR: "ubi-fips"
       IMAGE_TAG: ["ubi-fips-"]
 
@@ -113,7 +113,7 @@ development docker images:
   - .release_docker_images
   - .rules:release:development:merge-requests
   variables:
-    PUBLISH_IMAGES: "false"
+    PUBLISH_IMAGES: "true"
     PUSH_TO_DOCKER_HUB: "false"
     PUSH_TO_ECR_PUBLIC: "false"
 
@@ -122,7 +122,7 @@ development helper docker images:
   - .release_helper_docker_images
   - .rules:release:development:merge-requests
   variables:
-    PUBLISH_IMAGES: "false"
+    PUBLISH_IMAGES: "true"
     PUSH_TO_DOCKER_HUB: "false"
     PUSH_TO_ECR_PUBLIC: "false"
 

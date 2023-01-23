@@ -32,14 +32,10 @@ COPY --chmod=777 entrypoint /
 
 ENV FIPS_ENABLED=1
 
-ENV HOME /home/gitlab-runner
-
 # https://docs.openshift.com/container-platform/4.6/openshift_images/create-images.html#support-arbitrary-user-ids
-RUN mkdir -p /etc/gitlab-runner/certs $HOME /secrets && \
+RUN mkdir -p /etc/gitlab-runner/certs /secrets && \
     chgrp -R 0 /etc/gitlab-runner && \
     chmod -R g=u /etc/gitlab-runner && \
-    chgrp -R 0 $HOME && \
-    chmod -R g=u $HOME && \
     chgrp -R 0 /secrets && \
     chmod -R g=u /secrets
 
