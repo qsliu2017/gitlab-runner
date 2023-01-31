@@ -517,6 +517,7 @@ func (b *AbstractShell) writeSubmoduleUpdateCmd(w ShellWriter, build *common.Bui
 
 	// Update / initialize submodules
 	updateArgs := []string{"submodule", "update", "--init"}
+	updateArgs = append(build.GetURLInsteadOfArgs(), updateArgs...)
 	foreachArgs := []string{"submodule", "foreach"}
 	gitSubmoduleUpdateFlags := build.GetGitSubmoduleUpdateFlags()
 	if recursive {
