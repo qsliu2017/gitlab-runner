@@ -813,6 +813,76 @@ func TestBuildWithGitSubmoduleStrategyNone(t *testing.T) {
 	}
 }
 
+// TestBuildWithPrivatePublicExternalSubmodulePaths clones the project:
+// https://gitlab.com/gitlab-org/ci-cd/gitlab-runner-pipeline-tests/submodules/mixed-submodules-test
+//
+// This project consists of several different ways a submodule path can be
+// defined and this integration test ensures that they're correctly rewritten
+// using git's `insteadOf` support. A public and private submodule is tested.
+//
+// In a real world clone, the token used to checkout out the submodules would
+// be the CI_JOB_TOKEN. In this test, we use a real token, but override the
+// CI_JOB_TOKEN variable with a read-only personal access token that has been
+// created at:
+// https://gitlab.com/gitlab-org/ci-cd/gitlab-runner-pipeline-tests/submodules/private-project/-/settings/access_tokens
+//
+// Whilst this token is read-only and the project only made private for the
+// purposes of testing and contains no sensitive information, the token
+// is still defined as a project level secret. If absent, this test will not
+// run. To run this test locally, pass a valid token for the env var
+// `PIPELINE_TESTS_SUBMODULES_PRIVATE_PROJECT_TOKEN`.
+//
+// This integration test follows only the happy path of rewriting and forcing
+// git and ssh schemes to use a https formatted URL. The build succeeds if
+// successful. The unhappy path is difficult to test due to the timeouts and
+// retries git makes on a URL it is unable to immediately access. See
+// TestGetURLInsteadOfArgs for unit tests covering additional cases.
+func TestBuildWithPrivatePublicExternalSubmodulePaths(t *testing.T) {
+	const (
+		tokenName  = "PIPELINE_TESTS_SUBMODULES_PRIVATE_PROJECT_TOKEN"
+		repoURL    = "https://gitlab.com/gitlab-org/ci-cd/gitlab-runner-pipeline-tests/submodules/mixed-submodules-test.git"
+		sha        = "0a1093ff08de939dbd1625689d86deef18126a74"
+		beforeSha  = ""
+		ref        = "main"
+		refType    = "branch"
+		serverHost = "gitlab.com"
+	)
+
+	token := os.Getenv("PIPELINE_TESTS_SUBMODULES_PRIVATE_PROJECT_TOKEN")
+	if token == "" {
+		t.Skip("PIPELINE_TESTS_SUBMODULES_PRIVATE_PROJECT_TOKEN is undefined")
+	}
+
+	refSpecs := []string{"+refs/heads/*:refs/origin/heads/*", "+refs/tags/*:refs/tags/*"}
+
+	shellstest.OnEachShell(t, func(t *testing.T, shell string) {
+		response, err := common.GetRemoteBuildResponse("cat .git/config")
+		require.NoError(t, err)
+
+		response.GitInfo = common.GitInfo{
+			RepoURL:   repoURL,
+			Sha:       sha,
+			BeforeSha: beforeSha,
+			Ref:       ref,
+			RefType:   refType,
+			Refspecs:  refSpecs,
+		}
+
+		build := newBuild(t, response, shell)
+		build.Variables = append(
+			build.Variables,
+			common.JobVariable{Key: "GIT_SUBMODULE_STRATEGY", Value: "recursive"},
+			common.JobVariable{Key: "CI_JOB_TOKEN", Value: token, Masked: true},
+			common.JobVariable{Key: "GIT_SUBMODULE_FORCE_HTTPS", Value: "true"},
+			common.JobVariable{Key: "CI_SERVER_HOST", Value: serverHost},
+		)
+		build.Token = token
+		build.Runner.RunnerCredentials.URL = "https://" + serverHost
+
+		require.NoError(t, buildtest.RunBuild(t, build))
+	})
+}
+
 func TestBuildWithGitSubmodulePaths(t *testing.T) {
 	// Some of these fail on earlier versions of git
 	// We can just skip it since we pass them directly to git and don't care for version support
