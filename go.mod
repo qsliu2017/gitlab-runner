@@ -27,7 +27,7 @@ require (
 	github.com/hashicorp/vault/api v1.0.4
 	github.com/imdario/mergo v0.3.12
 	github.com/jpillora/backoff v1.0.0
-	github.com/kardianos/service v1.2.0
+	github.com/kardianos/service v1.2.2
 	github.com/klauspost/pgzip v1.2.5
 	github.com/minio/minio-go/v7 v7.0.28-0.20220610200644-47da873ffd36
 	github.com/prometheus/client_golang v1.13.0
