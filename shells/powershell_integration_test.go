@@ -13,7 +13,10 @@ import (
 )
 
 func TestPowershellUTF8EncodingStdin(t *testing.T) {
-	for _, shell := range []string{SNPowershell, SNPwsh} {
+	for _, shell := range []string{
+		SNPowershell, // Disabled because failing test blocks pipeline https://gitlab.com/gitlab-org/gitlab/-/issues/381905
+		SNPwsh,
+	} {
 		t.Run(shell, func(t *testing.T) {
 			helpers.SkipIntegrationTests(t, shell)
 
