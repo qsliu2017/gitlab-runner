@@ -325,7 +325,7 @@ func (p *PsWriter) Variable(variable common.JobVariable) {
 		p.Linef("$%s=%s", variable.Key, p.resolvePath(variableFile))
 	} else {
 		if p.isTmpFile(variable.Value) {
-			variable.Value = p.cleanPath(variable.Value)
+			variable.Value = p.resolvePath(p.cleanPath(variable.Value))
 		}
 
 		p.Linef("$%s=%s", variable.Key, psQuoteVariable(variable.Value))

@@ -50,7 +50,8 @@ func (b *AbstractShell) writeCdBuildDir(w ShellWriter, info common.ShellScriptIn
 	w.Cd(info.Build.FullProjectDir())
 }
 
-func (b *AbstractShell) cacheFile(build *common.Build, userKey string) (string, string, error) {
+func (b *AbstractShell) cacheFile(info common.ShellScriptInfo, userKey string) (string, string, error) {
+	build := info.Build
 	if build.CacheDir == "" {
 		return "", "", fmt.Errorf("unset cache directory")
 	}
@@ -66,9 +67,13 @@ func (b *AbstractShell) cacheFile(build *common.Build, userKey string) (string, 
 		return "", "", fmt.Errorf("empty cache key")
 	}
 
-	file := path.Join(build.CacheDir, key, "cache.zip")
-	if build.IsFeatureFlagOn(featureflags.UsePowershellPathResolver) {
-		return key, file, nil
+	file = path.Join(build.CacheDir, key, "cache.zip")
+
+	switch info.Shell {
+	case SNPwsh, SNPowershell:
+		if build.IsFeatureFlagOn(featureflags.UsePowershellPathResolver) {
+			return key, file, nil
+		}
 	}
 
 	file, err := filepath.Rel(build.BuildDir, file)
@@ -115,7 +120,7 @@ func (b *AbstractShell) cacheExtractor(ctx context.Context, w ShellWriter, info 
 		skipRestoreCache = false
 
 		// Skip extraction if no cache is defined
-		cacheKey, cacheFile, err := b.cacheFile(info.Build, cacheOptions.Key)
+		cacheKey, cacheFile, err := b.cacheFile(info, cacheOptions.Key)
 		if err != nil {
 			w.Noticef("Skipping cache extraction due to %v", err)
 			continue
@@ -772,7 +777,7 @@ func (b *AbstractShell) archiveCache(
 		skipArchiveCache = false
 
 		// Skip archiving if no cache is defined
-		cacheKey, cacheFile, err := b.cacheFile(info.Build, cacheOptions.Key)
+		cacheKey, cacheFile, err := b.cacheFile(info, cacheOptions.Key)
 		if err != nil {
 			w.Noticef("Skipping cache archiving due to %v", err)
 			continue
