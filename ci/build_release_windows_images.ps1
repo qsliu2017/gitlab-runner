@@ -181,7 +181,9 @@ function Build-Image($tag)
         '-t', "$ecrPublicRegistry/gitlab-runner-helper:$tag"
     )
 
-    & 'docker' build $imageNames --force-rm --no-cache $buildArgs -f $dockerFile $context
+    $cacheFrom = "$Env:CI_REGISTRY/gitlab-runner-helper:x86_64-bleeding-$Env:WINDOWS_VERSION"
+
+    & 'docker' build $imageNames --force-rm --cache-from $cacheFrom $buildArgs -f $dockerFile $context
     if ($LASTEXITCODE -ne 0) {
         throw ("Failed to build docker image" )
     }
