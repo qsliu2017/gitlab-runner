@@ -97,7 +97,7 @@ Depending on your use case, you may be able to put all certificates in one file.
 
 Other use cases may require that each certificate is an individual file, for example:
   
-    ```sh
+    ```shell
     -rw-rw-rw-    1 root     root          2974 Mar  1 00:00 /etc/gitlab-runner/certs/root.crt
     -rw-rw-rw-    1 root     root          2626 Mar  1 00:00 /etc/gitlab-runner/certs/intermediate.crt
     -rw-rw-rw-    1 root     root          2222 Mar  1 00:00 /etc/gitlab-runner/certs/primary.crt
