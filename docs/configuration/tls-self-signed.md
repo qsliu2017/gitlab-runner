@@ -75,12 +75,13 @@ GitLab Runner supports the following options:
   - `./certs/gitlab.example.com.crt` on other systems. If running GitLab Runner as a Windows service,
     this will not work. Specify a custom certificate file instead.
 
-Notes:
+### Intermediate certs
 
-- If your GitLab server certificate is signed by your CA, use your CA certificate
+If your GitLab server certificate is signed by your CA, use your CA certificate
 (not your GitLab server signed certificate). You might need to add the intermediates to the chain as well.
-  For example, if you have a primary, intermediate, and root certificate,
-  you can put all of them into one file:
+
+Depending on your use case, you may be able to put all certificates in one file.
+  For example, if you have a primary, intermediate, and root certificate:
 
     ```plaintext
     -----BEGIN CERTIFICATE-----
@@ -93,6 +94,18 @@ Notes:
     (Your root certificate)
     -----END CERTIFICATE-----
     ```
+
+Other use cases may require that each certificate is an individual file, for example:
+  
+    ```sh
+    -rw-rw-rw-    1 root     root          2974 Mar  1 00:00 /etc/gitlab-runner/certs/root.crt
+    -rw-rw-rw-    1 root     root          2626 Mar  1 00:00 /etc/gitlab-runner/certs/intermediate.crt
+    -rw-rw-rw-    1 root     root          2222 Mar  1 00:00 /etc/gitlab-runner/certs/primary.crt
+    ```
+
+Some use cases may allow either of the above.
+
+### Notes
 
 - If you are updating the certificate for an existing Runner, [restart it](../commands/index.md#gitlab-runner-restart).
 - If you already have a Runner configured through HTTP, update your instance path to the new HTTPS URL of your GitLab instance in your `config.toml`.
