@@ -75,7 +75,7 @@ GitLab Runner supports the following options:
   - `./certs/gitlab.example.com.crt` on other systems. If running GitLab Runner as a Windows service,
     this will not work. Specify a custom certificate file instead.
 
-### Intermediate certs
+### Custom CA and intermediate certs
 
 If your GitLab server certificate is signed by your CA, use your CA certificate
 (not your GitLab server signed certificate). You might need to add the intermediates to the chain as well.
