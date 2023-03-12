@@ -608,32 +608,6 @@ func (b *PowerShell) generateScript(
 	return script, nil
 }
 
-func (b *PowerShell) GenerateSaveScript(info common.ShellScriptInfo, scriptPath, script string) (string, error) {
-	w := NewPsWriter(b, info)
-	return b.generateSaveScript(w, info, scriptPath, script), nil
-}
-
-func (b *PowerShell) generateSaveScript(w *PsWriter, info common.ShellScriptInfo, scriptPath, script string) string {
-	var buf strings.Builder
-	w.Line(fmt.Sprintf(`$in =%s`, psQuoteVariable(base64.StdEncoding.EncodeToString([]byte(script)))))
-	w.Line("$customEncoding = New-Object System.Text.UTF8Encoding $True")
-	w.Line(fmt.Sprintf("$sw = [System.IO.StreamWriter]::new(\"%s\", $customEncoding)", scriptPath))
-	w.Line("$sw.Write([System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($in)))")
-	w.Line("$sw.Flush()")
-	w.Line("$sw.Close()")
-
-	buf.WriteString("& {" + w.EOL + w.EOL)
-
-	if info.Build.IsDebugTraceEnabled() {
-		buf.WriteString("Set-PSDebug -Trace 2" + w.EOL)
-	}
-
-	buf.WriteString(w.String())
-	buf.WriteString(w.EOL + w.EOL + "}" + w.EOL + w.EOL)
-
-	return buf.String()
-}
-
 func (b *PowerShell) ensurePrepareStageHostnameMessage(
 	w ShellWriter,
 	buildStage common.BuildStage,

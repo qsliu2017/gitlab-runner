@@ -422,11 +422,8 @@ func (s *executor) runWithAttach(cmd common.ExecutorCommand) error {
 	ctx, cancel := context.WithCancel(cmd.Context)
 	defer cancel()
 
-	containerName, containerCommand := s.getContainerInfo(cmd)
-
 	err = s.saveScriptOnEmptyDir(
 		ctx,
-		containerName,
 		fmt.Sprintf("%s/%s", s.scriptsDir(), s.scriptName(string(cmd.Stage))),
 		cmd.Script,
 	)
@@ -434,6 +431,7 @@ func (s *executor) runWithAttach(cmd common.ExecutorCommand) error {
 		return err
 	}
 
+	containerName, containerCommand := s.getContainerInfo(cmd)
 	s.Debugln(fmt.Sprintf(
 		"Starting in container %q the command %q with script: %s",
 		containerName,
@@ -706,24 +704,21 @@ func (s *executor) setupTrappingScripts(ctx context.Context) error {
 		scriptName, script = s.scriptName(detectShellScriptName), shells.BashDetectShellScript
 	}
 
-	return s.saveScriptOnEmptyDir(ctx, buildContainerName, fmt.Sprintf("%s/%s", s.scriptsDir(), scriptName), script)
+	return s.saveScriptOnEmptyDir(ctx, fmt.Sprintf("%s/%s", s.scriptsDir(), scriptName), script)
 }
 
-func (s *executor) saveScriptOnEmptyDir(ctx context.Context, containerName, scriptPath, script string) error {
-	shell, err := s.retrieveShell()
-	if err != nil {
-		return err
+func (s *executor) saveScriptOnEmptyDir(ctx context.Context, scriptPath, script string) error {
+	containerCommand := []string{
+		"gitlab-runner-helper",
+		"write-file",
+		"-mode",
+		"777",
+		scriptPath,
 	}
-
-	saveScript, err := shell.GenerateSaveScript(*s.Shell(), scriptPath, script)
-	if err != nil {
-		return err
-	}
-	s.Debugln(fmt.Sprintf("Saving stage script %s on Container %q", saveScript, containerName))
 
 	select {
-	case err := <-s.runInContainerWithExec(ctx, containerName, s.BuildShell.DockerCommand, saveScript):
-		s.Debugln(fmt.Sprintf("Container %q exited with error: %v", containerName, err))
+	case err := <-s.runInContainerWithExec(ctx, helperContainerName, containerCommand, script):
+		s.Debugln(fmt.Sprintf("saveScriptOnEmptyDir exited with error: %v", err))
 		var exitError exec.CodeExitError
 		if err != nil && errors.As(err, &exitError) {
 			return &common.BuildError{Inner: err, ExitCode: exitError.ExitStatus()}

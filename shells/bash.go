@@ -401,19 +401,6 @@ func (b *BashShell) ensurePrepareStageHostnameMessage(
 	}
 }
 
-func (b *BashShell) GenerateSaveScript(info common.ShellScriptInfo, scriptPath, script string) (string, error) {
-	w := NewBashWriter(info.Build, b.Shell)
-	return b.generateSaveScript(w, scriptPath, script)
-}
-
-func (b *BashShell) generateSaveScript(w *BashWriter, scriptPath, script string) (string, error) {
-	w.Line(fmt.Sprintf("touch %s", scriptPath))
-	w.Line(fmt.Sprintf("chmod 777 %s", scriptPath))
-	w.Line(fmt.Sprintf("echo %s > %s", w.escape(script), scriptPath))
-
-	return w.String(), nil
-}
-
 func (b *BashShell) IsDefault() bool {
 	return runtime.GOOS != OSWindows && b.Shell == "bash"
 }
