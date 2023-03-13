@@ -172,7 +172,7 @@ func (e *executor) loadPrebuiltImage(path, ref, tag string) (*types.ImageInspect
 	}
 	defer func() { _ = file.Close() }()
 
-	e.Debugln("Loading prebuilt image...")
+	e.BuildLogger.Debugln("Loading prebuilt image...")
 
 	source := types.ImageImportSource{
 		Source:     file,
@@ -191,7 +191,7 @@ func (e *executor) loadPrebuiltImage(path, ref, tag string) (*types.ImageInspect
 
 	image, _, err := e.client.ImageInspectWithRaw(e.Context, ref+":"+tag)
 	if err != nil {
-		e.Debugln("Inspecting imported image", ref, "failed:", err)
+		e.BuildLogger.Debugln("Inspecting imported image", ref, "failed:", err)
 		return nil, err
 	}
 
@@ -200,18 +200,18 @@ func (e *executor) loadPrebuiltImage(path, ref, tag string) (*types.ImageInspect
 
 func (e *executor) getPrebuiltImage() (*types.ImageInspect, error) {
 	if imageNameFromConfig := e.ExpandValue(e.Config.Docker.HelperImage); imageNameFromConfig != "" {
-		e.Debugln(
+		e.BuildLogger.Debugln(
 			"Pull configured helper_image for predefined container instead of import bundled image",
 			imageNameFromConfig,
 			"...",
 		)
 
-		e.Println("Using helper image: ", imageNameFromConfig, " (overridden, default would be ", e.helperImageInfo, ")")
+		e.BuildLogger.Println("Using helper image: ", imageNameFromConfig, " (overridden, default would be ", e.helperImageInfo, ")")
 
 		return e.pullManager.GetDockerImage(imageNameFromConfig, nil)
 	}
 
-	e.Debugln(fmt.Sprintf("Looking for prebuilt image %s...", e.helperImageInfo))
+	e.BuildLogger.Debugln(fmt.Sprintf("Looking for prebuilt image %s...", e.helperImageInfo))
 	image, _, err := e.client.ImageInspectWithRaw(e.Context, e.helperImageInfo.String())
 	if err == nil {
 		return &image, nil
@@ -223,7 +223,7 @@ func (e *executor) getPrebuiltImage() (*types.ImageInspect, error) {
 		return loadedImage, nil
 	}
 
-	e.Println("Using helper image: ", e.helperImageInfo.String())
+	e.BuildLogger.Println("Using helper image: ", e.helperImageInfo.String())
 
 	return e.pullManager.GetDockerImage(e.helperImageInfo.String(), nil)
 }
@@ -248,7 +248,7 @@ func (e *executor) getLocalHelperImage() *types.ImageInspect {
 			e.helperImageInfo.Tag,
 		)
 		if err != nil {
-			e.Debugln("Failed to load prebuilt image from:", dockerPrebuiltImageFilePath, "error:", err)
+			e.BuildLogger.Debugln("Failed to load prebuilt image from:", dockerPrebuiltImageFilePath, "error:", err)
 			continue
 		}
 
@@ -382,7 +382,7 @@ func (e *executor) createService(
 		return nil, errVolumesManagerUndefined
 	}
 
-	e.Println("Starting service", service+":"+version, "...")
+	e.BuildLogger.Println("Starting service", service+":"+version, "...")
 	serviceImage, err := e.pullManager.GetDockerImage(image, serviceDefinition.PullPolicies)
 	if err != nil {
 		return nil, err
@@ -415,13 +415,13 @@ func (e *executor) createService(
 	hostConfig.Privileged = hostConfig.Privileged && e.isInPrivilegedServiceList(serviceDefinition)
 	networkConfig := e.networkConfig(linkNames)
 
-	e.Debugln("Creating service container", containerName, "...")
+	e.BuildLogger.Debugln("Creating service container", containerName, "...")
 	resp, err := e.client.ContainerCreate(e.Context, config, hostConfig, networkConfig, containerName)
 	if err != nil {
 		return nil, err
 	}
 
-	e.Debugln(fmt.Sprintf("Starting service container %s (%s)...", containerName, resp.ID))
+	e.BuildLogger.Debugln(fmt.Sprintf("Starting service container %s (%s)...", containerName, resp.ID))
 	err = e.client.ContainerStart(e.Context, resp.ID, types.ContainerStartOptions{})
 	if err != nil {
 		e.temporary = append(e.temporary, resp.ID)
@@ -503,15 +503,15 @@ func (e *executor) cleanupNetwork(ctx context.Context) error {
 
 	inspectResponse, err := e.networksManager.Inspect(ctx)
 	if err != nil {
-		e.Errorln("network inspect returned error ", err)
+		e.BuildLogger.Errorln("network inspect returned error ", err)
 		return nil
 	}
 
 	for id := range inspectResponse.Containers {
-		e.Debugln("Removing Container", id, "...")
+		e.BuildLogger.Debugln("Removing Container", id, "...")
 		err = e.removeContainer(ctx, id)
 		if err != nil {
-			e.Errorln("remove container returned error ", err)
+			e.BuildLogger.Errorln("remove container returned error ", err)
 		}
 	}
 
@@ -566,7 +566,7 @@ func (e *executor) createContainer(
 	// this will fail potentially some builds if there's name collision
 	_ = e.removeContainer(e.Context, containerName)
 
-	e.Debugln("Creating container", containerName, "...")
+	e.BuildLogger.Debugln("Creating container", containerName, "...")
 	resp, err := e.client.ContainerCreate(e.Context, config, hostConfig, networkConfig, containerName)
 	if resp.ID != "" {
 		e.temporary = append(e.temporary, resp.ID)
@@ -683,7 +683,7 @@ func (e *executor) startAndWatchContainer(ctx context.Context, id string, input 
 }
 
 func (e *executor) removeContainer(ctx context.Context, id string) error {
-	e.Debugln("Removing container", id)
+	e.BuildLogger.Debugln("Removing container", id)
 
 	e.disconnectNetwork(ctx, id)
 
@@ -694,20 +694,20 @@ func (e *executor) removeContainer(ctx context.Context, id string) error {
 
 	err := e.client.ContainerRemove(ctx, id, options)
 	if err != nil {
-		e.Debugln("Removing container", id, "finished with error", err)
+		e.BuildLogger.Debugln("Removing container", id, "finished with error", err)
 		return err
 	}
 
-	e.Debugln("Removed container", id)
+	e.BuildLogger.Debugln("Removed container", id)
 	return nil
 }
 
 func (e *executor) disconnectNetwork(ctx context.Context, id string) {
-	e.Debugln("Disconnecting container", id, "from networks")
+	e.BuildLogger.Debugln("Disconnecting container", id, "from networks")
 
 	netList, err := e.client.NetworkList(ctx, types.NetworkListOptions{})
 	if err != nil {
-		e.Debugln("Can't get network list. ListNetworks exited with", err)
+		e.BuildLogger.Debugln("Can't get network list. ListNetworks exited with", err)
 		return
 	}
 
@@ -716,7 +716,7 @@ func (e *executor) disconnectNetwork(ctx context.Context, id string) {
 			if id == pluggedContainer.Name {
 				err = e.client.NetworkDisconnect(ctx, network.ID, id, true)
 				if err != nil {
-					e.Warningln(
+					e.BuildLogger.Warningln(
 						"Can't disconnect possibly zombie container",
 						pluggedContainer.Name,
 						"from network",
@@ -725,7 +725,7 @@ func (e *executor) disconnectNetwork(ctx context.Context, id string) {
 						err,
 					)
 				} else {
-					e.Warningln(
+					e.BuildLogger.Warningln(
 						"Possibly zombie container",
 						pluggedContainer.Name,
 						"is disconnected from network",
@@ -773,7 +773,7 @@ func (e *executor) overwriteEntrypoint(image *common.Image) []string {
 			return image.Entrypoint
 		}
 
-		e.Warningln("Entrypoint override disabled")
+		e.BuildLogger.Warningln("Entrypoint override disabled")
 	}
 
 	return nil
@@ -831,7 +831,7 @@ func (e *executor) connectDocker(options common.ExecutorPrepareOptions) error {
 		return err
 	}
 
-	e.Debugln(fmt.Sprintf(
+	e.BuildLogger.Debugln(fmt.Sprintf(
 		"Connected to docker daemon (api version: %s, server version: %s, kernel: %s, os: %s/%s)",
 		e.client.ClientVersion(),
 		e.info.ServerVersion,
@@ -912,7 +912,7 @@ func (e *executor) createDependencies() error {
 
 func (e *executor) createVolumes() error {
 	e.SetCurrentStage(ExecutorStageCreatingUserVolumes)
-	e.Debugln("Creating user-defined volumes...")
+	e.BuildLogger.Debugln("Creating user-defined volumes...")
 
 	if e.volumesManager == nil {
 		return errVolumesManagerUndefined
@@ -921,7 +921,7 @@ func (e *executor) createVolumes() error {
 	for _, volume := range e.Config.Docker.Volumes {
 		err := e.volumesManager.Create(e.Context, volume)
 		if errors.Is(err, volumes.ErrCacheVolumesDisabled) {
-			e.Warningln(fmt.Sprintf(
+			e.BuildLogger.Warningln(fmt.Sprintf(
 				"Container based cache volumes creation is disabled. Will not create volume for %q",
 				volume,
 			))
@@ -938,7 +938,7 @@ func (e *executor) createVolumes() error {
 
 func (e *executor) createBuildVolume() error {
 	e.SetCurrentStage(ExecutorStageCreatingBuildVolumes)
-	e.Debugln("Creating build volume...")
+	e.BuildLogger.Debugln("Creating build volume...")
 
 	if e.volumesManager == nil {
 		return errVolumesManagerUndefined
@@ -1012,7 +1012,7 @@ func (e *executor) Prepare(options common.ExecutorPrepareOptions) error {
 		return err
 	}
 
-	e.Println("Using Docker executor with image", imageName, "...")
+	e.BuildLogger.Println("Using Docker executor with image", imageName, "...")
 
 	err = e.createDependencies()
 	if err != nil {
@@ -1127,7 +1127,7 @@ func (e *executor) Cleanup() {
 
 	err := e.cleanupVolume(ctx)
 	if err != nil {
-		volumeLogger := e.WithFields(logrus.Fields{
+		volumeLogger := e.BuildLogger.WithFields(logrus.Fields{
 			"error": err,
 		})
 
@@ -1136,7 +1136,7 @@ func (e *executor) Cleanup() {
 
 	err = e.cleanupNetwork(ctx)
 	if err != nil {
-		networkLogger := e.WithFields(logrus.Fields{
+		networkLogger := e.BuildLogger.WithFields(logrus.Fields{
 			"network": e.networkMode.NetworkName(),
 			"error":   err,
 		})
@@ -1147,7 +1147,7 @@ func (e *executor) Cleanup() {
 	if e.client != nil {
 		err = e.client.Close()
 		if err != nil {
-			clientCloseLogger := e.WithFields(logrus.Fields{
+			clientCloseLogger := e.BuildLogger.WithFields(logrus.Fields{
 				"error": err,
 			})
 
@@ -1164,7 +1164,7 @@ func (e *executor) Cleanup() {
 
 func (e *executor) cleanupVolume(ctx context.Context) error {
 	if e.volumesManager == nil {
-		e.Debugln("Volumes manager is empty, skipping volumes cleanup")
+		e.BuildLogger.Debugln("Volumes manager is empty, skipping volumes cleanup")
 		return nil
 	}
 
