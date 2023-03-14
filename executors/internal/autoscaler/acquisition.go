@@ -16,6 +16,7 @@ import (
 	"gitlab.com/gitlab-org/fleeting/nesting/hypervisor"
 	"gitlab.com/gitlab-org/fleeting/taskscaler"
 	"gitlab.com/gitlab-org/gitlab-runner/common"
+	"gitlab.com/gitlab-org/gitlab-runner/common/buildlogger"
 	"gitlab.com/gitlab-org/gitlab-runner/executors"
 )
 
@@ -39,7 +40,7 @@ type acquisitionRef struct {
 
 	connectNestingFn func(
 		host string,
-		logger common.BuildLogger,
+		logger buildlogger.Logger,
 		fleetingDialer connector.Client,
 	) (nestingapi.Client, io.Closer, error)
 }
@@ -55,7 +56,7 @@ func newAcquisitionRef(key string, mapJobImageToVMImage bool) *acquisitionRef {
 
 func (ref *acquisitionRef) Prepare(
 	ctx context.Context,
-	logger common.BuildLogger,
+	logger buildlogger.Logger,
 	options common.ExecutorPrepareOptions,
 ) (executors.Client, error) {
 	if ref.acq == nil {
@@ -118,7 +119,7 @@ func (ref *acquisitionRef) Prepare(
 
 func (ref *acquisitionRef) connectNesting(
 	host string,
-	logger common.BuildLogger,
+	logger buildlogger.Logger,
 	fleetingDialer connector.Client,
 ) (nestingapi.Client, io.Closer, error) {
 	if ref.connectNestingFn != nil {
@@ -142,7 +143,7 @@ func (ref *acquisitionRef) connectNesting(
 
 func (ref *acquisitionRef) createVMTunnel(
 	ctx context.Context,
-	logger common.BuildLogger,
+	logger buildlogger.Logger,
 	nc nestingapi.Client,
 	fleetingDialer connector.Client,
 	options common.ExecutorPrepareOptions,
@@ -262,4 +263,39 @@ func (c *client) Close() error {
 		return cerr
 	}
 	return err
+}
+
+// Testing hook
+var createTunneledDialer func(
+	ctx context.Context,
+	dialer connector.Client,
+	nestingCfg common.VMIsolation,
+	vm hypervisor.VirtualMachine,
+) (connector.Client, error)
+
+func init() {
+	createTunneledDialer = func(
+		ctx context.Context,
+		dialer connector.Client,
+		nestingCfg common.VMIsolation,
+		vm hypervisor.VirtualMachine,
+	) (connector.Client, error) {
+		return connector.Dial(ctx, fleetingprovider.ConnectInfo{
+			ConnectorConfig: fleetingprovider.ConnectorConfig{
+				OS:                   nestingCfg.ConnectorConfig.OS,
+				Arch:                 nestingCfg.ConnectorConfig.Arch,
+				Protocol:             fleetingprovider.Protocol(nestingCfg.ConnectorConfig.Protocol),
+				Username:             nestingCfg.ConnectorConfig.Username,
+				Password:             nestingCfg.ConnectorConfig.Password,
+				UseStaticCredentials: nestingCfg.ConnectorConfig.UseStaticCredentials,
+				Keepalive:            nestingCfg.ConnectorConfig.Keepalive,
+				Timeout:              nestingCfg.ConnectorConfig.Timeout,
+			},
+			InternalAddr: vm.GetAddr(),
+		}, connector.DialOptions{
+			DialFn: func(ctx context.Context, network, addr string) (net.Conn, error) {
+				return dialer.Dial(network, addr)
+			},
+		})
+	}
 }

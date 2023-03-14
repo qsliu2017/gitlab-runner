@@ -22,6 +22,7 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"gitlab.com/gitlab-org/gitlab-runner/common"
+	"gitlab.com/gitlab-org/gitlab-runner/common/buildlogger"
 	"gitlab.com/gitlab-org/gitlab-runner/executors/docker/internal/pull"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers/container/helperimage"
 	service_test "gitlab.com/gitlab-org/gitlab-runner/helpers/container/services/test"
@@ -829,7 +830,7 @@ func Test_Executor_captureContainerLogs(t *testing.T) {
 			defer buf.Close()
 
 			trace := &common.Trace{Writer: buf}
-			e.BuildLogger = common.NewBuildLogger(trace, logrus.WithFields(logrus.Fields{}))
+			e.BuildLogger = buildlogger.New(trace, logrus.WithFields(logrus.Fields{}))
 
 			isw := service_helpers.NewInlineServiceLogWriter(cName, trace)
 
@@ -895,7 +896,7 @@ func Test_Executor_captureContainersLogs(t *testing.T) {
 
 	e := &executor{services: containers}
 	e.client = c
-	e.BuildLogger = common.NewBuildLogger(&common.Trace{Writer: &logs}, logrus.NewEntry(lentry))
+	e.BuildLogger = buildlogger.New(&common.Trace{Writer: &logs}, logrus.NewEntry(lentry))
 	e.Build = &common.Build{}
 
 	ctx := context.Background()
