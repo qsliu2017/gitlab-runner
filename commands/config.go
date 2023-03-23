@@ -137,9 +137,11 @@ func (c *configOptions) loadConfig() error {
 		return err
 	}
 
-	// Config validation is best-effort
-	if err := common.Validate(config); err != nil {
-		logrus.Warningf("There might be a problem with your config\n%v", err)
+	if common.ConfigValidationEnabled() {
+		// Config validation is best-effort
+		if err := common.Validate(config); err != nil {
+			logrus.Warningf("There might be a problem with your config\n%v", err)
+		}
 	}
 
 	c.onConfigurationAccessCollector(func(m *configAccessCollector) {

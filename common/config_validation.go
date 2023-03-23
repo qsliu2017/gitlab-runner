@@ -2,10 +2,12 @@ package common
 
 import (
 	"encoding/json"
+	"sync/atomic"
 
 	jsonschema_generator "github.com/invopop/jsonschema"
 	jsonschema_validator "github.com/santhosh-tekuri/jsonschema/v5"
 	"github.com/sirupsen/logrus"
+	"github.com/urfave/cli"
 )
 
 var configSchema *jsonschema_validator.Schema
@@ -48,4 +50,31 @@ func Validate(config *Config) error {
 	}
 
 	return configSchema.Validate(jsonValue)
+}
+
+var (
+	validateConfigFlagName string = "validate-config"
+	validateConfigEnabled  atomic.Bool
+)
+
+func ConfigValidationEnabled() bool {
+	return validateConfigEnabled.Load()
+}
+
+func ConfigureValidation(app *cli.App) {
+	app.Flags = append(app.Flags, cli.BoolFlag{
+		Name:  validateConfigFlagName,
+		Usage: "Enable config validation",
+	})
+
+	appBefore := app.Before
+	app.Before = func(cliCtx *cli.Context) error {
+		if cliCtx.Bool(validateConfigFlagName) {
+			validateConfigEnabled.Store(true)
+		}
+		if appBefore != nil {
+			return appBefore(cliCtx)
+		}
+		return nil
+	}
 }

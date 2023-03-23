@@ -67,6 +67,7 @@ func main() {
 	cli_helpers.WarnOnBool(os.Args)
 
 	log.ConfigureLogging(app)
+	common.ConfigureValidation(app)
 
 	if err := app.Run(os.Args); err != nil {
 		logrus.Fatal(err)
