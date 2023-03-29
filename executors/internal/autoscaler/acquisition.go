@@ -4,9 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"math/rand"
 	"net"
-	"strconv"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -152,7 +150,7 @@ func (ref *acquisitionRef) createVMTunnel(
 		slot = &slot32
 	}
 	if image == "" {
-		image = "image-" + strconv.Itoa(rand.Int())
+		return nil, fmt.Errorf("no image specified")
 	}
 	vm, stompedVMID, err := nc.Create(ctx, image, slot)
 	if err != nil {
