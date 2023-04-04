@@ -6,25 +6,40 @@ info: To determine the technical writer assigned to the Stage/Group associated w
 
 # Instance executor (Alpha)
 
-> The instance executor autoscaler feature (alpha) was introduced in GitLab Runner 15.10.0.
+> Introduce in GitLab Runner 15.10.0.
 
-The instance executor is an autoscale-enabled executor that creates instances on-demand to accommodate the expected volume of CI jobs that the Runner Manager will process.
+The instance executor is an autoscale-enabled executor that creates instances on-demand to accommodate
+the expected volume of CI jobs that the runner manager processes.
 
-You can use the instance executor when jobs need full access to the host instance, operating system, and attached devices. The instance executor can also be configured to accommodate single and multi-tenant jobs with various levels of isolation and security.
+You can use the instance executor when jobs need full access to the host instance, operating system, and
+attached devices. The instance executor can also be configured to accommodate single and multi-tenant jobs
+with various levels of isolation and security.
 
-## Nested Virtualization
+## Nested virtualization
 
-The instance executor supports nested virtualization, through [nesting](https://gitlab.com/gitlab-org/fleeting/nesting). Nesting is GitLab developed daemon that enables creating and deleting pre-configured Vritual Machines on a host system intended for isolated and short-lived workloads such as CI jobs. Nesting is currently only supported on Apple macOS Apple Silicon instances.
+The instance executor supports nested virtualization through [nesting](https://gitlab.com/gitlab-org/fleeting/nesting).
+Nesting is a GitLab developed daemon that enables creating and deleting pre-configured Virtual Machines on a host system
+intended for isolated and short-lived workloads such as CI jobs. Nesting is only supported on Apple macOS Apple Silicon instances.
 
-## Preparing the environment
+## Prepare the environment
+
+To prepare the environment, you must:
+
+1. Install a fleeting plugin.
+1. Create an Amazon Machine Image.
 
 ### Step 1: Install a fleeting plugin
 
-To get started with the Instance executor, select a `fleeting` plugin that targets the public cloud platform you want to autoscale on. An Alpha version of the [AWS fleeting plugin](https://gitlab.com/gitlab-org/fleeting/fleeting-plugin-aws) is currently available. We also plan to release and maintain GCP, and Azure fleeting plugins. However, the goal of the fleeting plugin system is to enable community members to build and contribute plugins for other cloud providers.
+To prepare your environment for autoscaling, install the AWS fleeting plugin. The fleeting plugin
+targets the platform that you want to autoscale on.
 
-To install the AWS plugin, check the
-[release page](https://gitlab.com/gitlab-org/fleeting/fleeting-plugin-aws/-/releases) and download the binary for your
-host platform. The `fleeting` plugin binaries need to be discoverable via the `PATH` environment variable.
+The AWS fleeting plugin is in alpha. Support for Google Cloud Platform and Azure fleeting plugins
+are proposed in <this-issue>.
+
+To install the AWS plugin:
+
+1. [Download the binary](https://gitlab.com/gitlab-org/fleeting/fleeting-plugin-aws/-/releases) for your host platform.
+1. Ensure that the plugin binaries are discoverable through the PATH environment variable.
 
 ### Step 2: Create an Amazon Machine Image
 
@@ -34,12 +49,16 @@ Create an Amazon Machine Image (AMI) that includes the following:
 - Git
 - GitLab Runner
 
-## Autoscaler Configuration
+## Configure the executor to autoscale
 
-The autoscaler configuration provides most of the functionality for the instance executor. Administrators can use the autoscaler configuration to specify settings like concurrency, the amount of times an instance can be use, and when to create idle capacity.
+Prerequisites:
 
-- [Instance Executor configuration](../configuration/advanced-configuration.md#the-runnersinstance-section-alpha)
-- [Autoscaler configuration](../configuration/advanced-configuration.md#the-runnersautoscaler-section)
+- You must be an administrator.
+
+To configure the instance executor for autoscaling, use the following sections in the `config.toml`
+
+- [`[runners.autoscaler]`](../configuration/advanced-configuration.md#the-runnersautoscaler-section)
+- [`[runners.instance]`](../configuration/advanced-configuration.md#the-runnersinstance-section-alpha)
 
 ## Examples
 

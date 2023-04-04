@@ -4,34 +4,33 @@ group: Runner
 info: To determine the technical writer assigned to the Stage/Group associated with this page, see https://about.gitlab.com/handbook/product/ux/technical-writing/#assignments
 ---
 
-# Docker Autoscaler executor (Alpha)
+# Docker Autoscaler executor (alpha)
 
-> The Docker Autoscaler feature (alpha) was introduced in GitLab Runner 15.10.0.
+> Introduced in GitLab Runner 15.10.0.
 
 The Docker Autoscaler executor is an autoscale-enabled Docker executor that creates instances on-demand to
 accommodate the jobs that the runner manager processes.
 
 The autoscaler uses [fleeting](https://gitlab.com/gitlab-org/fleeting/fleeting) plugins. `fleeting` is an abstraction
 for a group of autoscaled instances and uses plugins that support different cloud providers (such as GCP, AWS and
-Azure). This allows instances to be created on-demand to accomodate the jobs that a GitLab Runner manager processes.
+Azure). This allows instances to be created on-demand to accommodate the jobs that the runner manager processes.
 
-## Preparing the environment
+## Prepare the environment
 
-To get started with the Docker Autoscaler executor, select a `fleeting` plugin that targets the
-platform you want to autoscale on.
+To prepare your environment for autoscaling, install the AWS fleeting plugin. The fleeting plugin
+targets the platform that you want to autoscale on.
 
-Whilst this feature is in alpha, our focus at the moment is with the
-[AWS fleeting plugin](https://gitlab.com/gitlab-org/fleeting/fleeting-plugin-aws). However, you can find our official
-plugins [here](https://gitlab.com/gitlab-org/fleeting) and the goal of our plugin system is to also support community
-contributed plugins.
+The AWS fleeting plugin is in alpha. Support for Google Cloud Platform and Azure fleeting plugins
+are proposed in <this-issue>.
 
-To install the AWS plugin, check the
-[release page](https://gitlab.com/gitlab-org/fleeting/fleeting-plugin-aws/-/releases) and download the binary for your
-host platform. `fleeting` plugin binaries need to be discoverable through the `PATH` environment variable.
+To install the AWS plugin:
+
+1. [Download the binary](https://gitlab.com/gitlab-org/fleeting/fleeting-plugin-aws/-/releases) for your host platform.
+1. Ensure that the plugin binaries are discoverable through the PATH environment variable.
 
 ## Configuration
 
-The Docker Autoscaler executor wraps the [Docker executor](docker.md). Therefore, all Docker Executor options and
+The Docker Autoscaler executor wraps the [Docker executor](docker.md), which means that all Docker Executor options and
 features are supported. To enable the autoscaler, the executor `docker-autoscaler` must be used.
 
 - [Docker Executor configuration](../configuration/advanced-configuration.md#the-runnersdocker-section)
@@ -41,7 +40,7 @@ features are supported. To enable the autoscaler, the executor `docker-autoscale
 
 ### 1 job per instance using AWS Autoscaling Group
 
-Prerequisites: 
+Prerequisites:
 
 - An AMI with [Docker Engine](https://docs.docker.com/engine/) installed.
 - An AWS Autoscaling group. For the scaling policy use "none", as Runner handles the scaling.
