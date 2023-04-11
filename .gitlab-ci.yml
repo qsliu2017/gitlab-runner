@@ -10,6 +10,7 @@ stages:
 - release
 - postrelease
 - docs
+- test
 
 include:
 - local: /.gitlab/ci/_common.gitlab-ci.yml
