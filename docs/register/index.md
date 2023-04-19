@@ -507,3 +507,33 @@ check_interval = 0
 
 The configuration set with the `register` command options took priority and was
 chosen to be placed in the final configuration.
+
+## Using the authentication token instead of the registration token
+
+The ability to pass a runner registration token was deprecated in GitLab 15.6 and planned for removal
+in 17.0, along with support for certain configuration arguments. [Authentication tokens](https://docs.gitlab.com/ee/security/token_overview.html#runner-authentication-tokens-also-called-runner-tokens) will be used to register runners instead.
+This section describes how authentication tokens will replace registration tokens in runner registration workflows.
+
+Runners created in the GitLab UI are assigned authentication tokens prefixed with `glrt-` (GitLab Runner token).
+
+The `register` command uses the `glrt- ` prefix to use the authentication token instead
+of the current registration token (`--registration-token`), which requires minimal adjustments in
+existing workflows. The authentication token is shown only once after you create the runner to
+reduce the token being reused.
+
+The `register` command fails if provided with certain arguments that are configured during runner creation
+by an administrator or a user with the owner role. For example:
+
+- `--tag-list`
+- `--run-untagged`
+- `--locked`
+- `--access-level`
+
+The runner configuration is generated through the existing `register` command. The command configures the runner
+in two separate ways, based on whether a registration or authentication token is supplied in the `--registration-token`
+argument:
+
+| Token type | Behavior |
+| ---------- | -------- |
+| [Registration token](../../../security/token_overview.md#runner-authentication-tokens-also-called-runner-tokens) | Leverages the `POST /api/v4/runners` REST endpoint to create a new runner, creating a new entry in `config.toml`. |
+| [Authentication token](../../../security/token_overview.md#runner-authentication-tokens-also-called-runner-tokens) | Leverages the `POST /api/v4/runners/verify` REST endpoint to ensure the validity of the authentication token. Creates an entry in `config.toml` file and a `system_id` value in a sidecar file if missing (`.runner_system_id`). |
