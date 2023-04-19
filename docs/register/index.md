@@ -508,32 +508,95 @@ check_interval = 0
 The configuration set with the `register` command options took priority and was
 chosen to be placed in the final configuration.
 
-## Using the authentication token instead of the registration token
+## Changes to the runner registration process
+
+DISCLAIMER:
+This page contains information related to upcoming products, features, and functionality.
+It is important to note that the information presented is for informational purposes only.
+Please do not rely on this information for purchasing or planning purposes.
+As with all projects, the items mentioned on this page are subject to change or delay.
+The development, release, and timing of any products, features, or functionality remain at the
+sole discretion of GitLab Inc.
 
 The ability to pass a runner registration token was deprecated in GitLab 15.6 and planned for removal
 in 17.0, along with support for certain configuration arguments. [Authentication tokens](https://docs.gitlab.com/ee/security/token_overview.html#runner-authentication-tokens-also-called-runner-tokens) will be used to register runners instead.
-This section describes how authentication tokens will replace registration tokens in runner registration workflows.
 
-Runners created in the GitLab UI are assigned authentication tokens prefixed with `glrt-` (GitLab Runner token).
+In GitLab 16.6, we plan to disable registration tokens. For self-managed instances, to continue using
+registration tokens, you can disable the `enforce_create_runner_workflow` feature flag until
+GitLab 17.0. Previous `gitlab-runner` versions (that don't include the new `system_id` value) will start to be
+rejected by the GitLab instance.
 
-The `register` command uses the `glrt- ` prefix to use the authentication token instead
-of the current registration token (`--registration-token`), which requires minimal adjustments in
-existing workflows. The authentication token is shown only once after you create the runner to
-reduce the token being reused.
+In GitLab 17.0, we plan to completely remove support for runner registration tokens.
 
-The `register` command fails if provided with certain arguments that are configured during runner creation
-by an administrator or a user with the owner role. For example:
+### What is the new process?
 
-- `--tag-list`
-- `--run-untagged`
-- `--locked`
-- `--access-level`
+When the new runner registration process is introduced, you:
 
-The runner configuration is generated through the existing `register` command. The command configures the runner
-in two separate ways, based on whether a registration or authentication token is supplied in the `--registration-token`
-argument:
+1. Create a runner in the GitLab UI.
+1. Receive an authentication token.
+1. Use the authentication token instead of the registration token.
 
-| Token type | Behavior |
-| ---------- | -------- |
-| [Registration token](../../../security/token_overview.md#runner-authentication-tokens-also-called-runner-tokens) | Leverages the `POST /api/v4/runners` REST endpoint to create a new runner, creating a new entry in `config.toml`. |
-| [Authentication token](../../../security/token_overview.md#runner-authentication-tokens-also-called-runner-tokens) | Leverages the `POST /api/v4/runners/verify` REST endpoint to ensure the validity of the authentication token. Creates an entry in `config.toml` file and a `system_id` value in a sidecar file if missing (`.runner_system_id`). |
+This has added benefits such as preserved ownership records for runners, and minimizes
+impact on users. The addition of a unique system ID ensures that you can reuse the same
+authentication token across multiple runners. For example, in an autoscaling scenario
+where a runner manager creates a runner process with a fixed authentication token. This
+ID generates once when the runner starts up, persists in a sidecar file, and is sent to the
+GitLab instance when requesting jobs. This allows the GitLab instance to display which
+system executed a given job.
+
+### Will my runner registration workflow break?
+
+If no action is taken before your GitLab instance is upgraded to 16.6, then your runner registration
+workflow will break.
+
+To avoid a broken workflow, you need to:
+
+1. [Create a runner](https://docs.gitlab.com/ee/ci/runners/register_runner.html#generate-an-authentication-token)
+in the GitLab runners Admin Area.
+1. Replace the registration token you're using in your runner registration
+workflow with the obtained runner authentication token.
+
+For self-managed instances, to continue using the previous runner registration process, you can disable
+the `enforce_create_runner_workflow` feature flag until GitLab 17.0.
+
+### How will the `gitlab-runner register` command syntax change?
+
+The `gitlab-runner register` command will stop accepting registration tokens and instead accept new
+authentication tokens generated in the GitLab runners administration page. These authentication tokens
+have the `glrt-` prefix.
+
+Here is an example command for GitLab 15.9:
+
+```shell
+gitlab-runner register
+    --executor "shell" \
+    --url "https://gitlab.com/" \
+    --tag-list "shell,mac,gdk,test" \
+    --run-untagged="false" \
+    --locked="false" \
+    --access-level="not_protected" \
+    --non-interactive \
+    --registration-token="GR1348941C6YcZVddc8kjtdU-yWYD"
+```
+
+When the runner is created in the UI, some of the attributes can be configured by the user.
+Some arguments, such as the tag list, locked status, or access level will no longer be accepted as arguments
+to `register`.
+
+Here is an example of the new command:
+
+```shell
+gitlab-runner register
+    --executor "shell" \
+    --url "https://gitlab.com/" \
+    --non-interactive \
+    --registration-token="glrt-2CR8_eVxiioB1QmzPZwa"
+```
+
+### How does this change impact auto-scaling scenarios?
+
+In autoscaling scenarios such as GitLab Runner Operator or GitLab Runner Helm Chart, the
+registration token is replaced with the authentication token generated from the UI.
+This means that the same runner configuration is reused across jobs, instead of creating a runner
+for each job. The specific runner can be identified by the unique system ID that is generated when the runner
+process is started.
