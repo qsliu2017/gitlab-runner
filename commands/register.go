@@ -255,7 +255,11 @@ func (s *RegisterCommand) addRunner(runner *common.RunnerConfig) {
 func (s *RegisterCommand) askRunner() {
 	s.URL = s.ask("url", "Enter the GitLab instance URL (for example, https://gitlab.com/):")
 
-	if s.Token != "" && !s.tokenIsRunnerToken() {
+	if s.Token == "" {
+		s.Token = s.ask("registration-token", "Enter the registration or authentication token:")
+	} else if s.tokenIsRunnerToken() {
+		s.Token = s.ask("token", "Enter the authentication token:")
+	} else {
 		logrus.Infoln("Token specified trying to verify runner...")
 		logrus.Warningln("If you want to register use the '-r' instead of '-t'.")
 		if s.network.VerifyRunner(s.RunnerCredentials, s.SystemIDState.GetSystemID()) == nil {
@@ -264,7 +268,6 @@ func (s *RegisterCommand) askRunner() {
 		return
 	}
 
-	s.Token = s.ask("registration-token", "Enter the registration token:")
 	s.Name = s.ask("name", "Enter a description for the runner:")
 	if !s.tokenIsRunnerToken() {
 		s.doLegacyRegisterRunner()
