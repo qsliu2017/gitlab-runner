@@ -1,32 +1,15 @@
-stages:
-- prepare
-- fips helper binaries
-- prebuild
-- prerelease
-- test
-- coverage
-- build
-- package
-- release
-- postrelease
-- docs
+.dotjob:
+  variables:
+    FILE_REF: $FILE_VAR
+  script:
+    - echo FILE_VAR=$FILE_VAR
+    - echo FILE_REF=$FILE_REF
 
-include:
-- local: /.gitlab/ci/_common.gitlab-ci.yml
-- local: /.gitlab/ci/_rules.gitlab-ci.yml
-- local: /.gitlab/ci/prepare.gitlab-ci.yml
-- local: /.gitlab/ci/fips-helper-binaries.gitlab-ci.yml
-- local: /.gitlab/ci/prebuild.gitlab-ci.yml
-- local: /.gitlab/ci/prerelease.gitlab-ci.yml
-- local: /.gitlab/ci/test.gitlab-ci.yml
-- local: /.gitlab/ci/coverage.gitlab-ci.yml
-- local: /.gitlab/ci/build.gitlab-ci.yml
-- local: /.gitlab/ci/package.gitlab-ci.yml
-- local: /.gitlab/ci/release.gitlab-ci.yml
-- local: /.gitlab/ci/postrelease.gitlab-ci.yml
-- local: /.gitlab/ci/docs.gitlab-ci.yml
-- project: 'gitlab-org/quality/pipeline-common'
-  file:
-    - '/ci/danger-review.yml'
-  rules:
-    - if: '$CI_SERVER_HOST == "gitlab.com"'
+run_on_linux:
+  extends: .dotjob
+
+run_on_macos:
+  extends: .dotjob
+  image: macos-12-xcode-13
+  tags:
+    - shared-macos-amd64
