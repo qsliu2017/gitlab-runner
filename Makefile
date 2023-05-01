@@ -46,8 +46,6 @@ GOX = gox
 MOCKERY_VERSION ?= 2.14.0
 MOCKERY = mockery
 
-SPLITIC = splitic
-
 GOLANGLINT_VERSION ?= v1.51.2
 GOLANGLINT ?= .tmp/golangci-lint$(GOLANGLINT_VERSION)
 GOLANGLINT_GOARGS ?= .tmp/goargs.so
@@ -122,23 +120,24 @@ lint: $(GOLANGLINT)
 lint-docs:
 	@scripts/lint-docs
 
+check_race_conditions:
+	@./scripts/check_race_conditions
+
 .PHONY: test
 test: helper-dockerarchive-host development_setup simple-test
 
 simple-test: TEST_PKG ?= $(shell go list ./...)
 simple-test:
 	# use env -i to clear parent environment variables for go test
-	go test $(TEST_PKG) $(TESTFLAGS) -ldflags "$(GO_LDFLAGS)"
+	./scripts/go_test_no_env $(TEST_PKG) $(TESTFLAGS) -ldflags "$(GO_LDFLAGS)"
 
-git1.8-test: $(SPLITIC)
-	splitic test -env-passthrough ./scripts/envs/allowlist_common.env -env-passthrough ./scripts/envs/allowlist_unix.env \
-		gitlab.com/gitlab-org/gitlab-runner/executors/shell gitlab.com/gitlab-org/gitlab-runner/shells \
-		-- -ldflags "$(GO_LDFLAGS)"
+git1.8-test: export TEST_PKG = gitlab.com/gitlab-org/gitlab-runner/executors/shell gitlab.com/gitlab-org/gitlab-runner/shells
+git1.8-test:
+	$(MAKE) simple-test TESTFLAGS='-cover -tags=integration'
+	$(MAKE) simple-test
 
-cobertura_report: $(GOCOVER_COBERTURA) $(SPLITIC)
+cobertura_report: $(GOCOVER_COBERTURA)
 	mkdir -p out/cobertura
-	mkdir -p out/coverage
-	$(SPLITIC) cover-merge $(wildcard .splitic/cover_*.profile) > out/coverage/coverprofile.regular.source.txt
 	$(GOCOVER_COBERTURA) < out/coverage/coverprofile.regular.source.txt > out/cobertura/cobertura-coverage-raw.xml
 	@ # NOTE: Remove package paths.
 	@ # See https://gitlab.com/gitlab-org/gitlab/-/issues/217664
@@ -148,6 +147,27 @@ cobertura_report: $(GOCOVER_COBERTURA) $(SPLITIC)
 export_test_env:
 	@echo "export GO_LDFLAGS='$(GO_LDFLAGS)'"
 	@echo "export MAIN_PACKAGE='$(MAIN_PACKAGE)'"
+
+parallel_test_prepare:
+	# Preparing test commands
+	@./scripts/go_test_with_coverage_report prepare
+
+parallel_test_execute: export GO_LDFLAGS ?= "$(GO_LDFLAGS)"
+parallel_test_execute: pull_images_for_tests
+	# Executing tests
+	@./scripts/go_test_with_coverage_report execute
+
+parallel_test_coverage_report:
+	# Preparing coverage report
+	@./scripts/go_test_with_coverage_report coverage
+
+parallel_test_junit_report:
+	# Preparing jUnit test report
+	@./scripts/go_test_with_coverage_report junit
+
+check_windows_test_ignore_list:
+	# Checking for orphaned test names in ignore file
+	@./scripts/check_windows_test_ignore_list
 
 pull_images_for_tests:
 	# Pulling images required for some tests
@@ -313,15 +333,13 @@ check_modules:
 	@git diff go.sum > /tmp/gosum-$${CI_JOB_ID}-after
 	@diff -U0 /tmp/gosum-$${CI_JOB_ID}-before /tmp/gosum-$${CI_JOB_ID}-after
 
+
 # development tools
 $(GOCOVER_COBERTURA):
 	go install github.com/boumenot/gocover-cobertura@v1.2.0
 
 $(GOX):
 	go install github.com/mitchellh/gox@v1.0.1
-
-$(SPLITIC):
-	go install gitlab.com/ajwalker/splitic@latest
 
 $(GOLANGLINT): TOOL_BUILD_DIR := .tmp/build/golangci-lint
 $(GOLANGLINT): $(GOLANGLINT_GOARGS)

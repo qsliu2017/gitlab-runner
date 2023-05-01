@@ -176,10 +176,6 @@ func (p *provider) init(config *common.RunnerConfig) (taskscaler.Taskscaler, boo
 		taskscaler.WithInstanceUpFunc(instanceReadyUp(shutdownCtx, config)),
 	}
 
-	if config.Autoscaler.DeleteInstancesOnShutdown {
-		options = append(options, taskscaler.WithDeleteInstancesOnShutdown())
-	}
-
 	ctx, cancelFn := context.WithTimeout(context.Background(), 1*time.Minute)
 	defer cancelFn()
 
@@ -247,7 +243,10 @@ func (p *provider) Acquire(config *common.RunnerConfig) (common.ExecutorData, er
 
 	logrus.WithField("key", key).Trace("Reserved capacity...")
 
-	return newAcquisitionRef(key, p.cfg.MapJobImageToVMImage), nil
+	return &acquisitionRef{
+		key:                  key,
+		mapJobImageToVMImage: p.cfg.MapJobImageToVMImage,
+	}, nil
 }
 
 func (p *provider) Release(config *common.RunnerConfig, data common.ExecutorData) {

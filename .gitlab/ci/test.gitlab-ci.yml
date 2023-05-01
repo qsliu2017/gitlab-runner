@@ -1,8 +1,8 @@
 include:
-- template: Jobs/Dependency-Scanning.latest.gitlab-ci.yml
-- template: Jobs/License-Scanning.latest.gitlab-ci.yml
-- template: Jobs/SAST.latest.gitlab-ci.yml
-- template: Security/Coverage-Fuzzing.latest.gitlab-ci.yml
+- template: Security/Dependency-Scanning.gitlab-ci.yml
+- template: Coverage-Fuzzing.gitlab-ci.yml
+- template: Security/SAST.gitlab-ci.yml
+- template: Security/License-Scanning.gitlab-ci.yml
 
 # Overriding 'Dependency-Scanning.gitlab-ci.yml' template, because
 # we need to replace the rules with our own, the same
@@ -16,6 +16,12 @@ gemnasium-dependency_scanning:
 license_scanning:
   variables:
     LICENSE_FINDER_CLI_OPTS: '--decisions-file=.gitlab/dependency_decisions.yml'
+  rules: !reference [".rules:merge_request_pipelines:no_docs", rules]
+
+# Overriding 'SAST.gitlab-ci.yml' template, because
+# we need to replace the rules with our own, the same
+# as in `.merge_request_pipelines` template.
+gosec-sast:
   rules: !reference [".rules:merge_request_pipelines:no_docs", rules]
 
 check version definition:
@@ -104,6 +110,27 @@ check test directives:
   script:
   - make check_test_directives
 
+.check windows test ignore list:
+  stage: test
+  extends:
+  - .rules:merge_request_pipelines:no_docs
+  script:
+  - ./scripts/check_windows_test_ignore_list
+  needs:
+  - 'prepare done'
+  - 'unit test definitions'
+  - 'integration test definitions'
+
+check windows 1809 test ignore list:
+  extends:
+  - .check windows test ignore list
+  - .windows1809_variables
+
+check windows 2004 test ignore list:
+  extends:
+  - .check windows test ignore list
+  - .windows2004_variables
+
 code_quality:
   stage: test
   extends:
@@ -145,31 +172,31 @@ code_quality:
   - .docker
   - .go-cache
   stage: test
-  before_script:
-  - make splitic
+  script:
+  - source ci/touch_make_dependencies
+  - make pull_images_for_tests
+  # Workaround: We call the go_test_with_coverage_report script directly instead of `make parallel_test_execute`
+  #   in order to preserve the script exit code (which would otherwise be returned as make error code 2)
+  - eval $(make export_test_env)
+  - ./scripts/go_test_with_coverage_report execute
   artifacts:
     paths:
-    - .splitic/
+    - .cover/
+    - .testoutput/
     when: always
     expire_in: 7d
-    reports:
-      junit: .splitic/junit_*.xml
 
 unit test:
   extends:
   - .linux test
   needs:
+  - 'unit test definitions'
   - 'clone test repo'
   - 'prepare done'
-  script:
-  - >
-    splitic test \
-      -junit-report .splitic/junit_${CI_NODE_INDEX}.xml \
-      -cover-report .splitic/cover_${CI_NODE_INDEX}.profile -cover -coverpkg gitlab.com/gitlab-org/gitlab-runner \
-      -env-passthrough ./scripts/envs/allowlist_common.env -env-passthrough ./scripts/envs/allowlist_unix.env \
-      ./... \
-      -- -ldflags "$(make print_ldflags)"
   parallel: 2
+  variables:
+    TESTFLAGS: -cover
+    TESTSDEFINITIONSPATH: unit/testsdefinitions.txt
 
 unit test with race:
   extends:
@@ -177,34 +204,22 @@ unit test with race:
   - .go-cache
   variables:
     CGO_ENABLED: "1"
-  script:
-  - make splitic
-  - >
-    splitic test \
-      -race \
-      -junit-report .splitic/junit_${CI_NODE_INDEX}.xml \
-      -cover-report .splitic/cover_${CI_NODE_INDEX}.profile -cover -coverpkg gitlab.com/gitlab-org/gitlab-runner \
-      -env-passthrough ./scripts/envs/allowlist_common.env -env-passthrough ./scripts/envs/allowlist_unix.env \
-      ./... \
-      -- -ldflags "$(make print_ldflags)"
+    TESTFLAGS: -cover -race
+  allow_failure:
+    exit_codes: 99
 
 integration test:
   extends:
   - .linux test
   needs:
+  - 'integration test definitions'
   - 'clone test repo'
   - 'helper images'
   - 'prepare done'
-  script:
-  - >
-    splitic test \
-      -junit-report .splitic/junit_${CI_NODE_INDEX}.xml \
-      -cover-report .splitic/cover_${CI_NODE_INDEX}.profile -cover -coverpkg gitlab.com/gitlab-org/gitlab-runner \
-      -env-passthrough ./scripts/envs/allowlist_common.env -env-passthrough ./scripts/envs/allowlist_unix.env \
-      -tags integration \
-      ./... \
-      -- -ldflags "$(make print_ldflags)" -timeout 15m
   parallel: 4
+  variables:
+    TESTFLAGS: -cover -tags=integration
+    TESTSDEFINITIONSPATH: integration/testsdefinitions.txt
 
 integration test with race:
   extends:
@@ -212,17 +227,9 @@ integration test with race:
   - .go-cache
   variables:
     CGO_ENABLED: "1"
-  script:
-  - make splitic
-  - >
-    splitic test \
-      -race \
-      -junit-report .splitic/junit_${CI_NODE_INDEX}.xml \
-      -cover-report .splitic/cover_${CI_NODE_INDEX}.profile -cover -coverpkg gitlab.com/gitlab-org/gitlab-runner \
-      -env-passthrough ./scripts/envs/allowlist_common.env -env-passthrough ./scripts/envs/allowlist_unix.env \
-      -tags integration \
-      ./... \
-      -- -ldflags "$(make print_ldflags)" -timeout 15m
+    TESTFLAGS: -cover -tags=integration -race
+  allow_failure:
+    exit_codes: 99
 
 fuzz variable mask:
   extends:
@@ -260,37 +267,33 @@ fuzz variable mask:
   - $env:Path = "C:\Program Files\Go\bin;$env:Path"
   - go version
   - *go-cache-windows_before_script
-  - go install gitlab.com/ajwalker/splitic@latest
-  - $env:Path += ";$(go env GOPATH)/bin"
+  script:
+  - .\ci\test_windows.ps1 $TESTSDEFINITIONSPATH
   artifacts:
     paths:
-    - .splitic/
+    - .testoutput/
     when: always
     expire_in: 7d
-    reports:
-      junit: .splitic/junit_*.xml
   allow_failure:
-    exit_codes: 99
+    exit_codes: 1
 
 .windows unit test:
   extends:
   - .windows test
-  parallel: 2
   needs:
+  - 'unit test definitions'
   - 'clone test repo'
   - 'prepare done'
-  script:
-  - splitic test -junit-report .splitic/junit_${WINDOWS_VERSION}_${CI_NODE_INDEX}.xml -quarantined ci/.test-failures.${WINDOWS_VERSION}.txt -cover-report .splitic/cover_${CI_NODE_INDEX}.profile -cover -coverpkg gitlab.com/gitlab-org/gitlab-runner -env-passthrough ./scripts/envs/allowlist_common.env -env-passthrough ./scripts/envs/allowlist_windows.env -fail-exit-code 99 ./...
+  variables:
+    TESTFLAGS: '-tags=!integration'
+    TESTSDEFINITIONSPATH: unit\testsdefinitions.txt
 
 .windows integration test:
   extends:
   - .windows test
-  parallel: 4
-  needs:
-  - 'clone test repo'
-  - 'prepare done'
-  script:
-  - splitic test -junit-report .splitic/junit_${WINDOWS_VERSION}_${CI_NODE_INDEX}.xml -quarantined ci/.test-failures.${WINDOWS_VERSION}.txt -cover-report .splitic/cover_${CI_NODE_INDEX}.profile -cover -coverpkg gitlab.com/gitlab-org/gitlab-runner -env-passthrough ./scripts/envs/allowlist_common.env -env-passthrough ./scripts/envs/allowlist_windows.env -fail-exit-code 99 -tags integration ./... -- -timeout 30m
+  variables:
+    TESTFLAGS: '-tags=integration'
+    TESTSDEFINITIONSPATH: integration\testsdefinitions.txt
 
 # Only test the oldest supported version in merge requests,
 # but test all versions in the default branch.
@@ -312,6 +315,7 @@ windows 1809 integration tests:
   - .windows1809
   - .rules:merge_request_pipelines:no_docs:no-community-mr
   needs:
+  - 'integration test definitions'
   - 'clone test repo'
   - 'prepare done'
   - job: 'development servercore1809 helper docker images'
@@ -327,6 +331,7 @@ windows 2004 integration tests:
   - .windows2004
   - .rules:merge_request_pipelines:no_docs:no-community-mr
   needs:
+  - 'integration test definitions'
   - 'clone test repo'
   - 'prepare done'
   - job: 'development servercore2004 helper docker images'
@@ -342,6 +347,7 @@ windows 20H2 integration tests:
   - .windows20H2
   - .rules:merge_request_pipelines:no_docs:no-community-mr
   needs:
+  - 'integration test definitions'
   - 'clone test repo'
   - 'prepare done'
   - job: 'development servercore20H2 helper docker images'
@@ -357,6 +363,7 @@ windows 21H2 integration tests:
   - .windows21H2
   - .rules:merge_request_pipelines:no_docs:no-community-mr
   needs:
+  - 'integration test definitions'
   - 'clone test repo'
   - 'prepare done'
   - job: 'development servercore21H2 helper docker images'
@@ -406,11 +413,7 @@ integration_k8s:
   - export KUBECONFIG=$(pwd)/k3s.yaml
   - kubectl version
   - kubectl cluster-info
-  - make splitic
   script:
-  - >
-    splitic test \
-    -tags integration,kubernetes
-    -env-passthrough ./scripts/envs/allowlist_common.env -env-passthrough ./scripts/envs/allowlist_unix.env \
-    gitlab.com/gitlab-org/gitlab-runner/executors/kubernetes \
-    -- -ldflags "$(make print_ldflags)"
+  # use env -i to clear parent environment variables for go test
+  - ./scripts/go_test_no_env -timeout=15m -tags=integration,kubernetes -v gitlab.com/gitlab-org/gitlab-runner/executors/kubernetes
+  retry: 2
