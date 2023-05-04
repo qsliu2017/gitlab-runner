@@ -123,19 +123,6 @@ func closeKubeClient(client *kubernetes.Clientset) bool {
 	return false
 }
 
-func isRunning(pod *api.Pod) (bool, error) {
-	switch pod.Status.Phase {
-	case api.PodRunning:
-		return true, nil
-	case api.PodSucceeded:
-		return false, fmt.Errorf("pod already succeeded before it begins running")
-	case api.PodFailed:
-		return false, fmt.Errorf("pod status is failed")
-	default:
-		return false, nil
-	}
-}
-
 type podPhaseResponse struct {
 	done  bool
 	phase api.PodPhase
@@ -149,32 +136,47 @@ func getPodPhase(c *kubernetes.Clientset, pod *api.Pod, out io.Writer) podPhaseR
 		return podPhaseResponse{true, api.PodUnknown, err}
 	}
 
-	ready, err := isRunning(pod)
-	if err != nil || ready {
-		return podPhaseResponse{true, pod.Status.Phase, err}
+	switch pod.Status.Phase {
+	case api.PodSucceeded:
+		return podPhaseResponse{true, pod.Status.Phase, fmt.Errorf("pod already succeeded before it begins running")}
+	case api.PodFailed:
+		return podPhaseResponse{true, pod.Status.Phase, fmt.Errorf("pod status is failed")}
 	}
 
 	// check status of containers
+	allReady := true
 	for _, container := range append(pod.Status.ContainerStatuses, pod.Status.InitContainerStatuses...) {
 		if container.Ready {
 			continue
 		}
+		allReady = false
+
 		waiting := container.State.Waiting
-		if waiting == nil {
-			continue
+		if waiting != nil {
+			switch waiting.Reason {
+			case "InvalidImageName":
+				err = &common.BuildError{Inner: fmt.Errorf("image pull failed: %s", waiting.Message)}
+				return podPhaseResponse{true, api.PodUnknown, err}
+			case "ErrImagePull", "ImagePullBackOff":
+				msg := fmt.Sprintf("image pull failed: %s", waiting.Message)
+				imagePullErr := &pull.ImagePullError{Message: msg, Image: container.Image}
+				return podPhaseResponse{
+					true,
+					api.PodUnknown,
+					&common.BuildError{Inner: imagePullErr, FailureReason: common.ScriptFailure},
+				}
+			}
 		}
 
-		switch waiting.Reason {
-		case "InvalidImageName":
-			err = &common.BuildError{Inner: fmt.Errorf("image pull failed: %s", waiting.Message)}
-			return podPhaseResponse{true, api.PodUnknown, err}
-		case "ErrImagePull", "ImagePullBackOff":
-			msg := fmt.Sprintf("image pull failed: %s", waiting.Message)
-			imagePullErr := &pull.ImagePullError{Message: msg, Image: container.Image}
+		terminated := container.State.Terminated
+		if terminated != nil {
 			return podPhaseResponse{
 				true,
-				api.PodUnknown,
-				&common.BuildError{Inner: imagePullErr, FailureReason: common.ScriptFailure},
+				pod.Status.Phase,
+				&common.BuildError{
+					Inner:         fmt.Errorf("message: %v, reason: %v, exit code: %v", terminated.Message, terminated.Reason, terminated.ExitCode),
+					FailureReason: common.ScriptFailure,
+				},
 			}
 		}
 	}
@@ -201,7 +203,7 @@ func getPodPhase(c *kubernetes.Clientset, pod *api.Pod, out io.Writer) podPhaseR
 		)
 	}
 
-	return podPhaseResponse{false, pod.Status.Phase, nil}
+	return podPhaseResponse{allReady, pod.Status.Phase, nil}
 }
 
 func triggerPodPhaseCheck(c *kubernetes.Clientset, pod *api.Pod, out io.Writer) <-chan podPhaseResponse {
