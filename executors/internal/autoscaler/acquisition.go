@@ -51,6 +51,18 @@ func newAcquisitionRef(key string, mapJobImageToVMImage bool) *acquisitionRef {
 	}
 }
 
+func getPublicKey(build *common.Build) string {
+	if build == nil {
+		return ""
+	}
+	for _, v := range build.JobResponse.Variables {
+		if v.Key == "EXPERIMENTAL_PUBLIC_KEY" {
+			return v.Value
+		}
+	}
+	return ""
+}
+
 func (ref *acquisitionRef) Prepare(
 	ctx context.Context,
 	logger common.BuildLogger,
@@ -60,7 +72,9 @@ func (ref *acquisitionRef) Prepare(
 		return nil, errRefAcqNotSet
 	}
 
-	info, err := ref.acq.InstanceConnectInfo(ctx)
+	publicKey := getPublicKey(options.Build)
+
+	info, err := ref.acq.InstanceConnectInfo(ctx, publicKey)
 	if err != nil {
 		return nil, fmt.Errorf("getting instance connect info: %w", err)
 	}
