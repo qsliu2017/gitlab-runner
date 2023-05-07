@@ -16,6 +16,7 @@ import (
 
 	"github.com/sirupsen/logrus"
 
+	"gitlab.com/gitlab-org/gitlab-runner/connect"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers/dns"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers/featureflags"
@@ -930,6 +931,19 @@ func (b *Build) Run(globalConfig *Config, trace JobTrace) (err error) {
 	if errWait := b.waitForTerminal(ctx, globalConfig.SessionServer.GetSessionTimeout()); errWait != nil {
 		b.Log().WithError(errWait).Debug("Stopped waiting for terminal")
 	}
+
+	// This would be integrated with this ^^^ waitForTerminal stuff
+	if connect.StillHolding(b.JobResponse.ID) {
+		b.logger.Infoln("SSH connected, waiting ...")
+		for {
+			if !connect.StillHolding(b.JobResponse.ID) {
+				break
+			}
+			time.Sleep(time.Second)
+			continue
+		}
+	}
+
 	executor.Finish(err)
 
 	return err
