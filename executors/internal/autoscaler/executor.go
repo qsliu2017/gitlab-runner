@@ -127,7 +127,7 @@ func init() {
 			publicKey := strings.TrimSpace(string(body))
 			j := connect.GetJob(int64(jobID))
 			if j.Acquisition == nil {
-				errorResponse("connect: no acquisition yet")
+				errorResponse("connect: no acquisition")
 				return
 			}
 			connectInfo, err := j.Acquisition.InstanceConnectInfo(context.Background(), publicKey)
