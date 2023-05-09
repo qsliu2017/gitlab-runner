@@ -1,6 +1,6 @@
 ARG UBI_VERSION
 
-FROM redhat/ubi8-minimal:${UBI_VERSION}
+FROM redhat/ubi9-minimal:${UBI_VERSION}
 
 ARG PLATFORM_ARCH=amd64
 
@@ -44,7 +44,7 @@ RUN cd /usr/local/go/src && \
         /usr/local/go/src/cmd/dist/dist \
         /usr/local/go/.git*
 
-FROM redhat/ubi8-minimal:${UBI_VERSION}
+FROM redhat/ubi9-minimal:${UBI_VERSION}
 
 RUN microdnf update -y && \
     microdnf install -y patch gcc openssl openssl-devel make git && \
