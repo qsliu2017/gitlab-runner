@@ -8,7 +8,6 @@ ARG TARGETPLATFORM
 RUN microdnf update -y && \
     microdnf install -y \
         openssl \
-        curl \
         git \
         wget \
         openssh-clients \
