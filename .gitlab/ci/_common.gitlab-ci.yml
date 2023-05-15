@@ -29,7 +29,7 @@ variables:
   TRANSFER_METER_FREQUENCY: "5s"
   GO111MODULE: "on"
   GO_FIPS_VERSION: "1.19"
-  GO_FIPS_IMAGE: registry.gitlab.com/gitlab-org/gitlab-runner/go-fips:$GO_FIPS_VERSION
+  GO_FIPS_IMAGE: registry.gitlab.com/gitlab-org/gitlab-runner/go-fips-test:$GO_FIPS_VERSION
   # renovate: datasource=docker depName=alpine allowedVersions=/3\.12\..+/
   ALPINE_312_VERSION: "3.12.12"
   # renovate: datasource=docker depName=alpine allowedVersions=/3\.13\..+/
