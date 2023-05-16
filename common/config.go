@@ -574,18 +574,25 @@ type KubernetesConfig struct {
 	DNSConfig                                         KubernetesDNSConfig                `toml:"dns_config" json:"dns_config" description:"Pod DNS config"`
 	ContainerLifecycle                                KubernetesContainerLifecyle        `toml:"container_lifecycle,omitempty" json:"container_lifecycle,omitempty" description:"Actions that the management system should take in response to container lifecycle events"`
 	PriorityClassName                                 string                             `toml:"priority_class_name,omitempty" json:"priority_class_name" long:"priority_class_name" env:"KUBERNETES_PRIORITY_CLASS_NAME" description:"If set, the Kubernetes Priority Class to be set to the Pods"`
-	PodSpec                                           []KubernetesPodSpec                `toml:"pod_spec" json:",omitempty"`
+	PodSpec                                           []KubernetesObjPatchSpec           `toml:"pod_spec" json:",omitempty"`
+	InitializationObjects                             []KubernetesInitObjectPatchSpec    `toml:"init_objects" json:",omitempty"`
 }
 
-type KubernetesPodSpec struct {
+type KubernetesObjPatchSpec struct {
 	Name      string                     `toml:"name"`
 	PatchPath string                     `toml:"patch_path"`
 	Patch     string                     `toml:"patch"`
 	PatchType KubernetesPodSpecPatchType `toml:"patch_type"`
 }
 
-// PodSpecPatch returns the patch data (JSON encoded) and type
-func (s *KubernetesPodSpec) PodSpecPatch() ([]byte, KubernetesPodSpecPatchType, error) {
+type KubernetesInitObjectPatchSpec struct {
+	Type string `toml:"type"`
+
+	KubernetesObjPatchSpec
+}
+
+// SpecPatch returns the patch data (JSON encoded) and type
+func (s *KubernetesObjPatchSpec) SpecPatch() ([]byte, KubernetesPodSpecPatchType, error) {
 	patchBytes := []byte(s.Patch)
 	patchType := s.PatchType
 	if patchType == "" {

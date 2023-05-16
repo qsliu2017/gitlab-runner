@@ -5,6 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/client-go/dynamic"
 	"math/rand"
 	"net/http"
 	"path"
@@ -31,6 +34,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/strategicpatch"
 
 	"gitlab.com/gitlab-org/gitlab-runner/common"
+	"gitlab.com/gitlab-org/gitlab-runner/common/utils"
 	"gitlab.com/gitlab-org/gitlab-runner/executors"
 	"gitlab.com/gitlab-org/gitlab-runner/executors/kubernetes/internal/pull"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers/container/helperimage"
@@ -238,12 +242,14 @@ type podConfigPrepareOpts struct {
 type executor struct {
 	executors.AbstractExecutor
 
-	kubeClient  *kubernetes.Clientset
-	kubeConfig  *restclient.Config
-	pod         *api.Pod
-	credentials *api.Secret
-	options     *kubernetesOptions
-	services    []api.Service
+	kubeClient   *kubernetes.Clientset
+	kubeConfig   *restclient.Config
+	pod          *api.Pod
+	credentials  *api.Secret
+	buildsDirPVC *api.PersistentVolumeClaim
+	options      *kubernetesOptions
+	services     []api.Service
+	initObjects  []initObject
 
 	configurationOverwrites *overwrites
 	pullManager             pull.Manager
@@ -609,6 +615,11 @@ func (s *executor) ensurePodsConfigured(ctx context.Context) error {
 		return fmt.Errorf("setting up credentials: %w", err)
 	}
 
+	err = s.setupInitObjects()
+	if err != nil {
+		return fmt.Errorf("setting up PVC: %w", err)
+	}
+
 	permissionsInitContainer, err := s.buildPermissionsInitContainer(s.helperImageInfo.OSType)
 	if err != nil {
 		return fmt.Errorf("building permissions init container: %w", err)
@@ -967,6 +978,29 @@ func (s *executor) cleanupResources(ctx context.Context) {
 		err := retryable.Run()
 		if err != nil {
 			s.Errorln(fmt.Sprintf("Error cleaning up secrets: %s", err.Error()))
+		}
+	}
+
+	dynamicClient := dynamic.New(s.kubeClient.RESTClient())
+	for _, o := range s.initObjects {
+		metadata, ok := o.kubernetesObject.Object["metadata"].(map[string]any)
+		if !ok {
+			continue
+		}
+
+		ownerReferences, ok := metadata["ownerReferences"].([]any)
+		if !ok || len(ownerReferences) != 0 {
+			continue
+		}
+
+		err := dynamicClient.
+			Resource(o.groupVersionResource()).
+			Namespace(s.configurationOverwrites.namespace).
+			Delete(context.TODO(), o.name, metav1.DeleteOptions{
+				GracePeriodSeconds: s.Config.Kubernetes.GetCleanupGracePeriodSeconds(),
+			})
+		if err != nil {
+			s.Errorln(fmt.Sprintf("Error cleaning up %s with name %s: %v", o.typ, o.name, err))
 		}
 	}
 }
@@ -1494,6 +1528,113 @@ func (s *executor) requestSecretCreation(
 	return creds, err
 }
 
+type initObject struct {
+	typ                  string
+	name                 string
+	resource             string
+	defaultObjectSpec    any
+	defaultObjectFactory func(name, namespace string, spec any) (any, error)
+
+	kubernetesObject *unstructured.Unstructured
+}
+
+func (o initObject) groupVersionResource() schema.GroupVersionResource {
+	return schema.GroupVersionResource{
+		Version:  "v1",
+		Resource: o.resource,
+	}
+}
+
+var allowedInitObjects = map[string]initObject{
+	"PersistentVolumeClaim": {
+		typ:               "PersistentVolumeClaim",
+		resource:          "persistentvolumeclaims",
+		defaultObjectSpec: api.PersistentVolumeClaimSpec{},
+		defaultObjectFactory: func(name, namespace string, spec any) (any, error) {
+			specType, err := utils.ConvertObjectTo[api.PersistentVolumeClaimSpec](spec)
+			if err != nil {
+				return nil, err
+			}
+
+			return api.PersistentVolumeClaim{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      name,
+					Namespace: namespace,
+				},
+				Spec: specType,
+			}, nil
+		},
+	},
+	"PersistentVolume": {
+		typ:               "PersistentVolume",
+		resource:          "persistentvolumes",
+		defaultObjectSpec: api.PersistentVolumeSpec{},
+		defaultObjectFactory: func(name, namespace string, spec any) (any, error) {
+			specType, err := utils.ConvertObjectTo[api.PersistentVolumeSpec](spec)
+			if err != nil {
+				return nil, err
+			}
+
+			return api.PersistentVolume{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      name,
+					Namespace: namespace,
+				},
+				Spec: specType,
+			}, nil
+		},
+	},
+}
+
+func (s *executor) setupInitObjects() error {
+	dynamicClient := dynamic.New(s.kubeClient.RESTClient())
+
+	for _, o := range s.Config.Kubernetes.InitializationObjects {
+		initObject, exists := allowedInitObjects[o.Type]
+		if !exists {
+			s.Warningln(fmt.Sprintf(
+				"Init object with type %s is unknown or not allowed. Allowed objects are %v, skipping...",
+				o.Type,
+				utils.Keys(allowedInitObjects),
+			))
+			continue
+		}
+
+		initObject.name = s.ExpandValue(o.Name)
+
+		s.expandPatchesVariables(o.KubernetesObjPatchSpec)
+		// the spec type will be map[string]any here since T is unknown
+		spec, err := applySpecMerge(initObject.defaultObjectSpec, o.KubernetesObjPatchSpec)
+		if err != nil {
+			return fmt.Errorf("applying spec merge for %s", initObject.typ)
+		}
+
+		defaultObject, err := initObject.defaultObjectFactory(initObject.name, s.configurationOverwrites.namespace, spec)
+		if err != nil {
+			return err
+		}
+
+		defaultObjectMap, err := utils.ConvertObjectTo[map[string]any](defaultObject)
+		if err != nil {
+			return fmt.Errorf("converting %s object to json: %w", initObject.typ, err)
+		}
+
+		initObject.kubernetesObject, err = dynamicClient.
+			Resource(initObject.groupVersionResource()).
+			Namespace(s.configurationOverwrites.namespace).
+			Create(context.TODO(), &unstructured.Unstructured{
+				Object: defaultObjectMap,
+			}, metav1.CreateOptions{})
+		if err != nil {
+			return fmt.Errorf("creating init object %s: %w", initObject.typ, err)
+		}
+
+		s.initObjects = append(s.initObjects, initObject)
+	}
+
+	return nil
+}
+
 func (s *executor) getHostAliases() ([]api.HostAlias, error) {
 	supportsHostAliases, err := s.featureChecker.IsHostAliasSupported()
 	switch {
@@ -1814,28 +1955,40 @@ func (s *executor) createBuildAndHelperContainers() (api.Container, api.Containe
 
 // Inspired by
 // https://github.com/kubernetes/kubernetes/blob/cde45fb161c5a4bfa7cfe45dfd814f6cc95433f7/cmd/kubeadm/app/util/patches/patches.go#L171
-func (s *executor) applyPodSpecMerge(podSpec *api.PodSpec) (api.PodSpec, error) {
-	patchedData, err := json.Marshal(podSpec)
+func applySpecMerge[T any](spec T, patches ...common.KubernetesObjPatchSpec) (T, error) {
+	patchedData, err := json.Marshal(spec)
 	if err != nil {
-		return api.PodSpec{}, err
+		return *new(T), err
 	}
 
-	for _, spec := range s.Config.Kubernetes.PodSpec {
-		patchedData, err = doPodSpecMerge(patchedData, spec)
+	for _, patch := range patches {
+		patchedData, err = doSpecMerge(patchedData, spec, patch)
 		if err != nil {
-			return api.PodSpec{}, err
+			return *new(T), err
 		}
 	}
 
-	var patchedPodSpec api.PodSpec
+	var patchedPodSpec T
 	err = json.Unmarshal(patchedData, &patchedPodSpec)
 	return patchedPodSpec, err
 }
 
-func doPodSpecMerge(original []byte, spec common.KubernetesPodSpec) ([]byte, error) {
+func (s *executor) expandPatchesVariables(patches ...common.KubernetesObjPatchSpec) {
+	// TODO: expand path patch
+	for i, patch := range patches {
+		patches[i].Patch = s.ExpandValue(patch.Patch)
+	}
+}
+
+func (s *executor) applyPodSpecMerge(podSpec *api.PodSpec) (api.PodSpec, error) {
+	s.expandPatchesVariables(s.Config.Kubernetes.PodSpec...)
+	return applySpecMerge(*podSpec, s.Config.Kubernetes.PodSpec...)
+}
+
+func doSpecMerge(original []byte, spec any, patch common.KubernetesObjPatchSpec) ([]byte, error) {
 	var data []byte
 
-	patchBytes, patchType, err := spec.PodSpecPatch()
+	patchBytes, patchType, err := patch.SpecPatch()
 	if err != nil {
 		return nil, err
 	}
@@ -1860,7 +2013,7 @@ func doPodSpecMerge(original []byte, spec common.KubernetesPodSpec) ([]byte, err
 		data, err = strategicpatch.StrategicMergePatch(
 			original,
 			patchBytes,
-			api.PodSpec{},
+			spec,
 		)
 		if err != nil {
 			return nil, err
@@ -1896,7 +2049,39 @@ func (s *executor) setOwnerReferencesForResources(ctx context.Context, ownerRefe
 		&s.BuildLogger,
 	)
 	retryable := retry.NewWithBackoffDuration(r, defaultRetryMinBackoff, defaultRetryMaxBackoff)
-	return retryable.Run()
+	err := retryable.Run()
+	if err != nil {
+		return nil
+	}
+	
+	var ownerReferencesMap []map[string]any
+	for _, ref := range ownerReferences {
+		ownerReferenceMap, err := utils.ConvertObjectTo[map[string]any](ref)
+		if err != nil {
+			return err
+		}
+
+		ownerReferencesMap = append(ownerReferencesMap, ownerReferenceMap)
+	}
+
+	dynamicClient := dynamic.New(s.kubeClient.RESTClient())
+	for _, o := range s.initObjects {
+		metadata, ok := o.kubernetesObject.Object["metadata"].(map[string]any)
+		if !ok {
+			continue
+		}
+
+		metadata["ownerReferences"] = ownerReferencesMap
+
+		var err error
+		o.kubernetesObject, err = dynamicClient.
+			Resource(o.groupVersionResource()).
+			Namespace(s.configurationOverwrites.namespace).
+			Update(context.TODO(), o.kubernetesObject, metav1.UpdateOptions{})
+		if err != nil {
+			return fmt.Errorf("setting owner reference for init object %s: %w", o.typ, err)
+		}
+	}
 }
 
 func (s *executor) buildPodReferences() []metav1.OwnerReference {
