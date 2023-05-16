@@ -1167,9 +1167,14 @@ func (e *executor) cleanupVolume(ctx context.Context) error {
 }
 
 func (e *executor) createHostConfigForServiceHealthCheck(service *types.Container) *container.HostConfig {
+	var legacyLinks []string
+	if !e.networkMode.IsUserDefined() {
+		legacyLinks = append(legacyLinks, service.Names[0]+":service")
+	}
+
 	return &container.HostConfig{
 		RestartPolicy: neverRestartPolicy,
-		Links:         []string{service.Names[0] + ":service"},
+		Links:         legacyLinks,
 		NetworkMode:   e.networkMode,
 		LogConfig: container.LogConfig{
 			Type: "json-file",
