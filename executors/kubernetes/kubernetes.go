@@ -156,12 +156,13 @@ type podConfigPrepareOpts struct {
 type executor struct {
 	executors.AbstractExecutor
 
-	kubeClient  *kubernetes.Clientset
-	kubeConfig  *restclient.Config
-	pod         *api.Pod
-	credentials *api.Secret
-	options     *kubernetesOptions
-	services    []api.Service
+	kubeClient   *kubernetes.Clientset
+	kubeConfig   *restclient.Config
+	pod          *api.Pod
+	credentials  *api.Secret
+	buildsDirPVC *api.PersistentVolumeClaim
+	options      *kubernetesOptions
+	services     []api.Service
 
 	configurationOverwrites *overwrites
 	pullManager             pull.Manager
@@ -470,6 +471,11 @@ func (s *executor) ensurePodsConfigured(ctx context.Context) error {
 	err := s.setupCredentials()
 	if err != nil {
 		return fmt.Errorf("setting up credentials: %w", err)
+	}
+
+	err = s.setupBuildsDirPVC()
+	if err != nil {
+		return fmt.Errorf("setting up PVC: %w", err)
 	}
 
 	permissionsInitContainer, err := s.buildPermissionsInitContainer(s.helperImageInfo.OSType)
@@ -794,6 +800,18 @@ func (s *executor) cleanupResources() {
 			s.Errorln(fmt.Sprintf("Error cleaning up secrets: %s", err.Error()))
 		}
 	}
+
+	if s.buildsDirPVC != nil {
+		err := s.kubeClient.CoreV1().
+			PersistentVolumeClaims(s.configurationOverwrites.namespace).
+			Delete(context.TODO(), s.buildsDirPVC.Name, metav1.DeleteOptions{
+				GracePeriodSeconds: s.Config.Kubernetes.GetCleanupGracePeriodSeconds(),
+			})
+
+		if err != nil {
+			s.Errorln(fmt.Sprintf("Error cleaning up builds dir PVC: %s", err.Error()))
+		}
+	}
 }
 
 //nolint:funlen
@@ -1020,15 +1038,36 @@ func (s *executor) getVolumeMountsForConfig() []api.VolumeMount {
 	return mounts
 }
 
+func (s *executor) getBuildDirVolume() *api.PersistentVolumeClaimVolumeSource {
+	name := fmt.Sprintf(
+		"pvc-runner-%s-concurrent-%d",
+		s.Build.Runner.ShortDescription(),
+		s.Build.RunnerID,
+	)
+
+	return &api.PersistentVolumeClaimVolumeSource{
+		ClaimName: name,
+		ReadOnly:  false,
+	}
+}
+
 func (s *executor) getVolumes() []api.Volume {
 	volumes := s.getVolumesForConfig()
 
 	if s.isDefaultBuildsDirVolumeRequired() {
+		volumeSource := api.VolumeSource{}
+
+		if s.buildsDirPVC != nil {
+			volumeSource.PersistentVolumeClaim = &api.PersistentVolumeClaimVolumeSource{
+				ClaimName: s.buildsDirPVC.Name,
+			}
+		} else {
+			volumeSource.EmptyDir = &api.EmptyDirVolumeSource{}
+		}
+
 		volumes = append(volumes, api.Volume{
-			Name: "repo",
-			VolumeSource: api.VolumeSource{
-				EmptyDir: &api.EmptyDirVolumeSource{},
-			},
+			Name:         "repo",
+			VolumeSource: volumeSource,
 		})
 	}
 
@@ -1289,6 +1328,26 @@ func (s *executor) setupCredentials() error {
 	}
 
 	s.credentials = creds
+	return nil
+}
+
+func (s *executor) setupBuildsDirPVC() error {
+	spec, err := s.applyPVCSpecMerge(&api.PersistentVolumeClaimSpec{})
+	if err != nil {
+		return err
+	}
+
+	pvc, err := s.kubeClient.
+		CoreV1().
+		PersistentVolumeClaims(s.configurationOverwrites.namespace).
+		Create(context.TODO(), &api.PersistentVolumeClaim{
+			Spec: spec,
+		}, metav1.CreateOptions{})
+	if err != nil {
+		return err
+	}
+
+	s.buildsDirPVC = pvc
 	return nil
 }
 
@@ -1590,28 +1649,36 @@ func (s *executor) createBuildAndHelperContainers() (api.Container, api.Containe
 
 // Inspired by
 // https://github.com/kubernetes/kubernetes/blob/cde45fb161c5a4bfa7cfe45dfd814f6cc95433f7/cmd/kubeadm/app/util/patches/patches.go#L171
-func (s *executor) applyPodSpecMerge(podSpec *api.PodSpec) (api.PodSpec, error) {
-	patchedData, err := json.Marshal(podSpec)
+func applySpecMerge[T any](spec T, patches ...common.KubernetesObjPatchSpec) (T, error) {
+	patchedData, err := json.Marshal(spec)
 	if err != nil {
-		return api.PodSpec{}, err
+		return *new(T), err
 	}
 
-	for _, spec := range s.Config.Kubernetes.PodSpec {
-		patchedData, err = doPodSpecMerge(patchedData, spec)
+	for _, spec := range patches {
+		patchedData, err = doSpecMerge(patchedData, spec)
 		if err != nil {
-			return api.PodSpec{}, err
+			return *new(T), err
 		}
 	}
 
-	var patchedPodSpec api.PodSpec
+	var patchedPodSpec T
 	err = json.Unmarshal(patchedData, &patchedPodSpec)
 	return patchedPodSpec, err
 }
 
-func doPodSpecMerge(original []byte, spec common.KubernetesPodSpec) ([]byte, error) {
+func (s *executor) applyPodSpecMerge(podSpec *api.PodSpec) (api.PodSpec, error) {
+	return applySpecMerge(*podSpec, s.Config.Kubernetes.PodSpec...)
+}
+
+func (s *executor) applyPVCSpecMerge(pvc *api.PersistentVolumeClaimSpec) (api.PersistentVolumeClaimSpec, error) {
+	return applySpecMerge(*pvc, s.Config.Kubernetes.BuildsDirPVCSpec)
+}
+
+func doSpecMerge(original []byte, spec common.KubernetesObjPatchSpec) ([]byte, error) {
 	var data []byte
 
-	patchBytes, patchType, err := spec.PodSpecPatch()
+	patchBytes, patchType, err := spec.SpecPatch()
 	if err != nil {
 		return nil, err
 	}

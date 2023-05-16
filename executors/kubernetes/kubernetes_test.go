@@ -4697,7 +4697,7 @@ func TestSetupBuildPod(t *testing.T) {
 						Namespace:      "default",
 						SchedulerName:  "foobar",
 						ServiceAccount: "my-service-account",
-						PodSpec: []common.KubernetesPodSpec{
+						PodSpec: []common.KubernetesObjPatchSpec{
 							{
 								Patch:     `serviceAccountName: null`,
 								PatchType: common.PatchTypeMergePatchType,
@@ -5993,7 +5993,7 @@ func TestDoPodSpecMerge(t *testing.T) {
 
 	tests := map[string]struct {
 		getOriginal func() *api.PodSpec
-		podSpec     common.KubernetesPodSpec
+		podSpec     common.KubernetesObjPatchSpec
 		verifyFn    func(*testing.T, *api.PodSpec)
 		expectedErr error
 	}{
@@ -6002,7 +6002,7 @@ func TestDoPodSpecMerge(t *testing.T) {
 			getOriginal: func() *api.PodSpec {
 				return &api.PodSpec{NodeName: "my-node-name"}
 			},
-			podSpec: common.KubernetesPodSpec{
+			podSpec: common.KubernetesObjPatchSpec{
 				Patch: `
 nodeName: null
 serviceAccountName: "my-service-account-name"
@@ -6017,7 +6017,7 @@ nodeSelector:
 			getOriginal: func() *api.PodSpec {
 				return &api.PodSpec{NodeName: "my-node-name"}
 			},
-			podSpec: common.KubernetesPodSpec{
+			podSpec: common.KubernetesObjPatchSpec{
 				Patch: `
 {
 	nodeName: null,
@@ -6035,7 +6035,7 @@ nodeSelector:
 			getOriginal: func() *api.PodSpec {
 				return &api.PodSpec{NodeName: "my-node-name"}
 			},
-			podSpec: common.KubernetesPodSpec{
+			podSpec: common.KubernetesObjPatchSpec{
 				Patch: `
 [
 	{ "op": "remove", "path": "/nodeName" },
@@ -6060,7 +6060,7 @@ nodeSelector:
 					},
 				}
 			},
-			podSpec: common.KubernetesPodSpec{
+			podSpec: common.KubernetesObjPatchSpec{
 				Patch: `
 containers:
   - name: "second-container"
@@ -6090,7 +6090,7 @@ containers:
 					},
 				}
 			},
-			podSpec: common.KubernetesPodSpec{
+			podSpec: common.KubernetesObjPatchSpec{
 				Patch: `
 containers:
   - name: "second-container"
@@ -6106,7 +6106,7 @@ containers:
 			patchedData, err := json.Marshal(tc.getOriginal())
 			require.NoError(t, err)
 
-			patchedData, err = doPodSpecMerge(patchedData, tc.podSpec)
+			patchedData, err = doSpecMerge(patchedData, tc.podSpec)
 			if tc.expectedErr != nil {
 				assert.Error(t, err)
 				assert.Equal(t, tc.expectedErr.Error(), err.Error())

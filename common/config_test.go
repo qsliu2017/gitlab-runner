@@ -1812,12 +1812,12 @@ func TestKubernetesPodSpecContents(t *testing.T) {
 
 	for tn, tc := range tests {
 		t.Run(tn, func(t *testing.T) {
-			s := KubernetesPodSpec{
+			s := KubernetesObjPatchSpec{
 				PatchPath: tc.patchPath,
 				Patch:     tc.patchContents,
 				PatchType: tc.patchType,
 			}
-			patchBytes, patchType, err := s.PodSpecPatch()
+			patchBytes, patchType, err := s.SpecPatch()
 			if tc.expectedErr != nil {
 				require.ErrorIs(t, err, tc.expectedErr)
 			} else {

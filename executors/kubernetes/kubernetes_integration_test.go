@@ -637,12 +637,12 @@ func testKubernetesCustomPodSpec(t *testing.T, featureFlagName string, featureFl
 
 	tests := map[string]struct {
 		namespace string
-		podSpec   []common.KubernetesPodSpec
+		podSpec   []common.KubernetesObjPatchSpec
 		verifyFn  func(*testing.T, v1.Pod)
 	}{
 		"change hostname with custom podSpec": {
 			namespace: generateRandomNamespace("gc"),
-			podSpec: []common.KubernetesPodSpec{
+			podSpec: []common.KubernetesObjPatchSpec{
 				{
 					Patch: `
 [
@@ -662,7 +662,7 @@ func testKubernetesCustomPodSpec(t *testing.T, featureFlagName string, featureFl
 		},
 		"update build container with resources limit through custom podSpec using strategic patch type": {
 			namespace: generateRandomNamespace("custom-pod-spec"),
-			podSpec: []common.KubernetesPodSpec{
+			podSpec: []common.KubernetesObjPatchSpec{
 				{
 					Patch: `
 containers:
