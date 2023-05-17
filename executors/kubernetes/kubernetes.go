@@ -156,13 +156,12 @@ type podConfigPrepareOpts struct {
 type executor struct {
 	executors.AbstractExecutor
 
-	kubeClient   *kubernetes.Clientset
-	kubeConfig   *restclient.Config
-	pod          *api.Pod
-	credentials  *api.Secret
-	buildsDirPVC *api.PersistentVolumeClaim
-	options      *kubernetesOptions
-	services     []api.Service
+	kubeClient  *kubernetes.Clientset
+	kubeConfig  *restclient.Config
+	pod         *api.Pod
+	credentials *api.Secret
+	options     *kubernetesOptions
+	services    []api.Service
 
 	configurationOverwrites *overwrites
 	pullManager             pull.Manager
