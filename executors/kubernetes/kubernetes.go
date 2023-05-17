@@ -473,11 +473,6 @@ func (s *executor) ensurePodsConfigured(ctx context.Context) error {
 		return fmt.Errorf("setting up credentials: %w", err)
 	}
 
-	err = s.setupBuildsDirPVC()
-	if err != nil {
-		return fmt.Errorf("setting up PVC: %w", err)
-	}
-
 	permissionsInitContainer, err := s.buildPermissionsInitContainer(s.helperImageInfo.OSType)
 	if err != nil {
 		return fmt.Errorf("building permissions init container: %w", err)
@@ -800,18 +795,6 @@ func (s *executor) cleanupResources() {
 			s.Errorln(fmt.Sprintf("Error cleaning up secrets: %s", err.Error()))
 		}
 	}
-
-	if s.buildsDirPVC != nil {
-		err := s.kubeClient.CoreV1().
-			PersistentVolumeClaims(s.configurationOverwrites.namespace).
-			Delete(context.TODO(), s.buildsDirPVC.Name, metav1.DeleteOptions{
-				GracePeriodSeconds: s.Config.Kubernetes.GetCleanupGracePeriodSeconds(),
-			})
-
-		if err != nil {
-			s.Errorln(fmt.Sprintf("Error cleaning up builds dir PVC: %s", err.Error()))
-		}
-	}
 }
 
 //nolint:funlen
@@ -1038,36 +1021,15 @@ func (s *executor) getVolumeMountsForConfig() []api.VolumeMount {
 	return mounts
 }
 
-func (s *executor) getBuildDirVolume() *api.PersistentVolumeClaimVolumeSource {
-	name := fmt.Sprintf(
-		"pvc-runner-%s-concurrent-%d",
-		s.Build.Runner.ShortDescription(),
-		s.Build.RunnerID,
-	)
-
-	return &api.PersistentVolumeClaimVolumeSource{
-		ClaimName: name,
-		ReadOnly:  false,
-	}
-}
-
 func (s *executor) getVolumes() []api.Volume {
 	volumes := s.getVolumesForConfig()
 
 	if s.isDefaultBuildsDirVolumeRequired() {
-		volumeSource := api.VolumeSource{}
-
-		if s.buildsDirPVC != nil {
-			volumeSource.PersistentVolumeClaim = &api.PersistentVolumeClaimVolumeSource{
-				ClaimName: s.buildsDirPVC.Name,
-			}
-		} else {
-			volumeSource.EmptyDir = &api.EmptyDirVolumeSource{}
-		}
-
 		volumes = append(volumes, api.Volume{
-			Name:         "repo",
-			VolumeSource: volumeSource,
+			Name: "repo",
+			VolumeSource: api.VolumeSource{
+				EmptyDir: &api.EmptyDirVolumeSource{},
+			},
 		})
 	}
 
@@ -1328,26 +1290,6 @@ func (s *executor) setupCredentials() error {
 	}
 
 	s.credentials = creds
-	return nil
-}
-
-func (s *executor) setupBuildsDirPVC() error {
-	spec, err := s.applyPVCSpecMerge(&api.PersistentVolumeClaimSpec{})
-	if err != nil {
-		return err
-	}
-
-	pvc, err := s.kubeClient.
-		CoreV1().
-		PersistentVolumeClaims(s.configurationOverwrites.namespace).
-		Create(context.TODO(), &api.PersistentVolumeClaim{
-			Spec: spec,
-		}, metav1.CreateOptions{})
-	if err != nil {
-		return err
-	}
-
-	s.buildsDirPVC = pvc
 	return nil
 }
 
@@ -1667,12 +1609,9 @@ func applySpecMerge[T any](spec T, patches ...common.KubernetesObjPatchSpec) (T,
 	return patchedPodSpec, err
 }
 
+// In the future if we need to apply a spec merge on a different object we just need to call the generic applySpecMerge function
 func (s *executor) applyPodSpecMerge(podSpec *api.PodSpec) (api.PodSpec, error) {
 	return applySpecMerge(*podSpec, s.Config.Kubernetes.PodSpec...)
-}
-
-func (s *executor) applyPVCSpecMerge(pvc *api.PersistentVolumeClaimSpec) (api.PersistentVolumeClaimSpec, error) {
-	return applySpecMerge(*pvc, s.Config.Kubernetes.BuildsDirPVCSpec)
 }
 
 func doSpecMerge(original []byte, spec common.KubernetesObjPatchSpec) ([]byte, error) {

@@ -541,7 +541,6 @@ type KubernetesConfig struct {
 	ContainerLifecycle                                KubernetesContainerLifecyle        `toml:"container_lifecycle,omitempty" json:"container_lifecycle,omitempty" description:"Actions that the management system should take in response to container lifecycle events"`
 	PriorityClassName                                 string                             `toml:"priority_class_name,omitempty" json:"priority_class_name" long:"priority_class_name" env:"KUBERNETES_PRIORITY_CLASS_NAME" description:"If set, the Kubernetes Priority Class to be set to the Pods"`
 	PodSpec                                           []KubernetesObjPatchSpec           `toml:"pod_spec" json:",omitempty"`
-	BuildsDirPVCSpec                                  KubernetesObjPatchSpec             `toml:"builds_dir_pvc"`
 }
 
 type KubernetesObjPatchSpec struct {
