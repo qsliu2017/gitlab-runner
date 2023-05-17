@@ -10,7 +10,6 @@ RUN microdnf update -y && \
         openssl \
         curl \
         git \
-        wget \
         openssh-clients \
         hostname \
         procps-ng \

@@ -12,7 +12,6 @@ RUN apt-get update -y && \
         ca-certificates \
         curl \
         git \
-        wget \
         tzdata \
         openssh-client \
     && rm -rf /var/lib/apt/lists/*

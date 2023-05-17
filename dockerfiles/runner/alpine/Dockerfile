@@ -22,11 +22,7 @@ ARG GIT_LFS_VERSION
 COPY gitlab-runner-linux-* /usr/bin/
 COPY checksums-* install-deps install-gitlab-runner /tmp/
 
-# Install GNU wget for "-nv" flag support
-# hadolint ignore=DL3018
-RUN apk add --no-cache --virtual .fetch-deps wget && \
-    /tmp/install-deps "${TARGETPLATFORM}" "${DOCKER_MACHINE_VERSION}" "${DUMB_INIT_VERSION}" "${GIT_LFS_VERSION}" && \
-    apk del .fetch-deps
+RUN /tmp/install-deps "${TARGETPLATFORM}" "${DOCKER_MACHINE_VERSION}" "${DUMB_INIT_VERSION}" "${GIT_LFS_VERSION}"
 RUN rm -rf /tmp/* /etc/gitlab-runner/.runner_system_id
 
 FROM $BASE_IMAGE
