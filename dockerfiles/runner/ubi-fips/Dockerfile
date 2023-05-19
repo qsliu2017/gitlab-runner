@@ -8,23 +8,46 @@ ARG TARGETPLATFORM
 RUN microdnf update -y && \
     microdnf install -y \
         openssl \
+        openssl-devel \
         curl \
-        git \
+        curl-devel \
         wget \
         openssh-clients \
         hostname \
         procps-ng \
         tar \
+        gzip \
+        expat-devel \
+        zlib-devel \
+        perl-CPAN \
+        perl-devel \
+        autoconf \
+        gcc \
+        which \
+        python3 \
+        gettext \
+        diffutils \
         && microdnf clean all && \
         rm -rf /var/cache/yum
 
 ARG DOCKER_MACHINE_VERSION
 ARG DUMB_INIT_VERSION
 ARG GIT_LFS_VERSION
+ARG GIT_VERSION
 
 COPY gitlab-runner_*.rpm checksums-* install-deps install-gitlab-runner /tmp/
 RUN /tmp/install-deps "${TARGETPLATFORM}" "${DOCKER_MACHINE_VERSION}" "${DUMB_INIT_VERSION}" "${GIT_LFS_VERSION}"
 RUN rm -rf /tmp/* /etc/gitlab-runner/.runner_system_id
+
+RUN wget https://github.com/git/git/archive/refs/tags/v${GIT_VERSION}.tar.gz && \
+    tar xf v${GIT_VERSION}.tar.gz && \
+    cd git-${GIT_VERSION} && \
+    make configure && \
+    ./configure --prefix=/usr/local --with-python=`which python3` && \
+    PYTHON_PATH=`which python3` NO_TCLTK=1 make all && \
+    make DESTDIR=/git install && \
+    rm -rf /git-${GIT_VERSION} && \
+    microdnf remove emacs-filesystem autoconf
 
 FROM $BASE_IMAGE
 
