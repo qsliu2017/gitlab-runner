@@ -983,16 +983,7 @@ func (s *executor) cleanupResources(ctx context.Context) {
 
 	dynamicClient := dynamic.New(s.kubeClient.RESTClient())
 	for _, o := range s.initObjects {
-		metadata, ok := o.kubernetesObject.Object["metadata"].(map[string]any)
-		if !ok {
-			continue
-		}
-
-		ownerReferences, ok := metadata["ownerReferences"].([]any)
-		if !ok || len(ownerReferences) != 0 {
-			continue
-		}
-
+		// I don't want to leave these resources solely to owner references
 		err := dynamicClient.
 			Resource(o.groupVersionResource()).
 			Namespace(s.configurationOverwrites.namespace).
