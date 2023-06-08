@@ -39,13 +39,19 @@ The Docker executor divides the job into several steps:
 
 The Docker executor supports the following configurations.
 
-For known issues and additional requirements of Windows configurations, see [Use Windows containers](#use-windows-containers).
+| Runner is installed on: | Executor is:     | Container that runs is: |
+|-------------------------|------------------|-------------------------|
+| Windows                 | `docker-windows` | Windows                 |
+| Windows                 | `docker`         | Linux                   |
+| Linux                   | `docker`         | Linux                   |
 
-| Runner is installed on:  | Executor is:     | Container is running: |
-|--------------------------|------------------|------------------------|
-| Windows                  | `docker-windows` | Windows                |
-| Windows                  | `docker`         | Linux                  |
-| Linux                    | `docker`         | Linux                  |
+If the Windows machine is running a Linux container and the Docker executor is
+set to:
+
+- `docker`, the executor only handles Linux containers.
+- `docker-windows`, the executor handles only Windows containers on a Windows machine.
+
+For known issues and additional requirements of Windows configurations, see [Using Windows containers](#using-windows-containers).
 
 These configurations are **not** supported:
 
@@ -950,7 +956,7 @@ and [removed](https://gitlab.com/gitlab-org/gitlab-runner/-/merge_requests/4060)
 
 <!--- end_remove -->
 
-## Use Windows containers
+## Using Windows containers
 
 > [Introduced](https://gitlab.com/groups/gitlab-org/-/epics/535) in GitLab Runner 11.11.
 
