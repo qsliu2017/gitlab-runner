@@ -897,9 +897,7 @@ func (b *Build) Run(globalConfig *Config, trace JobTrace) (err error) {
 
 	// These defers are ordered because runBuild could panic and the recover needs to handle that panic.
 	// setTraceStatus needs to be last since it needs a correct error value to report the job's status
-	defer func() {
-		b.setTraceStatus(trace, err)
-	}()
+	defer func() { b.setTraceStatus(trace, err) }()
 
 	defer func() {
 		if r := recover(); r != nil {
@@ -936,9 +934,7 @@ func (b *Build) Run(globalConfig *Config, trace JobTrace) (err error) {
 	}
 	defer executor.Cleanup()
 
-	// timing.Begin(id, "b.run")
 	err = b.run(ctx, executor)
-	// timing.End(id, "b.run")
 	if errWait := b.waitForTerminal(ctx, globalConfig.SessionServer.GetSessionTimeout()); errWait != nil {
 		b.Log().WithError(errWait).Debug("Stopped waiting for terminal")
 	}
