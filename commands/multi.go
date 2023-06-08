@@ -802,10 +802,7 @@ func (mr *RunCommand) processBuildOnRunner(
 	mr.requeueRunner(runner, runners)
 
 	// Process a build
-	// timing.Begin(id, "build.Run")
-	err = build.Run(mr.getConfig(), trace)
-	// timing.End(id, "build.Run")
-	return err
+	return build.Run(mr.getConfig(), trace)
 }
 
 func (mr *RunCommand) traceOutcome(trace common.JobTrace, err error) {

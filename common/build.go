@@ -841,13 +841,9 @@ func (b *Build) setTraceStatus(trace JobTrace, err error) {
 		"duration_s": b.Duration().Seconds(),
 	})
 
-	// id := b.ID
-
 	if err == nil {
 		logger.Infoln("Job succeeded")
-		// timing.Begin(id, "trace.Success")
 		trace.Success()
-		// timing.End(id, "trace.Success")
 
 		return
 	}
@@ -894,8 +890,6 @@ func (b *Build) CurrentExecutorStage() ExecutorStage {
 
 func (b *Build) Run(globalConfig *Config, trace JobTrace) (err error) {
 
-	// id := b.ID
-
 	b.logger = NewBuildLogger(trace, b.Log())
 	b.printRunningWithHeader()
 
@@ -904,9 +898,7 @@ func (b *Build) Run(globalConfig *Config, trace JobTrace) (err error) {
 	// These defers are ordered because runBuild could panic and the recover needs to handle that panic.
 	// setTraceStatus needs to be last since it needs a correct error value to report the job's status
 	defer func() {
-		// timing.Begin(id, "b.setTraceStatus")
 		b.setTraceStatus(trace, err)
-		// timing.End(id, "b.setTraceStatus")
 	}()
 
 	defer func() {
