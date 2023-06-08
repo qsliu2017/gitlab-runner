@@ -441,10 +441,15 @@ func (b *Build) executeArchiveCache(ctx context.Context, state error, executor E
 func (b *Build) executeScript(ctx context.Context, executor Executor) error {
 	// track job start and create referees
 	startTime := time.Now()
+
+	timing.Begin(b.ID, "b.createReferees")
 	b.createReferees(executor)
+	timing.End(b.ID, "b.createReferees")
 
 	// Prepare stage
+	timing.Begin(b.ID, "BuildStagePrepare")
 	err := b.executeStage(ctx, BuildStagePrepare, executor)
+	timing.End(b.ID, "BuildStagePrepare")
 	if err != nil {
 		return fmt.Errorf(
 			"prepare environment: %w. "+
@@ -453,13 +458,19 @@ func (b *Build) executeScript(ctx context.Context, executor Executor) error {
 		)
 	}
 
+	timing.Begin(b.ID, "BuildStageGetSources")
 	err = b.attemptExecuteStage(ctx, BuildStageGetSources, executor, b.GetGetSourcesAttempts())
+	timing.End(b.ID, "BuildStageGetSources")
 
 	if err == nil {
+		timing.Begin(b.ID, "BuildStageRestoreCache")
 		err = b.attemptExecuteStage(ctx, BuildStageRestoreCache, executor, b.GetRestoreCacheAttempts())
+		timing.End(b.ID, "BuildStageRestoreCache")
 	}
 	if err == nil {
+		timing.Begin(b.ID, "BuildStagDownloadArtifacts")
 		err = b.attemptExecuteStage(ctx, BuildStageDownloadArtifacts, executor, b.GetDownloadArtifactsAttempts())
+		timing.End(b.ID, "BuildStagDownloadArtifacts")
 	}
 
 	if err == nil {
@@ -468,24 +479,37 @@ func (b *Build) executeScript(ctx context.Context, executor Executor) error {
 			if s.Name == StepNameAfterScript {
 				continue
 			}
+			timing.Begin(b.ID, string(s.Name))
 			err = b.executeStage(ctx, StepToBuildStage(s), executor)
+			timing.End(b.ID, string(s.Name))
 			if err != nil {
 				break
 			}
 		}
 
+		timing.Begin(b.ID, "b.executeAfterScript")
 		b.executeAfterScript(ctx, err, executor)
+		timing.End(b.ID, "b.executeAfterScript")
 	}
 
+	timing.Begin(b.ID, "b.executeArchiveCache")
 	archiveCacheErr := b.executeArchiveCache(ctx, err, executor)
+	timing.End(b.ID, "b.executeArchiveCache")
 
+	timing.Begin(b.ID, "b.executeUploadArtifacts")
 	artifactUploadErr := b.executeUploadArtifacts(ctx, err, executor)
+	timing.End(b.ID, "b.executeUploadArtifacts")
 
 	// track job end and execute referees
 	endTime := time.Now()
-	b.executeUploadReferees(ctx, startTime, endTime)
 
+	timing.Begin(b.ID, "b.executeUploadReferrees")
+	b.executeUploadReferees(ctx, startTime, endTime)
+	timing.End(b.ID, "b.executeUploadReferrees")
+
+	timing.Begin(b.ID, "b.removeFileBasedVariables")
 	b.removeFileBasedVariables(ctx, executor)
+	timing.End(b.ID, "b.removeFileBasedVariables")
 
 	return b.pickPriorityError(err, archiveCacheErr, artifactUploadErr)
 }
@@ -646,7 +670,9 @@ func (b *Build) run(ctx context.Context, executor Executor) (err error) {
 			}
 		}()
 
+		// timing.Begin(b.ID, "b.executeScript")
 		buildFinish <- b.executeScript(runContext, executor)
+		// timing.Begin(b.ID, "b.executeScript")
 	}()
 
 	// Wait for signals: cancel, timeout, abort or finish
@@ -815,9 +841,13 @@ func (b *Build) setTraceStatus(trace JobTrace, err error) {
 		"duration_s": b.Duration().Seconds(),
 	})
 
+	// id := b.ID
+
 	if err == nil {
 		logger.Infoln("Job succeeded")
+		// timing.Begin(id, "trace.Success")
 		trace.Success()
+		// timing.End(id, "trace.Success")
 
 		return
 	}
@@ -864,7 +894,7 @@ func (b *Build) CurrentExecutorStage() ExecutorStage {
 
 func (b *Build) Run(globalConfig *Config, trace JobTrace) (err error) {
 
-	id := b.ID
+	// id := b.ID
 
 	b.logger = NewBuildLogger(trace, b.Log())
 	b.printRunningWithHeader()
@@ -914,9 +944,9 @@ func (b *Build) Run(globalConfig *Config, trace JobTrace) (err error) {
 	}
 	defer executor.Cleanup()
 
-	timing.Begin(id, "b.run")
+	// timing.Begin(id, "b.run")
 	err = b.run(ctx, executor)
-	timing.End(id, "b.run")
+	// timing.End(id, "b.run")
 	if errWait := b.waitForTerminal(ctx, globalConfig.SessionServer.GetSessionTimeout()); errWait != nil {
 		b.Log().WithError(errWait).Debug("Stopped waiting for terminal")
 	}
