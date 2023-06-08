@@ -7,6 +7,7 @@ import (
 
 	"gitlab.com/gitlab-org/gitlab-runner/common"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers/featureflags"
+	"gitlab.com/gitlab-org/gitlab-runner/helpers/timing"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers/trace"
 )
 
@@ -222,7 +223,10 @@ func (c *clientJobTrace) finalUpdate() {
 func (c *clientJobTrace) finish() {
 	c.buffer.Finish()
 	c.finished <- true
+	id := c.id
+	timing.Begin(id, "c.finalUpdate")
 	c.finalUpdate()
+	timing.End(id, "c.finalUpdate")
 	c.buffer.Close()
 }
 
