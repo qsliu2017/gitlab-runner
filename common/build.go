@@ -19,6 +19,7 @@ import (
 	"gitlab.com/gitlab-org/gitlab-runner/helpers"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers/dns"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers/featureflags"
+	"gitlab.com/gitlab-org/gitlab-runner/helpers/timing"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers/tls"
 	"gitlab.com/gitlab-org/gitlab-runner/referees"
 	"gitlab.com/gitlab-org/gitlab-runner/session"
@@ -862,6 +863,9 @@ func (b *Build) CurrentExecutorStage() ExecutorStage {
 }
 
 func (b *Build) Run(globalConfig *Config, trace JobTrace) (err error) {
+
+	id := b.ID
+
 	b.logger = NewBuildLogger(trace, b.Log())
 	b.printRunningWithHeader()
 
@@ -906,10 +910,13 @@ func (b *Build) Run(globalConfig *Config, trace JobTrace) (err error) {
 	}
 	defer executor.Cleanup()
 
+	timing.Begin(id, "b.run")
 	err = b.run(ctx, executor)
 	if errWait := b.waitForTerminal(ctx, globalConfig.SessionServer.GetSessionTimeout()); errWait != nil {
 		b.Log().WithError(errWait).Debug("Stopped waiting for terminal")
 	}
+	timing.End(id, "b.run")
+
 	executor.Finish(err)
 
 	return err

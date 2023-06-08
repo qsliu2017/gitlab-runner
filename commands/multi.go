@@ -28,6 +28,7 @@ import (
 	prometheus_helper "gitlab.com/gitlab-org/gitlab-runner/helpers/prometheus"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers/sentry"
 	service_helpers "gitlab.com/gitlab-org/gitlab-runner/helpers/service"
+	"gitlab.com/gitlab-org/gitlab-runner/helpers/timing"
 	"gitlab.com/gitlab-org/gitlab-runner/log"
 	"gitlab.com/gitlab-org/gitlab-runner/network"
 	"gitlab.com/gitlab-org/gitlab-runner/session"
@@ -751,6 +752,7 @@ func (mr *RunCommand) processBuildOnRunner(
 	provider common.ExecutorProvider,
 	executorData common.ExecutorData,
 ) error {
+
 	buildSession, sessionInfo, err := mr.createSession(provider)
 	if err != nil {
 		return err
@@ -762,6 +764,24 @@ func (mr *RunCommand) processBuildOnRunner(
 		return err
 	}
 	defer func() { mr.traceOutcome(trace, err) }()
+
+	// Start the internal job timing
+	var id int64
+	if jobData != nil {
+		id = jobData.ID
+	}
+	err = timing.Open(id)
+	if err != nil {
+		mr.log().WithField("runner", runner.ShortDescription()).Errorf("opening timing: %v", err)
+	}
+	defer func() {
+		report, err := timing.Close(id)
+		if err != nil {
+			mr.log().WithField("runner", runner.ShortDescription()).Errorf("closing timing: %v", err)
+			return
+		}
+		mr.log().WithField("runner", runner.ShortDescription()).Infof("Timing: %v", report)
+	}()
 
 	// Create a new build
 	build, err := common.NewBuild(*jobData, runner, mr.abortBuilds, executorData)
