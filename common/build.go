@@ -19,6 +19,7 @@ import (
 	"gitlab.com/gitlab-org/gitlab-runner/helpers"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers/dns"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers/featureflags"
+	"gitlab.com/gitlab-org/gitlab-runner/helpers/timing"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers/tls"
 	"gitlab.com/gitlab-org/gitlab-runner/referees"
 	"gitlab.com/gitlab-org/gitlab-runner/session"
@@ -440,10 +441,15 @@ func (b *Build) executeArchiveCache(ctx context.Context, state error, executor E
 func (b *Build) executeScript(ctx context.Context, executor Executor) error {
 	// track job start and create referees
 	startTime := time.Now()
+
+	timing.Begin(b.ID, "b.createReferees")
 	b.createReferees(executor)
+	timing.End(b.ID, "b.createReferees")
 
 	// Prepare stage
+	timing.Begin(b.ID, "BuildStagePrepare")
 	err := b.executeStage(ctx, BuildStagePrepare, executor)
+	timing.End(b.ID, "BuildStagePrepare")
 	if err != nil {
 		return fmt.Errorf(
 			"prepare environment: %w. "+
@@ -452,13 +458,19 @@ func (b *Build) executeScript(ctx context.Context, executor Executor) error {
 		)
 	}
 
+	timing.Begin(b.ID, "BuildStageGetSources")
 	err = b.attemptExecuteStage(ctx, BuildStageGetSources, executor, b.GetGetSourcesAttempts())
+	timing.End(b.ID, "BuildStageGetSources")
 
 	if err == nil {
+		timing.Begin(b.ID, "BuildStageRestoreCache")
 		err = b.attemptExecuteStage(ctx, BuildStageRestoreCache, executor, b.GetRestoreCacheAttempts())
+		timing.End(b.ID, "BuildStageRestoreCache")
 	}
 	if err == nil {
+		timing.Begin(b.ID, "BuildStagDownloadArtifacts")
 		err = b.attemptExecuteStage(ctx, BuildStageDownloadArtifacts, executor, b.GetDownloadArtifactsAttempts())
+		timing.End(b.ID, "BuildStagDownloadArtifacts")
 	}
 
 	if err == nil {
@@ -467,24 +479,37 @@ func (b *Build) executeScript(ctx context.Context, executor Executor) error {
 			if s.Name == StepNameAfterScript {
 				continue
 			}
+			timing.Begin(b.ID, string(s.Name))
 			err = b.executeStage(ctx, StepToBuildStage(s), executor)
+			timing.End(b.ID, string(s.Name))
 			if err != nil {
 				break
 			}
 		}
 
+		timing.Begin(b.ID, "b.executeAfterScript")
 		b.executeAfterScript(ctx, err, executor)
+		timing.End(b.ID, "b.executeAfterScript")
 	}
 
+	timing.Begin(b.ID, "b.executeArchiveCache")
 	archiveCacheErr := b.executeArchiveCache(ctx, err, executor)
+	timing.End(b.ID, "b.executeArchiveCache")
 
+	timing.Begin(b.ID, "b.executeUploadArtifacts")
 	artifactUploadErr := b.executeUploadArtifacts(ctx, err, executor)
+	timing.End(b.ID, "b.executeUploadArtifacts")
 
 	// track job end and execute referees
 	endTime := time.Now()
-	b.executeUploadReferees(ctx, startTime, endTime)
 
+	timing.Begin(b.ID, "b.executeUploadReferrees")
+	b.executeUploadReferees(ctx, startTime, endTime)
+	timing.End(b.ID, "b.executeUploadReferrees")
+
+	timing.Begin(b.ID, "b.removeFileBasedVariables")
 	b.removeFileBasedVariables(ctx, executor)
+	timing.End(b.ID, "b.removeFileBasedVariables")
 
 	return b.pickPriorityError(err, archiveCacheErr, artifactUploadErr)
 }

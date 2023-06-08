@@ -7,6 +7,7 @@ import (
 
 	"gitlab.com/gitlab-org/gitlab-runner/common"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers/featureflags"
+	"gitlab.com/gitlab-org/gitlab-runner/helpers/timing"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers/trace"
 )
 
@@ -202,7 +203,11 @@ func (c *clientJobTrace) finalUpdate() {
 		// as `sendUpdate()` can force Runner to rewind trace
 		c.ensureAllTraceSent()
 
-		switch c.sendUpdate() {
+		timing.Begin(c.id, "c.sendUpdate()")
+		yo := c.sendUpdate()
+		timing.End(c.id, "c.sendUpdate()")
+
+		switch yo {
 		case common.UpdateSucceeded:
 			return
 		case common.UpdateAbort:
@@ -210,7 +215,9 @@ func (c *clientJobTrace) finalUpdate() {
 		case common.UpdateNotFound:
 			return
 		case common.UpdateAcceptedButNotCompleted:
+			timing.Begin(c.id, "common.UpdateAcceptedButNotCompleted")
 			time.Sleep(c.getUpdateInterval())
+			timing.End(c.id, "common.UpdateAcceptedButNotCompleted")
 		case common.UpdateTraceValidationFailed:
 			time.Sleep(c.getUpdateInterval())
 		case common.UpdateFailed:
