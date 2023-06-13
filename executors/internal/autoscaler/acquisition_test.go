@@ -70,6 +70,8 @@ func TestAcquisitionRef_Prepare(t *testing.T) {
 
 		expectedNestingConnCloseCall bool
 		expectedNestingImage         string
+		expectHealthSuccess          bool
+		expectHealthFailure          bool
 		expectedError                error
 	}{
 		"ref.acq is not set": {
@@ -78,11 +80,13 @@ func TestAcquisitionRef_Prepare(t *testing.T) {
 		},
 		"Error when getting InstanceConnectInfo": {
 			instanceConnectInfoErr: assert.AnError,
+			expectHealthFailure:    true,
 			expectedError:          assert.AnError,
 		},
 		"Error when dialing preparing instance dialer": {
 			dialAcquisitionInstanceCallExpected: true,
 			dialAcquisitionInstanceErr:          assert.AnError,
+			expectHealthFailure:                 true,
 			expectedError:                       assert.AnError,
 		},
 		"No error and VM isolation disabled": {
@@ -95,19 +99,20 @@ func TestAcquisitionRef_Prepare(t *testing.T) {
 				assert.IsType(t, &fleetingmocks.Client{}, cl.client)
 				assert.Nil(t, cl.cleanup)
 			}),
+			expectHealthSuccess: true,
 		},
 		"Error connecting to nesting": {
 			vmIsolationEnabled:                  true,
 			dialAcquisitionInstanceCallExpected: true,
 			connectNestingErr:                   assert.AnError,
+			expectHealthFailure:                 true,
 			expectedError:                       assert.AnError,
 		},
 		"Error when no image is specified": {
 			vmIsolationEnabled:                  true,
 			dialAcquisitionInstanceCallExpected: true,
-			mockDialerClose:                     true,
-			expectedNestingConnCloseCall:        true,
 			expectedError:                       errNoNestingImageSpecified,
+			expectHealthSuccess:                 true, // we were able to connect to the instance
 		},
 		"Error when creating nesting VM": {
 			vmIsolationEnabled:                  true,
@@ -118,6 +123,7 @@ func TestAcquisitionRef_Prepare(t *testing.T) {
 			nestingCreateErr:                    assert.AnError,
 			expectedNestingConnCloseCall:        true,
 			expectedNestingImage:                testNestingCfgImageName,
+			expectHealthFailure:                 true,
 			expectedError:                       assert.AnError,
 		},
 		"Error when dialing tunnel": {
@@ -130,6 +136,7 @@ func TestAcquisitionRef_Prepare(t *testing.T) {
 			tunnelDialErr:                       assert.AnError,
 			expectedNestingConnCloseCall:        true,
 			expectedNestingImage:                testBuildImageName,
+			expectHealthFailure:                 true,
 			expectedError:                       assert.AnError,
 		},
 		"preparation completed": {
@@ -148,6 +155,7 @@ func TestAcquisitionRef_Prepare(t *testing.T) {
 				assert.NotNil(t, cl.cleanup)
 			}),
 			expectedNestingImage: testBuildImageName,
+			expectHealthSuccess:  true,
 		},
 		"variables expansion works for image": {
 			vmIsolationEnabled:                  true,
@@ -164,11 +172,17 @@ func TestAcquisitionRef_Prepare(t *testing.T) {
 				assert.NotNil(t, cl.cleanup)
 			}),
 			expectedNestingImage: testVariableValue,
+			expectHealthSuccess:  true,
 		},
 	}
 
 	for testName, tc := range testCases {
 		t.Run(testName, func(t *testing.T) {
+
+			if testName == "preparation completed" {
+				fmt.Println("BREAK HERE")
+			}
+
 			setAcq := !tc.doNotSetAcq
 
 			ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Minute))
@@ -250,6 +264,12 @@ func TestAcquisitionRef_Prepare(t *testing.T) {
 				}
 
 				ref.acq = acq
+			}
+			if tc.expectHealthSuccess {
+				acq.EXPECT().HealthSuccess().Once()
+			}
+			if tc.expectHealthFailure {
+				acq.EXPECT().HealthFailure().Once()
 			}
 
 			c, err := ref.Prepare(ctx, bl, options)

@@ -57,13 +57,17 @@ func (ref *acquisitionRef) Prepare(
 	ctx context.Context,
 	logger common.BuildLogger,
 	options common.ExecutorPrepareOptions,
-) (executors.Client, error) {
+) (cl executors.Client, err error) {
 	if ref.acq == nil {
 		return nil, errRefAcqNotSet
 	}
 
 	info, err := ref.acq.InstanceConnectInfo(ctx)
 	if err != nil {
+		// We assume that being unable to get connect info for
+		// an instance means the instance may no longer be
+		// viable.
+		ref.acq.HealthFailure()
 		return nil, fmt.Errorf("getting instance connect info: %w", err)
 	}
 
@@ -86,12 +90,17 @@ func (ref *acquisitionRef) Prepare(
 	logger.Println(fmt.Sprintf("Dialing instance %s...", info.ID))
 	fleetingDialer, err := ref.dialAcquisitionInstance(ctx, info, fleetingDialOpts)
 	if err != nil {
+		// We were unable to connect to the instance so
+		// taskscaler may need to remove it.
+		ref.acq.HealthFailure()
 		return nil, err
 	}
 	logger.Println(fmt.Sprintf("Instance %s connected", info.ID))
 
-	// if nesting is disabled, return a client for the host instance, for example VM Isolation and VM tunnel not needed
+	// if nesting is disabled, return a client for the host
+	// instance, for example VM Isolation and VM tunnel not needed
 	if !options.Config.Autoscaler.VMIsolation.Enabled {
+		ref.acq.HealthSuccess()
 		return &client{client: fleetingDialer, cleanup: nil}, nil
 	}
 
@@ -99,20 +108,45 @@ func (ref *acquisitionRef) Prepare(
 	logger.Println("Enforcing VM Isolation")
 	nc, conn, err := ref.connectNesting(options.Config.Autoscaler.VMIsolation.NestingHost, logger, fleetingDialer)
 	if err != nil {
+		// We were unable to use nesting on this instance so
+		// it may be non-viable.
+		ref.acq.HealthFailure()
 		fleetingDialer.Close()
 		return nil, err
 	}
 
 	logger.Println("Creating nesting VM tunnel")
-	client, err := ref.createVMTunnel(ctx, logger, nc, fleetingDialer, options)
+
+	// Use nesting config defined image, unless the executor allows for the
+	// job image to override. We validate image before creating
+	// the VM tunnel because a missing image is a user or runner
+	// configuration error and should not count against individual
+	// instance failure metrics.
+	image := options.Config.Autoscaler.VMIsolation.Image
+	if options.Build.Image.Name != "" && ref.mapJobImageToVMImage {
+		image = options.Build.Image.Name
+	}
+	image = options.Build.GetAllVariables().ExpandValue(image)
+	if image == "" {
+		// We were able to get this far so the instance seems
+		// healthy. Failure to specify a nesting image is a
+		// user or runner configuration error.
+		ref.acq.HealthSuccess()
+		return nil, errNoNestingImageSpecified
+	}
+
+	client, err := ref.createVMTunnel(ctx, logger, nc, fleetingDialer, options, image)
 	if err != nil {
 		nc.Close()
 		conn.Close()
 		fleetingDialer.Close()
-
+		// We were unable to access the VM so there may be
+		// something wrong with this instance.
+		ref.acq.HealthFailure()
 		return nil, fmt.Errorf("creating vm tunnel: %w", err)
 	}
 
+	ref.acq.HealthSuccess()
 	return client, nil
 }
 
@@ -146,20 +180,9 @@ func (ref *acquisitionRef) createVMTunnel(
 	nc nestingapi.Client,
 	fleetingDialer connector.Client,
 	options common.ExecutorPrepareOptions,
+	image string,
 ) (executors.Client, error) {
 	nestingCfg := options.Config.Autoscaler.VMIsolation
-
-	// use nesting config defined image, unless the executor allows for the
-	// job image to override.
-	image := nestingCfg.Image
-	if options.Build.Image.Name != "" && ref.mapJobImageToVMImage {
-		image = options.Build.Image.Name
-	}
-
-	image = options.Build.GetAllVariables().ExpandValue(image)
-	if image == "" {
-		return nil, errNoNestingImageSpecified
-	}
 
 	logger.Println("Creating nesting VM", image)
 
