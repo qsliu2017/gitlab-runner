@@ -175,9 +175,11 @@ func (p *provider) init(config *common.RunnerConfig) (taskscaler.Taskscaler, boo
 		taskscaler.WithFleetingMetricsCollector(flMC),
 		taskscaler.WithInstanceUpFunc(instanceReadyUp(shutdownCtx, config)),
 	}
-
 	if config.Autoscaler.DeleteInstancesOnShutdown {
 		options = append(options, taskscaler.WithDeleteInstancesOnShutdown())
+	}
+	if config.Autoscaler.FailureThreshold > 0 {
+		options = append(options, taskscaler.WithFailureThreshold(config.Autoscaler.FailureThreshold))
 	}
 
 	ctx, cancelFn := context.WithTimeout(context.Background(), 1*time.Minute)

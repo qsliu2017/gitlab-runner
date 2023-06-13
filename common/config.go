@@ -233,6 +233,7 @@ type AutoscalerConfig struct {
 	CapacityPerInstance int                      `toml:"capacity_per_instance,omitempty"`
 	MaxUseCount         int                      `toml:"max_use_count,omitempty"`
 	MaxInstances        int                      `toml:"max_instances,omitempty"`
+	FailureThreshold    int                      `toml:"failure_threshold,omitempty" json:",omitempty"`
 	Plugin              string                   `toml:"plugin,omitempty"`
 	PluginConfig        AutoscalerSettingsMap    `toml:"plugin_config,omitempty"`
 	ConnectorConfig     ConnectorConfig          `toml:"connector_config,omitempty"`
