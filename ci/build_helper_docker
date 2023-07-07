@@ -88,6 +88,7 @@ if [ ! -f "$binary_file" ]; then
 fi
 
 cp "$binary_file" dockerfiles/runner-helper/binaries/gitlab-runner-helper
+cp dockerfiles/install_git_lfs dockerfiles/runner-helper/
 chmod +x dockerfiles/runner-helper/binaries/gitlab-runner-helper
 
 os=$(_docker version -f '{{.Server.Os}}')
@@ -105,6 +106,7 @@ _docker_buildx build \
     --build-arg "BASE_IMAGE=${BASE_IMAGE}" \
     --build-arg "ARCH=${platform_arch}" \
     --build-arg "http_proxy=${http_proxy}" \
+    --build-arg GIT_LFS_VERSION="${GIT_LFS_VERSION}" \
     --output "type=tar,dest=$TARGET_FILE" \
     --tag "gitlab/gitlab-runner-helper:$TARGET_ARCH-$REVISION" \
     --file "dockerfiles/runner-helper/${DOCKERFILE}" \
