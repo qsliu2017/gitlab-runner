@@ -53,6 +53,9 @@ func newAcquisitionRef(key string, mapJobImageToVMImage bool) *acquisitionRef {
 	}
 }
 
+// nolint:lll
+// TODO: combined tunneling logic to shorten this method:
+// https://gitlab.com/gitlab-org/gitlab-runner/-/issues/35794
 func (ref *acquisitionRef) Prepare(
 	ctx context.Context,
 	logger common.BuildLogger,

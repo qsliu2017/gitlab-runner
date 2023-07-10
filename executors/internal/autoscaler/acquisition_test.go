@@ -178,7 +178,6 @@ func TestAcquisitionRef_Prepare(t *testing.T) {
 
 	for testName, tc := range testCases {
 		t.Run(testName, func(t *testing.T) {
-
 			if testName == "preparation completed" {
 				fmt.Println("BREAK HERE")
 			}
