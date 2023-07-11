@@ -8,7 +8,7 @@ RUN microdnf update -y && \
     microdnf install -y --setopt=tsflags=nodocs openssl-devel glibc-devel && \
     microdnf clean all -y
 
-ARG GO_VERSION=1.19
+ARG GO_VERSION=1.20
 ARG GO_FULL_VERSION=${GO_VERSION}.6
 
 RUN wget https://go.dev/dl/go${GO_FULL_VERSION}.linux-${PLATFORM_ARCH}.tar.gz && \
