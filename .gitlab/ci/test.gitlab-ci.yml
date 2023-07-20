@@ -389,9 +389,11 @@ integration_k8s:
   - kubectl cluster-info
   - make splitic
   script:
-  - >
-    splitic test \
-      -tags integration,kubernetes \
-      -env-passthrough ./scripts/envs/allowlist_common.env -env-passthrough ./scripts/envs/allowlist_unix.env \
-      gitlab.com/gitlab-org/gitlab-runner/executors/kubernetes \
-      -- -timeout=30m
+    - >
+       go test -timeout=20m -tags=integration,kubernetes -v gitlab.com/gitlab-org/gitlab-runner/executors/kubernetes
+  # - >
+  #   splitic test \
+  #     -tags integration,kubernetes \
+  #     -env-passthrough ./scripts/envs/allowlist_common.env -env-passthrough ./scripts/envs/allowlist_unix.env \
+  #     gitlab.com/gitlab-org/gitlab-runner/executors/kubernetes \
+  #     -- -timeout=30m
