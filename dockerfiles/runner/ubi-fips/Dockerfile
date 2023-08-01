@@ -29,9 +29,9 @@ RUN mkdir -p /etc/gitlab-runner/certs $HOME /secrets && \
     chgrp -R 0 /secrets && \
     chmod -R g=u /secrets
 
-USER 1001
+USER gitlab-runner
 
 STOPSIGNAL SIGQUIT
 VOLUME ["/etc/gitlab-runner", "/home/gitlab-runner"]
 ENTRYPOINT ["/usr/bin/dumb-init", "/entrypoint"]
-CMD ["run", "--user=gitlab-runner", "--working-directory=/home/gitlab-runner"]
+CMD ["run", "--working-directory=/home/gitlab-runner"]
