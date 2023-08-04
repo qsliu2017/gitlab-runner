@@ -51,6 +51,13 @@ var (
 		nil,
 	)
 
+	checkIntervalDesc = prometheus.NewDesc(
+		"gitlab_runner_check_interval",
+		"The current value of check_interval setting",
+		nil,
+		nil,
+	)
+
 	limitDesc = prometheus.NewDesc(
 		"gitlab_runner_limit",
 		"The current value of concurrent setting",
@@ -1217,6 +1224,7 @@ func (mr *RunCommand) runWait() {
 // Describe implements prometheus.Collector.
 func (mr *RunCommand) Describe(ch chan<- *prometheus.Desc) {
 	ch <- concurrentDesc
+	ch <- checkIntervalDesc
 	ch <- limitDesc
 
 	mr.runnerWorkersFeeds.Describe(ch)
@@ -1234,6 +1242,12 @@ func (mr *RunCommand) Collect(ch chan<- prometheus.Metric) {
 		concurrentDesc,
 		prometheus.GaugeValue,
 		float64(config.Concurrent),
+	)
+
+	ch <- prometheus.MustNewConstMetric(
+		checkIntervalDesc,
+		prometheus.GaugeValue,
+		float64(config.CheckInterval),
 	)
 
 	for _, runner := range config.Runners {
