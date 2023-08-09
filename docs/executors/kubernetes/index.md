@@ -1130,7 +1130,7 @@ Use the `node_selector` option to specify which node in a Kubernetes cluster to 
 It is a table of `key=value` pairs in the format of `string=string` (`string:string` in the case of environment variables).
 
 The runner uses the information provided to determine the OS and architecture for the build. This ensures that
-the correct [helper image](../configuration/advanced-configuration.md#helper-image) is used. By default, the OS and
+the correct [helper image](../../configuration/advanced-configuration.md#helper-image) is used. By default, the OS and
 architecture is assumed to be `linux/amd64`.
 
 You can use specific labels to schedule nodes with different operating systems and architectures.
