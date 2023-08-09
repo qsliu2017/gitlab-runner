@@ -190,7 +190,7 @@ Use the following settings in the `config.toml` file to configure the Kubernetes
 
 This feature is in [Alpha](https://docs.gitlab.com/ee/policy/alpha-beta-support.html#alpha-features). We strongly recommend that you use
 this feature on a test Kubernetes cluster before you use it on a production cluster. To use this feature, you must
-enable the `FF_USE_ADVANCED_POD_SPEC_CONFIGURATION` [feature flag](../configuration/feature-flags.md).
+enable the `FF_USE_ADVANCED_POD_SPEC_CONFIGURATION` [feature flag](../../configuration/feature-flags.md).
 
 To add feedback for improvements before the feature is made generally available, use [this issue](https://gitlab.com/gitlab-org/gitlab-runner/-/issues/29659).
 
@@ -451,7 +451,7 @@ can be affected by:
 - Setting the `pod_termination_grace_period_seconds` property in the `TOML` configuration file.
   The process running on the pod can run for the given duration after the `TERM` signal is sent.
   A kill signal is sent if the Pod is not successfully terminated after this period of time.
-- Enabling the [`FF_USE_POD_ACTIVE_DEADLINE_SECONDS` feature flag](../configuration/feature-flags.md).
+- Enabling the [`FF_USE_POD_ACTIVE_DEADLINE_SECONDS` feature flag](../../configuration/feature-flags.md).
   When enabled and the job times out, the pod running the CI/CD job is marked as
   failed and all associated containers are killed. To have the job time out on GitLab first,
   set `activeDeadlineSeconds` to `configured timeout + 1 second`.
