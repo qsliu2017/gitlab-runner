@@ -280,10 +280,10 @@ The following settings define the Docker container parameters.
 
 | Parameter | Description |
 | --------- | ----------- |
-| `allowed_images`               | Wildcard list of images that can be specified in the `.gitlab-ci.yml` file. If not present, all images are allowed (equivalent to `["*/*:*"]`). Use with the [Docker](../executors/docker.md#restrict-docker-images-and-services) or [Kubernetes](../executors/kubernetes.md#restrict-docker-images-and-services) executors. |
+| `allowed_images`               | Wildcard list of images that can be specified in the `.gitlab-ci.yml` file. If not present, all images are allowed (equivalent to `["*/*:*"]`). Use with the [Docker](../executors/docker.md#restrict-docker-images-and-services) or [Kubernetes](../executors/kubernetes/index.md#restrict-docker-images-and-services) executors. |
 | `allowed_privileged_images`    | Wildcard subset of `allowed_images` that runs in privileged mode when `privileged` is enabled. If not present, all images are allowed (equivalent to `["*/*:*"]`). Use with the [Docker](../executors/docker.md#restrict-docker-images-and-services) executors. |
 | `allowed_pull_policies`        | List of pull policies that can be specified in the `.gitlab-ci.yml` file or the `config.toml` file. If not specified, all pull policies specified in `pull-policy` are allowed. Use with the [Docker](../executors/docker.md#allow-docker-pull-policies) executor. |
-| `allowed_services`             | Wildcard list of services that can be specified in the `.gitlab-ci.yml` file. If not present, all images are allowed (equivalent to `["*/*:*"]`). Use with the [Docker](../executors/docker.md#restrict-docker-images-and-services) or [Kubernetes](../executors/kubernetes.md#restrict-docker-images-and-services) executors. |
+| `allowed_services`             | Wildcard list of services that can be specified in the `.gitlab-ci.yml` file. If not present, all images are allowed (equivalent to `["*/*:*"]`). Use with the [Docker](../executors/docker.md#restrict-docker-images-and-services) or [Kubernetes](../executors/kubernetes/index.md#restrict-docker-images-and-services) executors. |
 | `allowed_privileged_services`  | Wildcard subset of `allowed_services` that is allowed to run in privileged mode, when `privileged` or `services_privileged` is enabled. If not present, all images are allowed (equivalent to `["*/*:*"]`). Use with the [Docker](../executors/docker.md#restrict-docker-images-and-services) executors. |
 | `cache_dir`                    | Directory where Docker caches should be stored. This path can be absolute or relative to current working directory. See `disable_cache` for more information. |
 | `cap_add`                      | Add additional Linux capabilities to the container. |
@@ -1058,8 +1058,8 @@ For more parameters, see the [documentation for the Kubernetes executor](../exec
 | `key_file`       | string  | Optional. Kubernetes auth private key. |
 | `ca_file`        | string  | Optional. Kubernetes auth ca certificate. |
 | `image`          | string  | Default Docker image to use for jobs when none is specified. |
-| `allowed_images` | array   | Wildcard list of images that are allowed in `.gitlab-ci.yml`. If not present all images are allowed (equivalent to `["*/*:*"]`). Use with the [Docker](../executors/docker.md#restrict-docker-images-and-services) or [Kubernetes](../executors/kubernetes.md#restrict-docker-images-and-services) executors. |
-| `allowed_services` | array | Wildcard list of services that are allowed in `.gitlab-ci.yml`. If not present all images are allowed (equivalent to `["*/*:*"]`). Use with the [Docker](../executors/docker.md#restrict-docker-images-and-services) or [Kubernetes](../executors/kubernetes.md#restrict-docker-images-and-services) executors. |
+| `allowed_images` | array   | Wildcard list of images that are allowed in `.gitlab-ci.yml`. If not present all images are allowed (equivalent to `["*/*:*"]`). Use with the [Docker](../executors/docker.md#restrict-docker-images-and-services) or [Kubernetes](../executors/kubernetes/index.md#restrict-docker-images-and-services) executors. |
+| `allowed_services` | array | Wildcard list of services that are allowed in `.gitlab-ci.yml`. If not present all images are allowed (equivalent to `["*/*:*"]`). Use with the [Docker](../executors/docker.md#restrict-docker-images-and-services) or [Kubernetes](../executors/kubernetes/index.md#restrict-docker-images-and-services) executors. |
 | `namespace`      | string  | Namespace to run Kubernetes jobs in. |
 | `privileged`     | boolean | Run all containers with the privileged flag enabled. |
 | `allow_privilege_escalation` | boolean | Optional. Runs all containers with the `allowPrivilegeEscalation` flag enabled. |
@@ -1118,7 +1118,7 @@ The GitLab Runner revision and architecture define which tag to download.
 
 ### Helper image configuration for Kubernetes on Arm
 
-To use the `arm64` helper image on `arm64` Kubernetes clusters, set the following values in your [configuration file](../executors/kubernetes.md#configuration-settings).
+To use the `arm64` helper image on `arm64` Kubernetes clusters, set the following values in your [configuration file](../executors/kubernetes/index.md#configuration-settings).
 
 ```toml
 [runners.kubernetes]

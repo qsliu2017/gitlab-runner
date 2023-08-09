@@ -723,7 +723,7 @@ When the cache is used with the Kubernetes executor, a volume called `/cache` is
 execution, if cached data is needed, the runner checks if cached data is available. Cached data is available if
 a compressed file is available on the cache volume.
 
-To set the cache volume, use the [`cache_dir`](../configuration/advanced-configuration.md#the-runners-section) setting in the `config.toml` file.
+To set the cache volume, use the [`cache_dir`](../../configuration/advanced-configuration.md#the-runners-section) setting in the `config.toml` file.
 
 - If available, the compressed file is extracted into the build folder and can then be used in the job.
 - If not available, the cached data is downloaded from the configured storage and saved into the `cache dir` as a compressed file.
@@ -901,7 +901,7 @@ Use the following options in the `config.toml`:
 
 ### Mount volumes on service containers
 
-Volumes defined for the build container are also automatically mounted for all services containers. You can use this functionality as an alternative to [`services_tmpfs`](docker.md#mount-a-directory-in-ram) (available only to Docker executor), to mount database storage in RAM to speed up tests.
+Volumes defined for the build container are also automatically mounted for all services containers. You can use this functionality as an alternative to [`services_tmpfs`](../docker.md#mount-a-directory-in-ram) (available only to Docker executor), to mount database storage in RAM to speed up tests.
 
 Example configuration in the `config.toml` file:
 
@@ -979,7 +979,7 @@ check_interval = 30
 
 ### Use a helper image
 
-After you set the security policy, the [helper image](../configuration/advanced-configuration.md#helper-image) must conform to the policy.
+After you set the security policy, the [helper image](../../configuration/advanced-configuration.md#helper-image) must conform to the policy.
 The image does not receive privileges from the root group, so you must ensure that the user ID is part of the root group.
 
 NOTE:
@@ -1120,7 +1120,7 @@ The GitLab naming convention is different to the Kubernetes one.
 | Runner pull policy | Kubernetes pull policy | Description |
 |--------------------|------------------------|-------------|
 | _blank_ | _blank_ | Uses the default policy, as specified by Kubernetes. |
-| `if-not-present` | `IfNotPresent` | The image is pulled only if it is not already present on the node that executes the job. There are [security considerations](../security/index.md#usage-of-private-docker-images-with-if-not-present-pull-policy) you should be aware of. |
+| `if-not-present` | `IfNotPresent` | The image is pulled only if it is not already present on the node that executes the job. There are [security considerations](../../security/index.md#usage-of-private-docker-images-with-if-not-present-pull-policy) you should be aware of. |
 | `always` | `Always` | The image is pulled every time the job is executed. |
 | `never` | `Never` | The image is never pulled and requires the node to already have it. |
 
@@ -1654,13 +1654,13 @@ For example, to allow only the `always` and `if-not-present` pull policies:
 
 - If you don't specify `allowed_pull_policies`, the default is the value in the `pull_policy` keyword.
 - If you don't specify `pull_policy`, the cluster's image [default pull policy](https://kubernetes.io/docs/concepts/containers/images/#updating-images) is used.
-- The existing [`pull_policy` keyword](../executors/kubernetes.md#set-a-pull-policy) must not include a pull policy
+- The existing [`pull_policy` keyword](#set-a-pull-policy) must not include a pull policy
   that is not specified in `allowed_pull_policies`. If it does, the job returns an error.
 
 ## Job execution
 
 > - [Introduced](https://gitlab.com/gitlab-org/gitlab-runner/-/merge_requests/1775) in GitLab Runner 12.9.
-> - [Behind a feature flag `FF_USE_LEGACY_KUBERNETES_EXECUTION_STRATEGY`](../configuration/feature-flags.md#available-feature-flags), enabled by default.
+> - [Behind a feature flag `FF_USE_LEGACY_KUBERNETES_EXECUTION_STRATEGY`](../../configuration/feature-flags.md#available-feature-flags), enabled by default.
 > - [Using attach by default](https://gitlab.com/gitlab-org/gitlab-runner/-/issues/10341) in GitLab Runner 14.0.
 
 GitLab Runner uses `kube attach` instead of `kube exec` by default. This should avoid problems like when a [job is marked successful midway](https://gitlab.com/gitlab-org/gitlab-runner/-/issues/4119)

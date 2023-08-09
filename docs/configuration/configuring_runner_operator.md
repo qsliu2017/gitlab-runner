@@ -220,7 +220,7 @@ You can customize the runner's `config.toml` file by using the [configuration te
 
 ## Configure the CPU and memory size of runner pods
 
-To set [CPU limits](../executors/kubernetes.md#cpu-requests-and-limits) and [memory limits](../executors/kubernetes.md#memory-requests-and-limits) in a custom `config.toml` file, follow the instructions in [this topic](#customize-configtoml-with-a-configuration-template).
+To set [CPU limits](../executors/kubernetes/index.md#cpu-requests-and-limits) and [memory limits](../executors/kubernetes/index.md#memory-requests-and-limits) in a custom `config.toml` file, follow the instructions in [this topic](#customize-configtoml-with-a-configuration-template).
 
 ## Configure job concurrency per runner based on cluster resources
 
@@ -336,7 +336,7 @@ Some jobs (for example, buildah) need the `SETFCAP` capability granted to run co
 1. Add the SETFCAP capability to the SCC that GitLab Runner is using (replace the `gitlab-scc` with the SCC assigned to your GitLab Runner pod):
 
     ```shell
-    oc patch scc gitlab-scc --type merge -p '{"allowedCapabilities":["SETFCAP"]}'  
+    oc patch scc gitlab-scc --type merge -p '{"allowedCapabilities":["SETFCAP"]}'
     ```
 
 1. Update your `config.toml` and add the `SETFCAP` capability under the `kubernetes` section:
@@ -353,7 +353,7 @@ Some jobs (for example, buildah) need the `SETFCAP` capability granted to run co
 1. Create a configmap using this `config.toml` in the namespace where GitLab Runner is deployed:
 
     ```shell
-    oc create configmap custom-config-toml --from-file config.toml=config.toml 
+    oc create configmap custom-config-toml --from-file config.toml=config.toml
     ```
 
 1. Modify the runner you want to fix, adding the `config:` parameter to point to the recently created configmap (replace my-runner with the correct runner pod name)

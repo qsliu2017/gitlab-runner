@@ -153,7 +153,7 @@ ready to [install GitLab Runner](#installing-gitlab-runner-using-the-helm-chart)
 > [Introduced](https://gitlab.com/gitlab-org/charts/gitlab-runner/-/issues/106) [configuration template](../register/index.md#runners-configuration-template-file) in Helm Chart 0.23.0. See [deprecation issue](https://gitlab.com/gitlab-org/charts/gitlab-runner/-/issues/222).
 
 You can use a [configuration template file](../register/index.md#runners-configuration-template-file)
-to [configure the behavior of GitLab Runner build pod within Kubernetes](../executors/kubernetes.md#configuration-settings).
+to [configure the behavior of GitLab Runner build pod within Kubernetes](../executors/kubernetes/index.md#configuration-settings).
 You can use the configuration template to configure any field on the runner,
 without having the Helm chart be aware of specific runner configuration options.
 
@@ -357,7 +357,7 @@ concurrent: 10
 ### Running Docker-in-Docker containers with GitLab Runner
 
 See [running privileged containers for the runners](#running-privileged-containers-for-the-runners) for how to enable it,
-and the [GitLab Runner documentation](../executors/kubernetes.md#using-docker-in-builds) on running dind.
+and the [GitLab Runner documentation](../executors/kubernetes/index.md#using-docker-in-builds) on running dind.
 
 ### Running privileged containers for the runners
 
@@ -365,7 +365,7 @@ You can tell the GitLab Runner to run using privileged containers. You may need
 this enabled if you need to use the Docker executable within your GitLab CI/CD jobs.
 
 This comes with several risks that you can read about in the
-[GitLab CI/CD Runner documentation](../executors/kubernetes.md#using-docker-in-builds).
+[GitLab CI/CD Runner documentation](../executors/kubernetes/index.md#using-docker-in-builds).
 
 If you are okay with the risks, and your GitLab Runner instance is registered
 against a specific project in GitLab that you trust the CI jobs of, you can

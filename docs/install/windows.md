@@ -326,7 +326,7 @@ functions. While `exit 1` will mark a job as failed, `return 1` will **not**.
 
 ### Job marked as success and terminated midway using Kubernetes executor
 
-Please see [Job execution](../executors/kubernetes.md#job-execution).
+Please see [Job execution](../executors/kubernetes/index.md#job-execution).
 
 ### Docker executor: `unsupported Windows Version`
 
@@ -365,9 +365,9 @@ Kubernetes executor on Windows might fail with the following error:
 
 ```plaintext
 Using Kubernetes namespace: gitlab-runner
-ERROR: Preparation failed: prepare helper image: detecting base image: unsupported Windows Version: 
+ERROR: Preparation failed: prepare helper image: detecting base image: unsupported Windows Version:
 Will be retried in 3s ...
-ERROR: Job failed (system failure): prepare helper image: detecting base image: unsupported Windows Version: 
+ERROR: Job failed (system failure): prepare helper image: detecting base image: unsupported Windows Version:
 ```
 
 To fix it, add `node.kubernetes.io/windows-build` nodeSelector in the section `[runners.kubernetes.node_selector]`
