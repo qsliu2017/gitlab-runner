@@ -73,7 +73,7 @@ instance. Ensure they have all of the resources needed to manage the target numb
 of pods that you hope to scale up to on the cluster.
 
 To change the time GitLab Runner waits for a pod to reach its `Ready` status, use the
-[`poll_timeout`](index.md#other-config-toml-settings) setting.
+[`poll_timeout`](index.md#other-configtoml-settings) setting.
 
 To better understand how pods are scheduled or why they might not get scheduled
 on time, [read about the Kubernetes Scheduler](https://kubernetes.io/docs/concepts/scheduling-eviction/kube-scheduler/).
@@ -126,7 +126,7 @@ This error can occur when [using Docker-in-Docker](index.md#using-dockerdind) if
 
 ## `curl: (35) OpenSSL SSL_connect: SSL_ERROR_SYSCALL in connection to github.com:443`
 
-This error can happen when [using Docker-in-Docker](#using-dockerdind) if the DIND Maximum Transmission Unit (MTU) is larger than the Kubernetes overlay network. DIND uses a default MTU of 1500, which is too large to route across the default overlay network. The DIND MTU can be changed within the service definition:
+This error can happen when [using Docker-in-Docker](index.md#using-dockerdind) if the DIND Maximum Transmission Unit (MTU) is larger than the Kubernetes overlay network. DIND uses a default MTU of 1500, which is too large to route across the default overlay network. The DIND MTU can be changed within the service definition:
 
 ```yaml
 services:
@@ -181,7 +181,7 @@ Background processes started during job execution can [prevent the build job fro
 Files and folders that are generated in your job have certain UNIX ownerships and permissions.
 When your files and folders are archived or extracted, UNIX details are retained.
 However, the files and folders may mismatch with the `USER` configurations of
-[helper images](../configuration/advanced-configuration.md#helper-image).
+[helper images](../../configuration/advanced-configuration.md#helper-image).
 
 If you encounter permission-related errors in the `Creating cache ...` step,
 you can:
