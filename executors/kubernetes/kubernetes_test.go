@@ -29,6 +29,7 @@ import (
 	kubeerrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	kuberuntime "k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/rest/fake"
@@ -6202,10 +6203,11 @@ containers:
 
 	for tn, tc := range tests {
 		t.Run(tn, func(t *testing.T) {
+			var podSpec *api.PodSpec
 			patchedData, err := json.Marshal(tc.getOriginal())
 			require.NoError(t, err)
 
-			patchedData, err = doSpecMerge(patchedData, tc.podSpec)
+			patchedData, err = doSpecMerge(patchedData, podSpec, tc.podSpec)
 			if tc.expectedErr != nil {
 				assert.Error(t, err)
 				assert.Equal(t, tc.expectedErr.Error(), err.Error())
@@ -6221,4 +6223,275 @@ containers:
 			tc.verifyFn(t, &patchedPodSpec)
 		})
 	}
+}
+
+func TestSetupInitObjects(t *testing.T) {
+	version, _ := testVersionAndCodec()
+	fakeRoundTripper := func(req *http.Request) (*http.Response, error) {
+		body, err := io.ReadAll(req.Body)
+		if err != nil {
+			return nil, err
+		}
+
+		if strings.Contains(req.URL.Path, "persistentvolumeclaims") {
+			return buildPersistentVolumeClaimAPIResponse(t, body)
+		}
+
+		return buildPersistentVolumeAPIResponse(t, body)
+	}
+
+	tests := map[string]struct {
+		initObjects func() []common.KubernetesInitObjectPatchSpec
+		variables   common.JobVariables
+		verifyFn    func(*testing.T, *executor, string, error)
+	}{
+		"not allowed object": {
+			initObjects: func() []common.KubernetesInitObjectPatchSpec {
+				return []common.KubernetesInitObjectPatchSpec{
+					{
+						Kind: "NotSupportedObject",
+					},
+				}
+			},
+			verifyFn: func(t *testing.T, _ex *executor, out string, err error) {
+				assert.NoError(t, err)
+				assert.Contains(t, out, "Init object with type NotSupportedObject is unknown or not allowed")
+			},
+		},
+		"expand object name": {
+			initObjects: func() []common.KubernetesInitObjectPatchSpec {
+				return []common.KubernetesInitObjectPatchSpec{
+					{
+						Kind: "PersistentVolumeClaim",
+						KubernetesObjPatchSpec: common.KubernetesObjPatchSpec{
+							Name:      "$OBJECT_NAME",
+							PatchType: common.PatchTypeStrategicMergePatchType,
+							Patch: `
+volumeName: builds
+accessModes:
+  - ReadWriteOnce
+storageClassName: builds
+resources:
+  requests:
+    storage: 1Gi
+`,
+						},
+					},
+				}
+			},
+			variables: []common.JobVariable{
+				{
+					Key:    "OBJECT_NAME",
+					Value:  "my_object_name",
+					Public: true,
+				},
+			},
+			verifyFn: func(t *testing.T, ex *executor, out string, err error) {
+				assert.NoError(t, err)
+				assert.Len(t, ex.initObjects, 1)
+				assert.Contains(t, ex.initObjects[0].name, "my_object_name")
+			},
+		},
+		"expand object patch": {
+			initObjects: func() []common.KubernetesInitObjectPatchSpec {
+				return []common.KubernetesInitObjectPatchSpec{
+					{
+						Kind: "PersistentVolumeClaim",
+						KubernetesObjPatchSpec: common.KubernetesObjPatchSpec{
+							Name:      "name",
+							PatchType: common.PatchTypeStrategicMergePatchType,
+							Patch: `
+volumeName: $VOLUME_NAME
+accessModes:
+  - ReadWriteOnce
+storageClassName: builds
+resources:
+  requests:
+    storage: 1Gi
+`,
+						},
+					},
+				}
+			},
+			variables: []common.JobVariable{
+				{
+					Key:    "VOLUME_NAME",
+					Value:  "volume_name",
+					Public: true,
+				},
+			},
+			verifyFn: func(t *testing.T, ex *executor, out string, err error) {
+				assert.NoError(t, err)
+				assert.Len(t, ex.initObjects, 1)
+				m, ok, err := unstructured.NestedMap(ex.initObjects[0].kubernetesObject.Object, "spec")
+				assert.NoError(t, err)
+				assert.Equal(t, ok, true)
+				assert.Contains(t, m["volumeName"], "volume_name")
+			},
+		},
+		"patch for persistent volume": {
+			initObjects: func() []common.KubernetesInitObjectPatchSpec {
+				return []common.KubernetesInitObjectPatchSpec{
+					{
+						Kind: "PersistentVolume",
+						KubernetesObjPatchSpec: common.KubernetesObjPatchSpec{
+							Name:      "name",
+							PatchType: common.PatchTypeStrategicMergePatchType,
+							Patch: `
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: builds
+spec:
+  capacity:
+    storage: 5Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Recycle
+  storageClassName: builds
+  hostPath:
+    path: /tmp/host_path
+    type: DirectoryOrCreate`,
+						},
+					},
+				}
+			},
+			verifyFn: func(t *testing.T, ex *executor, out string, err error) {
+				assert.NoError(t, err)
+				assert.Len(t, ex.initObjects, 1)
+			},
+		},
+		"expand object patch in file": {
+			initObjects: func() []common.KubernetesInitObjectPatchSpec {
+				tempFile, err := os.CreateTemp("", "pv")
+				assert.NoError(t, err)
+				_, err = tempFile.Write([]byte(`
+volumeName: $VOLUME_NAME
+accessModes:
+  - ReadWriteOnce
+storageClassName: builds
+resources:
+  requests:
+    storage: 1Gi
+`))
+				assert.NoError(t, err)
+				assert.NoError(t, tempFile.Close())
+				return []common.KubernetesInitObjectPatchSpec{
+					{
+						Kind: "PersistentVolumeClaim",
+						KubernetesObjPatchSpec: common.KubernetesObjPatchSpec{
+							Name:      "name",
+							PatchType: common.PatchTypeStrategicMergePatchType,
+							PatchPath: tempFile.Name(),
+						},
+					},
+				}
+			},
+			variables: []common.JobVariable{
+				{
+					Key:    "VOLUME_NAME",
+					Value:  "volume_name",
+					Public: true,
+				},
+			},
+			verifyFn: func(t *testing.T, ex *executor, out string, err error) {
+				assert.NoError(t, err)
+				assert.Len(t, ex.initObjects, 1)
+				m, ok, err := unstructured.NestedMap(ex.initObjects[0].kubernetesObject.Object, "spec")
+				assert.NoError(t, err)
+				assert.Equal(t, ok, true)
+				assert.Contains(t, m["volumeName"], "volume_name")
+				os.Remove(
+					string(ex.AbstractExecutor.Config.RunnerSettings.Kubernetes.InitializationObjects[0].PatchType),
+				)
+			},
+		},
+	}
+
+	for tn, tc := range tests {
+		t.Run(tn, func(t *testing.T) {
+			runnerConfig := common.RunnerConfig{
+				RunnerSettings: common.RunnerSettings{
+					Kubernetes: &common.KubernetesConfig{
+						Namespace:             "default",
+						InitializationObjects: tc.initObjects(),
+					},
+				},
+			}
+
+			outBuffer := new(bytes.Buffer)
+			trace := &common.Trace{Writer: outBuffer}
+			ex := executor{
+				kubeClient: testKubernetesClient(version, fake.CreateHTTPClient(fakeRoundTripper)),
+				AbstractExecutor: executors.AbstractExecutor{
+					Config:     runnerConfig,
+					BuildShell: &common.ShellConfiguration{},
+					Build: &common.Build{
+						JobResponse: common.JobResponse{
+							Variables: tc.variables,
+						},
+						Runner: &runnerConfig,
+					},
+					Trace:       trace,
+					BuildLogger: common.NewBuildLogger(trace, logrus.WithFields(logrus.Fields{})),
+				},
+				configurationOverwrites: &overwrites{
+					namespace: DefaultResourceIdentifier,
+				},
+			}
+
+			err := ex.setupInitObjects(context.Background())
+			tc.verifyFn(t, &ex, outBuffer.String(), err)
+		})
+	}
+}
+
+func buildPersistentVolumeClaimAPIResponse(t *testing.T, body []byte) (*http.Response, error) {
+	pvc := new(api.PersistentVolumeClaim)
+	err := json.Unmarshal(body, &pvc)
+	if !assert.NoError(t, err, "failed to unmarshall PersistentVolumeClaim") {
+		return nil, err
+	}
+
+	pvc.Kind = "PersistentVolumeClaim"
+	dataBytes, err := json.Marshal(pvc)
+	if !assert.NoError(t, err, "failed to marshall PersistentVolumeClaim") {
+		return nil, err
+	}
+
+	resp := &http.Response{
+		StatusCode: http.StatusOK,
+		Body: FakeReadCloser{
+			Reader: bytes.NewBuffer(dataBytes),
+		},
+	}
+	resp.Header = make(http.Header)
+	resp.Header.Add("Content-Type", "application/json")
+
+	return resp, nil
+}
+
+func buildPersistentVolumeAPIResponse(t *testing.T, body []byte) (*http.Response, error) {
+	pv := new(api.PersistentVolume)
+	err := json.Unmarshal(body, &pv)
+	if !assert.NoError(t, err, "failed to unmarshall PersistentVolume") {
+		return nil, err
+	}
+
+	pv.Kind = "PersistentVolume"
+	dataBytes, err := json.Marshal(pv)
+	if !assert.NoError(t, err, "failed to marshall PersistentVolume") {
+		return nil, err
+	}
+
+	resp := &http.Response{
+		StatusCode: http.StatusOK,
+		Body: FakeReadCloser{
+			Reader: bytes.NewBuffer(dataBytes),
+		},
+	}
+	resp.Header = make(http.Header)
+	resp.Header.Add("Content-Type", "application/json")
+
+	return resp, nil
 }
