@@ -578,6 +578,14 @@ type KubernetesConfig struct {
 	InitializationObjects                             []KubernetesInitObjectPatchSpec    `toml:"init_objects" json:",omitempty"`
 }
 
+type KubernetesPodSpecPatchType string
+
+const (
+	PatchTypeJSONPatchType           = KubernetesPodSpecPatchType("json")
+	PatchTypeMergePatchType          = KubernetesPodSpecPatchType("merge")
+	PatchTypeStrategicMergePatchType = KubernetesPodSpecPatchType("strategic")
+)
+
 type KubernetesObjPatchSpec struct {
 	Name      string                     `toml:"name"`
 	PatchPath string                     `toml:"patch_path"`
@@ -586,46 +594,52 @@ type KubernetesObjPatchSpec struct {
 }
 
 type KubernetesInitObjectPatchSpec struct {
-	Type string `toml:"type"`
+	Kind    string `toml:"kind"`
+	Persist bool   `toml:"persist"`
 
 	KubernetesObjPatchSpec
 }
 
+// GetPatch return the patch data provided as string. It also returns an error
+// if both Patch and PatchPath are set or if not able to read the PatchPath provided
+func (s *KubernetesObjPatchSpec) GetPatch() (string, error) {
+	if s.PatchPath != "" && len(s.Patch) > 0 {
+		return "", fmt.Errorf("%w (%s)", errPatchAmbiguous, s.Name)
+	}
+
+	if s.PatchPath != "" {
+		patchBytes, err := os.ReadFile(s.PatchPath)
+		if err != nil {
+			return "", fmt.Errorf("%w (%s): %v", errPatchFileFail, s.Name, err)
+		}
+
+		s.Patch = string(patchBytes)
+		s.PatchPath = ""
+	}
+
+	return s.Patch, nil
+}
+
 // SpecPatch returns the patch data (JSON encoded) and type
 func (s *KubernetesObjPatchSpec) SpecPatch() ([]byte, KubernetesPodSpecPatchType, error) {
-	patchBytes := []byte(s.Patch)
+	patch, err := s.GetPatch()
+	if err != nil {
+		return nil, "", err
+	}
+
+	patchBytes := []byte(patch)
 	patchType := s.PatchType
 	if patchType == "" {
 		patchType = PatchTypeStrategicMergePatchType
 	}
 
-	if s.PatchPath != "" {
-		if len(s.Patch) > 0 {
-			return nil, "", fmt.Errorf("%w (%s)", errPatchAmbiguous, s.Name)
-		}
-
-		var err error
-		patchBytes, err = os.ReadFile(s.PatchPath)
-		if err != nil {
-			return nil, "", fmt.Errorf("%w (%s): %v", errPatchFileFail, s.Name, err)
-		}
-	}
-
-	patchBytes, err := yaml.YAMLToJSON(patchBytes)
+	patchBytes, err = yaml.YAMLToJSON(patchBytes)
 	if err != nil {
 		return nil, "", fmt.Errorf("%w (%s): %v", errPatchConversion, s.Name, err)
 	}
 
 	return patchBytes, patchType, nil
 }
-
-type KubernetesPodSpecPatchType string
-
-const (
-	PatchTypeJSONPatchType           = KubernetesPodSpecPatchType("json")
-	PatchTypeMergePatchType          = KubernetesPodSpecPatchType("merge")
-	PatchTypeStrategicMergePatchType = KubernetesPodSpecPatchType("strategic")
-)
 
 type KubernetesDNSConfig struct {
 	Nameservers []string                    `toml:"nameservers" json:",omitempty" description:"A list of IP addresses that will be used as DNS servers for the Pod."`

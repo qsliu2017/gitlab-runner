@@ -5,9 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/client-go/dynamic"
 	"math/rand"
 	"net/http"
 	"path"
@@ -18,20 +15,24 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/docker/cli/cli/config/types"
-	"github.com/jpillora/backoff"
-	"golang.org/x/net/context"
 	api "k8s.io/api/core/v1"
 	kubeerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/apimachinery/pkg/util/strategicpatch"
+	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	_ "k8s.io/client-go/plugin/pkg/client/auth" // Register all available authentication methods
 	restclient "k8s.io/client-go/rest"
 	"k8s.io/client-go/util/exec"
 
+	"github.com/docker/cli/cli/config/types"
+	"github.com/jpillora/backoff"
+	"golang.org/x/net/context"
+
 	jsonpatch "github.com/evanphx/json-patch"
-	"k8s.io/apimachinery/pkg/util/strategicpatch"
 
 	"gitlab.com/gitlab-org/gitlab-runner/common"
 	"gitlab.com/gitlab-org/gitlab-runner/common/utils"
@@ -242,14 +243,13 @@ type podConfigPrepareOpts struct {
 type executor struct {
 	executors.AbstractExecutor
 
-	kubeClient   *kubernetes.Clientset
-	kubeConfig   *restclient.Config
-	pod          *api.Pod
-	credentials  *api.Secret
-	buildsDirPVC *api.PersistentVolumeClaim
-	options      *kubernetesOptions
-	services     []api.Service
-	initObjects  []initObject
+	kubeClient  *kubernetes.Clientset
+	kubeConfig  *restclient.Config
+	pod         *api.Pod
+	credentials *api.Secret
+	options     *kubernetesOptions
+	services    []api.Service
+	initObjects []initObject
 
 	configurationOverwrites *overwrites
 	pullManager             pull.Manager
@@ -487,7 +487,6 @@ func (s *executor) logPodWarningEvents(eventType string) {
 		&retryableKubeAPICall{
 			maxTries: defaultTries,
 			fn: func() error {
-				// TODO: handle the context properly with https://gitlab.com/gitlab-org/gitlab-runner/-/issues/27932
 				el, err := s.kubeClient.CoreV1().Events(s.pod.Namespace).
 					List(context.Background(), metav1.ListOptions{
 						FieldSelector: fmt.Sprintf("involvedObject.name=%s,type=%s", s.pod.Name, eventType),
@@ -615,7 +614,7 @@ func (s *executor) ensurePodsConfigured(ctx context.Context) error {
 		return fmt.Errorf("setting up credentials: %w", err)
 	}
 
-	err = s.setupInitObjects()
+	err = s.setupInitObjects(ctx)
 	if err != nil {
 		return fmt.Errorf("setting up PVC: %w", err)
 	}
@@ -983,15 +982,18 @@ func (s *executor) cleanupResources(ctx context.Context) {
 
 	dynamicClient := dynamic.New(s.kubeClient.RESTClient())
 	for _, o := range s.initObjects {
-		// I don't want to leave these resources solely to owner references
+		if o.persist {
+			continue
+		}
+
 		err := dynamicClient.
 			Resource(o.groupVersionResource()).
 			Namespace(s.configurationOverwrites.namespace).
-			Delete(context.TODO(), o.name, metav1.DeleteOptions{
+			Delete(ctx, o.name, metav1.DeleteOptions{
 				GracePeriodSeconds: s.Config.Kubernetes.GetCleanupGracePeriodSeconds(),
 			})
 		if err != nil {
-			s.Errorln(fmt.Sprintf("Error cleaning up %s with name %s: %v", o.typ, o.name, err))
+			s.Errorln(fmt.Sprintf("Error cleaning up %s with name %s: %v", o.kind, o.name, err))
 		}
 	}
 }
@@ -1520,9 +1522,10 @@ func (s *executor) requestSecretCreation(
 }
 
 type initObject struct {
-	typ                  string
+	kind                 string
 	name                 string
 	resource             string
+	persist              bool
 	defaultObjectSpec    any
 	defaultObjectFactory func(name, namespace string, spec any) (any, error)
 
@@ -1538,7 +1541,7 @@ func (o initObject) groupVersionResource() schema.GroupVersionResource {
 
 var allowedInitObjects = map[string]initObject{
 	"PersistentVolumeClaim": {
-		typ:               "PersistentVolumeClaim",
+		kind:              "PersistentVolumeClaim",
 		resource:          "persistentvolumeclaims",
 		defaultObjectSpec: api.PersistentVolumeClaimSpec{},
 		defaultObjectFactory: func(name, namespace string, spec any) (any, error) {
@@ -1557,7 +1560,7 @@ var allowedInitObjects = map[string]initObject{
 		},
 	},
 	"PersistentVolume": {
-		typ:               "PersistentVolume",
+		kind:              "PersistentVolume",
 		resource:          "persistentvolumes",
 		defaultObjectSpec: api.PersistentVolumeSpec{},
 		defaultObjectFactory: func(name, namespace string, spec any) (any, error) {
@@ -1577,53 +1580,104 @@ var allowedInitObjects = map[string]initObject{
 	},
 }
 
-func (s *executor) setupInitObjects() error {
+func (s *executor) setupInitObjects(ctx context.Context) error {
+	var err error
 	dynamicClient := dynamic.New(s.kubeClient.RESTClient())
 
 	for _, o := range s.Config.Kubernetes.InitializationObjects {
-		initObject, exists := allowedInitObjects[o.Type]
+		initObject, exists := s.retrieveInitObject(o)
 		if !exists {
-			s.Warningln(fmt.Sprintf(
-				"Init object with type %s is unknown or not allowed. Allowed objects are %v, skipping...",
-				o.Type,
-				utils.Keys(allowedInitObjects),
-			))
 			continue
 		}
 
 		initObject.name = s.ExpandValue(o.Name)
+		initObject.persist = o.Persist
 
-		s.expandPatchesVariables(o.KubernetesObjPatchSpec)
+		o.KubernetesObjPatchSpec, err = s.expandPatchesVariables(o.KubernetesObjPatchSpec)
+		if err != nil {
+			return fmt.Errorf("expanding object patches %s: %v", initObject.kind, err)
+		}
+
 		// the spec type will be map[string]any here since T is unknown
 		spec, err := applySpecMerge(initObject.defaultObjectSpec, o.KubernetesObjPatchSpec)
 		if err != nil {
-			return fmt.Errorf("applying spec merge for %s", initObject.typ)
+			return fmt.Errorf("applying spec merge for %s", initObject.kind)
 		}
 
-		defaultObject, err := initObject.defaultObjectFactory(initObject.name, s.configurationOverwrites.namespace, spec)
+		obj, err := initObject.defaultObjectFactory(initObject.name, s.configurationOverwrites.namespace, spec)
 		if err != nil {
 			return err
 		}
 
-		defaultObjectMap, err := utils.ConvertObjectTo[map[string]any](defaultObject)
+		objMap, err := utils.ConvertObjectTo[map[string]any](obj)
 		if err != nil {
-			return fmt.Errorf("converting %s object to json: %w", initObject.typ, err)
+			return fmt.Errorf("converting %s object to json: %w", initObject.kind, err)
 		}
 
-		initObject.kubernetesObject, err = dynamicClient.
-			Resource(initObject.groupVersionResource()).
-			Namespace(s.configurationOverwrites.namespace).
-			Create(context.TODO(), &unstructured.Unstructured{
-				Object: defaultObjectMap,
-			}, metav1.CreateOptions{})
+		r := s.generateResourceCreationRequest(
+			ctx, dynamicClient, &initObject,
+			objMap, s.configurationOverwrites.namespace,
+		)
+		retryable := retry.NewWithBackoffDuration(r, defaultRetryMinBackoff, defaultRetryMaxBackoff)
+		err = retryable.Run()
 		if err != nil {
-			return fmt.Errorf("creating init object %s: %w", initObject.typ, err)
+			return fmt.Errorf("creating init object %s: %w", initObject.kind, err)
 		}
-
 		s.initObjects = append(s.initObjects, initObject)
 	}
 
 	return nil
+}
+
+func (s *executor) retrieveInitObject(objPatchSpec common.KubernetesInitObjectPatchSpec) (initObject, bool) {
+	initObject, exists := allowedInitObjects[objPatchSpec.Kind]
+	if !exists {
+		s.Warningln(fmt.Sprintf(
+			"Init object with type %s is unknown or not allowed. Allowed objects are %v, skipping...",
+			objPatchSpec.Kind,
+			utils.Keys(allowedInitObjects),
+		))
+	}
+
+	return initObject, exists
+}
+
+func (s *executor) generateResourceCreationRequest(
+	ctx context.Context,
+	client *dynamic.DynamicClient,
+	initObject *initObject,
+	resources map[string]any,
+	namespace string,
+) retry.Retryable {
+	return retry.WithBuildLog(
+		&retryableKubeAPICall{
+			maxTries: defaultTries,
+			fn: func() error {
+				obj, err := client.
+					Resource(initObject.groupVersionResource()).
+					Namespace(namespace).
+					Create(ctx, &unstructured.Unstructured{
+						Object: resources,
+					}, metav1.CreateOptions{})
+
+				if err != nil && !isConflict(err) {
+					return err
+				}
+
+				s.Debugln(
+					fmt.Sprintf(
+						"Conflict while trying to create the %s  %s ... Retrieving the existing resource",
+						initObject.groupVersionResource().String(), obj.GetName(),
+					),
+				)
+
+				initObject.kubernetesObject = obj
+
+				return nil
+			},
+		},
+		&s.BuildLogger,
+	)
 }
 
 func (s *executor) getHostAliases() ([]api.HostAlias, error) {
@@ -1944,6 +1998,28 @@ func (s *executor) createBuildAndHelperContainers() (api.Container, api.Containe
 	return buildContainer, helperContainer, nil
 }
 
+func (s *executor) expandPatchesVariables(patchSpec common.KubernetesObjPatchSpec) (common.KubernetesObjPatchSpec, error) {
+	patch, err := patchSpec.GetPatch()
+	if err != nil {
+		return common.KubernetesObjPatchSpec{}, err
+	}
+
+	patchSpec.Patch = s.ExpandValue(patch)
+	return patchSpec, nil
+}
+
+func (s *executor) applyPodSpecMerge(podSpec *api.PodSpec) (api.PodSpec, error) {
+	var err error
+	for i := range s.Config.Kubernetes.PodSpec {
+		s.Config.Kubernetes.PodSpec[i], err = s.expandPatchesVariables(s.Config.Kubernetes.PodSpec[i])
+		if err != nil {
+			return api.PodSpec{}, err
+		}
+	}
+
+	return applySpecMerge(*podSpec, s.Config.Kubernetes.PodSpec...)
+}
+
 // Inspired by
 // https://github.com/kubernetes/kubernetes/blob/cde45fb161c5a4bfa7cfe45dfd814f6cc95433f7/cmd/kubeadm/app/util/patches/patches.go#L171
 func applySpecMerge[T any](spec T, patches ...common.KubernetesObjPatchSpec) (T, error) {
@@ -1962,18 +2038,6 @@ func applySpecMerge[T any](spec T, patches ...common.KubernetesObjPatchSpec) (T,
 	var patchedPodSpec T
 	err = json.Unmarshal(patchedData, &patchedPodSpec)
 	return patchedPodSpec, err
-}
-
-func (s *executor) expandPatchesVariables(patches ...common.KubernetesObjPatchSpec) {
-	// TODO: expand path patch
-	for i, patch := range patches {
-		patches[i].Patch = s.ExpandValue(patch.Patch)
-	}
-}
-
-func (s *executor) applyPodSpecMerge(podSpec *api.PodSpec) (api.PodSpec, error) {
-	s.expandPatchesVariables(s.Config.Kubernetes.PodSpec...)
-	return applySpecMerge(*podSpec, s.Config.Kubernetes.PodSpec...)
 }
 
 func doSpecMerge(original []byte, spec any, patch common.KubernetesObjPatchSpec) ([]byte, error) {
@@ -2042,9 +2106,9 @@ func (s *executor) setOwnerReferencesForResources(ctx context.Context, ownerRefe
 	retryable := retry.NewWithBackoffDuration(r, defaultRetryMinBackoff, defaultRetryMaxBackoff)
 	err := retryable.Run()
 	if err != nil {
-		return nil
+		return err
 	}
-	
+
 	var ownerReferencesMap []map[string]any
 	for _, ref := range ownerReferences {
 		ownerReferenceMap, err := utils.ConvertObjectTo[map[string]any](ref)
@@ -2068,11 +2132,13 @@ func (s *executor) setOwnerReferencesForResources(ctx context.Context, ownerRefe
 		o.kubernetesObject, err = dynamicClient.
 			Resource(o.groupVersionResource()).
 			Namespace(s.configurationOverwrites.namespace).
-			Update(context.TODO(), o.kubernetesObject, metav1.UpdateOptions{})
+			Update(ctx, o.kubernetesObject, metav1.UpdateOptions{})
 		if err != nil {
-			return fmt.Errorf("setting owner reference for init object %s: %w", o.typ, err)
+			return fmt.Errorf("setting owner reference for init object %s: %w", o.kind, err)
 		}
 	}
+
+	return nil
 }
 
 func (s *executor) buildPodReferences() []metav1.OwnerReference {
@@ -2629,7 +2695,6 @@ func (s *executor) captureContainerLogs(ctx context.Context, containerName strin
 		&retryableKubeAPICall{
 			maxTries: defaultTries,
 			fn: func() error {
-				// TODO: handle the context properly with https://gitlab.com/gitlab-org/gitlab-runner/-/issues/27932
 				pl, err := s.kubeClient.CoreV1().
 					Pods(s.pod.Namespace).GetLogs(s.pod.Name, &podLogOpts).Stream(ctx)
 				if err == nil {
@@ -2735,7 +2800,7 @@ func featuresFn(features *common.FeaturesInfo) {
 }
 
 func init() {
-	rand.Seed(time.Now().UnixNano())
+	rand.New(rand.NewSource(time.Now().UnixNano()))
 	common.RegisterExecutorProvider(common.ExecutorKubernetes, executors.DefaultExecutorProvider{
 		Creator: func() common.Executor {
 			return newExecutor()
