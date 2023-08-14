@@ -1,3 +1,5 @@
+//go:build !integration
+
 package pkcs7
 
 import (
