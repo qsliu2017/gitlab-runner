@@ -4,7 +4,7 @@ package pkcs7
 
 import (
 	"crypto"
-	"crypto/dsa"
+	"crypto/dsa" //nolint:staticcheck
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
@@ -292,7 +292,10 @@ func createTestCertificateByIssuer(name string, issuer *certKeyPair, sigAlg x509
 	if err != nil {
 		return nil, err
 	}
-	pem.Encode(os.Stdout, &pem.Block{Type: "CERTIFICATE", Bytes: cert.Raw})
+	err = pem.Encode(os.Stdout, &pem.Block{Type: "CERTIFICATE", Bytes: cert.Raw})
+	if err != nil {
+		return nil, err
+	}
 	return &certKeyPair{
 		Certificate: cert,
 		PrivateKey:  &priv,
