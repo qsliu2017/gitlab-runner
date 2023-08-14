@@ -257,6 +257,10 @@ fuzz variable mask:
   - Start-Process msiexec.exe -Wait -ArgumentList '/I golang.msi /quiet'
   - $env:Path = "C:\Program Files\Go\bin;$env:Path"
   - go version
+  - Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1'))
+  - choco install -y openssl
+  - $env:Path = "C:\Program Files\OpenSSL-Win64\bin;$env:Path"
+  - openssl version
   - *go-cache-windows_before_script
   - go install gitlab.com/ajwalker/splitic@latest
   - $env:Path += ";$(go env GOPATH)/bin"
