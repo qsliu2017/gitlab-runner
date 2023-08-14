@@ -13,7 +13,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/fullsailor/pkcs7"
+	"gitlab.com/gitlab-org/gitlab-runner/helpers/tls/pkcs7"
+
 	"github.com/sirupsen/logrus"
 )
 

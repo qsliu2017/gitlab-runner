@@ -22,7 +22,6 @@ require (
 	github.com/docker/go-units v0.5.0
 	github.com/docker/machine v0.7.1-0.20170120224952-7b7a141da844
 	github.com/evanphx/json-patch v4.12.0+incompatible
-	github.com/fullsailor/pkcs7 v0.0.0-20190404230743-d7302db945fa
 	github.com/getsentry/sentry-go v0.13.0
 	github.com/golang/mock v1.6.0
 	github.com/googleapis/gax-go/v2 v2.7.0
