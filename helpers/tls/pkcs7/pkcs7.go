@@ -4,7 +4,7 @@ package pkcs7
 import (
 	"bytes"
 	"crypto"
-	"crypto/dsa"
+	"crypto/dsa" //nolint:staticcheck
 	"crypto/ecdsa"
 	"crypto/rsa"
 	"crypto/x509"
@@ -148,7 +148,6 @@ func getOIDForEncryptionAlgorithm(pkey crypto.PrivateKey, OIDDigestAlg asn1.Obje
 		return OIDDigestAlgorithmDSA, nil
 	}
 	return nil, fmt.Errorf("pkcs7: cannot convert encryption algorithm to oid, unknown private key type %T", pkey)
-
 }
 
 // Parse decodes a DER encoded PKCS7 package
@@ -170,7 +169,7 @@ func Parse(data []byte) (p7 *PKCS7, err error) {
 		return
 	}
 
-	// fmt.Printf("--> Content Type: %s", info.ContentType)
+	debugprintf("--> Content Type: %s", info.ContentType)
 	switch {
 	case info.ContentType.Equal(OIDSignedData):
 		return parseSignedData(info.Content.Bytes)

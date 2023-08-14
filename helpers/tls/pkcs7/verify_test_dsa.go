@@ -7,7 +7,6 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"testing"
@@ -64,33 +63,43 @@ vSeDCOUMYQR7R9LINYwouHIziqQYMAkGByqGSM44BAMDLwAwLAIUWXBlk40xTwSw
 7HX32MxXYruse9ACFBNGmdX2ZBrVNGrN9N2f6ROk0k9K
 -----END CERTIFICATE-----`
 
+//nolint:funlen
 func TestDSASignWithOpenSSLAndVerify(t *testing.T) {
 	content := []byte(`
 A ship in port is safe,
 but that's not what ships are built for.
 -- Grace Hopper`)
 	// write the content to a temp file
-	tmpContentFile, err := ioutil.TempFile("", "TestDSASignWithOpenSSLAndVerify_content")
+	tmpContentFile, err := os.CreateTemp("", "TestDSASignWithOpenSSLAndVerify_content")
 	if err != nil {
 		t.Fatal(err)
 	}
-	ioutil.WriteFile(tmpContentFile.Name(), content, 0755)
+	err = os.WriteFile(tmpContentFile.Name(), content, 0755)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	// write the signer cert to a temp file
-	tmpSignerCertFile, err := ioutil.TempFile("", "TestDSASignWithOpenSSLAndVerify_signer")
+	tmpSignerCertFile, err := os.CreateTemp("", "TestDSASignWithOpenSSLAndVerify_signer")
 	if err != nil {
 		t.Fatal(err)
 	}
-	ioutil.WriteFile(tmpSignerCertFile.Name(), dsaPublicCert, 0755)
+	err = os.WriteFile(tmpSignerCertFile.Name(), dsaPublicCert, 0755)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	// write the signer key to a temp file
-	tmpSignerKeyFile, err := ioutil.TempFile("", "TestDSASignWithOpenSSLAndVerify_key")
+	tmpSignerKeyFile, err := os.CreateTemp("", "TestDSASignWithOpenSSLAndVerify_key")
 	if err != nil {
 		t.Fatal(err)
 	}
-	ioutil.WriteFile(tmpSignerKeyFile.Name(), dsaPrivateKey, 0755)
+	err = os.WriteFile(tmpSignerKeyFile.Name(), dsaPrivateKey, 0755)
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	tmpSignedFile, err := ioutil.TempFile("", "TestDSASignWithOpenSSLAndVerify_signature")
+	tmpSignedFile, err := os.CreateTemp("", "TestDSASignWithOpenSSLAndVerify_signature")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -105,7 +114,7 @@ but that's not what ships are built for.
 	}
 
 	// verify the signed content
-	pemSignature, err := ioutil.ReadFile(tmpSignedFile.Name())
+	pemSignature, err := os.ReadFile(tmpSignedFile.Name())
 	if err != nil {
 		t.Fatal(err)
 	}

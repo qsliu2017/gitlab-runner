@@ -77,6 +77,7 @@ type aesGCMParameters struct {
 	ICVLen int
 }
 
+//nolint:funlen
 func encryptAESGCM(content []byte, key []byte) ([]byte, *encryptedContentInfo, error) {
 	var keyLen int
 	var algID asn1.ObjectIdentifier
@@ -259,6 +260,8 @@ func encryptAESCBC(content []byte, key []byte) ([]byte, *encryptedContentInfo, e
 //	ContentEncryptionAlgorithm = EncryptionAlgorithmAES128GCM
 //
 // TODO(fullsailor): Add support for encrypting content with other algorithms
+//
+//nolint:funlen
 func Encrypt(content []byte, recipients []*x509.Certificate) ([]byte, error) {
 	var eci *encryptedContentInfo
 	var key []byte
@@ -268,13 +271,9 @@ func Encrypt(content []byte, recipients []*x509.Certificate) ([]byte, error) {
 	switch ContentEncryptionAlgorithm {
 	case EncryptionAlgorithmDESCBC:
 		key, eci, err = encryptDESCBC(content, nil)
-	case EncryptionAlgorithmAES128CBC:
-		fallthrough
-	case EncryptionAlgorithmAES256CBC:
+	case EncryptionAlgorithmAES128CBC, EncryptionAlgorithmAES256CBC:
 		key, eci, err = encryptAESCBC(content, nil)
-	case EncryptionAlgorithmAES128GCM:
-		fallthrough
-	case EncryptionAlgorithmAES256GCM:
+	case EncryptionAlgorithmAES128GCM, EncryptionAlgorithmAES256GCM:
 		key, eci, err = encryptAESGCM(content, nil)
 
 	default:
@@ -292,10 +291,7 @@ func Encrypt(content []byte, recipients []*x509.Certificate) ([]byte, error) {
 		if err != nil {
 			return nil, err
 		}
-		ias, err := cert2issuerAndSerial(recipient)
-		if err != nil {
-			return nil, err
-		}
+		ias := cert2issuerAndSerial(recipient)
 		info := recipientInfo{
 			Version:               0,
 			IssuerAndSerialNumber: ias,
@@ -342,9 +338,7 @@ func EncryptUsingPSK(content []byte, key []byte) ([]byte, error) {
 	case EncryptionAlgorithmDESCBC:
 		_, eci, err = encryptDESCBC(content, key)
 
-	case EncryptionAlgorithmAES128GCM:
-		fallthrough
-	case EncryptionAlgorithmAES256GCM:
+	case EncryptionAlgorithmAES128GCM, EncryptionAlgorithmAES256GCM:
 		_, eci, err = encryptAESGCM(content, key)
 
 	default:
@@ -380,10 +374,12 @@ func marshalEncryptedContent(content []byte) asn1.RawValue {
 }
 
 func encryptKey(key []byte, recipient *x509.Certificate) ([]byte, error) {
-	if pub := recipient.PublicKey.(*rsa.PublicKey); pub != nil {
-		return rsa.EncryptPKCS1v15(rand.Reader, pub, key)
+	pub, ok := recipient.PublicKey.(*rsa.PublicKey)
+	if !ok {
+		return nil, ErrUnsupportedAlgorithm
 	}
-	return nil, ErrUnsupportedAlgorithm
+
+	return rsa.EncryptPKCS1v15(rand.Reader, pub, key)
 }
 
 func pad(data []byte, blocklen int) ([]byte, error) {

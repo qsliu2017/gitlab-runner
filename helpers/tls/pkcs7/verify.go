@@ -54,12 +54,14 @@ func (p7 *PKCS7) VerifyWithChainAtTime(truststore *x509.CertPool, currentTime ti
 	return nil
 }
 
+//nolint:gocognit
 func verifySignatureAtTime(p7 *PKCS7, signer signerInfo, truststore *x509.CertPool, currentTime time.Time) (err error) {
 	signedData := p7.Content
 	ee := getCertFromCertsByIssuerAndSerial(p7.Certificates, signer.IssuerAndSerialNumber)
 	if ee == nil {
 		return errors.New("pkcs7: No certificate for signer")
 	}
+	//nolint:nestif
 	if len(signer.AuthenticatedAttributes) > 0 {
 		// TODO(fullsailor): First check the content type match
 		var (
@@ -111,6 +113,7 @@ func verifySignatureAtTime(p7 *PKCS7, signer signerInfo, truststore *x509.CertPo
 	return ee.CheckSignature(sigalg, signedData, signer.EncryptedDigest)
 }
 
+//nolint:gocognit
 func verifySignature(p7 *PKCS7, signer signerInfo, truststore *x509.CertPool) (err error) {
 	signedData := p7.Content
 	ee := getCertFromCertsByIssuerAndSerial(p7.Certificates, signer.IssuerAndSerialNumber)
@@ -118,6 +121,7 @@ func verifySignature(p7 *PKCS7, signer signerInfo, truststore *x509.CertPool) (e
 		return errors.New("pkcs7: No certificate for signer")
 	}
 	signingTime := time.Now().UTC()
+	//nolint:nestif
 	if len(signer.AuthenticatedAttributes) > 0 {
 		// TODO(fullsailor): First check the content type match
 		var digest []byte
@@ -191,12 +195,15 @@ func (p7 *PKCS7) UnmarshalSignedAttribute(attributeType asn1.ObjectIdentifier, o
 
 func parseSignedData(data []byte) (*PKCS7, error) {
 	var sd signedData
-	asn1.Unmarshal(data, &sd)
+	_, err := asn1.Unmarshal(data, &sd)
+	if err != nil {
+		return nil, err
+	}
 	certs, err := sd.Certificates.Parse()
 	if err != nil {
 		return nil, err
 	}
-	// fmt.Printf("--> Signed Data Version %d\n", sd.Version)
+	debugprintf("--> Signed Data Version %d\n", sd.Version)
 
 	var compound asn1.RawValue
 	var content unsignedData
@@ -208,6 +215,7 @@ func parseSignedData(data []byte) (*PKCS7, error) {
 		}
 	}
 	// Compound octet string
+	//nolint:nestif
 	if compound.IsCompound {
 		if compound.Tag == 4 {
 			if _, err = asn1.Unmarshal(compound.Bytes, &content); err != nil {
@@ -262,6 +270,7 @@ func (err *MessageDigestMismatchError) Error() string {
 	return fmt.Sprintf("pkcs7: Message digest mismatch\n\tExpected: %X\n\tActual  : %X", err.ExpectedDigest, err.ActualDigest)
 }
 
+//nolint:funlen
 func getSignatureAlgorithm(digestEncryption, digest pkix.AlgorithmIdentifier) (x509.SignatureAlgorithm, error) {
 	switch {
 	case digestEncryption.Algorithm.Equal(OIDDigestAlgorithmECDSASHA1):

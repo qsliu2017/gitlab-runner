@@ -3,7 +3,7 @@ package pkcs7
 import (
 	"bytes"
 	"crypto"
-	"crypto/dsa"
+	"crypto/dsa" //nolint:staticcheck
 	"crypto/rand"
 	"crypto/x509"
 	"crypto/x509/pkix"
@@ -82,7 +82,10 @@ func marshalAttributes(attrs []attribute) ([]byte, error) {
 
 	// Remove the leading sequence octets
 	var raw asn1.RawValue
-	asn1.Unmarshal(encodedAttributes, &raw)
+	_, err = asn1.Unmarshal(encodedAttributes, &raw)
+	if err != nil {
+		return nil, err
+	}
 	return raw.Bytes, nil
 }
 
@@ -123,6 +126,8 @@ func (sd *SignedData) AddSigner(ee *x509.Certificate, pkey crypto.PrivateKey, co
 //
 // The signature algorithm used to hash the data is the one of the end-entity
 // certificate.
+//
+//nolint:funlen
 func (sd *SignedData) AddSignerChain(ee *x509.Certificate, pkey crypto.PrivateKey, parents []*x509.Certificate, config SignerInfoConfig) error {
 	// Following RFC 2315, 9.2 SignerInfo type, the distinguished name of
 	// the issuer of the end-entity signer is stored in the issuerAndSerialNumber
@@ -286,8 +291,8 @@ func (sd *SignedData) Detach() {
 	sd.sd.ContentInfo = contentInfo{ContentType: OIDData}
 }
 
-// GetSignedData returns the private Signed Data
-func (sd *SignedData) GetSignedData() *signedData {
+// getSignedData returns the private Signed Data
+func (sd *SignedData) getSignedData() *signedData {
 	return &sd.sd
 }
 
@@ -339,14 +344,14 @@ func verifyPartialChain(cert *x509.Certificate, parents []*x509.Certificate) err
 	return verifyPartialChain(parents[0], parents[1:])
 }
 
-func cert2issuerAndSerial(cert *x509.Certificate) (issuerAndSerial, error) {
+func cert2issuerAndSerial(cert *x509.Certificate) issuerAndSerial {
 	var ias issuerAndSerial
 	// The issuer RDNSequence has to match exactly the sequence in the certificate
 	// We cannot use cert.Issuer.ToRDNSequence() here since it mangles the sequence
 	ias.IssuerName = asn1.RawValue{FullBytes: cert.RawIssuer}
 	ias.SerialNumber = cert.SerialNumber
 
-	return ias, nil
+	return ias
 }
 
 // signs the DER encoded form of the attributes with the private key

@@ -52,6 +52,7 @@ func (p7 *PKCS7) DecryptUsingPSK(key []byte) ([]byte, error) {
 	return data.EncryptedContentInfo.decrypt(key)
 }
 
+//nolint:funlen,gocognit
 func (eci encryptedContentInfo) decrypt(key []byte) ([]byte, error) {
 	alg := eci.ContentEncryptionAlgorithm.Algorithm
 	if !alg.Equal(OIDEncryptionAlgorithmDESCBC) &&
@@ -93,16 +94,15 @@ func (eci encryptedContentInfo) decrypt(key []byte) ([]byte, error) {
 		block, err = des.NewCipher(key)
 	case alg.Equal(OIDEncryptionAlgorithmDESEDE3CBC):
 		block, err = des.NewTripleDESCipher(key)
-	case alg.Equal(OIDEncryptionAlgorithmAES256CBC), alg.Equal(OIDEncryptionAlgorithmAES256GCM):
-		fallthrough
-	case alg.Equal(OIDEncryptionAlgorithmAES128GCM), alg.Equal(OIDEncryptionAlgorithmAES128CBC):
+	case alg.Equal(OIDEncryptionAlgorithmAES256CBC), alg.Equal(OIDEncryptionAlgorithmAES256GCM),
+		alg.Equal(OIDEncryptionAlgorithmAES128GCM), alg.Equal(OIDEncryptionAlgorithmAES128CBC):
 		block, err = aes.NewCipher(key)
 	}
 
 	if err != nil {
 		return nil, err
 	}
-
+	//nolint: nestif
 	if alg.Equal(OIDEncryptionAlgorithmAES128GCM) || alg.Equal(OIDEncryptionAlgorithmAES256GCM) {
 		params := aesGCMParameters{}
 		paramBytes := eci.ContentEncryptionAlgorithm.Parameters.Bytes
