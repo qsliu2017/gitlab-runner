@@ -2,17 +2,38 @@ package common
 
 import (
 	"fmt"
+	"regexp"
 	"runtime"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/urfave/cli"
 )
 
-var NAME = "gitlab-runner"
-var VERSION = "development version"
-var REVISION = "HEAD"
-var BRANCH = "HEAD"
-var BUILT = "unknown"
+var (
+	VERSION  = "development version"
+	NAME     = "gitlab-runner"
+	REVISION = "HEAD"
+	BRANCH   = "HEAD"
+	BUILT    = "unknown"
+
+	versionRegexNoPrefix = regexp.MustCompile(`^[0-9]+\.[0-9]+\.[0-9]+$`)
+)
+
+// ReleaseVersion returns the VERSION of GitLab Runner with a "v" prefix
+// when it's been built from a tag. If that's not the case it will return the
+// commit sha written in REVISION. The uses for these function are to find and use
+// the correct helper image based on the build tag
+func ReleaseVersion() string {
+	// currently due to how the ci/version script works
+	// the VERSION variable is written without a "v" prefix
+	// since changing that is likely to have unforeseen consequences
+	// let's handle that and add the prefix
+	if versionRegexNoPrefix.MatchString(VERSION) {
+		return "v" + VERSION
+	}
+
+	return REVISION
+}
 
 var AppVersion AppVersionInfo
 

@@ -437,7 +437,7 @@ func (s *executor) prepareHelperImage() (helperimage.Info, error) {
 		}
 	}
 
-	return helperimage.Get(common.REVISION, config)
+	return helperimage.Get(common.ReleaseVersion(), config)
 }
 
 func (s *executor) Run(cmd common.ExecutorCommand) error {
