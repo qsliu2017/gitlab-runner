@@ -543,7 +543,7 @@ func (b *AbstractShell) writeSubmoduleUpdateCmd(w ShellWriter, build *common.Bui
 		syncArgs = append(syncArgs, "--recursive")
 	}
 	syncArgs = append(syncArgs, pathArgs...)
-	w.Command("git", syncArgs...)
+	w.CommandArgExpand("git", syncArgs...)
 
 	// Update / initialize submodules
 	updateArgs := append(build.GetURLInsteadOfArgs(), "submodule", "update", "--init")
@@ -573,8 +573,8 @@ func (b *AbstractShell) writeSubmoduleUpdateCmd(w ShellWriter, build *common.Bui
 	w.Else()
 	// call sync and update again if the initial update fails
 	w.Warningf("Updating submodules failed. Retrying...")
-	w.Command("git", syncArgs...)
-	w.Command("git", updateArgs...)
+	w.CommandArgExpand("git", syncArgs...)
+	w.CommandArgExpand("git", updateArgs...)
 	w.Command("git", append(foreachArgs, "git reset --hard")...)
 	w.EndIf()
 
