@@ -23,8 +23,10 @@ import (
 )
 
 // createdRunnerTokenPrefix is the token prefix used for GitLab UI-created runner tokens
-const createdRunnerTokenPrefix = "glrt-"
-const clientError = -100
+const (
+	createdRunnerTokenPrefix = "glrt-"
+	clientError              = -100
+)
 
 const retryAfterHeader = "Retry-After"
 
