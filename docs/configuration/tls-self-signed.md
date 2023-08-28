@@ -299,4 +299,4 @@ In addition, you can use the [`tlsctl`](https://gitlab.com/gitlab-org/ci-cd/runn
 This error occurs when the Docker host or Kubernetes node where the runner schedules the
 executors does not trust the certificate used by the private registry. To fix the error,
 add the relevant root certificate authority certificate to the system's trust store based
-on your operating system.
+on your operating system, then restart the cotainerd service.
