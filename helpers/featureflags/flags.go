@@ -33,6 +33,7 @@ const (
 	EnableSecretResolvingFailsIfMissing  string = "FF_SECRET_RESOLVING_FAILS_IF_MISSING"
 	RetrievePodWarningEvents             string = "FF_RETRIEVE_POD_WARNING_EVENTS"
 	PrintPodEvents                       string = "FF_PRINT_POD_EVENTS"
+	LogImagesConfiguredForJob            string = "FF_LOG_IMAGES_CONFIGURED_FOR_JOB"
 )
 
 type FeatureFlag struct {
@@ -272,6 +273,12 @@ var flags = []FeatureFlag{
 		DefaultValue: false,
 		Deprecated:   false,
 		Description:  "When enabled, all events associated with the build pod will be printed until it's started.",
+	},
+	{
+		Name:         LogImagesConfiguredForJob,
+		DefaultValue: false,
+		Deprecated:   false,
+		Description:  "When enabled, the runner logs names of the image and service images defined for each received job.",
 	},
 }
 
