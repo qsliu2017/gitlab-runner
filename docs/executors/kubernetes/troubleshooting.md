@@ -8,13 +8,13 @@ info: To determine the technical writer assigned to the Stage/Group associated w
 
 The following errors are commonly encountered when using the Kubernetes executor.
 
-### `Job failed (system failure): timed out waiting for pod to start`
+## `Job failed (system failure): timed out waiting for pod to start`
 
 If the cluster cannot schedule the build pod before the timeout defined by `poll_timeout`, the build pod returns an error. The [Kubernetes Scheduler](https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#pod-lifetime) should be able to delete it.
 
 To fix this issue, increase the `poll_timeout` value in your `config.toml` file.
 
-### `context deadline exceeded`
+## `context deadline exceeded`
 
 The `context deadline exceeded` errors in job logs usually indicate that the Kubernetes API client hit a timeout for a given cluster API request.
 
@@ -49,14 +49,14 @@ Error cleaning up pod: etcdserver: request timed out
 Error cleaning up pod: context deadline exceeded
 ```
 
-### Connection refused when attempting to communicate with the Kubernetes API
+## Connection refused when attempting to communicate with the Kubernetes API
 
 When GitLab Runner makes a request to the Kubernetes API and it fails,
 it is likely because
 [`kube-apiserver`](https://kubernetes.io/docs/concepts/overview/components/#kube-apiserver)
 is overloaded and can't accept or process API requests.
 
-### `Error cleaning up pod` and `Job failed (system failure): prepare environment: waiting for pod running`
+## `Error cleaning up pod` and `Job failed (system failure): prepare environment: waiting for pod running`
 
 The following errors occur when Kubernetes fails to schedule the job pod in a timely manner.
 GitLab Runner waits for the pod to be ready, but it fails and then tries to clean up the pod, which can also fail.
@@ -78,7 +78,7 @@ To change the time GitLab Runner waits for a pod to reach its `Ready` status, us
 To better understand how pods are scheduled or why they might not get scheduled
 on time, [read about the Kubernetes Scheduler](https://kubernetes.io/docs/concepts/scheduling-eviction/kube-scheduler/).
 
-### `request did not complete within requested timeout`
+## `request did not complete within requested timeout`
 
 The message `request did not complete within requested timeout` observed during build pod creation indicates that a configured [admission control webhook](https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/) on the Kubernetes cluster is timing out.
 
@@ -113,18 +113,18 @@ A failure from an admission control webhook may instead appear as:
 Job failed (system failure): prepare environment: setting up credentials: Internal error occurred: failed calling webhook "example.webhook.service"
 ```
 
-### `fatal: unable to access 'https://gitlab-ci-token:token@example.com/repo/proj.git/': Could not resolve host: example.com`
+## `fatal: unable to access 'https://gitlab-ci-token:token@example.com/repo/proj.git/': Could not resolve host: example.com`
 
 If using the `alpine` flavor of the [helper image](../../configuration/advanced-configuration.md#helper-image),
 there can be [DNS issues](https://gitlab.com/gitlab-org/gitlab-runner/-/issues/4129) related to Alpine's `musl`'s DNS resolver.
 
 Using the `helper_image_flavor = "ubuntu"` option should resolve this.
 
-### `docker: Cannot connect to the Docker daemon at tcp://docker:2375. Is the docker daemon running?`
+## `docker: Cannot connect to the Docker daemon at tcp://docker:2375. Is the docker daemon running?`
 
 This error can occur when [using Docker-in-Docker](index.md#using-dockerdind) if attempts are made to access the DIND service before it has had time to fully start up. For a more detailed explanation, see [this issue](https://gitlab.com/gitlab-org/gitlab-runner/-/issues/27215).
 
-### `curl: (35) OpenSSL SSL_connect: SSL_ERROR_SYSCALL in connection to github.com:443`
+## `curl: (35) OpenSSL SSL_connect: SSL_ERROR_SYSCALL in connection to github.com:443`
 
 This error can happen when [using Docker-in-Docker](#using-dockerdind) if the DIND Maximum Transmission Unit (MTU) is larger than the Kubernetes overlay network. DIND uses a default MTU of 1500, which is too large to route across the default overlay network. The DIND MTU can be changed within the service definition:
 
@@ -134,7 +134,7 @@ services:
     command: ["--mtu=1450"]
 ```
 
-### `MountVolume.SetUp failed for volume "kube-api-access-xxxxx" : chown is not supported by windows`
+## `MountVolume.SetUp failed for volume "kube-api-access-xxxxx" : chown is not supported by windows`
 
 When you run your CI/CD job, you might receive an error like the following:
 
@@ -151,7 +151,7 @@ nodeSelector:
   kubernetes.io/os: linux
 ```
 
-### Build pods are assigned the worker node's IAM role instead of Runner IAM role
+## Build pods are assigned the worker node's IAM role instead of Runner IAM role
 
 This issue happens when the worker node IAM role does not have the permission to assume the correct role. To fix this, add the `sts:AssumeRole` permission to the trust relationship of the worker node's IAM role:
 
@@ -165,18 +165,18 @@ This issue happens when the worker node IAM role does not have the permission to
 }
 ```
 
-### `Preparation failed: failed to pull image 'image-name:latest': pull_policy ([Always]) defined in GitLab pipeline config is not one of the allowed_pull_policies ([])`
+## `Preparation failed: failed to pull image 'image-name:latest': pull_policy ([Always]) defined in GitLab pipeline config is not one of the allowed_pull_policies ([])`
 
 This issue happens if you specified a `pull_policy` in your `.gitlab-ci.yml` but there is no policy configured in the Runner's config file. To fix this, add `allowed_pull_policies` to your config according to [Restrict Docker pull policies](index.md#restrict-docker-pull-policies).
 
-### Background processes cause jobs to hang and timeout
+## Background processes cause jobs to hang and timeout
 
 Background processes started during job execution can [prevent the build job from exiting](https://gitlab.com/gitlab-org/gitlab-runner/-/issues/2880). To avoid this you can:
 
 - Double fork the process. For example, `command_to_run < /dev/null &> /dev/null &`.
 - Kill the process before exiting the job script.
 
-### Cache-related `permission denied` errors
+## Cache-related `permission denied` errors
 
 Files and folders that are generated in your job have certain UNIX ownerships and permissions.
 When your files and folders are archived or extracted, UNIX details are retained.
