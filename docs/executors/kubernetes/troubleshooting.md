@@ -4,7 +4,7 @@ group: Runner
 info: To determine the technical writer assigned to the Stage/Group associated with this page, see https://about.gitlab.com/handbook/product/ux/technical-writing/#assignments
 ---
 
-## Troubleshooting
+# Troubleshooting Kubernetes executor
 
 The following errors are commonly encountered when using the Kubernetes executor.
 
