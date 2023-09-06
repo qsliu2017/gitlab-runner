@@ -193,6 +193,7 @@ This glossary provides definitions for terms related to GitLab Runner.
   the runner could represent a collection of runners and runner managers.
 - **runner manager**: A type of runner that can create multiple runners for autoscaling. Specific to the type of executor used.
 - **runner worker**: The process created by the runner on the host computing platform to run jobs.
+- **runner configuration**: {placeholder for definition}
 
 ## Troubleshooting
 
