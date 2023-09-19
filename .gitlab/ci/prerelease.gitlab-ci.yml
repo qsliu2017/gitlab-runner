@@ -9,7 +9,7 @@
     - 'helper images binaries'
   before_script:
     - Set-MpPreference -DisableRealtimeMonitoring $true
-    - start-service docker
+    - !reference [".fix-docker-windows", before_script]
   script:
     - choco install awscli -y
     - $env:Path += ";C:\Program Files\Amazon\AWSCLIV2"

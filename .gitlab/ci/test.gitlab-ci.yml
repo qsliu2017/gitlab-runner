@@ -247,8 +247,8 @@ fuzz variable mask:
   stage: test
   parallel: 6
   before_script:
-  - start-service docker
   - Set-MpPreference -DisableRealtimeMonitoring $true
+  - !reference [".fix-docker-windows", before_script]
   - git config --system core.longpaths true
   - New-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\FileSystem" `
     -Name "LongPathsEnabled" -Value 1 -PropertyType DWORD -Force

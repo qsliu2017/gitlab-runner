@@ -45,3 +45,18 @@ binaries-fips:
     matrix:
     - GOOS: linux
       GOARCH: amd64
+
+.fix-docker-windows:
+  before_script:
+    - stop-service docker
+    - |
+      $daemonJsonPath = "C:\ProgramData\Docker\config\daemon.json"
+      If(-Not (Test-Path -Path $daemonJsonPath)) {
+          New-Item -ItemType File -Path $daemonJsonPath -Force
+      }
+    - |
+      $daemonJsonContent = Get-Content -Path $daemonJsonPath -Raw | ConvertFrom-Json -ErrorAction SilentlyContinue
+      If(-Not $daemonJsonContent) { $daemonJsonContent = @{} }
+      $daemonJsonContent.dns = @("8.8.8.8")
+      $daemonJsonContent | ConvertTo-Json | Set-Content -Path $daemonJsonPath
+    - start-service docker
