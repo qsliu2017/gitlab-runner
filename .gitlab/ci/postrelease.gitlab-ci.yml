@@ -2,6 +2,7 @@ trigger UBI images build:
   stage: postrelease
   extends:
   - .rules:release:all
+  - .rules:merge_request_pipelines:no_docs:only_canonical
   variables:
     BUILD_RELEASE: ${CI_COMMIT_REF_NAME}
   trigger: gitlab-org/ci-cd/gitlab-runner-ubi-images
