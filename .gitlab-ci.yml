@@ -10,10 +10,11 @@ network-test:
   extends: .shared_windows_runners
   stage: test
   before_script:
+    - Stop-Service docker
+    - Start-Service docker
     - docker info
     - dir C:\ProgramData\Docker\Config
     - Get-Content C:\ProgramData\Docker\Config\daemon.json
+    - Get-DnsClientServerAddress | Select-Object –ExpandProperty ServerAddresses 
   script:
-    - docker run mcr.microsoft.com/windows/servercore:ltsc2022 powershell Get-DnsClientServerAddress
     - docker run mcr.microsoft.com/windows/nanoserver:ltsc2022 curl https://api.nuget.org/v3/index.json
-
