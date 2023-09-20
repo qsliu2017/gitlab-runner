@@ -1,32 +1,20 @@
 stages:
-- prepare
-- fips helper binaries
-- prebuild
-- prerelease
-- test
-- coverage
-- build
-- package
-- release
-- postrelease
-- docs
+  - test
 
-include:
-- local: /.gitlab/ci/_common.gitlab-ci.yml
-- local: /.gitlab/ci/_rules.gitlab-ci.yml
-- local: /.gitlab/ci/prepare.gitlab-ci.yml
-- local: /.gitlab/ci/fips-helper-binaries.gitlab-ci.yml
-- local: /.gitlab/ci/prebuild.gitlab-ci.yml
-- local: /.gitlab/ci/prerelease.gitlab-ci.yml
-- local: /.gitlab/ci/test.gitlab-ci.yml
-- local: /.gitlab/ci/coverage.gitlab-ci.yml
-- local: /.gitlab/ci/build.gitlab-ci.yml
-- local: /.gitlab/ci/package.gitlab-ci.yml
-- local: /.gitlab/ci/release.gitlab-ci.yml
-- local: /.gitlab/ci/postrelease.gitlab-ci.yml
-- local: /.gitlab/ci/docs.gitlab-ci.yml
-- project: 'gitlab-org/quality/pipeline-common'
-  file:
-    - '/ci/danger-review.yml'
-  rules:
-    - if: '$CI_SERVER_HOST == "gitlab.com"'
+.shared_windows_runners:
+  tags:
+    - windows
+    - windows-21h1
+
+network-test:
+  extends: .shared_windows_runners
+  stage: test
+  before_script:
+    - Start-Service -Name "docker"
+    - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" $CI_REGISTRY
+    - docker info
+    - dir C:\ProgramData\Docker
+    - dir C:\ProgramData\Docker\Config
+    - Get-Content C:\ProgramData\Docker\Config\daemon.json
+  script:
+    - docker run mcr.microsoft.com/dotnet/sdk:6.0-windowsservercore-ltsc2019 curl https://api.nuget.org/v3/index.json
