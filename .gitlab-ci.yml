@@ -16,6 +16,7 @@ network-test:
     - dir C:\ProgramData\Docker\Config
     - Get-Content C:\ProgramData\Docker\Config\daemon.json
     - Get-DnsClientServerAddress | Select-Object –ExpandProperty ServerAddresses
+    - ipconfig /all
   script:
     - docker run mcr.microsoft.com/windows/servercore:ltsc2022 ipconfig /all
     - docker run mcr.microsoft.com/windows/servercore:ltsc2022 powershell Get-DnsClientServerAddress
