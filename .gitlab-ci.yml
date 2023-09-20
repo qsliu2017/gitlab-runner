@@ -17,4 +17,4 @@ network-test:
     - dir C:\ProgramData\Docker\Config
     - Get-Content C:\ProgramData\Docker\Config\daemon.json
   script:
-    - docker run mcr.microsoft.com/dotnet/sdk:6.0-windowsservercore-ltsc2019 curl https://api.nuget.org/v3/index.json
+    - docker run mcr.microsoft.com/windows/nanoserver:ltsc2022 curl https://api.nuget.org/v3/index.json
