@@ -10,10 +10,8 @@ network-test:
   extends: .shared_windows_runners
   stage: test
   before_script:
-    - Start-Service -Name "docker"
-    - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" $CI_REGISTRY
     - docker info
     - dir C:\ProgramData\Docker\Config
     - Get-Content C:\ProgramData\Docker\Config\daemon.json
   script:
-    - docker run --dns="8.8.8.8" mcr.microsoft.com/windows/nanoserver:ltsc2022 curl https://api.nuget.org/v3/index.json
+    - docker run mcr.microsoft.com/windows/nanoserver:ltsc2022 curl https://api.nuget.org/v3/index.json
