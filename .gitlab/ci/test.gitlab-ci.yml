@@ -149,10 +149,9 @@ code_quality:
 
 .linux test:
   extends:
-  - .rules:merge_request_pipelines:no_docs
+  - .rules:merge_request_pipelines:no_docs-tests
   - .docker
   - .go-cache
-  - .if-test-allowed
   stage: test
   before_script:
   - make splitic
@@ -200,7 +199,6 @@ unit test with race:
 integration test:
   extends:
   - .linux test
-  - .if-test-allowed
   needs:
   - 'clone test repo'
   - 'helper images'
@@ -237,8 +235,7 @@ integration test with race:
 fuzz variable mask:
   extends:
   - .fuzz_base
-  - .rules:merge_request_pipelines:no_docs
-  - .if-test-allowed
+  - .rules:merge_request_pipelines:no_docs-tests
   image: golang:$GO_VERSION
   stage: test
   variables:
