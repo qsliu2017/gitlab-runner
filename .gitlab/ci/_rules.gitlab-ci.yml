@@ -114,6 +114,20 @@
   - <<: *if-security-runner-release-ref
     changes: *code-backstage-patterns
 
+.rules:merge_request_pipelines:no_docs-tests:
+  rules:
+    - <<: *if-merge-request-pipeline
+      changes: *code-backstage-patterns
+    - <<: *if-runner-or-security-runner-default-branch
+      changes: *code-backstage-patterns
+    - <<: *if-runner-or-security-runner-stable-ref
+      changes: *code-backstage-patterns
+    - <<: *if-runner-release-ref
+      changes: *code-backstage-patterns
+    - <<: *if-security-runner-release-ref
+      changes: *code-backstage-patterns
+    - <<: *if-test-allowed
+
 .rules:merge_request_pipelines:no_docs:no-community-mr:
   rules:
   - <<: *if-not-canonical-namespace

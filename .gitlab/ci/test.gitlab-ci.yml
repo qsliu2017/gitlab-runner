@@ -255,9 +255,8 @@ fuzz variable mask:
 
 .windows test:
   extends:
-  - .rules:merge_request_pipelines:no_docs
+  - .rules:merge_request_pipelines:no_docs-tests
   - .go-cache-windows
-  - .if-test-allowed
   stage: test
   parallel: 6
   before_script:
@@ -287,7 +286,6 @@ fuzz variable mask:
 .windows unit test:
   extends:
   - .windows test
-  - .if-test-allowed
   parallel: 2
   needs:
   - 'clone test repo'
@@ -351,9 +349,8 @@ windows 21H2 integration tests:
 
 git 1.8.3.1:
   extends:
-  - .rules:merge_request_pipelines:no_docs
+  - .rules:merge_request_pipelines:no_docs-tests
   - .go-cache
-  - .if-test-allowed
   image: centos:7
   stage: test
   variables:
@@ -373,9 +370,8 @@ git 1.8.3.1:
 
 integration_k8s:
   extends:
-  - .rules:merge_request_pipelines:no_docs
+  - .rules:merge_request_pipelines:no_docs-tests
   - .docker
-  - .if-test-allowed
   needs:
   - 'prepare done'
   stage: test
