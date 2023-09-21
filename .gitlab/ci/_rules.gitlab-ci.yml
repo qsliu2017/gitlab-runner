@@ -71,6 +71,9 @@
 .if-runner-or-security-bleeding-edge-release-ref: &if-runner-or-security-bleeding-edge-release-ref
   if: $CI_COMMIT_REF_NAME =~ /\Av[0-9]+\.[0-9]+\.[0-9]+-rc[0-9]+\z/ && ($CI_PROJECT_PATH == "gitlab-org/gitlab-runner" || $CI_PROJECT_PATH == "gitlab-org/security/gitlab-runner")
 
+.if-test-allowed: &if-test-allowed
+  if: $RUNNER_CI_NO_TESTS == "true" || $RUNNER_CI_NO_TESTS == "" || $RUNNER_CI_NO_TESTS == null
+
 ########################
 # Default branch rules #
 ########################

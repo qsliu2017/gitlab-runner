@@ -152,6 +152,7 @@ code_quality:
   - .rules:merge_request_pipelines:no_docs
   - .docker
   - .go-cache
+  - .if-test-allowed
   stage: test
   before_script:
   - make splitic
@@ -199,6 +200,7 @@ unit test with race:
 integration test:
   extends:
   - .linux test
+  - .if-test-allowed
   needs:
   - 'clone test repo'
   - 'helper images'
@@ -236,6 +238,7 @@ fuzz variable mask:
   extends:
   - .fuzz_base
   - .rules:merge_request_pipelines:no_docs
+  - .if-test-allowed
   image: golang:$GO_VERSION
   stage: test
   variables:
@@ -254,6 +257,7 @@ fuzz variable mask:
   extends:
   - .rules:merge_request_pipelines:no_docs
   - .go-cache-windows
+  - .if-test-allowed
   stage: test
   parallel: 6
   before_script:
@@ -283,6 +287,7 @@ fuzz variable mask:
 .windows unit test:
   extends:
   - .windows test
+  - .if-test-allowed
   parallel: 2
   needs:
   - 'clone test repo'
@@ -348,6 +353,7 @@ git 1.8.3.1:
   extends:
   - .rules:merge_request_pipelines:no_docs
   - .go-cache
+  - .if-test-allowed
   image: centos:7
   stage: test
   variables:
@@ -369,6 +375,7 @@ integration_k8s:
   extends:
   - .rules:merge_request_pipelines:no_docs
   - .docker
+  - .if-test-allowed
   needs:
   - 'prepare done'
   stage: test
