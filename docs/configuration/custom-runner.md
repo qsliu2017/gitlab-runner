@@ -87,3 +87,4 @@ build-image:
   rules:
     - changes:
         - Dockerfile
+```
