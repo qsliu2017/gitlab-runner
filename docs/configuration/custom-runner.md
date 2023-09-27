@@ -46,7 +46,7 @@ This section provides the steps to create a custom Docker image that includes AW
 
 1. **Build the Docker Image**
 
-    Run the following command to build your custom Docker image using .gitlab-ci.yaml:
+    Run the following command to build your custom Docker image using `.gitlab-ci.yaml`:
 
     ```shell
     docker build -t custom-gitlab-runner:latest .
