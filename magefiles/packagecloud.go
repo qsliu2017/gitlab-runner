@@ -3,6 +3,7 @@
 package main
 
 import (
+	"gitlab.com/gitlab-org/gitlab-runner/magefiles/mageutils"
 	"strings"
 
 	"github.com/magefile/mage/mg"
@@ -11,9 +12,9 @@ import (
 )
 
 var (
-	packageCloudURL       = envFallbackOrDefault("PACKAGE_CLOUD_URL", "", "https://packages.gitlab.com/")
-	packageCloudNamespace = envFallbackOrDefault("PACKAGE_CLOUD_NAMESPACE", "PACKAGE_CLOUD", "runner/gitlab-runner")
-	packageCloudToken     = envFallbackOrDefault("PACKAGE_CLOUD_TOKEN", "PACKAGECLOUD_TOKEN", "")
+	packageCloudURL       = mageutils.envFallbackOrDefault("PACKAGE_CLOUD_URL", "", "https://packages.gitlab.com/")
+	packageCloudNamespace = mageutils.envFallbackOrDefault("PACKAGE_CLOUD_NAMESPACE", "PACKAGE_CLOUD", "runner/gitlab-runner")
+	packageCloudToken     = mageutils.envFallbackOrDefault("PACKAGE_CLOUD_TOKEN", "PACKAGECLOUD_TOKEN", "")
 )
 
 type PackageCloud mg.Namespace
