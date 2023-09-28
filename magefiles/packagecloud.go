@@ -12,9 +12,9 @@ import (
 )
 
 var (
-	packageCloudURL       = mageutils.envFallbackOrDefault("PACKAGE_CLOUD_URL", "", "https://packages.gitlab.com/")
-	packageCloudNamespace = mageutils.envFallbackOrDefault("PACKAGE_CLOUD_NAMESPACE", "PACKAGE_CLOUD", "runner/gitlab-runner")
-	packageCloudToken     = mageutils.envFallbackOrDefault("PACKAGE_CLOUD_TOKEN", "PACKAGECLOUD_TOKEN", "")
+	packageCloudURL       = mageutils.EnvFallbackOrDefault("PACKAGE_CLOUD_URL", "", "https://packages.gitlab.com/")
+	packageCloudNamespace = mageutils.EnvFallbackOrDefault("PACKAGE_CLOUD_NAMESPACE", "PACKAGE_CLOUD", "runner/gitlab-runner")
+	packageCloudToken     = mageutils.EnvFallbackOrDefault("PACKAGE_CLOUD_TOKEN", "PACKAGECLOUD_TOKEN", "")
 )
 
 type PackageCloud mg.Namespace

@@ -1,4 +1,4 @@
-package constants
+package build
 
 import (
 	"fmt"

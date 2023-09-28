@@ -19,7 +19,7 @@
   - 'binaries-fips'
   - 'package-rpm: [rpmFips]'
   script:
-  - make release_docker_images
+  - mage images:build "$IMAGE_FLAVOR" true "$TARGET_ARCHS"
   parallel:
     matrix:
     - IMAGE_FLAVOR: ubi-fips
