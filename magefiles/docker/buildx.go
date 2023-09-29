@@ -84,3 +84,12 @@ func (b *Builder) SetupContext() error {
 
 	return b.Buildx("create", "--use", "--name", b.builderName, b.contextName)
 }
+
+func (b *Builder) Login(username, password, registry string) error {
+	loginCmd := fmt.Sprintf("echo %s | docker login --username %s --password-stdin %s", password, username, registry)
+	return sh.RunV("sh", "-c", loginCmd)
+}
+
+func (b *Builder) Logout(registry string) error {
+	return b.Docker("logout", registry)
+}

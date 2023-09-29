@@ -261,11 +261,11 @@ func buildx(contextPath, baseImage string, publish bool, archs, tags []string) e
 	ciUser := os.Getenv("CI_REGISTRY_USER")
 	ciPassword := os.Getenv("CI_REGISTRY_PASSWORD")
 	if publish && ciUser != "" && ciPassword != "" {
-		if err := builder.Docker("login", ciUser, ciPassword, os.Getenv("CI_REGISTRY")); err != nil {
+		if err := builder.Login(ciUser, ciPassword, os.Getenv("CI_REGISTRY")); err != nil {
 			return err
 		}
 
-		defer builder.Docker("logout", os.Getenv("CI_REGISTRY"))
+		defer builder.Logout(os.Getenv("CI_REGISTRY"))
 	}
 
 	args = append(args, contextPath)
