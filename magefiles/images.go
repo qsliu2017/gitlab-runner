@@ -46,8 +46,7 @@ const (
 	defaultArchs  = "amd64"
 	defaultImage  = build.AppName
 
-	runnerHomeDir           = "dockerfiles/runner"
-	installGitLFSScriptPath = "dockerfiles/install_git_lfs"
+	runnerHomeDir = "dockerfiles/runner"
 )
 
 var checksums = map[string]string{
@@ -171,7 +170,10 @@ func writeChecksums(archs []string) error {
 }
 
 func copyDependencies(archs []string) error {
-	installDeps := []string{"install-deps", installGitLFSScriptPath}
+	installDeps := []string{
+		filepath.Join(runnerHomeDir, "install-deps"),
+		"dockerfiles/install_git_lfs",
+	}
 
 	copyMap := map[string][]string{
 		"ubuntu":   installDeps,
@@ -185,7 +187,7 @@ func copyDependencies(archs []string) error {
 			debArch = "ppc64el"
 		}
 
-		checksumsFile := fmt.Sprintf("checksums-%s", arch)
+		checksumsFile := filepath.Join(runnerHomeDir, fmt.Sprintf("checksums-%s", arch))
 
 		copyMap["ubuntu"] = append(
 			copyMap["ubuntu"],

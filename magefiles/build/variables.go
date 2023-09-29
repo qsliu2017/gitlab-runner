@@ -1,9 +1,9 @@
 package build
 
 import (
-	"fmt"
 	"github.com/magefile/mage/sh"
 	"gitlab.com/gitlab-org/gitlab-runner/magefiles/mageutils"
+	"io"
 )
 
 const (
@@ -34,7 +34,16 @@ var isLatestOnce mageutils.Once[bool]
 
 func IsLatest() bool {
 	return isLatestOnce.Do(func() (bool, error) {
-		err := sh.Run("sh", "-c", fmt.Sprintf("shell git describe --exact-match --match %s", LatestStableTag()))
+		_, err := sh.Exec(
+			nil,
+			io.Discard,
+			io.Discard,
+			"git",
+			"describe",
+			"--exact-match",
+			"--match",
+			LatestStableTag(),
+		)
 		return err == nil, nil
 	})
 }
