@@ -3,7 +3,6 @@
   extends:
   - .docker
   - .docker_qemu
-  - .linux-dependency-checksums
   variables:
     PUBLISH_IMAGES: "true"
   before_script:

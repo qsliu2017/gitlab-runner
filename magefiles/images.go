@@ -22,10 +22,10 @@ const (
 	dockerMachineArm64Checksum = "124ceefbe1a1eec44eeb932edf9f85dab1e532d449f5e3e236faed5e8b19caba"
 
 	dumbInitVersion         = "1.2.2"
-	dumbInitAmd64Checksum   = "37f2c1f0372a45554f1b89924fbb134fc24c3756efaedf11e07f599494e0eff9"
-	dumbInitArm64Checksum   = "45b1bbf56cc03edda81e4220535a025bfe3ed6e93562222b9be4471005b3eeb3"
-	dumbInitS390xChecksum   = "8b3808c3c06d008b8f2eeb2789c7c99e0450b678d94fb50fd446b8f6a22e3a9d"
-	dumbInitPpc64leChecksum = "88b02a3bd014e4c30d8d54389597adc4f5a36d1d6b49200b5a4f6a71026c2246"
+	dumbInitAmd64Checksum   = "e874b55f3279ca41415d290c512a7ba9d08f98041b28ae7c2acb19a545f1c4df"
+	dumbInitArm64Checksum   = "b7d648f97154a99c539b63c55979cd29f005f88430fb383007fe3458340b795e"
+	dumbInitS390xChecksum   = "47e4601b152fc6dcb1891e66c30ecc62a2939fd7ffd1515a7c30f281cfec53b7"
+	dumbInitPpc64leChecksum = "3d15e80e29f0f4fa1fc686b00613a2220bc37e83a35283d4b4cca1fbd0a5609f"
 
 	gitLfsVersion         = "3.3.0"
 	gitLfsAmd64Checksum   = "60b7e9b9b4bca04405af58a2cd5dff3e68a5607c5bc39ee88a5256dd7a07f58c"
