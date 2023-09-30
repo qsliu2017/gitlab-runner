@@ -27,11 +27,11 @@ const (
 	dumbInitS390xChecksum   = "8b3808c3c06d008b8f2eeb2789c7c99e0450b678d94fb50fd446b8f6a22e3a9d"
 	dumbInitPpc64leChecksum = "88b02a3bd014e4c30d8d54389597adc4f5a36d1d6b49200b5a4f6a71026c2246"
 
-	gitLfsVersion         = "3.3.0"
-	gitLfsAmd64Checksum   = "b29d0c79eda865eccc5f7dd13385ce32215de2487f04186ed3a1ae7dce4a42dc"
-	gitLfsArm64Checksum   = "e97c477981a9b6a40026cadc1bf005541d973fc32df2de2f398643b15df6b5c6"
-	gitLfsS390xChecksum   = "266e0efd3c790003bbbf31156d471e832b9fb27dda6968e56aca2a669d01e245"
-	gitLfsPpc64leChecksum = "32a22e5496a8c8028e5c8193fd5941a0acae800d65296f09901237f1e2146a79"
+	gitLfsVersion         = "3.4.0"
+	gitLfsAmd64Checksum   = "02c4a9b3718d473fb87ec360e34ba0537bb4270598a7cfb0a03df35114098b74"
+	gitLfsArm64Checksum   = "aee90114f8f2eb5a11c1a6e9f1703a2bfcb4dc1fc4ba12a3a574c3a86952a5d0"
+	gitLfsS390xChecksum   = "494191655c638f0a75d4d026ef58dc124fc4845361a144a0d1ade3986f2bb6e0"
+	gitLfsPpc64leChecksum = "1ed0277cf0ae309a4800971581ff169bbff5c865718250b11090f6a9386f7533"
 
 	ubuntuVersion    = "20.04"
 	alpine315Version = "3.15.8"
