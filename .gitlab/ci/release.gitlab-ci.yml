@@ -18,7 +18,7 @@
   - 'binaries-fips'
   - 'package-rpm: [rpmFips]'
   script:
-  - mage images:build "$IMAGE_FLAVOR" true "$TARGET_ARCHS"
+  - mage images:buildPush "$IMAGE_FLAVOR" "$TARGET_ARCHS"
   parallel:
     matrix:
     - IMAGE_FLAVOR: ubi-fips

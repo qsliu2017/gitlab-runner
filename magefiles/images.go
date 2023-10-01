@@ -28,7 +28,7 @@ const (
 	dumbInitPpc64leChecksum = "88b02a3bd014e4c30d8d54389597adc4f5a36d1d6b49200b5a4f6a71026c2246"
 
 	gitLfsVersion         = "3.4.0"
-	gitLfsAmd64Checksum   = "02c4a9b3718d473fb87ec360e34ba0537bb4270598a7cfb0a03df35114098b74"
+	gitLfsAmd64Checksum   = "60b7e9b9b4bca04405af58a2cd5dff3e68a5607c5bc39ee88a5256dd7a07f58c"
 	gitLfsArm64Checksum   = "aee90114f8f2eb5a11c1a6e9f1703a2bfcb4dc1fc4ba12a3a574c3a86952a5d0"
 	gitLfsS390xChecksum   = "494191655c638f0a75d4d026ef58dc124fc4845361a144a0d1ade3986f2bb6e0"
 	gitLfsPpc64leChecksum = "1ed0277cf0ae309a4800971581ff169bbff5c865718250b11090f6a9386f7533"
@@ -90,10 +90,10 @@ var baseImagesFlavor = map[string]string{
 type Images mg.Namespace
 
 func (i Images) BuildDefault() error {
-	return i.Build(defaultFlavor, false, defaultArchs)
+	return i.Build(defaultFlavor, defaultArchs)
 }
 
-func (Images) Build(flavor string, publish bool, targetArchs string) error {
+func buildImages(flavor, targetArchs string, publish bool) error {
 	archs := strings.Split(targetArchs, " ")
 
 	//dockerMachineVersion := mageutils.EnvOrDefault("DOCKER_MACHINE_VERSION", dockerMachineVersion)
@@ -136,6 +136,14 @@ func (Images) Build(flavor string, publish bool, targetArchs string) error {
 		archs,
 		tags,
 	)
+}
+
+func (Images) Build(flavor, targetArchs string) error {
+	return buildImages(flavor, targetArchs, false)
+}
+
+func (Images) BuildPush(flavor, targetArchs string) error {
+	return buildImages(flavor, targetArchs, true)
 }
 
 func writeChecksums(archs []string) error {
