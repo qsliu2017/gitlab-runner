@@ -95,7 +95,7 @@ func (i Images) BuildDefault() error {
 }
 
 func buildImages(flavor, targetArchs string, publish bool) error {
-	archs := strings.Split(targetArchs, " ")
+	archs := strings.Split(strings.ToLower(targetArchs), " ")
 
 	//dockerMachineVersion := mageutils.EnvOrDefault("DOCKER_MACHINE_VERSION", dockerMachineVersion)
 	//dumbInitVersion := mageutils.EnvOrDefault("DUMB_INIT_VERSION", dumbInitVersion)
@@ -148,18 +148,23 @@ func (Images) BuildPush(flavor, targetArchs string) error {
 }
 
 func writeChecksums(archs []string) error {
-	checksumBinaries := map[string]struct{}{}
+	checksumBinaries := map[string][]string{}
 	for k := range checksums {
 		split := strings.Split(k, "_")
 		binaryName := strings.Join(split[:len(split)-1], "_")
-		checksumBinaries[binaryName] = struct{}{}
+		arch := strings.ToLower(split[len(split)-1])
+		checksumBinaries[binaryName] = append(checksumBinaries[binaryName], arch)
 	}
 
 	for _, arch := range archs {
 		fmt.Println("Writing checksums for arch", arch)
 
 		var sb strings.Builder
-		for binary := range checksumBinaries {
+		for binary, archs := range checksumBinaries {
+			if !lo.Contains(archs, arch) {
+				continue
+			}
+
 			checksumFile := checksumsFiles[binary]
 			checksum := checksums[fmt.Sprintf("%s_%s", binary, strings.ToUpper(arch))]
 
