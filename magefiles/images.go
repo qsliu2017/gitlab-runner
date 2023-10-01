@@ -80,11 +80,12 @@ var baseImagesFlavor = map[string]string{
 	"alpine3.17":    fmt.Sprintf("alpine:%s", mageutils.EnvOrDefault("ALPINE_317_VERSION", alpine317Version)),
 	"alpine3.18":    fmt.Sprintf("alpine:%s", mageutils.EnvOrDefault("ALPINE_318_VERSION", alpine318Version)),
 	"alpine-latest": "alpine:latest",
-	"ubi-fips": fmt.Sprintf(
-		"%s:%s",
-		mageutils.EnvOrDefault("UBI_FIPS_BASE_IMAGE", ubiFIPSBaseImage),
-		mageutils.EnvOrDefault("UBI_FIPS_VERSION", ubiFIPSVersion),
-	),
+	//"ubi-fips": fmt.Sprintf(
+	//	"%s:%s",
+	//	mageutils.EnvOrDefault("UBI_FIPS_BASE_IMAGE", ubiFIPSBaseImage),
+	//	mageutils.EnvOrDefault("UBI_FIPS_VERSION", ubiFIPSVersion),
+	//),
+	"ubi-fips": mageutils.EnvOrDefault("UBI_FIPS_BASE_IMAGE", ubiFIPSBaseImage), //temp
 }
 
 type Images mg.Namespace
