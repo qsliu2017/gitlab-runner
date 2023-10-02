@@ -149,19 +149,21 @@ func (Images) BuildPush(flavor, targetArchs string) error {
 
 func writeChecksums(archs []string) error {
 	checksumBinaries := map[string][]string{}
-	for k := range checksums {
-		split := strings.Split(k, "_")
+	for binaryArch, checksum := range checksums {
+		if checksum == "" {
+			continue
+		}
+
+		split := strings.Split(binaryArch, "_")
 		binaryName := strings.Join(split[:len(split)-1], "_")
 		arch := strings.ToLower(split[len(split)-1])
 		checksumBinaries[binaryName] = append(checksumBinaries[binaryName], arch)
 	}
 
 	for _, arch := range archs {
-		fmt.Println("Writing checksums for arch", arch)
-
 		var sb strings.Builder
-		for binary, archs := range checksumBinaries {
-			if !lo.Contains(archs, arch) {
+		for binary, checksumArchs := range checksumBinaries {
+			if !lo.Contains(checksumArchs, arch) {
 				continue
 			}
 
@@ -171,9 +173,12 @@ func writeChecksums(archs []string) error {
 			sb.WriteString(fmt.Sprintf("%s  %s\n", checksum, checksumFile))
 		}
 
+		checksumsFile := sb.String()
+		fmt.Printf("Writing checksums for %s: \n%s", arch, checksumsFile)
+
 		err := os.WriteFile(
 			filepath.Join(runnerHomeDir, fmt.Sprintf("checksums-%s", arch)),
-			[]byte(sb.String()),
+			[]byte(checksumsFile),
 			0600,
 		)
 		if err != nil {

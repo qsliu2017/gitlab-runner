@@ -1,10 +1,13 @@
 package docker
 
 import (
+	"errors"
 	"fmt"
 	"github.com/magefile/mage/sh"
+	"github.com/samber/lo"
 	"gitlab.com/gitlab-org/gitlab-runner/magefiles/mageutils"
 	"os"
+	"strings"
 )
 
 const (
@@ -39,14 +42,19 @@ func (b *Builder) Buildx(args ...string) error {
 }
 
 func (b *Builder) CleanupContext() error {
-	// In the old script this output was supressed but let's see if there's reason to do so
+	// In the old script this output was suppressed but let's see if there's reason to do so
 	// might contain valuable info
-
+	var errs []error
 	if err := b.Buildx("rm", b.builderName); err != nil {
-		return err
+		errs = append(errs, err)
+	}
+	if err := b.Docker("context", "rm", "-f", b.contextName); err != nil {
+		errs = append(errs, err)
 	}
 
-	return b.Docker("context", "rm", "-f", b.contextName)
+	return errors.New(strings.Join(lo.Map(errs, func(err error, _ int) string {
+		return err.Error()
+	}), " "))
 }
 
 func (b *Builder) SetupContext() error {
