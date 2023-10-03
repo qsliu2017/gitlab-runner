@@ -13,12 +13,14 @@ type mageConfig struct {
 	Concurrency int
 	// DryRun if supplied and if the target allows will not perform any destructive or creative actions but just log instead
 	DryRun bool
+	// Verbose will print verbose information about targets such as env variables used by targets. True by default
+	Verbose bool `default:"true"`
 }
 
 var config mageConfig
 
 func init() {
-	envconfig.MustProcess("MAGE", &config)
+	envconfig.MustProcess("RUNNER_MAGE", &config)
 
 	if config.Concurrency < 1 {
 		config.Concurrency = 1

@@ -35,6 +35,7 @@ require (
 	github.com/hashicorp/vault/api v1.0.4
 	github.com/imdario/mergo v0.3.12
 	github.com/invopop/jsonschema v0.7.0
+	github.com/jedib0t/go-pretty/v6 v6.4.7
 	github.com/jpillora/backoff v1.0.0
 	github.com/kardianos/service v1.2.2
 	github.com/kelseyhightower/envconfig v1.4.0
@@ -148,6 +149,7 @@ require (
 	github.com/masterzen/winrm v0.0.0-20220917170901-b07f6cb0598d // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.17 // indirect
+	github.com/mattn/go-runewidth v0.0.13 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.2-0.20181231171920-c182affec369 // indirect
 	github.com/minio/md5-simd v1.1.2 // indirect
 	github.com/minio/sha256-simd v1.0.1 // indirect
@@ -169,6 +171,7 @@ require (
 	github.com/pkg/browser v0.0.0-20210911075715-681adbf594b8 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
+	github.com/rivo/uniseg v0.2.0 // indirect
 	github.com/rs/xid v1.5.0 // indirect
 	github.com/russross/blackfriday/v2 v2.0.1 // indirect
 	github.com/ryanuber/go-glob v1.0.0 // indirect

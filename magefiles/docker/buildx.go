@@ -6,8 +6,8 @@ import (
 	"github.com/magefile/mage/sh"
 	"github.com/samber/lo"
 	"gitlab.com/gitlab-org/gitlab-runner/magefiles/build"
+	"gitlab.com/gitlab-org/gitlab-runner/magefiles/ci"
 	"gitlab.com/gitlab-org/gitlab-runner/magefiles/mageutils"
-	"os"
 	"strings"
 )
 
@@ -71,11 +71,11 @@ func (b *Builder) SetupContext() error {
 	// > could not create a builder instance with TLS data loaded from environment.
 
 	docker := fmt.Sprintf("host=%s", mageutils.EnvOrDefault("DOCKER_HOST", "unix:///var/run/docker.sock"))
-	dockerCertPath := os.Getenv("DOCKER_CERT_PATH")
+	dockerCertPath := mageutils.Env("DOCKER_CERT_PATH")
 	if dockerCertPath != "" {
 		docker = fmt.Sprintf(
 			"host=%s,ca=%s/ca.pem,cert=%s/cert.pem,key=%s/key.pem",
-			os.Getenv("DOCKER_HOST"),
+			mageutils.Env("DOCKER_HOST"),
 			dockerCertPath,
 			dockerCertPath,
 			dockerCertPath,
@@ -95,14 +95,10 @@ func (b *Builder) SetupContext() error {
 }
 
 func (b *Builder) LoginCI() (func(), error) {
-	ciUser := os.Getenv("CI_REGISTRY_USER")
-	ciPassword := os.Getenv("CI_REGISTRY_PASSWORD")
-	ciRegistry := os.Getenv("CI_REGISTRY")
-
-	loggedIn, err := b.Login(ciUser, ciPassword, ciRegistry)
+	loggedIn, err := b.Login(ci.RegistryUser(), ci.RegistryPassword(), ci.Registry())
 	logout := func() {
 		if loggedIn {
-			b.Logout(ciRegistry)
+			_ = b.Logout(ci.Registry())
 		}
 	}
 
@@ -128,10 +124,12 @@ func (b *Builder) Logout(registry string) error {
 }
 
 func (b *Builder) Import(archive, tag, platform string) error {
+	fmt.Println("Importing tag", archive, "as", tag, "platform", platform)
 	return b.Docker("import", archive, tag, "--platform", platform)
 }
 
 func (b *Builder) Tag(tagFrom, tagTo string) error {
+	fmt.Println("Tagging image", tagFrom, "as", tagTo)
 	return b.Docker("tag", tagFrom, tagTo)
 }
 

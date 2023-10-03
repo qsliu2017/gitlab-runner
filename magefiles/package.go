@@ -4,6 +4,7 @@ package main
 
 import (
 	"fmt"
+	"gitlab.com/gitlab-org/gitlab-runner/magefiles/build"
 	"os"
 	"strings"
 	"text/template"
