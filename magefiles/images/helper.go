@@ -19,6 +19,15 @@ var platformMap = map[string]string{
 	"riscv64": "linux/riscv64",
 }
 
+var flavorsSupportingPWSH = []string{
+	"alpine",
+	"alpine3.15",
+	"alpine3.16",
+	"alpine3.17",
+	"alpine3.18",
+	"ubuntu",
+}
+
 type helperBuild struct {
 	archive  string
 	platform string
@@ -121,7 +130,7 @@ func AssembleReleaseHelper(flavor, prefix string) build.TargetBlueprint[string, 
 		})
 	}
 
-	if flavor != "alpine-edge" && flavor != "alpine-latest" && flavor != "ubi-fips" {
+	if lo.Contains(flavorsSupportingPWSH, flavor) {
 		builds = append(builds, helperBuild{
 			archive:  fmt.Sprintf("out/helper-images/prebuilt-%s-x86_64-pwsh.tar.xz", flavor),
 			platform: platformMap["x86_64"],
