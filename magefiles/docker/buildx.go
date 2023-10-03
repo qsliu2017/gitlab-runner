@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/magefile/mage/sh"
 	"github.com/samber/lo"
+	"gitlab.com/gitlab-org/gitlab-runner/magefiles/build"
 	"gitlab.com/gitlab-org/gitlab-runner/magefiles/mageutils"
 	"os"
 	"strings"
@@ -93,11 +94,55 @@ func (b *Builder) SetupContext() error {
 	return b.Buildx("create", "--use", "--name", b.builderName, b.contextName)
 }
 
-func (b *Builder) Login(username, password, registry string) error {
+func (b *Builder) LoginCI() (func(), error) {
+	ciUser := os.Getenv("CI_REGISTRY_USER")
+	ciPassword := os.Getenv("CI_REGISTRY_PASSWORD")
+	ciRegistry := os.Getenv("CI_REGISTRY")
+
+	loggedIn, err := b.Login(ciUser, ciPassword, ciRegistry)
+	logout := func() {
+		if loggedIn {
+			b.Logout(ciRegistry)
+		}
+	}
+
+	return logout, err
+}
+
+func (b *Builder) Login(username, password, registry string) (bool, error) {
+	if username == "" || password == "" {
+		return false, nil
+	}
+
 	loginCmd := fmt.Sprintf("echo %s | docker login --username %s --password-stdin %s", password, username, registry)
-	return sh.RunV("sh", "-c", loginCmd)
+	err := sh.RunV("sh", "-c", loginCmd)
+	if err != nil {
+		return false, err
+	}
+
+	return true, nil
 }
 
 func (b *Builder) Logout(registry string) error {
 	return b.Docker("logout", registry)
+}
+
+func (b *Builder) Import(archive, tag, platform string) error {
+	return b.Docker("import", archive, tag, "--platform", platform)
+}
+
+func (b *Builder) Tag(tagFrom, tagTo string) error {
+	return b.Docker("tag", tagFrom, tagTo)
+}
+
+func (b *Builder) TagLatest(tagFrom, tagTo string) error {
+	if !build.IsLatest() {
+		return nil
+	}
+
+	return b.Tag(tagFrom, tagTo)
+}
+
+func (b *Builder) Push(tag string) error {
+	return b.Docker("push", tag)
 }

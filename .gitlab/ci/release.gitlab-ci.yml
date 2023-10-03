@@ -18,7 +18,7 @@
   - 'binaries-fips'
   - 'package-rpm: [rpmFips]'
   script:
-  - mage images:buildPush "$IMAGE_FLAVOR" "$TARGET_ARCHS"
+  - mage images:releaseRunner "$IMAGE_FLAVOR" "$TARGET_ARCHS"
   parallel:
     matrix:
     - IMAGE_FLAVOR: ubi-fips
@@ -56,7 +56,7 @@
   - 'helper images'
   - 'helper images fips'
   script:
-  - make release_helper_docker_images
+  - mage images:releaseHelper "$IMAGE_FLAVOR" "$IMAGE_TAG"
   parallel:
     matrix:
     - IMAGE_FLAVOR: "alpine"

@@ -47,3 +47,20 @@ func IsLatest() bool {
 		return err == nil, nil
 	})
 }
+
+var revisionOnce mageutils.Once[string]
+
+func Revision() string {
+	return revisionOnce.Do(func() (string, error) {
+		out, err := sh.Output("git", "rev-parse", "--short=8", "HEAD")
+		if err != nil {
+			return "", err
+		}
+
+		if out == "" {
+			out = "unknown"
+		}
+
+		return out, nil
+	})
+}
