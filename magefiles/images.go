@@ -78,7 +78,7 @@ func (Images) ReleaseHelper(flavor, tag string) error {
 			arch,
 			"-latest",
 			fmt.Sprintf("-%s", build.RefTag()),
-			true,
+			false, // TODO:
 		); err != nil {
 			return err
 		}
@@ -102,7 +102,7 @@ func (Images) ReleaseHelper(flavor, tag string) error {
 			"x86_64",
 			"-latest-pwsh",
 			fmt.Sprintf("-%s-pwsh", build.RefTag()),
-			true,
+			false,
 		); err != nil {
 			return err
 		}
