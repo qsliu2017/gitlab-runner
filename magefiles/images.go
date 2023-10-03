@@ -8,9 +8,9 @@ import (
 	"github.com/magefile/mage/mg"
 	"github.com/samber/lo"
 	"gitlab.com/gitlab-org/gitlab-runner/magefiles/build"
+	"gitlab.com/gitlab-org/gitlab-runner/magefiles/ci"
 	"gitlab.com/gitlab-org/gitlab-runner/magefiles/docker"
 	"gitlab.com/gitlab-org/gitlab-runner/magefiles/images"
-	"os"
 	"strings"
 	"text/template"
 )
@@ -38,7 +38,113 @@ var platformMap = map[string]string{
 	"riscv64": "linux/riscv64",
 }
 
-func (Images) ReleaseHelper(flavor, tag string) error {
+func (Images) ReleaseHelper(flavor, prefix string) error {
+	return releaseHelper(flavor, prefix)
+}
+
+type helperBuild struct {
+	archive  string
+	platform string
+	tags     helperTagsList
+}
+
+type helperTagsList struct {
+	suffix       string
+	baseTemplate string
+	prefix       string
+	arch         string
+}
+
+func newHelperTagsList(prefix, suffix, arch string) helperTagsList {
+	return helperTagsList{
+		prefix:       prefix,
+		suffix:       suffix,
+		arch:         arch,
+		baseTemplate: "{{ .Registry }}/gitlab-runner-helper:{{ .Prefix }}{{ .Arch}}-"}
+}
+
+func (l helperTagsList) render(raw string) string {
+	context := struct {
+		Registry string
+		Prefix   string
+		Arch     string
+		Revision string
+		RefTag   string
+	}{
+		Registry: ci.RegistryImage,
+		Prefix:   l.prefix,
+		Arch:     l.arch,
+		Revision: build.Revision(),
+		RefTag:   build.RefTag(),
+	}
+
+	var out bytes.Buffer
+	tmpl := lo.Must(template.New("tmpl").Parse(l.baseTemplate + raw + l.suffix))
+
+	lo.Must0(tmpl.Execute(&out, &context))
+
+	return out.String()
+}
+
+func (l helperTagsList) revisionTag() string {
+	return l.render("{{ .Revision }}")
+}
+
+func (l helperTagsList) versionTag() string {
+	return l.render("{{ .RefTag }}")
+}
+
+func (l helperTagsList) latestTag() string {
+	return l.render("latest")
+}
+
+func (l helperTagsList) all() []string {
+	return []string{
+		l.revisionTag(),
+		l.versionTag(),
+		l.latestTag(),
+	}
+}
+
+func releaseHelper(flavor, prefix string) error {
+	var archs []string
+	switch flavor {
+	case "ubi-fips":
+		archs = []string{"x86_64"}
+	case "alpine-edge":
+		archs = []string{"x86_64", "arm", "arm64", "s390x", "ppc64le", "riscv64"}
+	default:
+		archs = []string{"x86_64", "arm", "arm64", "s390x", "ppc64le"}
+	}
+
+	var builds []helperBuild
+	for _, arch := range archs {
+		builds = append(builds, helperBuild{
+			archive:  fmt.Sprintf("out/helper-images/prebuilt-%s-%s.tar.xz", flavor, arch),
+			platform: platformMap[arch],
+			tags:     newHelperTagsList(prefix, "", arch),
+		})
+	}
+
+	if flavor != "alpine-edge" && flavor != "alpine-latest" {
+		builds = append(builds, helperBuild{
+			archive:  fmt.Sprintf("out/helper-images/prebuilt-%s-x86_64-pwsh.tar.xz", flavor),
+			platform: platformMap["x86_64"],
+			tags:     newHelperTagsList(prefix, "-pwsh", "arch"),
+		})
+	}
+
+	fmt.Println("========")
+	fmt.Println("This target requires:")
+	fmt.Println(strings.Join(lo.Map(builds, func(build helperBuild, _ int) string {
+		return build.archive
+	}), "\n"))
+	fmt.Println("This target produces:")
+	fmt.Println(strings.Join(lo.Map(builds, func(build helperBuild, _ int) string {
+		return strings.Join(build.tags.all(), "\n")
+	}), "\n"))
+	fmt.Println("========")
+
 	builder := docker.NewBuilder()
 
 	logout, err := builder.LoginCI()
@@ -47,97 +153,25 @@ func (Images) ReleaseHelper(flavor, tag string) error {
 	}
 	defer logout()
 
-	baseTemplate := "{{ .Registry }}/gitlab-runner-helper:{{ .Tag }}{{ .Arch}}-"
-	baseVariantsTemplates := []string{
-		fmt.Sprintf("%s{{ .Revision }}", baseTemplate),
-		fmt.Sprintf("%s{{ .RefTag }}", baseTemplate),
-		fmt.Sprintf("%slatest", baseTemplate),
-		fmt.Sprintf("%slatest", baseTemplate),
-	}
-
-	archs := []string{"x86_64", "arm", "arm64", "s390x", "ppc64le"}
-
-	switch flavor {
-	case "ubi-fips":
-		archs = []string{"x86_64"}
-	case "alpine-edge":
-		archs = append(archs, "riscv64")
-	}
-
-	for _, arch := range archs {
-		tags, err := generateVariants(arch, tag, build.RefTag(), baseVariantsTemplates)
-		if err != nil {
-			return err
-		}
-
-		archive := fmt.Sprintf("out/helper-images/prebuilt-%s-%s.tar.xz", flavor, arch)
+	for _, build := range builds {
 		if err := releaseImage(
 			builder,
-			tags,
-			archive,
-			arch,
-			"-latest",
-			fmt.Sprintf("-%s", build.RefTag()),
+			build,
 			false, // TODO:
 		); err != nil {
 			return err
 		}
 	}
 
-	if flavor != "alpine-edge" && flavor != "alpine-latest" {
-		tags, err := generateVariants("x86_64", tag, build.RefTag(), []string{
-			"{{ .Revision}}-pwsh",
-			"{{ .RefTag }}-pwsh",
-			"latest-pwsh",
-		})
-		if err != nil {
-			return err
-		}
-
-		archive := fmt.Sprintf("out/helper-images/prebuilt-%s-x86_64-pwsh.tar.xz", flavor)
-		if err := releaseImage(
-			builder,
-			tags,
-			archive,
-			"x86_64",
-			"-latest-pwsh",
-			fmt.Sprintf("-%s-pwsh", build.RefTag()),
-			false,
-		); err != nil {
-			return err
-		}
-	}
-
 	return nil
 }
 
-func releaseImage(builder *docker.Builder, tags []string, archive, arch, latestSuffix, versionSuffix string, publish bool) error {
-	baseTag := tags[0]
-	latestTag, _ := lo.Find(tags, func(tag string) bool {
-		return strings.HasSuffix(tag, latestSuffix)
-	})
+func releaseImage(builder *docker.Builder, build helperBuild, publish bool) error {
+	baseTag := build.tags.revisionTag()
+	latestTag := build.tags.latestTag()
+	versionTag := build.tags.versionTag()
 
-	versionTag, _ := lo.Find(tags, func(tag string) bool {
-		return strings.HasSuffix(tag, versionSuffix)
-	})
-
-	if err := releaseDockerImages(
-		builder,
-		archive,
-		baseTag,
-		latestTag,
-		versionTag,
-		arch,
-		publish,
-	); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func releaseDockerImages(builder *docker.Builder, archive, baseTag, latestTag, versionTag, arch string, publish bool) error {
-	if err := builder.Import(archive, baseTag, platformMap[arch]); err != nil {
+	if err := builder.Import(build.archive, baseTag, build.platform); err != nil {
 		return err
 	}
 
@@ -160,40 +194,4 @@ func releaseDockerImages(builder *docker.Builder, archive, baseTag, latestTag, v
 	}
 
 	return nil
-}
-
-func generateVariants(arch, tag, refTag string, templates []string) ([]string, error) {
-	registry := os.Getenv("CI_REGISTRY_IMAGE")
-
-	context := struct {
-		Registry string
-		Tag      string
-		Arch     string
-		Revision string
-		RefTag   string
-	}{
-		Registry: registry,
-		Tag:      tag,
-		Arch:     arch,
-		Revision: build.Revision(),
-		RefTag:   refTag,
-	}
-
-	var variants []string
-
-	for _, t := range templates {
-		var out bytes.Buffer
-		tmpl, err := template.New(arch).Parse(t)
-		if err != nil {
-			return nil, err
-		}
-
-		if err := tmpl.Execute(&out, &context); err != nil {
-			return nil, err
-		}
-
-		variants = append(variants, out.String())
-	}
-
-	return variants, nil
 }
