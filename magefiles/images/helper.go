@@ -20,7 +20,7 @@ var platformMap = map[string]string{
 }
 
 type helperBuild struct {
-	archive  HelperArchive
+	archive  string
 	platform string
 	tags     helperTagsList
 }
@@ -63,48 +63,36 @@ func (l helperTagsList) render(raw string) string {
 	return out.String()
 }
 
-func (l helperTagsList) revisionTag() HelperDockerTag {
-	return HelperDockerTag(l.render("{{ .Revision }}"))
+func (l helperTagsList) revisionTag() string {
+	return l.render("{{ .Revision }}")
 }
 
-func (l helperTagsList) versionTag() HelperDockerTag {
-	return HelperDockerTag(l.render("{{ .RefTag }}"))
+func (l helperTagsList) versionTag() string {
+	return l.render("{{ .RefTag }}")
 }
 
-func (l helperTagsList) latestTag() HelperDockerTag {
-	return HelperDockerTag(l.render("latest"))
+func (l helperTagsList) latestTag() string {
+	return l.render("latest")
 }
 
-func (l helperTagsList) all() []HelperDockerTag {
-	return []HelperDockerTag{
+func (l helperTagsList) all() []string {
+	return []string{
 		l.revisionTag(),
 		l.versionTag(),
 		l.latestTag(),
 	}
 }
 
-type HelperArchive string
-
-func (s HelperArchive) String() string {
-	return string(s)
-}
-
-type HelperDockerTag string
-
-func (s HelperDockerTag) String() string {
-	return string(s)
-}
-
 type blueprintImpl []helperBuild
 
-func (b blueprintImpl) Prerequisites() []HelperArchive {
-	return lo.Map(b, func(item helperBuild, _ int) HelperArchive {
+func (b blueprintImpl) Prerequisites() []string {
+	return lo.Map(b, func(item helperBuild, _ int) string {
 		return item.archive
 	})
 }
 
-func (b blueprintImpl) Artifacts() []HelperDockerTag {
-	return lo.Flatten(lo.Map(b, func(item helperBuild, _ int) []HelperDockerTag {
+func (b blueprintImpl) Artifacts() []string {
+	return lo.Flatten(lo.Map(b, func(item helperBuild, _ int) []string {
 		return item.tags.all()
 	}))
 }
@@ -113,7 +101,7 @@ func (b blueprintImpl) Data() []helperBuild {
 	return b
 }
 
-func AssembleReleaseHelper(flavor, prefix string) build.TargetBlueprint[HelperArchive, HelperDockerTag, []helperBuild] {
+func AssembleReleaseHelper(flavor, prefix string) build.TargetBlueprint[string, string, []helperBuild] {
 	var archs []string
 	switch flavor {
 	case "ubi-fips":
@@ -127,7 +115,7 @@ func AssembleReleaseHelper(flavor, prefix string) build.TargetBlueprint[HelperAr
 	var builds blueprintImpl
 	for _, arch := range archs {
 		builds = append(builds, helperBuild{
-			archive:  HelperArchive(fmt.Sprintf("out/helper-images/prebuilt-%s-%s.tar.xz", flavor, arch)),
+			archive:  fmt.Sprintf("out/helper-images/prebuilt-%s-%s.tar.xz", flavor, arch),
 			platform: platformMap[arch],
 			tags:     newHelperTagsList(prefix, "", arch),
 		})
@@ -135,7 +123,7 @@ func AssembleReleaseHelper(flavor, prefix string) build.TargetBlueprint[HelperAr
 
 	if flavor != "alpine-edge" && flavor != "alpine-latest" && flavor != "ubi-fips" {
 		builds = append(builds, helperBuild{
-			archive:  HelperArchive(fmt.Sprintf("out/helper-images/prebuilt-%s-x86_64-pwsh.tar.xz", flavor)),
+			archive:  fmt.Sprintf("out/helper-images/prebuilt-%s-x86_64-pwsh.tar.xz", flavor),
 			platform: platformMap["x86_64"],
 			tags:     newHelperTagsList(prefix, "-pwsh", "arch"),
 		})
@@ -144,7 +132,7 @@ func AssembleReleaseHelper(flavor, prefix string) build.TargetBlueprint[HelperAr
 	return builds
 }
 
-func ReleaseHelper(blueprint build.TargetBlueprint[HelperArchive, HelperDockerTag, []helperBuild], publish bool) error {
+func ReleaseHelper(blueprint build.TargetBlueprint[string, string, []helperBuild], publish bool) error {
 	builder := docker.NewBuilder()
 
 	logout, err := builder.LoginCI()
