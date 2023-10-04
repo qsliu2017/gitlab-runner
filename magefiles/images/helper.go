@@ -92,25 +92,27 @@ func (l helperTagsList) all() []string {
 	}
 }
 
-type blueprintImpl []helperBuild
+type helperBlueprintImpl []helperBuild
 
-func (b blueprintImpl) Prerequisites() []string {
-	return lo.Map(b, func(item helperBuild, _ int) string {
-		return item.archive
+func (b helperBlueprintImpl) Dependencies() []build.StringDependency {
+	return lo.Map(b, func(item helperBuild, _ int) build.StringDependency {
+		return build.StringDependency(item.archive)
 	})
 }
 
-func (b blueprintImpl) Artifacts() []string {
-	return lo.Flatten(lo.Map(b, func(item helperBuild, _ int) []string {
-		return item.tags.all()
+func (b helperBlueprintImpl) Artifacts() []build.StringArtifact {
+	return lo.Flatten(lo.Map(b, func(item helperBuild, _ int) []build.StringArtifact {
+		return lo.Map(item.tags.all(), func(item string, _ int) build.StringArtifact {
+			return build.StringArtifact(item)
+		})
 	}))
 }
 
-func (b blueprintImpl) Data() []helperBuild {
+func (b helperBlueprintImpl) Data() []helperBuild {
 	return b
 }
 
-func AssembleReleaseHelper(flavor, prefix string) build.TargetBlueprint[string, string, []helperBuild] {
+func AssembleReleaseHelper(flavor, prefix string) build.TargetBlueprint[build.StringDependency, build.StringArtifact, []helperBuild] {
 	var archs []string
 	switch flavor {
 	case "ubi-fips":
@@ -121,7 +123,7 @@ func AssembleReleaseHelper(flavor, prefix string) build.TargetBlueprint[string, 
 		archs = []string{"x86_64", "arm", "arm64", "s390x", "ppc64le"}
 	}
 
-	var builds blueprintImpl
+	var builds helperBlueprintImpl
 	for _, arch := range archs {
 		builds = append(builds, helperBuild{
 			archive:  fmt.Sprintf("out/helper-images/prebuilt-%s-%s.tar.xz", flavor, arch),
@@ -141,7 +143,7 @@ func AssembleReleaseHelper(flavor, prefix string) build.TargetBlueprint[string, 
 	return builds
 }
 
-func ReleaseHelper(blueprint build.TargetBlueprint[string, string, []helperBuild], publish bool) error {
+func ReleaseHelper(blueprint build.TargetBlueprint[build.StringDependency, build.StringArtifact, []helperBuild], publish bool) error {
 	builder := docker.NewBuilder()
 
 	logout, err := builder.LoginCI()
@@ -164,12 +166,11 @@ func ReleaseHelper(blueprint build.TargetBlueprint[string, string, []helperBuild
 }
 
 func releaseImage(builder *docker.Builder, build helperBuild, publish bool) error {
-	archive := string(build.archive)
-	baseTag := string(build.tags.revisionTag())
-	latestTag := string(build.tags.latestTag())
-	versionTag := string(build.tags.versionTag())
+	baseTag := build.tags.revisionTag()
+	latestTag := build.tags.latestTag()
+	versionTag := build.tags.versionTag()
 
-	if err := builder.Import(archive, baseTag, build.platform); err != nil {
+	if err := builder.Import(build.archive, baseTag, build.platform); err != nil {
 		return err
 	}
 

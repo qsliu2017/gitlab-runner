@@ -85,37 +85,78 @@ var baseImagesFlavor = map[string]string{
 	"ubi-fips": mageutils.EnvOrDefault("UBI_FIPS_BASE_IMAGE", ubiFIPSBaseImage), //temp
 }
 
-func BuildRunner(flavor, targetArchs string, publish bool) error {
+var flavorAliases = map[string][]string{
+	"alpine3.18": {"alpine", "alpine3.18"},
+}
+
+type buildRunnerParams struct {
+	flavor string
+	archs  []string
+}
+
+type runnerDependency lo.Tuple2[string, string]
+
+func (d runnerDependency) String() string {
+	return d.A
+}
+
+type runnerBlueprintImpl struct {
+	dependencies []runnerDependency
+	artifacts    []string
+	params       buildRunnerParams
+}
+
+func (r runnerBlueprintImpl) Dependencies() []runnerDependency {
+	return r.dependencies
+}
+
+func (r runnerBlueprintImpl) Artifacts() []build.StringArtifact {
+	return lo.Map(r.artifacts, func(item string, _ int) build.StringArtifact {
+		return build.StringArtifact(item)
+	})
+}
+
+func (r runnerBlueprintImpl) Data() buildRunnerParams {
+	return r.params
+}
+
+func AssembleBuildRunner(flavor, targetArchs string) build.TargetBlueprint[runnerDependency, build.StringArtifact, buildRunnerParams] {
 	archs := strings.Split(strings.ToLower(targetArchs), " ")
-
-	//dockerMachineVersion := mageutils.EnvOrDefault("DOCKER_MACHINE_VERSION", dockerMachineVersion)
-	//dumbInitVersion := mageutils.EnvOrDefault("DUMB_INIT_VERSION", dumbInitVersion)
-	//gitLfsVersion := mageutils.EnvOrDefault("GIT_LFS_VERSION", gitLfsVersion)
 	repository := mageutils.EnvOrDefault("CI_REGISTRY_IMAGE", defaultImage)
-
-	flavorAliases := map[string][]string{
-		"alpine3.18": {"alpine", "alpine3.18"},
-	}
-
-	baseImage := baseImagesFlavor[flavor]
 
 	flavors := flavorAliases[flavor]
 	if len(flavors) == 0 {
 		flavors = []string{flavor}
 	}
 
+	return runnerBlueprintImpl{
+		dependencies: assembleDependencies(archs),
+		artifacts:    tags(flavors, repository, build.RefTag()),
+		params: buildRunnerParams{
+			flavor: flavor,
+			archs:  archs,
+		},
+	}
+}
+
+func BuildRunner(blueprint build.TargetBlueprint[runnerDependency, build.StringArtifact, buildRunnerParams], publish bool) error {
+	//dockerMachineVersion := mageutils.EnvOrDefault("DOCKER_MACHINE_VERSION", dockerMachineVersion)
+	//dumbInitVersion := mageutils.EnvOrDefault("DUMB_INIT_VERSION", dumbInitVersion)
+	//gitLfsVersion := mageutils.EnvOrDefault("GIT_LFS_VERSION", gitLfsVersion)
+
+	flavor := blueprint.Data().flavor
+	archs := blueprint.Data().archs
+
 	platform := flavor
 	if strings.HasPrefix(platform, "alpine") {
 		platform = "alpine"
 	}
 
-	tags := tags(flavors, repository, build.RefTag())
-
 	if err := writeChecksums(archs); err != nil {
 		return fmt.Errorf("writing checksums: %w", err)
 	}
 
-	if err := copyDependencies(archs); err != nil {
+	if err := copyDependencies(blueprint.Dependencies()); err != nil {
 		return fmt.Errorf("copying dependencies: %w", err)
 	}
 
@@ -123,10 +164,12 @@ func BuildRunner(flavor, targetArchs string, publish bool) error {
 
 	return buildx(
 		contextPath,
-		baseImage,
+		baseImagesFlavor[flavor],
 		publish,
 		archs,
-		tags,
+		lo.Map(blueprint.Artifacts(), func(item build.StringArtifact, _ int) string {
+			return string(item)
+		}),
 	)
 }
 
@@ -172,7 +215,19 @@ func writeChecksums(archs []string) error {
 	return nil
 }
 
-func copyDependencies(archs []string) error {
+func copyDependencies(deps []runnerDependency) error {
+	for _, dep := range deps {
+		from := dep.A
+		to := dep.B
+		if err := sh.RunV("cp", from, to); err != nil {
+			return fmt.Errorf("copying %s to %s: %w", from, to, err)
+		}
+	}
+
+	return nil
+}
+
+func assembleDependencies(archs []string) []runnerDependency {
 	installDeps := []string{
 		filepath.Join(runnerHomeDir, "install-deps"),
 		"dockerfiles/install_git_lfs",
@@ -214,16 +269,18 @@ func copyDependencies(archs []string) error {
 		}
 	}
 
+	var dependencies []runnerDependency
+
 	for to, fromFiles := range copyMap {
 		for _, from := range fromFiles {
-			toPath := filepath.Join(runnerHomeDir, to, path.Base(from))
-			if err := sh.RunV("cp", from, toPath); err != nil {
-				return fmt.Errorf("copying %s to %s: %w", from, toPath, err)
-			}
+			dependencies = append(dependencies, runnerDependency{
+				A: from,
+				B: filepath.Join(runnerHomeDir, to, path.Base(from)),
+			})
 		}
 	}
 
-	return nil
+	return dependencies
 }
 
 func buildx(contextPath, baseImage string, publish bool, archs, tags []string) error {
