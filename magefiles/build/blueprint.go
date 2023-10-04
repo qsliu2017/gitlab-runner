@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/samber/lo"
+	"gitlab.com/gitlab-org/gitlab-runner/magefiles/env"
 	"sort"
 )
 
@@ -31,9 +32,35 @@ type TargetBlueprint[T BlueprintDependency, E BlueprintArtifact, F any] interfac
 	Dependencies() []T
 	Artifacts() []E
 	Data() F
+	Env() BlueprintEnv
 }
 
-func PrintBlueprint[T BlueprintDependency, E BlueprintArtifact, F any](blueprint TargetBlueprint[T, E, F]) {
+type BlueprintEnv map[string]env.Variable
+
+func (e BlueprintEnv) Value(env string) string {
+	return e[env].Value
+}
+
+type BlueprintBase struct {
+	env BlueprintEnv
+}
+
+func NewBlueprintBase(envs ...env.Variable) BlueprintBase {
+	env := BlueprintEnv{}
+	for _, v := range envs {
+		env[v.Key] = v
+	}
+
+	return BlueprintBase{
+		env: env,
+	}
+}
+
+func (b BlueprintBase) Env() BlueprintEnv {
+	return b.env
+}
+
+func PrintBlueprint[T BlueprintDependency, E BlueprintArtifact, F any](blueprint TargetBlueprint[T, E, F]) TargetBlueprint[T, E, F] {
 	t := table.NewWriter()
 	t.AppendHeader(table.Row{"Target info"})
 	t.AppendRow(table.Row{"Dependencies"})
@@ -55,6 +82,17 @@ func PrintBlueprint[T BlueprintDependency, E BlueprintArtifact, F any](blueprint
 	for _, a := range artifacts {
 		t.AppendRow(table.Row{a})
 	}
+	t.AppendSeparator()
+
+	t.AppendRow(table.Row{"Environment variables"})
+	t.AppendSeparator()
+	envs := lo.Keys(blueprint.Env())
+	sort.Strings(envs)
+	for _, e := range envs {
+		t.AppendRow(table.Row{e})
+	}
 
 	fmt.Println(t.Render())
+
+	return blueprint
 }

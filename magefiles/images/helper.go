@@ -57,7 +57,7 @@ func (l helperTagsList) render(raw string) string {
 		Revision string
 		RefTag   string
 	}{
-		Registry: ci.RegistryImage(),
+		Registry: ci.RegistryImage.Value,
 		Prefix:   l.prefix,
 		Arch:     l.arch,
 		Revision: build.Revision(),
@@ -92,16 +92,20 @@ func (l helperTagsList) all() []string {
 	}
 }
 
-type helperBlueprintImpl []helperBuild
+type helperBlueprintImpl struct {
+	build.BlueprintBase
+
+	data []helperBuild
+}
 
 func (b helperBlueprintImpl) Dependencies() []build.StringDependency {
-	return lo.Map(b, func(item helperBuild, _ int) build.StringDependency {
+	return lo.Map(b.data, func(item helperBuild, _ int) build.StringDependency {
 		return build.StringDependency(item.archive)
 	})
 }
 
 func (b helperBlueprintImpl) Artifacts() []build.StringArtifact {
-	return lo.Flatten(lo.Map(b, func(item helperBuild, _ int) []build.StringArtifact {
+	return lo.Flatten(lo.Map(b.data, func(item helperBuild, _ int) []build.StringArtifact {
 		return lo.Map(item.tags.all(), func(item string, _ int) build.StringArtifact {
 			return build.StringArtifact(item)
 		})
@@ -109,7 +113,7 @@ func (b helperBlueprintImpl) Artifacts() []build.StringArtifact {
 }
 
 func (b helperBlueprintImpl) Data() []helperBuild {
-	return b
+	return b.data
 }
 
 func AssembleReleaseHelper(flavor, prefix string) build.TargetBlueprint[build.StringDependency, build.StringArtifact, []helperBuild] {
@@ -123,9 +127,12 @@ func AssembleReleaseHelper(flavor, prefix string) build.TargetBlueprint[build.St
 		archs = []string{"x86_64", "arm", "arm64", "s390x", "ppc64le"}
 	}
 
-	var builds helperBlueprintImpl
+	builds := helperBlueprintImpl{
+		BlueprintBase: build.NewBlueprintBase(),
+		data:          []helperBuild{},
+	}
 	for _, arch := range archs {
-		builds = append(builds, helperBuild{
+		builds.data = append(builds.data, helperBuild{
 			archive:  fmt.Sprintf("out/helper-images/prebuilt-%s-%s.tar.xz", flavor, arch),
 			platform: platformMap[arch],
 			tags:     newHelperTagsList(prefix, "", arch),
@@ -133,7 +140,7 @@ func AssembleReleaseHelper(flavor, prefix string) build.TargetBlueprint[build.St
 	}
 
 	if lo.Contains(flavorsSupportingPWSH, flavor) {
-		builds = append(builds, helperBuild{
+		builds.data = append(builds.data, helperBuild{
 			archive:  fmt.Sprintf("out/helper-images/prebuilt-%s-x86_64-pwsh.tar.xz", flavor),
 			platform: platformMap["x86_64"],
 			tags:     newHelperTagsList(prefix, "-pwsh", "arch"),
@@ -146,7 +153,7 @@ func AssembleReleaseHelper(flavor, prefix string) build.TargetBlueprint[build.St
 func ReleaseHelper(blueprint build.TargetBlueprint[build.StringDependency, build.StringArtifact, []helperBuild], publish bool) error {
 	builder := docker.NewBuilder()
 
-	logout, err := builder.LoginCI()
+	logout, err := builder.Login("", "", "")
 	if err != nil {
 		return err
 	}

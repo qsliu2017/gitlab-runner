@@ -6,7 +6,6 @@ import (
 	"github.com/magefile/mage/sh"
 	"github.com/samber/lo"
 	"gitlab.com/gitlab-org/gitlab-runner/magefiles/build"
-	"gitlab.com/gitlab-org/gitlab-runner/magefiles/ci"
 	"gitlab.com/gitlab-org/gitlab-runner/magefiles/mageutils"
 	"strings"
 )
@@ -94,29 +93,20 @@ func (b *Builder) SetupContext() error {
 	return b.Buildx("create", "--use", "--name", b.builderName, b.contextName)
 }
 
-func (b *Builder) LoginCI() (func(), error) {
-	loggedIn, err := b.Login(ci.RegistryUser(), ci.RegistryPassword(), ci.Registry())
-	logout := func() {
-		if loggedIn {
-			_ = b.Logout(ci.Registry())
-		}
-	}
-
-	return logout, err
-}
-
-func (b *Builder) Login(username, password, registry string) (bool, error) {
+func (b *Builder) Login(username, password, registry string) (func(), error) {
 	if username == "" || password == "" {
-		return false, nil
+		return nil, nil
 	}
 
 	loginCmd := fmt.Sprintf("echo %s | docker login --username %s --password-stdin %s", password, username, registry)
 	err := sh.RunV("sh", "-c", loginCmd)
 	if err != nil {
-		return false, err
+		return nil, err
 	}
 
-	return true, nil
+	return func() {
+		_ = b.Logout(registry)
+	}, nil
 }
 
 func (b *Builder) Logout(registry string) error {

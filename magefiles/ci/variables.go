@@ -1,21 +1,20 @@
 package ci
 
 import (
-	"gitlab.com/gitlab-org/gitlab-runner/magefiles/mageutils"
+	"gitlab.com/gitlab-org/gitlab-runner/magefiles/build"
+	"gitlab.com/gitlab-org/gitlab-runner/magefiles/env"
 )
 
-func RegistryImage() string {
-	return mageutils.EnvOrDefault("CI_REGISTRY_IMAGE", "registry.gitlab.com/gitlab-runner")
-}
+const (
+	EnvRegistryImage    = "CI_REGISTRY_IMAGE"
+	EnvRegistry         = "CI_REGISTRY"
+	EnvRegistryUser     = "CI_REGISTRY_USER"
+	EnvRegistryPassword = "CI_REGISTRY_PASSWORD"
+)
 
-func Registry() string {
-	return mageutils.EnvOrDefault("CI_REGISTRY", "registry.gitlab.com")
-}
-
-func RegistryUser() string {
-	return mageutils.Env("CI_REGISTRY_USER")
-}
-
-func RegistryPassword() string {
-	return mageutils.Env("CI_REGISTRY_PASSWORD")
-}
+var (
+	RegistryImage    = env.NewDefault(EnvRegistryImage, build.AppName)
+	Registry         = env.NewDefault(EnvRegistry, "registry.gitlab.com")
+	RegistryUser     = env.New(EnvRegistryUser)
+	RegistryPassword = env.New(EnvRegistryPassword)
+)

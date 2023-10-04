@@ -5,8 +5,9 @@ import (
 	"github.com/magefile/mage/sh"
 	"github.com/samber/lo"
 	"gitlab.com/gitlab-org/gitlab-runner/magefiles/build"
+	"gitlab.com/gitlab-org/gitlab-runner/magefiles/ci"
 	"gitlab.com/gitlab-org/gitlab-runner/magefiles/docker"
-	"gitlab.com/gitlab-org/gitlab-runner/magefiles/mageutils"
+	"gitlab.com/gitlab-org/gitlab-runner/magefiles/env"
 	"os"
 	"path"
 	"path/filepath"
@@ -41,48 +42,37 @@ const (
 
 	DefaultFlavor = "ubuntu"
 	DefaultArchs  = "amd64"
-	defaultImage  = build.AppName
 
 	runnerHomeDir = "dockerfiles/runner"
+
+	envDockerMachineVersion              = "DOCKER_MACHINE_VERSION"
+	envDumbInitVersion                   = "DUMB_INIT_VERSION"
+	envGitLfsVersion                     = "GIT_LFS_VERSION"
+	envUbuntuVersion                     = "UBUNTU_VERSION"
+	envAlpine315Version                  = "ALPINE_315_VERSION"
+	envAlpine316Version                  = "ALPINE_316_VERSION"
+	envAlpine317Version                  = "ALPINE_317_VERSION"
+	envAlpine318Version                  = "ALPINE_318_VERSION"
+	envUbiFipsBaseImage                  = "UBI_FIPS_BASE_IMAGE"
+	envUbiFipsVersion                    = "UBI_FIPS_VERSION"
+	envDockerMachineLinuxAmd64Checksum   = "DOCKER_MACHINE_AMD64_CHECKSUM"
+	envDockerMachineLinuxArm64Checksum   = "DOCKER_MACHINE_ARM64_CHECKSUM"
+	envDockerMachineLinuxS390xChecksum   = "DOCKER_MACHINE_S390X_CHECKSUM"
+	envDockerMachineLinuxPpc64leChecksum = "DOCKER_MACHINE_PPC64LE_CHECKSUM"
+	envDumbInitAmd64Checksum             = "DUMB_INIT_AMD64_CHECKSUM"
+	envDumbInitArm64Checksum             = "DUMB_INIT_ARM64_CHECKSUM"
+	envDumbInitS390xChecksum             = "DUMB_INIT_S390X_CHECKSUM"
+	envDumbInitPpc64leChecksum           = "DUMB_INIT_PPC64LE_CHECKSUM"
+	envGitLFSAmd64Checksum               = "GIT_LFS_AMD64_CHECKSUM"
+	envGitLFSArm64Checksum               = "GIT_LFS_ARM64_CHECKSUM"
+	envGitLFSS390XChecksum               = "GIT_LFS_S390X_CHECKSUM"
+	envGitLFSPpc64leChecksum             = "GIT_LFS_PPC64LE_CHECKSUM"
 )
-
-var checksums = map[string]string{
-	"DOCKER_MACHINE_AMD64":   mageutils.EnvOrDefault("DOCKER_MACHINE_LINUX_AMD64_CHECKSUM", dockerMachineAmd64Checksum),
-	"DOCKER_MACHINE_ARM64":   mageutils.EnvOrDefault("DOCKER_MACHINE_LINUX_ARM64_CHECKSUM", dockerMachineArm64Checksum),
-	"DOCKER_MACHINE_S390X":   "", // No binary available yet for s390x, see https://gitlab.com/gitlab-org/gitlab-runner/-/issues/26551
-	"DOCKER_MACHINE_PPC64LE": "", // No binary available
-
-	//"DUMB_INIT_AMD64":   mageutils.EnvOrDefault("DUMB_INIT_LINUX_AMD64_CHECKSUM", dumbInitAmd64Checksum),
-	"DUMB_INIT_AMD64":   dumbInitAmd64Checksum,
-	"DUMB_INIT_ARM64":   dumbInitArm64Checksum,   // mageutils.EnvOrDefault("DUMB_INIT_LINUX_ARM64_CHECKSUM", dumbInitArm64Checksum),
-	"DUMB_INIT_S390X":   dumbInitS390xChecksum,   //mageutils.EnvOrDefault("DUMB_INIT_LINUX_S390X_CHECKSUM", dumbInitS390xChecksum),
-	"DUMB_INIT_PPC64LE": dumbInitPpc64leChecksum, //mageutils.EnvOrDefault("DUMB_INIT_LINUX_PPC64LE_CHECKSUM", dumbInitPpc64leChecksum),
-
-	"GIT_LFS_AMD64":   gitLfsAmd64Checksum,   //mageutils.EnvOrDefault("GIT_LFS_LINUX_AMD64_CHECKSUM", gitLfsAmd64Checksum),
-	"GIT_LFS_ARM64":   gitLfsArm64Checksum,   //mageutils.EnvOrDefault("GIT_LFS_LINUX_ARM64_CHECKSUM", gitLfsArm64Checksum),
-	"GIT_LFS_S390X":   gitLfsS390xChecksum,   //mageutils.EnvOrDefault("GIT_LFS_LINUX_S390X_CHECKSUM", gitLfsS390xChecksum),
-	"GIT_LFS_PPC64LE": gitLfsPpc64leChecksum, //mageutils.EnvOrDefault("GIT_LFS_LINUX_PPC64LE_CHECKSUM", gitLfsPpc64leChecksum),
-}
 
 var checksumsFiles = map[string]string{
 	"DOCKER_MACHINE": "/usr/bin/docker-machine",
 	"DUMB_INIT":      "/usr/bin/dumb-init",
 	"GIT_LFS":        "/tmp/git-lfs.tar.gz",
-}
-
-var baseImagesFlavor = map[string]string{
-	"ubuntu":        fmt.Sprintf("ubuntu:%s", mageutils.EnvOrDefault("UBUNTU_VERSION", ubuntuVersion)),
-	"alpine3.15":    fmt.Sprintf("alpine:%s", mageutils.EnvOrDefault("ALPINE_315_VERSION", alpine315Version)),
-	"alpine3.16":    fmt.Sprintf("alpine:%s", mageutils.EnvOrDefault("ALPINE_316_VERSION", alpine316Version)),
-	"alpine3.17":    fmt.Sprintf("alpine:%s", mageutils.EnvOrDefault("ALPINE_317_VERSION", alpine317Version)),
-	"alpine3.18":    fmt.Sprintf("alpine:%s", mageutils.EnvOrDefault("ALPINE_318_VERSION", alpine318Version)),
-	"alpine-latest": "alpine:latest",
-	//"ubi-fips": fmt.Sprintf(
-	//	"%s:%s",
-	//	mageutils.EnvOrDefault("UBI_FIPS_BASE_IMAGE", ubiFIPSBaseImage),
-	//	mageutils.EnvOrDefault("UBI_FIPS_VERSION", ubiFIPSVersion),
-	//),
-	"ubi-fips": mageutils.EnvOrDefault("UBI_FIPS_BASE_IMAGE", ubiFIPSBaseImage), //temp
 }
 
 var flavorAliases = map[string][]string{
@@ -101,6 +91,8 @@ func (d runnerDependency) String() string {
 }
 
 type runnerBlueprintImpl struct {
+	build.BlueprintBase
+
 	dependencies []runnerDependency
 	artifacts    []string
 	params       buildRunnerParams
@@ -122,7 +114,6 @@ func (r runnerBlueprintImpl) Data() buildRunnerParams {
 
 func AssembleBuildRunner(flavor, targetArchs string) build.TargetBlueprint[runnerDependency, build.StringArtifact, buildRunnerParams] {
 	archs := strings.Split(strings.ToLower(targetArchs), " ")
-	repository := mageutils.EnvOrDefault("CI_REGISTRY_IMAGE", defaultImage)
 
 	flavors := flavorAliases[flavor]
 	if len(flavors) == 0 {
@@ -130,8 +121,33 @@ func AssembleBuildRunner(flavor, targetArchs string) build.TargetBlueprint[runne
 	}
 
 	return runnerBlueprintImpl{
+		BlueprintBase: build.NewBlueprintBase(
+			ci.RegistryImage,
+			env.NewDefault(envDockerMachineVersion, dockerMachineVersion),
+			env.NewDefault(envDumbInitVersion, dumbInitVersion),
+			env.NewDefault(envGitLfsVersion, gitLfsVersion),
+			env.NewDefault(envUbuntuVersion, ubuntuVersion),
+			env.NewDefault(envAlpine315Version, alpine315Version),
+			env.NewDefault(envAlpine316Version, alpine316Version),
+			env.NewDefault(envAlpine317Version, alpine317Version),
+			env.NewDefault(envAlpine318Version, alpine318Version),
+			env.NewDefault(envUbiFipsBaseImage, ubiFIPSBaseImage),
+			env.NewDefault(envUbiFipsVersion, ubiFIPSVersion),
+			env.NewDefault(envDockerMachineLinuxAmd64Checksum, dockerMachineAmd64Checksum),
+			env.NewDefault(envDockerMachineLinuxArm64Checksum, dockerMachineArm64Checksum),
+			env.New(envDockerMachineLinuxS390xChecksum), // s390x and ppc64le are not being released
+			env.New(envDockerMachineLinuxPpc64leChecksum),
+			env.NewDefault(envDumbInitAmd64Checksum, dumbInitAmd64Checksum),
+			env.NewDefault(envDumbInitArm64Checksum, dumbInitArm64Checksum),
+			env.NewDefault(envDumbInitS390xChecksum, dumbInitS390xChecksum),
+			env.NewDefault(envDumbInitPpc64leChecksum, dumbInitPpc64leChecksum),
+			env.NewDefault(envGitLFSAmd64Checksum, gitLfsAmd64Checksum),
+			env.NewDefault(envGitLFSArm64Checksum, gitLfsArm64Checksum),
+			env.NewDefault(envGitLFSS390XChecksum, gitLfsS390xChecksum),
+			env.NewDefault(envGitLFSPpc64leChecksum, gitLfsPpc64leChecksum),
+		),
 		dependencies: assembleDependencies(archs),
-		artifacts:    tags(flavors, repository, build.RefTag()),
+		artifacts:    tags(flavors, ci.RegistryImage.Value, build.RefTag()),
 		params: buildRunnerParams{
 			flavor: flavor,
 			archs:  archs,
@@ -140,10 +156,6 @@ func AssembleBuildRunner(flavor, targetArchs string) build.TargetBlueprint[runne
 }
 
 func BuildRunner(blueprint build.TargetBlueprint[runnerDependency, build.StringArtifact, buildRunnerParams], publish bool) error {
-	//dockerMachineVersion := mageutils.EnvOrDefault("DOCKER_MACHINE_VERSION", dockerMachineVersion)
-	//dumbInitVersion := mageutils.EnvOrDefault("DUMB_INIT_VERSION", dumbInitVersion)
-	//gitLfsVersion := mageutils.EnvOrDefault("GIT_LFS_VERSION", gitLfsVersion)
-
 	flavor := blueprint.Data().flavor
 	archs := blueprint.Data().archs
 
@@ -152,7 +164,7 @@ func BuildRunner(blueprint build.TargetBlueprint[runnerDependency, build.StringA
 		platform = "alpine"
 	}
 
-	if err := writeChecksums(archs); err != nil {
+	if err := writeChecksums(archs, blueprint.Env()); err != nil {
 		return fmt.Errorf("writing checksums: %w", err)
 	}
 
@@ -160,30 +172,44 @@ func BuildRunner(blueprint build.TargetBlueprint[runnerDependency, build.StringA
 		return fmt.Errorf("copying dependencies: %w", err)
 	}
 
+	baseImagesFlavor := map[string]string{
+		"ubuntu":        fmt.Sprintf("ubuntu:%s", blueprint.Env().Value(envUbuntuVersion)),
+		"alpine3.15":    fmt.Sprintf("alpine:%s", blueprint.Env().Value(envAlpine315Version)),
+		"alpine3.16":    fmt.Sprintf("alpine:%s", blueprint.Env().Value(envAlpine316Version)),
+		"alpine3.17":    fmt.Sprintf("alpine:%s", blueprint.Env().Value(envAlpine317Version)),
+		"alpine3.18":    fmt.Sprintf("alpine:%s", blueprint.Env().Value(envAlpine318Version)),
+		"alpine-latest": "alpine:latest",
+		"ubi-fips": fmt.Sprintf(
+			"%s:%s",
+			blueprint.Env().Value(envUbiFipsBaseImage),
+			blueprint.Env().Value(envUbiFipsVersion),
+		),
+	}
+
 	contextPath := filepath.Join(runnerHomeDir, platform)
+	baseImage := baseImagesFlavor[flavor]
 
 	return buildx(
 		contextPath,
-		baseImagesFlavor[flavor],
+		baseImage,
+		blueprint,
 		publish,
-		archs,
-		lo.Map(blueprint.Artifacts(), func(item build.StringArtifact, _ int) string {
-			return string(item)
-		}),
 	)
 }
 
-func writeChecksums(archs []string) error {
+func writeChecksums(archs []string, env build.BlueprintEnv) error {
 	checksumBinaries := map[string][]string{}
-	for binaryArch, checksum := range checksums {
-		if checksum == "" {
+	checksums := map[string]string{}
+	for _, v := range env {
+		if v.Value == "" || !strings.HasSuffix(v.Key, "_CHECKSUM") {
 			continue
 		}
 
-		split := strings.Split(binaryArch, "_")
-		binaryName := strings.Join(split[:len(split)-1], "_")
-		arch := strings.ToLower(split[len(split)-1])
+		split := strings.Split(v.Key, "_")
+		binaryName := strings.Join(split[:len(split)-2], "_")
+		arch := strings.ToLower(split[len(split)-2])
 		checksumBinaries[binaryName] = append(checksumBinaries[binaryName], arch)
+		checksums[binaryName+"_"+arch] = v.Value
 	}
 
 	for _, arch := range archs {
@@ -194,7 +220,7 @@ func writeChecksums(archs []string) error {
 			}
 
 			checksumFile := checksumsFiles[binary]
-			checksum := checksums[fmt.Sprintf("%s_%s", binary, strings.ToUpper(arch))]
+			checksum := checksums[binary+"_"+arch]
 
 			sb.WriteString(fmt.Sprintf("%s  %s\n", checksum, checksumFile))
 		}
@@ -283,15 +309,21 @@ func assembleDependencies(archs []string) []runnerDependency {
 	return dependencies
 }
 
-func buildx(contextPath, baseImage string, publish bool, archs, tags []string) error {
+func buildx(
+	contextPath, baseImage string,
+	blueprint build.TargetBlueprint[runnerDependency, build.StringArtifact, buildRunnerParams],
+	publish bool,
+) error {
+	env := blueprint.Env()
+
 	var args []string
 
-	args = append(args, "--build-arg", fmt.Sprintf("DOCKER_MACHINE_VERSION=%s", dockerMachineVersion))
-	args = append(args, "--build-arg", fmt.Sprintf("DUMB_INIT_VERSION=%s", dumbInitVersion))
-	args = append(args, "--build-arg", fmt.Sprintf("GIT_LFS_VERSION=%s", gitLfsVersion))
 	args = append(args, "--build-arg", fmt.Sprintf("BASE_IMAGE=%s", baseImage))
+	args = append(args, "--build-arg", fmt.Sprintf("DOCKER_MACHINE_VERSION=%s", env.Value(envDockerMachineVersion)))
+	args = append(args, "--build-arg", fmt.Sprintf("DUMB_INIT_VERSION=%s", env.Value(envDumbInitVersion)))
+	args = append(args, "--build-arg", fmt.Sprintf("GIT_LFS_VERSION=%s", env.Value(envGitLfsVersion)))
 
-	args = append(args, lo.Map(tags, func(tag string, _ int) string {
+	args = append(args, lo.Map(blueprint.Artifacts(), func(tag build.StringArtifact, _ int) string {
 		return fmt.Sprintf("--tag=%s", tag)
 	})...)
 
@@ -299,13 +331,13 @@ func buildx(contextPath, baseImage string, publish bool, archs, tags []string) e
 	if err != nil {
 		return err
 	}
-	args = append(args, lo.Map(archs, func(arch string, _ int) string {
+	args = append(args, lo.Map(blueprint.Data().archs, func(arch string, _ int) string {
 		return fmt.Sprintf("--platform=%s/%s", dockerOS, arch)
 	})...)
 
 	if publish {
 		args = append(args, "--push")
-	} else if len(archs) == 1 {
+	} else if len(blueprint.Data().archs) == 1 {
 		args = append(args, "--load")
 	} else {
 		fmt.Println("Building image:")
@@ -319,7 +351,11 @@ func buildx(contextPath, baseImage string, publish bool, archs, tags []string) e
 	}
 
 	if publish {
-		logout, err := builder.LoginCI()
+		logout, err := builder.Login(
+			env.Value(ci.EnvRegistryUser),
+			env.Value(ci.EnvRegistryPassword),
+			env.Value(ci.EnvRegistry),
+		)
 		if err != nil {
 			return err
 		}
