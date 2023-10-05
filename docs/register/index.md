@@ -11,10 +11,7 @@ info: >-
 
 > [Introduced](https://gitlab.com/gitlab-org/gitlab-runner/-/merge_requests/3414) in GitLab Runner 15.0, a change to the registration request format prevents the GitLab Runner from communicating with GitLab 14.7 and earlier. You must use a GitLab Runner version that is appropriate for the GitLab version, or upgrade the GitLab application.
 
-Runner registration is the process that links the runner with one or more GitLab instances.
-
-To register multiple runners on the same host machine, each with a different configuration,
-repeat the `register` command.
+Runner registration is the process that links the runner with one or more GitLab instances. You must register the runner so that it can pick up jobs from the GitLab instance.
 
 ## Prerequisites
 
@@ -107,6 +104,9 @@ To register the runner with a [runner authentication token](https://docs.gitlab.
 1. Enter the runner authentication token.
 1. Enter a name for the runner.
 1. Enter the type of [executor](../executors/index.md).
+
+To register multiple runners on the same host machine, each with a different configuration,
+repeat the `register` command.
 
 You can also use the [non-interactive mode](../commands/index.md#non-interactive-registration) to use additional arguments to register the runner:
 
@@ -263,6 +263,9 @@ To register the runner with a [runner registration token](https://docs.gitlab.co
 1. Enter the job tags, separated by commas.
 1. Enter an optional maintenance note for the runner.
 1. Enter the type of [executor](../executors/index.md).
+
+To register multiple runners on the same host machine, each with a different configuration,
+repeat the `register` command.
 
 You can also use the [non-interactive mode](../commands/index.md#non-interactive-registration) to use additional arguments to register the runner:
 
