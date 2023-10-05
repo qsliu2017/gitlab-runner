@@ -265,6 +265,97 @@ To register the runner with a [runner registration token](https://docs.gitlab.co
 
 To register multiple runners on the same host machine, each with a different configuration,
 repeat the `register` command.
+You can also use the [non-interactive mode](../commands/index.md#non-interactive-registration) to use additional arguments to register the runner:
+
+::Tabs
+
+:::TabTitle Linux
+
+```shell
+sudo gitlab-runner register \
+  --non-interactive \
+  --url "https://gitlab.com/" \
+  --registration-token "$PROJECT_REGISTRATION_TOKEN" \
+  --executor "docker" \
+  --docker-image alpine:latest \
+  --description "docker-runner" \
+  --maintenance-note "Free-form maintainer notes about this runner" \
+  --tag-list "docker,aws" \
+  --run-untagged="true" \
+  --locked="false" \
+  --access-level="not_protected"
+```
+
+:::TabTitle macOS
+
+```shell
+gitlab-runner register \
+  --non-interactive \
+  --url "https://gitlab.com/" \
+  --registration-token "$PROJECT_REGISTRATION_TOKEN" \
+  --executor "docker" \
+  --docker-image alpine:latest \
+  --description "docker-runner" \
+  --maintenance-note "Free-form maintainer notes about this runner" \
+  --tag-list "docker,aws" \
+  --run-untagged="true" \
+  --locked="false" \
+  --access-level="not_protected"
+```
+
+:::TabTitle Windows
+
+```shell
+.\gitlab-runner.exe register \
+  --non-interactive \
+  --url "https://gitlab.com/" \
+  --registration-token "$PROJECT_REGISTRATION_TOKEN" \
+  --executor "docker" \
+  --docker-image alpine:latest \
+  --description "docker-runner" \
+  --maintenance-note "Free-form maintainer notes about this runner" \
+  --tag-list "docker,aws" \
+  --run-untagged="true" \
+  --locked="false" \
+  --access-level="not_protected"
+```
+
+:::TabTitle FreeBSD
+
+```shell
+sudo -u gitlab-runner -H /usr/local/bin/gitlab-runner register
+  --non-interactive \
+  --url "https://gitlab.com/" \
+  --token "$RUNNER_TOKEN" \
+  --executor "docker" \
+  --description "docker-runner"
+```
+
+:::TabTitle Docker
+
+```shell
+docker run --rm -v /srv/gitlab-runner/config:/etc/gitlab-runner gitlab/gitlab-runner register \
+  --non-interactive \
+  --url "https://gitlab.com/" \
+  --registration-token "$PROJECT_REGISTRATION_TOKEN" \
+  --executor "docker" \
+  --docker-image alpine:latest \
+  --description "docker-runner" \
+  --maintenance-note "Free-form maintainer notes about this runner" \
+  --tag-list "docker,aws" \
+  --run-untagged="true" \
+  --locked="false" \
+  --access-level="not_protected"
+```
+
+::EndTabs
+
+- `--access-level` creates a [protected runner](https://docs.gitlab.com/ee/ci/runners/configure_runners.html#prevent-runners-from-revealing-sensitive-information).
+  - For a protected runner, use the `--access-level="ref_protected"` parameter.
+  - For an unprotected runner, use `--access-level="not_protected"` or leave the value undefined.
+- `--maintenance-note` adds information related to runner maintenance. The maximum length is 255 characters.
+
+### Legacy-compatible registration process
 
 You can also use the [non-interactive mode](../commands/index.md#non-interactive-registration) to use additional arguments to register the runner:
 
