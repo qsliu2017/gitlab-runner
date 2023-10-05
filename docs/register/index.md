@@ -37,9 +37,7 @@ Prerequisite:
     [project](https://docs.gitlab.com/ee/ci/runners/runners_scope.html#create-a-project-runner-with-a-runner-authentication-token) runner.
   - Locate the runner authentication token in the `config.toml` file. Runner authentication tokens have the prefix, `glrt-`.
 
-After you register the runner, the configuration is saved to the `config.toml`.
-
-To register the runner:
+To register the runner with a [runner authentication token](https://docs.gitlab.com/ee/security/token_overview.html#runner-authentication-tokens):
 
 1. Run the register command:
 
@@ -193,7 +191,7 @@ Prerequisite:
 
 After you register the runner, the configuration is saved to the `config.toml`.
 
-To register the runner:
+To register the runner with a [runner registration token](https://docs.gitlab.com/ee/security/token_overview.html#runner-registration-tokens-deprecated):
 
 1. Run the register command:
 
