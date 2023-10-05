@@ -328,9 +328,15 @@ gitlab-runner register \
 sudo -u gitlab-runner -H /usr/local/bin/gitlab-runner register
   --non-interactive \
   --url "https://gitlab.com/" \
-  --token "$RUNNER_TOKEN" \
+  --registration-token "$PROJECT_REGISTRATION_TOKEN" \
   --executor "docker" \
-  --description "docker-runner"
+  --docker-image alpine:latest \
+  --description "docker-runner" \
+  --maintenance-note "Free-form maintainer notes about this runner" \
+  --tag-list "docker,aws" \
+  --run-untagged="true" \
+  --locked="false" \
+  --access-level="not_protected"
 ```
 
 :::TabTitle Docker
