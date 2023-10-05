@@ -265,6 +265,7 @@ To register the runner with a [runner registration token](https://docs.gitlab.co
 
 To register multiple runners on the same host machine, each with a different configuration,
 repeat the `register` command.
+
 You can also use the [non-interactive mode](../commands/index.md#non-interactive-registration) to use additional arguments to register the runner:
 
 ::Tabs
