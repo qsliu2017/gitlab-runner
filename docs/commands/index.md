@@ -253,15 +253,17 @@ gitlab-runner register --help
 
 #### Non-interactive registration
 
-It's possible to use registration in non-interactive / unattended mode.
+You can register runners with the non-interactive or unattended mode.
 
-You can specify the arguments when invoking the registration command:
+To use non-interactive registration, you can either:
 
-```shell
-gitlab-runner register --non-interactive <other-arguments>
-```
+- Use the `--non-interactive` option and specify the registration arguments:
 
-Or by configuring the environment variable before the `register` command:
+  ```shell
+  gitlab-runner register --non-interactive <other-arguments>
+  ```
+
+- Configure the environment variable before the `register` command:
 
 ```shell
 <other-environment-variables>
@@ -269,8 +271,25 @@ export REGISTER_NON_INTERACTIVE=true
 gitlab-runner register
 ```
 
-NOTE:
 Boolean parameters must be passed in the command line with `--key={true|false}`.
+
+For a list of all registration command options and arguments, run:
+
+```shell
+gitlab-runner register --help
+```
+
+Example:
+
+```shell
+sudo gitlab-runner register \
+  --non-interactive \
+  --url "https://gitlab.com/" \
+  --token "$RUNNER_TOKEN" \
+  --executor "docker" \
+  --docker-image alpine:latest \
+  --description "docker-runner"
+```
 
 #### `[[runners]]` configuration template file
 
