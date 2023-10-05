@@ -37,6 +37,8 @@ Prerequisite:
     [project](https://docs.gitlab.com/ee/ci/runners/runners_scope.html#create-a-project-runner-with-a-runner-authentication-token) runner.
   - Locate the runner authentication token in the `config.toml` file. Runner authentication tokens have the prefix, `glrt-`.
 
+After you register the runner, the configuration is saved to the `config.toml`.
+
 To register the runner:
 
 1. Run the register command:
@@ -188,6 +190,8 @@ Prerequisite:
   for a [shared](https://docs.gitlab.com/ee/ci/runners/runners_scope.html#create-a-shared-runner-with-a-registration-token-deprecated),
   [group](https://docs.gitlab.com/ee/ci/runners/runners_scope.html#create-a-project-runner-with-a-registration-token-deprecated), or
   [project](https://docs.gitlab.com/ee/ci/runners/runners_scope.html#create-a-group-runner-with-a-registration-token-deprecated) runner.
+
+After you register the runner, the configuration is saved to the `config.toml`.
 
 To register the runner:
 
@@ -651,10 +655,13 @@ chosen to be placed in the final configuration.
 
 ### `Check registration token` error
 
-The `check registration token` error message is displayed when the GitLab instance does not recognize
-the entered registration token. This issue can occur when the instance group or project registration token
-has been changed in GitLab or when the user did not correctly enter the registration token.
+The `check registration token` error message displays when the GitLab instance does not recognize
+the runner registration token entered during registration. This issue can occur when either:
 
-When this error occurs, the first step is to ask a GitLab administrator to verify that the registration token is valid.
+- The instance, group, or project runner registration token was changed in GitLab.
+- An incorrect runner registration token was entered.
 
-Additionally, confirm that runner registration in the project or group is [allowed](https://docs.gitlab.com/ee/administration/settings/continuous_integration.html#restrict-runner-registration-by-all-members-in-a-group) by the GitLab administrator.
+When this error occurs, you can ask a GitLab administrator to:
+
+- Verify that the runner registration token is valid.
+- Confirm that runner registration in the project or group is [permitted](https://docs.gitlab.com/ee/administration/settings/continuous_integration.html#restrict-runner-registration-by-all-members-in-a-group).
