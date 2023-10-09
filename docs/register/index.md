@@ -107,6 +107,9 @@ To register the runner with a [runner authentication token](https://docs.gitlab.
 To register multiple runners on the same host machine, each with a different configuration,
 repeat the `register` command.
 
+To register the same configuration on multiple host machines, use the same runner authentication token
+for each runner registrations. For more information, see [Reusing a runner configuration](../fleet_scaling/index.md#reusing-a-runner-configuration).
+
 You can also use the [non-interactive mode](../commands/index.md#non-interactive-registration) to use additional arguments to register the runner:
 
 ::Tabs
@@ -265,6 +268,9 @@ To register the runner with a [runner registration token](https://docs.gitlab.co
 
 To register multiple runners on the same host machine, each with a different configuration,
 repeat the `register` command.
+
+To register the same configuration on multiple host machines, use the same runner authentication token
+for each runner registration. For more information, see [Reusing a runner configuration](../fleet_scaling/index.md#reusing-a-runner-configuration).
 
 You can also use the [non-interactive mode](../commands/index.md#non-interactive-registration) to use additional arguments to register the runner:
 
