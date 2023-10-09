@@ -143,8 +143,8 @@ gitlab-runner register \
   --non-interactive \
   --url "https://gitlab.com/" \
   --token "$RUNNER_TOKEN" \
-  --executor "docker" \
-  --docker-image alpine:latest \
+  --executor "docker-windows" \
+  --docker-image mcr.microsoft.com/windows/servercore:1809_amd64 \
   --description "docker-runner"
 ```
 
