@@ -2,16 +2,17 @@ package images
 
 import (
 	"fmt"
+	"os"
+	"path"
+	"path/filepath"
+	"strings"
+
 	"github.com/magefile/mage/sh"
 	"github.com/samber/lo"
 	"gitlab.com/gitlab-org/gitlab-runner/magefiles/build"
 	"gitlab.com/gitlab-org/gitlab-runner/magefiles/ci"
 	"gitlab.com/gitlab-org/gitlab-runner/magefiles/docker"
 	"gitlab.com/gitlab-org/gitlab-runner/magefiles/env"
-	"os"
-	"path"
-	"path/filepath"
-	"strings"
 )
 
 const (
@@ -84,27 +85,27 @@ type buildRunnerParams struct {
 	archs  []string
 }
 
-type runnerDependency lo.Tuple2[string, string]
-
-func (d runnerDependency) String() string {
-	return d.A
-}
-
 type runnerBlueprintImpl struct {
 	build.BlueprintBase
 
-	dependencies []runnerDependency
+	dependencies []runnerImageFileDependency
 	artifacts    []string
 	params       buildRunnerParams
 }
 
-func (r runnerBlueprintImpl) Dependencies() []runnerDependency {
+type runnerImageFileDependency struct {
+	build.Component
+
+	destination string
+}
+
+func (r runnerBlueprintImpl) Dependencies() []runnerImageFileDependency {
 	return r.dependencies
 }
 
-func (r runnerBlueprintImpl) Artifacts() []build.StringArtifact {
-	return lo.Map(r.artifacts, func(item string, _ int) build.StringArtifact {
-		return build.StringArtifact(item)
+func (r runnerBlueprintImpl) Artifacts() []build.Component {
+	return lo.Map(r.artifacts, func(item string, _ int) build.Component {
+		return build.NewDockerImage(item)
 	})
 }
 
@@ -112,7 +113,7 @@ func (r runnerBlueprintImpl) Data() buildRunnerParams {
 	return r.params
 }
 
-func AssembleBuildRunner(flavor, targetArchs string) build.TargetBlueprint[runnerDependency, build.StringArtifact, buildRunnerParams] {
+func AssembleBuildRunner(flavor, targetArchs string) build.TargetBlueprint[runnerImageFileDependency, build.Component, buildRunnerParams] {
 	archs := strings.Split(strings.ToLower(targetArchs), " ")
 
 	flavors := flavorAliases[flavor]
@@ -156,7 +157,7 @@ func AssembleBuildRunner(flavor, targetArchs string) build.TargetBlueprint[runne
 	}
 }
 
-func BuildRunner(blueprint build.TargetBlueprint[runnerDependency, build.StringArtifact, buildRunnerParams], publish bool) error {
+func BuildRunner(blueprint build.TargetBlueprint[runnerImageFileDependency, build.Component, buildRunnerParams], publish bool) error {
 	flavor := blueprint.Data().flavor
 	archs := blueprint.Data().archs
 
@@ -242,10 +243,10 @@ func writeChecksums(archs []string, env build.BlueprintEnv) error {
 	return nil
 }
 
-func copyDependencies(deps []runnerDependency) error {
+func copyDependencies(deps []runnerImageFileDependency) error {
 	for _, dep := range deps {
-		from := dep.A
-		to := dep.B
+		from := dep.Value()
+		to := dep.destination
 		if err := sh.RunV("cp", from, to); err != nil {
 			return fmt.Errorf("copying %s to %s: %w", from, to, err)
 		}
@@ -254,7 +255,7 @@ func copyDependencies(deps []runnerDependency) error {
 	return nil
 }
 
-func assembleDependencies(archs []string) []runnerDependency {
+func assembleDependencies(archs []string) []runnerImageFileDependency {
 	installDeps := []string{
 		filepath.Join(runnerHomeDir, "install-deps"),
 		"dockerfiles/install_git_lfs",
@@ -296,13 +297,13 @@ func assembleDependencies(archs []string) []runnerDependency {
 		}
 	}
 
-	var dependencies []runnerDependency
+	var dependencies []runnerImageFileDependency
 
 	for to, fromFiles := range copyMap {
 		for _, from := range fromFiles {
-			dependencies = append(dependencies, runnerDependency{
-				A: from,
-				B: filepath.Join(runnerHomeDir, to, path.Base(from)),
+			dependencies = append(dependencies, runnerImageFileDependency{
+				Component:   build.NewFile(from),
+				destination: filepath.Join(runnerHomeDir, to, path.Base(from)),
 			})
 		}
 	}
@@ -312,7 +313,7 @@ func assembleDependencies(archs []string) []runnerDependency {
 
 func buildx(
 	contextPath, baseImage string,
-	blueprint build.TargetBlueprint[runnerDependency, build.StringArtifact, buildRunnerParams],
+	blueprint build.TargetBlueprint[runnerImageFileDependency, build.Component, buildRunnerParams],
 	publish bool,
 ) error {
 	env := blueprint.Env()
@@ -326,7 +327,7 @@ func buildx(
 		"--build-arg", fmt.Sprintf("GIT_LFS_VERSION=%s", env.Value(envGitLfsVersion)),
 	)
 
-	args = append(args, lo.Map(blueprint.Artifacts(), func(tag build.StringArtifact, _ int) string {
+	args = append(args, lo.Map(blueprint.Artifacts(), func(tag build.Component, _ int) string {
 		return fmt.Sprintf("--tag=%s", tag)
 	})...)
 

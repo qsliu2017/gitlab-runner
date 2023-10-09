@@ -1,10 +1,9 @@
-//go:build mage
-
 package main
 
 import (
-	"gitlab.com/gitlab-org/gitlab-runner/magefiles/mageutils"
 	"strings"
+
+	"gitlab.com/gitlab-org/gitlab-runner/magefiles/mageutils"
 
 	"github.com/magefile/mage/mg"
 	"github.com/magefile/mage/sh"

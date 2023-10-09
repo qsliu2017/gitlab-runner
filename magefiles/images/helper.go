@@ -3,11 +3,12 @@ package images
 import (
 	"bytes"
 	"fmt"
+	"text/template"
+
 	"github.com/samber/lo"
 	"gitlab.com/gitlab-org/gitlab-runner/magefiles/build"
 	"gitlab.com/gitlab-org/gitlab-runner/magefiles/ci"
 	"gitlab.com/gitlab-org/gitlab-runner/magefiles/docker"
-	"text/template"
 )
 
 var platformMap = map[string]string{
@@ -98,16 +99,16 @@ type helperBlueprintImpl struct {
 	data []helperBuild
 }
 
-func (b helperBlueprintImpl) Dependencies() []build.StringDependency {
-	return lo.Map(b.data, func(item helperBuild, _ int) build.StringDependency {
-		return build.StringDependency(item.archive)
+func (b helperBlueprintImpl) Dependencies() []build.Component {
+	return lo.Map(b.data, func(item helperBuild, _ int) build.Component {
+		return build.NewDockerImageArchive(item.archive)
 	})
 }
 
-func (b helperBlueprintImpl) Artifacts() []build.StringArtifact {
-	return lo.Flatten(lo.Map(b.data, func(item helperBuild, _ int) []build.StringArtifact {
-		return lo.Map(item.tags.all(), func(item string, _ int) build.StringArtifact {
-			return build.StringArtifact(item)
+func (b helperBlueprintImpl) Artifacts() []build.Component {
+	return lo.Flatten(lo.Map(b.data, func(item helperBuild, _ int) []build.Component {
+		return lo.Map(item.tags.all(), func(item string, _ int) build.Component {
+			return build.NewDockerImage(item)
 		})
 	}))
 }
@@ -116,7 +117,7 @@ func (b helperBlueprintImpl) Data() []helperBuild {
 	return b.data
 }
 
-func AssembleReleaseHelper(flavor, prefix string) build.TargetBlueprint[build.StringDependency, build.StringArtifact, []helperBuild] {
+func AssembleReleaseHelper(flavor, prefix string) build.TargetBlueprint[build.Component, build.Component, []helperBuild] {
 	var archs []string
 	switch flavor {
 	case "ubi-fips":
@@ -150,7 +151,7 @@ func AssembleReleaseHelper(flavor, prefix string) build.TargetBlueprint[build.St
 	return builds
 }
 
-func ReleaseHelper(blueprint build.TargetBlueprint[build.StringDependency, build.StringArtifact, []helperBuild], publish bool) error {
+func ReleaseHelper(blueprint build.TargetBlueprint[build.Component, build.Component, []helperBuild], publish bool) error {
 	builder := docker.NewBuilder()
 
 	logout, err := builder.Login(
