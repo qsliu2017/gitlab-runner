@@ -24,7 +24,6 @@ Before you register a runner:
 ## Register with a runner authentication token
 
 > - [Introduced](https://gitlab.com/gitlab-org/gitlab-runner/-/issues/29613) in GitLab 15.10.
-> - Verification of runner at end of command in non-interactive mode [introduced](https://gitlab.com/gitlab-org/gitlab-runner/-/issues/29670) in GitLab Runner 15.10.
 
 Prerequisite:
 
@@ -312,8 +311,8 @@ gitlab-runner register \
   --non-interactive \
   --url "https://gitlab.com/" \
   --registration-token "$PROJECT_REGISTRATION_TOKEN" \
-  --executor "docker" \
-  --docker-image alpine:latest \
+  --executor "docker-windows" \
+  --docker-image mcr.microsoft.com/windows/servercore:1809_amd64 \
   --description "docker-runner" \
   --maintenance-note "Free-form maintainer notes about this runner" \
   --tag-list "docker,aws" \
@@ -371,7 +370,7 @@ Runner registration tokens and several runner configuration arguments were [depr
 in GitLab 15.6 and will be removed in GitLab 18.0. To ensure minimal disruption to your automation workflow, the `legacy-compatible registration process` triggers
 if a runner authentication token is specified in the legacy parameter `--registration-token`.
 
-This process causes the following command-line parameters to be ignored.
+The legacy-compatible registration process ignores the following command-line parameters.
 These parameters can only be configured when a runner is created in the UI or with the API.
 
 - `--locked`
