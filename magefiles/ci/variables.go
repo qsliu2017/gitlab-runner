@@ -17,4 +17,10 @@ var (
 	Registry         = env.NewDefault(EnvRegistry, "registry.gitlab.com")
 	RegistryUser     = env.New(EnvRegistryUser)
 	RegistryPassword = env.New(EnvRegistryPassword)
+
+	RegistryAuthBundle = env.Variables{
+		Registry,
+		RegistryUser,
+		RegistryPassword,
+	}
 )

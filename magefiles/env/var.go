@@ -7,8 +7,22 @@ type Variable struct {
 	Value string
 }
 
+type VariableBundle interface {
+	Variables() []Variable
+}
+
 func (v Variable) String() string {
 	return v.Value
+}
+
+func (v Variable) Variables() []Variable {
+	return []Variable{v}
+}
+
+type Variables []Variable
+
+func (v Variables) Variables() []Variable {
+	return v
 }
 
 func New(key string) Variable {

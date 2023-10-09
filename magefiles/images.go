@@ -25,6 +25,11 @@ func (Images) ReleaseRunner(flavor, targetArchs string) error {
 	return images.BuildRunner(blueprint, true)
 }
 
+func (Images) TagHelperDefault() error {
+	blueprint := build.PrintBlueprint(images.AssembleReleaseHelper(images.DefaultFlavor, ""))
+	return images.ReleaseHelper(blueprint, false)
+}
+
 func (Images) TagHelper(flavor, prefix string) error {
 	blueprint := build.PrintBlueprint(images.AssembleReleaseHelper(flavor, prefix))
 	return images.ReleaseHelper(blueprint, false)

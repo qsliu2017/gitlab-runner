@@ -123,6 +123,7 @@ func AssembleBuildRunner(flavor, targetArchs string) build.TargetBlueprint[runne
 	return runnerBlueprintImpl{
 		BlueprintBase: build.NewBlueprintBase(
 			ci.RegistryImage,
+			ci.RegistryAuthBundle,
 			env.NewDefault(envDockerMachineVersion, dockerMachineVersion),
 			env.NewDefault(envDumbInitVersion, dumbInitVersion),
 			env.NewDefault(envGitLfsVersion, gitLfsVersion),
@@ -318,10 +319,12 @@ func buildx(
 
 	var args []string
 
-	args = append(args, "--build-arg", fmt.Sprintf("BASE_IMAGE=%s", baseImage))
-	args = append(args, "--build-arg", fmt.Sprintf("DOCKER_MACHINE_VERSION=%s", env.Value(envDockerMachineVersion)))
-	args = append(args, "--build-arg", fmt.Sprintf("DUMB_INIT_VERSION=%s", env.Value(envDumbInitVersion)))
-	args = append(args, "--build-arg", fmt.Sprintf("GIT_LFS_VERSION=%s", env.Value(envGitLfsVersion)))
+	args = append(args,
+		"--build-arg", fmt.Sprintf("BASE_IMAGE=%s", baseImage),
+		"--build-arg", fmt.Sprintf("DOCKER_MACHINE_VERSION=%s", env.Value(envDockerMachineVersion)),
+		"--build-arg", fmt.Sprintf("DUMB_INIT_VERSION=%s", env.Value(envDumbInitVersion)),
+		"--build-arg", fmt.Sprintf("GIT_LFS_VERSION=%s", env.Value(envGitLfsVersion)),
+	)
 
 	args = append(args, lo.Map(blueprint.Artifacts(), func(tag build.StringArtifact, _ int) string {
 		return fmt.Sprintf("--tag=%s", tag)
@@ -344,7 +347,9 @@ func buildx(
 	}
 
 	builder := docker.NewBuilder()
-	defer builder.CleanupContext()
+	defer func() {
+		_ = builder.CleanupContext()
+	}()
 
 	if err := builder.SetupContext(); err != nil {
 		return err

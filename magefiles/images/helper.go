@@ -128,7 +128,7 @@ func AssembleReleaseHelper(flavor, prefix string) build.TargetBlueprint[build.St
 	}
 
 	builds := helperBlueprintImpl{
-		BlueprintBase: build.NewBlueprintBase(),
+		BlueprintBase: build.NewBlueprintBase(ci.RegistryAuthBundle),
 		data:          []helperBuild{},
 	}
 	for _, arch := range archs {
@@ -153,7 +153,11 @@ func AssembleReleaseHelper(flavor, prefix string) build.TargetBlueprint[build.St
 func ReleaseHelper(blueprint build.TargetBlueprint[build.StringDependency, build.StringArtifact, []helperBuild], publish bool) error {
 	builder := docker.NewBuilder()
 
-	logout, err := builder.Login("", "", "")
+	logout, err := builder.Login(
+		blueprint.Env().Value(ci.EnvRegistryUser),
+		blueprint.Env().Value(ci.EnvRegistryPassword),
+		blueprint.Env().Value(ci.EnvRegistry),
+	)
 	if err != nil {
 		return err
 	}

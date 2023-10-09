@@ -2,10 +2,11 @@ package build
 
 import (
 	"fmt"
+	"sort"
+
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/samber/lo"
 	"gitlab.com/gitlab-org/gitlab-runner/magefiles/env"
-	"sort"
 )
 
 type BlueprintDependency interface {
@@ -38,17 +39,24 @@ type TargetBlueprint[T BlueprintDependency, E BlueprintArtifact, F any] interfac
 type BlueprintEnv map[string]env.Variable
 
 func (e BlueprintEnv) Value(env string) string {
-	return e[env].Value
+	v, ok := e[env]
+	if !ok {
+		fmt.Printf("WARN: Accessing a variable that's not defined in the blueprint: %q\n", env)
+	}
+
+	return v.Value
 }
 
 type BlueprintBase struct {
 	env BlueprintEnv
 }
 
-func NewBlueprintBase(envs ...env.Variable) BlueprintBase {
+func NewBlueprintBase(envs ...env.VariableBundle) BlueprintBase {
 	env := BlueprintEnv{}
 	for _, v := range envs {
-		env[v.Key] = v
+		for _, vv := range v.Variables() {
+			env[vv.Key] = vv
+		}
 	}
 
 	return BlueprintBase{

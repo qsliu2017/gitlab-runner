@@ -1,9 +1,10 @@
 package build
 
 import (
+	"io"
+
 	"github.com/magefile/mage/sh"
 	"gitlab.com/gitlab-org/gitlab-runner/magefiles/mageutils"
-	"io"
 )
 
 const (

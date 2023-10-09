@@ -137,8 +137,8 @@ development helper docker images:
   extends:
   - .release_helper_docker_images
   - .rules:release:development:merge-requests
-  variables:
-    PUBLISH_IMAGES: "false"
+  script:
+  - mage images:tagHelper "$IMAGE_FLAVOR" "$IMAGE_TAG"
 
 bleeding edge S3:
   extends:
