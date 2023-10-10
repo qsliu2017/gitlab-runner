@@ -40,13 +40,15 @@ type helperTagsList struct {
 	baseTemplate string
 	prefix       string
 	arch         string
+	registry     string
 }
 
-func newHelperTagsList(prefix, suffix, arch string) helperTagsList {
+func newHelperTagsList(prefix, suffix, arch, registry string) helperTagsList {
 	return helperTagsList{
 		prefix:       prefix,
 		suffix:       suffix,
 		arch:         arch,
+		registry:     registry,
 		baseTemplate: "{{ .Registry }}/gitlab-runner-helper:{{ .Prefix }}{{ .Arch}}-"}
 }
 
@@ -58,7 +60,7 @@ func (l helperTagsList) render(raw string) string {
 		Revision string
 		RefTag   string
 	}{
-		Registry: ci.RegistryImage.Value,
+		Registry: l.registry,
 		Prefix:   l.prefix,
 		Arch:     l.arch,
 		Revision: build.Revision(),
@@ -129,14 +131,17 @@ func AssembleReleaseHelper(flavor, prefix string) build.TargetBlueprint[build.Co
 	}
 
 	builds := helperBlueprintImpl{
-		BlueprintBase: build.NewBlueprintBase(ci.RegistryAuthBundle),
+		BlueprintBase: build.NewBlueprintBase(ci.RegistryAuthBundle, docker.BuilderEnvBundle),
 		data:          []helperBuild{},
 	}
+
+	registry := builds.Env().Value(ci.Registry)
+
 	for _, arch := range archs {
 		builds.data = append(builds.data, helperBuild{
 			archive:  fmt.Sprintf("out/helper-images/prebuilt-%s-%s.tar.xz", flavor, arch),
 			platform: platformMap[arch],
-			tags:     newHelperTagsList(prefix, "", arch),
+			tags:     newHelperTagsList(prefix, "", arch, registry),
 		})
 	}
 
@@ -144,7 +149,7 @@ func AssembleReleaseHelper(flavor, prefix string) build.TargetBlueprint[build.Co
 		builds.data = append(builds.data, helperBuild{
 			archive:  fmt.Sprintf("out/helper-images/prebuilt-%s-x86_64-pwsh.tar.xz", flavor),
 			platform: platformMap["x86_64"],
-			tags:     newHelperTagsList(prefix, "-pwsh", "arch"),
+			tags:     newHelperTagsList(prefix, "-pwsh", "arch", registry),
 		})
 	}
 
@@ -152,12 +157,15 @@ func AssembleReleaseHelper(flavor, prefix string) build.TargetBlueprint[build.Co
 }
 
 func ReleaseHelper(blueprint build.TargetBlueprint[build.Component, build.Component, []helperBuild], publish bool) error {
-	builder := docker.NewBuilder()
+	builder := docker.NewBuilder(
+		blueprint.Env().Value(docker.Host),
+		blueprint.Env().Value(docker.CertPath),
+	)
 
 	logout, err := builder.Login(
-		blueprint.Env().Value(ci.EnvRegistryUser),
-		blueprint.Env().Value(ci.EnvRegistryPassword),
-		blueprint.Env().Value(ci.EnvRegistry),
+		blueprint.Env().Value(ci.RegistryUser),
+		blueprint.Env().Value(ci.RegistryPassword),
+		blueprint.Env().Value(ci.Registry),
 	)
 	if err != nil {
 		return err

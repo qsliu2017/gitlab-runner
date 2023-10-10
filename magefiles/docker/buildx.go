@@ -3,11 +3,12 @@ package docker
 import (
 	"errors"
 	"fmt"
+	"strings"
+
 	"github.com/magefile/mage/sh"
 	"github.com/samber/lo"
 	"gitlab.com/gitlab-org/gitlab-runner/magefiles/build"
-	"gitlab.com/gitlab-org/gitlab-runner/magefiles/mageutils"
-	"strings"
+	"gitlab.com/gitlab-org/gitlab-runner/magefiles/env"
 )
 
 const (
@@ -15,13 +16,29 @@ const (
 	defaultContextName = "docker-buildx"
 )
 
+var (
+	Host     = env.NewDefault("DOCKER_HOST", "unix:///var/run/docker.sock")
+	CertPath = env.New("DOCKER_CERT_PATH")
+
+	BuilderEnvBundle = env.Variables{
+		Host,
+		CertPath,
+	}
+)
+
 type Builder struct {
+	host     string
+	certPath string
+
 	builderName string
 	contextName string
 }
 
-func NewBuilder() *Builder {
+func NewBuilder(host, certPath string) *Builder {
 	return &Builder{
+		host:     host,
+		certPath: certPath,
+
 		builderName: defaultBuilderName,
 		contextName: defaultContextName,
 	}
@@ -69,15 +86,14 @@ func (b *Builder) SetupContext() error {
 	// Otherwise, we get the following error:
 	// > could not create a builder instance with TLS data loaded from environment.
 
-	docker := fmt.Sprintf("host=%s", mageutils.EnvOrDefault("DOCKER_HOST", "unix:///var/run/docker.sock"))
-	dockerCertPath := mageutils.Env("DOCKER_CERT_PATH")
-	if dockerCertPath != "" {
+	docker := fmt.Sprintf("host=%s", b.host)
+	if b.certPath != "" {
 		docker = fmt.Sprintf(
 			"host=%s,ca=%s/ca.pem,cert=%s/cert.pem,key=%s/key.pem",
-			mageutils.Env("DOCKER_HOST"),
-			dockerCertPath,
-			dockerCertPath,
-			dockerCertPath,
+			b.host,
+			b.certPath,
+			b.certPath,
+			b.certPath,
 		)
 	}
 

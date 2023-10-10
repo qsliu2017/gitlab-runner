@@ -8,6 +8,7 @@ import (
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/samber/lo"
 	"gitlab.com/gitlab-org/gitlab-runner/magefiles/env"
+	"gitlab.com/gitlab-org/gitlab-runner/magefiles/mageutils"
 )
 
 type TargetBlueprint[T Component, E Component, F any] interface {
@@ -17,15 +18,25 @@ type TargetBlueprint[T Component, E Component, F any] interface {
 	Env() BlueprintEnv
 }
 
-type BlueprintEnv map[string]env.Variable
+type BlueprintEnv struct {
+	env map[string]env.Variable
+}
 
-func (e BlueprintEnv) Value(env string) string {
-	v, ok := e[env]
+func (e BlueprintEnv) All() env.Variables {
+	return lo.Values(e.env)
+}
+
+func (e BlueprintEnv) ValueFrom(env string) string {
+	v, ok := e.env[env]
 	if !ok {
 		fmt.Printf("WARN: Accessing a variable that's not defined in the blueprint: %q\n", env)
 	}
 
-	return v.Value
+	return mageutils.EnvFallbackOrDefault(v.Key, v.Fallback, v.Default)
+}
+
+func (e BlueprintEnv) Value(env env.Variable) string {
+	return e.ValueFrom(env.Key)
 }
 
 type BlueprintBase struct {
@@ -33,15 +44,15 @@ type BlueprintBase struct {
 }
 
 func NewBlueprintBase(envs ...env.VariableBundle) BlueprintBase {
-	env := BlueprintEnv{}
+	e := BlueprintEnv{env: map[string]env.Variable{}}
 	for _, v := range envs {
 		for _, vv := range v.Variables() {
-			env[vv.Key] = vv
+			e.env[vv.Key] = vv
 		}
 	}
 
 	return BlueprintBase{
-		env: env,
+		env: e,
 	}
 }
 
@@ -103,16 +114,16 @@ func rowsFromComponents[T Component](components []T) []table.Row {
 }
 
 func rowsFromEnv(blueprintEnv BlueprintEnv) []table.Row {
-	envs := lo.Keys(blueprintEnv)
+	envs := lo.Keys(blueprintEnv.env)
 	sort.Strings(envs)
-	return lo.Map(envs, func(value string, _ int) table.Row {
+	return lo.Map(envs, func(key string, _ int) table.Row {
 		isSet := "Yes"
-		val, ok := blueprintEnv[value]
-		if !ok || val.Value == "" {
+		val := blueprintEnv.ValueFrom(key)
+		if val == "" {
 			isSet = color.New(color.FgRed).Sprint("No")
 		}
 
-		return table.Row{value, "", isSet}
+		return table.Row{key, "", isSet}
 	})
 
 }

@@ -42,6 +42,18 @@ func fileExists(f string) func() error {
 	}
 }
 
+func dockerImageExists(img string) func() error {
+	return func() error {
+		//command := "skopeo inspect --raw --no-tags docker://" + img
+		//_, err := exec.LookPath("skopeo")
+		//if err != nil {
+		//	command = fmt.Sprintf("docker run --rm ")
+		//}
+
+		return nil
+	}
+}
+
 func NewDockerImage(value string) Component {
 	return component{
 		value: value,

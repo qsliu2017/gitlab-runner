@@ -1,18 +1,13 @@
 package env
 
-import "gitlab.com/gitlab-org/gitlab-runner/magefiles/mageutils"
-
 type Variable struct {
-	Key   string
-	Value string
+	Key      string
+	Fallback string
+	Default  string
 }
 
 type VariableBundle interface {
 	Variables() []Variable
-}
-
-func (v Variable) String() string {
-	return v.Value
 }
 
 func (v Variable) Variables() []Variable {
@@ -27,21 +22,21 @@ func (v Variables) Variables() []Variable {
 
 func New(key string) Variable {
 	return Variable{
-		Key:   key,
-		Value: mageutils.Env(key),
+		Key: key,
 	}
 }
 
 func NewDefault(key, def string) Variable {
 	return Variable{
-		Key:   key,
-		Value: mageutils.EnvOrDefault(key, def),
+		Key:     key,
+		Default: def,
 	}
 }
 
 func NewFallbackOrDefault(key, fallback, def string) Variable {
 	return Variable{
-		Key:   key,
-		Value: mageutils.EnvFallbackOrDefault(key, fallback, def),
+		Key:      key,
+		Fallback: fallback,
+		Default:  def,
 	}
 }
