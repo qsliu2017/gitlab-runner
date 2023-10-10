@@ -30,3 +30,7 @@ include:
     - '/ci/danger-review.yml'
   rules:
     - if: '$CI_SERVER_HOST == "gitlab.com"'
+
+danger-review:
+  variables:
+    GITLAB_DANGERFILES_VERSION: "4.1.0"
