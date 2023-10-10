@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"sort"
 
+	"github.com/fatih/color"
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/samber/lo"
 	"gitlab.com/gitlab-org/gitlab-runner/magefiles/env"
@@ -52,40 +53,66 @@ func PrintBlueprint[T Component, E Component, F any](blueprint TargetBlueprint[T
 	t := table.NewWriter()
 	t.AppendHeader(table.Row{"Target info"})
 
-	t.AppendRow(table.Row{"Dependencies", "Type"})
+	t.AppendRow(table.Row{"Dependency", "Type", "Exists"})
 	t.AppendSeparator()
 	t.AppendRows(rowsFromComponents(blueprint.Dependencies()))
 
 	t.AppendSeparator()
 
-	t.AppendRow(table.Row{"Artifacts", "Type"})
+	t.AppendRow(table.Row{"Artifact", "Type", "Exists"})
 	t.AppendSeparator()
 	t.AppendRows(rowsFromComponents(blueprint.Artifacts()))
 	t.AppendSeparator()
 
-	t.AppendRow(table.Row{"Environment variables"})
+	t.AppendRow(table.Row{"Environment variable", "", "Is Set"})
 	t.AppendSeparator()
-	envs := lo.Keys(blueprint.Env())
-	sort.Strings(envs)
-	for _, e := range envs {
-		t.AppendRow(table.Row{e})
-	}
+	t.AppendRows(rowsFromEnv(blueprint.Env()))
 
 	fmt.Println(t.Render())
 
 	return blueprint
 }
 
+type dep struct {
+	typ    string
+	exists error
+}
+
 func rowsFromComponents[T Component](components []T) []table.Row {
-	deps := lo.Reduce(components, func(acc map[string]string, item T, _ int) map[string]string {
-		acc[item.Value()] = item.Type()
+	deps := lo.Reduce(components, func(acc map[string]dep, item T, _ int) map[string]dep {
+		acc[item.Value()] = dep{
+			typ:    item.Type(),
+			exists: item.Exists(),
+		}
 		return acc
-	}, map[string]string{})
+	}, map[string]dep{})
+
 	values := lo.Keys(deps)
 	sort.Strings(values)
 
 	return lo.Map(values, func(value string, _ int) table.Row {
-		depType := deps[value]
-		return table.Row{value, depType}
+		dep := deps[value]
+
+		existsMessage := "Yes"
+		if dep.exists != nil {
+			existsMessage = color.New(color.FgRed).Sprint(dep.exists.Error())
+		}
+
+		return table.Row{value, dep.typ, existsMessage}
 	})
+}
+
+func rowsFromEnv(blueprintEnv BlueprintEnv) []table.Row {
+	envs := lo.Keys(blueprintEnv)
+	sort.Strings(envs)
+	return lo.Map(envs, func(value string, _ int) table.Row {
+		isSet := "Yes"
+		val, ok := blueprintEnv[value]
+		if !ok || val.Value == "" {
+			isSet = color.New(color.FgRed).Sprint("No")
+		}
+
+		return table.Row{value, "", isSet}
+	})
+
 }
