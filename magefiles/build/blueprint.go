@@ -3,6 +3,7 @@ package build
 import (
 	"fmt"
 	"sort"
+	"sync"
 
 	"github.com/fatih/color"
 	"github.com/jedib0t/go-pretty/v6/table"
@@ -26,10 +27,15 @@ func (e BlueprintEnv) All() env.Variables {
 	return lo.Values(e.env)
 }
 
+func (e BlueprintEnv) Var(key string) env.Variable {
+	return e.env[key]
+}
+
 func (e BlueprintEnv) ValueFrom(env string) string {
 	v, ok := e.env[env]
 	if !ok {
 		fmt.Printf("WARN: Accessing a variable that's not defined in the blueprint: %q\n", env)
+		return ""
 	}
 
 	return mageutils.EnvFallbackOrDefault(v.Key, v.Fallback, v.Default)
@@ -75,7 +81,7 @@ func PrintBlueprint[T Component, E Component, F any](blueprint TargetBlueprint[T
 	t.AppendRows(rowsFromComponents(blueprint.Artifacts()))
 	t.AppendSeparator()
 
-	t.AppendRow(table.Row{"Environment variable", "", "Is Set"})
+	t.AppendRow(table.Row{"Environment variable", "Is set", "Is default"})
 	t.AppendSeparator()
 	t.AppendRows(rowsFromEnv(blueprint.Env()))
 
@@ -90,13 +96,26 @@ type dep struct {
 }
 
 func rowsFromComponents[T Component](components []T) []table.Row {
-	deps := lo.Reduce(components, func(acc map[string]dep, item T, _ int) map[string]dep {
-		acc[item.Value()] = dep{
-			typ:    item.Type(),
-			exists: item.Exists(),
-		}
-		return acc
-	}, map[string]dep{})
+	deps := make(map[string]dep)
+	var mu sync.Mutex
+	var wg sync.WaitGroup
+	for _, c := range components {
+		wg.Add(1)
+		go func(c T) {
+			// The exists check could be slow so let's do it concurrently
+			// with a bit of good old school Go code
+			exists := c.Exists()
+			mu.Lock()
+			deps[c.Value()] = dep{
+				typ:    c.Type(),
+				exists: exists,
+			}
+			mu.Unlock()
+			wg.Done()
+		}(c)
+	}
+
+	wg.Wait()
 
 	values := lo.Keys(deps)
 	sort.Strings(values)
@@ -118,12 +137,16 @@ func rowsFromEnv(blueprintEnv BlueprintEnv) []table.Row {
 	sort.Strings(envs)
 	return lo.Map(envs, func(key string, _ int) table.Row {
 		isSet := "Yes"
-		val := blueprintEnv.ValueFrom(key)
-		if val == "" {
+		if blueprintEnv.ValueFrom(key) == "" {
 			isSet = color.New(color.FgRed).Sprint("No")
 		}
 
-		return table.Row{key, "", isSet}
+		isDefault := "Yes"
+		if blueprintEnv.ValueFrom(key) != blueprintEnv.Var(key).Default {
+			isDefault = color.New(color.FgYellow).Sprint("No")
+		}
+
+		return table.Row{key, isSet, isDefault}
 	})
 
 }

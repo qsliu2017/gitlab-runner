@@ -2,7 +2,8 @@ package build
 
 import (
 	"errors"
-	"os"
+
+	"gitlab.com/gitlab-org/gitlab-runner/magefiles/resourcecheck"
 )
 
 type Component interface {
@@ -14,9 +15,9 @@ type Component interface {
 var ErrUnknownComponentExists = errors.New("unknown")
 
 type component struct {
-	value  string
-	typ    string
-	exists func() error
+	value   string
+	typ     string
+	checker resourcecheck.ResourceChecker
 }
 
 func (c component) Value() string {
@@ -28,51 +29,38 @@ func (c component) Type() string {
 }
 
 func (c component) Exists() error {
-	if c.exists == nil {
+	if c.checker == nil {
 		return ErrUnknownComponentExists
 	}
 
-	return c.exists()
+	return c.checker.Exists()
 }
 
-func fileExists(f string) func() error {
-	return func() error {
-		_, err := os.Stat(f)
-		return err
-	}
-}
-
-func dockerImageExists(img string) func() error {
-	return func() error {
-		//command := "skopeo inspect --raw --no-tags docker://" + img
-		//_, err := exec.LookPath("skopeo")
-		//if err != nil {
-		//	command = fmt.Sprintf("docker run --rm ")
-		//}
-
-		return nil
+func WithChecker(c Component, check resourcecheck.ResourceChecker) Component {
+	return component{
+		value:   c.Value(),
+		typ:     c.Type(),
+		checker: check,
 	}
 }
 
 func NewDockerImage(value string) Component {
-	return component{
+	return WithChecker(component{
 		value: value,
-		typ:   "Docker Image",
-	}
+		typ:   "Docker image",
+	}, resourcecheck.NewDockerImage(value))
 }
 
 func NewDockerImageArchive(value string) Component {
-	return component{
-		value:  value,
-		typ:    "Docker Image Archive",
-		exists: fileExists(value),
-	}
+	return WithChecker(component{
+		value: value,
+		typ:   "Docker image archive",
+	}, resourcecheck.NewFile(value))
 }
 
 func NewFile(value string) Component {
-	return component{
-		value:  value,
-		typ:    "File",
-		exists: fileExists(value),
-	}
+	return WithChecker(component{
+		value: value,
+		typ:   "File",
+	}, resourcecheck.NewFile(value))
 }

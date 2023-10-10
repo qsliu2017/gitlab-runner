@@ -10,7 +10,7 @@ import (
 
 type Images mg.Namespace
 
-func (i Images) BuildRunnerDefault() error {
+func (Images) BuildRunnerDefault() error {
 	blueprint := build.PrintBlueprint(images.AssembleBuildRunner(images.DefaultFlavor, images.DefaultArchs))
 	return images.BuildRunner(blueprint, false)
 }
