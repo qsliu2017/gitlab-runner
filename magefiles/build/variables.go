@@ -65,3 +65,7 @@ func Revision() string {
 		return out, nil
 	})
 }
+
+func ReleaseArtifactsPath(f string) string {
+	return "out/release_artifacts/" + f + ".json"
+}

@@ -11,31 +11,43 @@ import (
 type Images mg.Namespace
 
 func (Images) BuildRunnerDefault() error {
-	blueprint := build.PrintBlueprint(images.AssembleBuildRunner(images.DefaultFlavor, images.DefaultArchs))
-	return images.BuildRunner(blueprint, false)
+	return runRunnerBuild(images.DefaultFlavor, images.DefaultArchs, false)
 }
 
 func (Images) BuildRunner(flavor, targetArchs string) error {
-	blueprint := build.PrintBlueprint(images.AssembleBuildRunner(flavor, targetArchs))
-	return images.BuildRunner(blueprint, false)
+	return runRunnerBuild(flavor, targetArchs, false)
 }
 
 func (Images) ReleaseRunner(flavor, targetArchs string) error {
+	return runRunnerBuild(flavor, targetArchs, true)
+}
+
+func runRunnerBuild(flavor, targetArchs string, publish bool) error {
 	blueprint := build.PrintBlueprint(images.AssembleBuildRunner(flavor, targetArchs))
+	if err := build.Export(blueprint.Artifacts(), build.ReleaseArtifactsPath("runner_images")); err != nil {
+		return err
+	}
+
 	return images.BuildRunner(blueprint, true)
 }
 
 func (Images) TagHelperDefault() error {
-	blueprint := build.PrintBlueprint(images.AssembleReleaseHelper(images.DefaultFlavor, ""))
-	return images.ReleaseHelper(blueprint, false)
+	return runHelperBuild(images.DefaultFlavor, "", false)
 }
 
 func (Images) TagHelper(flavor, prefix string) error {
-	blueprint := build.PrintBlueprint(images.AssembleReleaseHelper(flavor, prefix))
-	return images.ReleaseHelper(blueprint, false)
+	return runHelperBuild(flavor, prefix, false)
 }
 
 func (Images) ReleaseHelper(flavor, prefix string) error {
+	return runHelperBuild(flavor, prefix, true)
+}
+
+func runHelperBuild(flavor, prefix string, publish bool) error {
 	blueprint := build.PrintBlueprint(images.AssembleReleaseHelper(flavor, prefix))
-	return images.ReleaseHelper(blueprint, true)
+	if err := build.Export(blueprint.Artifacts(), build.ReleaseArtifactsPath("helper_images")); err != nil {
+		return err
+	}
+
+	return images.ReleaseHelper(blueprint, publish)
 }

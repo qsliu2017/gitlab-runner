@@ -90,25 +90,20 @@ func PrintBlueprint[T Component, E Component, F any](blueprint TargetBlueprint[T
 	return blueprint
 }
 
-type dep struct {
-	typ    string
-	exists error
-}
-
-func rowsFromComponents[T Component](components []T) []table.Row {
-	deps := make(map[string]dep)
+func CheckComponents[T Component](components []T) map[string]lo.Tuple2[string, error] {
+	deps := make(map[string]lo.Tuple2[string, error])
 	var mu sync.Mutex
 	var wg sync.WaitGroup
 	for _, c := range components {
 		wg.Add(1)
-		go func(c T) {
+		go func(c Component) {
 			// The exists check could be slow so let's do it concurrently
 			// with a bit of good old school Go code
-			exists := c.Exists()
+			exists := NewResourceChecker(c).Exists()
 			mu.Lock()
-			deps[c.Value()] = dep{
-				typ:    c.Type(),
-				exists: exists,
+			deps[c.Value()] = lo.Tuple2[string, error]{
+				A: c.Type(),
+				B: exists,
 			}
 			mu.Unlock()
 			wg.Done()
@@ -117,6 +112,10 @@ func rowsFromComponents[T Component](components []T) []table.Row {
 
 	wg.Wait()
 
+	return deps
+}
+
+func RowsFromCheckedComponents(deps map[string]lo.Tuple2[string, error]) []table.Row {
 	values := lo.Keys(deps)
 	sort.Strings(values)
 
@@ -124,12 +123,16 @@ func rowsFromComponents[T Component](components []T) []table.Row {
 		dep := deps[value]
 
 		existsMessage := "Yes"
-		if dep.exists != nil {
-			existsMessage = color.New(color.FgRed).Sprint(dep.exists.Error())
+		if dep.B != nil {
+			existsMessage = color.New(color.FgRed).Sprint(dep.B.Error())
 		}
 
-		return table.Row{value, dep.typ, existsMessage}
+		return table.Row{value, dep.A, existsMessage}
 	})
+}
+
+func rowsFromComponents[T Component](components []T) []table.Row {
+	return RowsFromCheckedComponents(CheckComponents(components))
 }
 
 func rowsFromEnv(blueprintEnv BlueprintEnv) []table.Row {
