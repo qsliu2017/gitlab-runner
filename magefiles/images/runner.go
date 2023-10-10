@@ -313,7 +313,7 @@ func buildx(
 	)
 
 	args = append(args, lo.Map(blueprint.Artifacts(), func(tag build.Component, _ int) string {
-		return fmt.Sprintf("--tag=%s", tag)
+		return fmt.Sprintf("--tag=%s", tag.Value())
 	})...)
 
 	dockerOS, err := sh.Output("docker", "version", "-f", "{{.Server.Os}}")
