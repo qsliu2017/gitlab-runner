@@ -68,6 +68,8 @@ func renderTable(rows []table.Row) {
 }
 
 func (Resources) VerifyAll() error {
+	// TODO: verify that the resources exported match the expected blueprint
+
 	dir := filepath.Dir(build.ReleaseArtifactsPath(""))
 	entries, err := os.ReadDir(dir)
 	if err != nil {

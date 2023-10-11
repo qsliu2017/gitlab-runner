@@ -37,3 +37,16 @@ static QA:
       jq -C . gl-code-quality-report.json
       exit 1
     fi
+
+verify development resources:
+  extends:
+  - .rules:merge_request_pipelines:no_docs
+  - .docker
+  needs:
+  - job: "development docker images"
+    artifacts: true
+  - job: "development helper docker images"
+    artifacts: true
+  stage: postrelease
+  script:
+    - mage resources:verifyAll

@@ -118,6 +118,11 @@
   - mage packagecloud:push deb "$CI_JOB_NAME" "$DIST_FLAVOR"
   - mage packagecloud:push rpm "$CI_JOB_NAME" "$DIST_FLAVOR"
 
+.release_artifacts:
+  artifacts:
+    paths:
+      - out/release_artifacts/*
+
 development S3:
   extends:
   - .release_s3
@@ -130,15 +135,20 @@ development docker images:
   extends:
   - .release_docker_images
   - .rules:release:development:merge-requests
-  variables:
-    PUBLISH_IMAGES: "false"
+  - .release_artifacts
+  # TODO: fix environments and push destinations for dev docker images
+  environment:
+    name: bleeding_edge/docker_images/linux
+    url: https://hub.docker.com/r/gitlab/gitlab-runner/tags/
 
 development helper docker images:
   extends:
   - .release_helper_docker_images
   - .rules:release:development:merge-requests
-  script:
-  - mage images:tagHelper "$IMAGE_FLAVOR" "$IMAGE_TAG"
+  - .release_artifacts
+  environment:
+    name: bleeding_edge/docker_images/linux
+    url: https://hub.docker.com/r/gitlab/gitlab-runner/tags/
 
 bleeding edge S3:
   extends:
@@ -177,11 +187,13 @@ bleeding edge docker images:
   extends:
   - .bleeding_edge_docker_images_base
   - .release_docker_images
+  - .release_artifacts
 
 bleeding edge helper docker images:
   extends:
   - .bleeding_edge_docker_images_base
   - .release_helper_docker_images
+  - .release_artifacts
 
 bleeding edge sync docker images:
   extends:
