@@ -302,16 +302,12 @@ func buildx(
 	publish bool,
 ) error {
 	env := blueprint.Env()
-
-	var args []string
-
-	args = append(args,
+	args := []string{
 		"--build-arg", fmt.Sprintf("BASE_IMAGE=%s", baseImage),
 		"--build-arg", fmt.Sprintf("DOCKER_MACHINE_VERSION=%s", env.Value(dockerMachineVersion)),
 		"--build-arg", fmt.Sprintf("DUMB_INIT_VERSION=%s", env.Value(dumbInitVersion)),
 		"--build-arg", fmt.Sprintf("GIT_LFS_VERSION=%s", env.Value(gitLfsVersion)),
-	)
-
+	}
 	args = append(args, lo.Map(blueprint.Artifacts(), func(tag build.Component, _ int) string {
 		return fmt.Sprintf("--tag=%s", tag.Value())
 	})...)

@@ -12,6 +12,12 @@ import (
 	"gitlab.com/gitlab-org/gitlab-runner/magefiles/mageutils"
 )
 
+const (
+	// Don't look at me, the linter made me do it
+	messageYes = "Yes"
+	messageNo  = "No"
+)
+
 type TargetBlueprint[T Component, E Component, F any] interface {
 	Dependencies() []T
 	Artifacts() []E
@@ -122,7 +128,7 @@ func RowsFromCheckedComponents(deps map[string]lo.Tuple2[string, error]) []table
 	return lo.Map(values, func(value string, _ int) table.Row {
 		dep := deps[value]
 
-		existsMessage := "Yes"
+		existsMessage := messageYes
 		if dep.B != nil {
 			existsMessage = color.New(color.FgRed).Sprint(dep.B.Error())
 		}
@@ -138,18 +144,18 @@ func rowsFromComponents[T Component](components []T) []table.Row {
 func rowsFromEnv(blueprintEnv BlueprintEnv) []table.Row {
 	envs := lo.Keys(blueprintEnv.env)
 	sort.Strings(envs)
+
 	return lo.Map(envs, func(key string, _ int) table.Row {
-		isSet := "Yes"
+		isSet := messageYes
 		if blueprintEnv.ValueFrom(key) == "" {
-			isSet = color.New(color.FgRed).Sprint("No")
+			isSet = color.New(color.FgRed).Sprint(messageNo)
 		}
 
-		isDefault := "Yes"
+		isDefault := messageYes
 		if blueprintEnv.ValueFrom(key) != blueprintEnv.Var(key).Default {
-			isDefault = color.New(color.FgYellow).Sprint("No")
+			isDefault = color.New(color.FgYellow).Sprint(messageNo)
 		}
 
 		return table.Row{key, isSet, isDefault}
 	})
-
 }
