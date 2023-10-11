@@ -9,7 +9,10 @@ import (
 	"gitlab.com/gitlab-org/gitlab-runner/magefiles/build"
 	"gitlab.com/gitlab-org/gitlab-runner/magefiles/ci"
 	"gitlab.com/gitlab-org/gitlab-runner/magefiles/docker"
+	"gitlab.com/gitlab-org/gitlab-runner/magefiles/env"
 )
+
+var helperImageName = env.NewDefault("HELPER_IMAGE_NAME", "gitlab-runner-helper")
 
 var platformMap = map[string]string{
 	"x86_64":  "linux/amd64",
@@ -36,35 +39,41 @@ type helperBuild struct {
 }
 
 type helperTagsList struct {
-	suffix       string
-	baseTemplate string
-	prefix       string
-	arch         string
-	registry     string
+	suffix        string
+	baseTemplate  string
+	prefix        string
+	arch          string
+	imageName     string
+	registryImage string
+	isLatest      bool
 }
 
-func newHelperTagsList(prefix, suffix, arch, registry string) helperTagsList {
+func newHelperTagsList(prefix, suffix, arch, imageName, registryImage string, isLatest bool) helperTagsList {
 	return helperTagsList{
-		prefix:       prefix,
-		suffix:       suffix,
-		arch:         arch,
-		registry:     registry,
-		baseTemplate: "{{ .Registry }}/gitlab-runner-helper:{{ .Prefix }}{{ .Arch}}-"}
+		prefix:        prefix,
+		suffix:        suffix,
+		arch:          arch,
+		registryImage: registryImage,
+		imageName:     imageName,
+		isLatest:      isLatest,
+		baseTemplate:  "{{ .RegistryImage }}/{{ .ImageName }}:{{ .Prefix }}{{ .Arch}}-"}
 }
 
 func (l helperTagsList) render(raw string) string {
 	context := struct {
-		Registry string
-		Prefix   string
-		Arch     string
-		Revision string
-		RefTag   string
+		RegistryImage string
+		ImageName     string
+		Prefix        string
+		Arch          string
+		Revision      string
+		RefTag        string
 	}{
-		Registry: l.registry,
-		Prefix:   l.prefix,
-		Arch:     l.arch,
-		Revision: build.Revision(),
-		RefTag:   build.RefTag(),
+		RegistryImage: l.registryImage,
+		ImageName:     l.imageName,
+		Prefix:        l.prefix,
+		Arch:          l.arch,
+		Revision:      build.Revision(),
+		RefTag:        build.RefTag(),
 	}
 
 	var out bytes.Buffer
@@ -83,16 +92,20 @@ func (l helperTagsList) versionTag() string {
 	return l.render("{{ .RefTag }}")
 }
 
-func (l helperTagsList) latestTag() string {
-	return l.render("latest")
+func (l helperTagsList) latestTag() (string, bool) {
+	return l.render("latest"), l.isLatest
 }
 
 func (l helperTagsList) all() []string {
-	return []string{
+	all := []string{
 		l.revisionTag(),
 		l.versionTag(),
-		l.latestTag(),
 	}
+	if latest, isLatest := l.latestTag(); isLatest {
+		all = append(all, latest)
+	}
+
+	return all
 }
 
 type helperBlueprintImpl struct {
@@ -131,17 +144,18 @@ func AssembleReleaseHelper(flavor, prefix string) build.TargetBlueprint[build.Co
 	}
 
 	builds := helperBlueprintImpl{
-		BlueprintBase: build.NewBlueprintBase(ci.RegistryAuthBundle, docker.BuilderEnvBundle),
+		BlueprintBase: build.NewBlueprintBase(ci.RegistryImage, ci.RegistryAuthBundle, docker.BuilderEnvBundle, helperImageName),
 		data:          []helperBuild{},
 	}
 
-	registry := builds.Env().Value(ci.Registry)
+	imageName := builds.Env().Value(helperImageName)
+	registryImage := builds.Env().Value(ci.RegistryImage)
 
 	for _, arch := range archs {
 		builds.data = append(builds.data, helperBuild{
 			archive:  fmt.Sprintf("out/helper-images/prebuilt-%s-%s.tar.xz", flavor, arch),
 			platform: platformMap[arch],
-			tags:     newHelperTagsList(prefix, "", arch, registry),
+			tags:     newHelperTagsList(prefix, "", arch, imageName, registryImage, build.IsLatest()),
 		})
 	}
 
@@ -149,7 +163,7 @@ func AssembleReleaseHelper(flavor, prefix string) build.TargetBlueprint[build.Co
 		builds.data = append(builds.data, helperBuild{
 			archive:  fmt.Sprintf("out/helper-images/prebuilt-%s-x86_64-pwsh.tar.xz", flavor),
 			platform: platformMap["x86_64"],
-			tags:     newHelperTagsList(prefix, "-pwsh", "arch", registry),
+			tags:     newHelperTagsList(prefix, "-pwsh", "arch", imageName, registryImage, build.IsLatest()),
 		})
 	}
 
@@ -173,7 +187,7 @@ func ReleaseHelper(blueprint build.TargetBlueprint[build.Component, build.Compon
 	defer logout()
 
 	for _, build := range blueprint.Data() {
-		if err := releaseImage(
+		if err := releaseImageTags(
 			builder,
 			build,
 			publish,
@@ -185,16 +199,12 @@ func ReleaseHelper(blueprint build.TargetBlueprint[build.Component, build.Compon
 	return nil
 }
 
-func releaseImage(builder *docker.Builder, build helperBuild, publish bool) error {
+func releaseImageTags(builder *docker.Builder, build helperBuild, publish bool) error {
 	baseTag := build.tags.revisionTag()
-	latestTag := build.tags.latestTag()
 	versionTag := build.tags.versionTag()
+	latestTag, isLatest := build.tags.latestTag()
 
 	if err := builder.Import(build.archive, baseTag, build.platform); err != nil {
-		return err
-	}
-
-	if err := builder.TagLatest(baseTag, latestTag); err != nil {
 		return err
 	}
 
@@ -202,11 +212,22 @@ func releaseImage(builder *docker.Builder, build helperBuild, publish bool) erro
 		return err
 	}
 
+	if isLatest {
+		if err := builder.Tag(baseTag, latestTag); err != nil {
+			return err
+		}
+	}
+
 	if !publish {
 		return nil
 	}
 
-	for _, tag := range []string{baseTag, latestTag, versionTag} {
+	tagsToPush := []string{baseTag, latestTag}
+	if isLatest {
+		tagsToPush = append(tagsToPush, latestTag)
+	}
+
+	for _, tag := range tagsToPush {
 		if err := builder.Push(tag); err != nil {
 			return err
 		}

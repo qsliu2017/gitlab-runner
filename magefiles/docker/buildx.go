@@ -7,7 +7,6 @@ import (
 
 	"github.com/magefile/mage/sh"
 	"github.com/samber/lo"
-	"gitlab.com/gitlab-org/gitlab-runner/magefiles/build"
 	"gitlab.com/gitlab-org/gitlab-runner/magefiles/env"
 )
 
@@ -139,14 +138,7 @@ func (b *Builder) Tag(tagFrom, tagTo string) error {
 	return b.Docker("tag", tagFrom, tagTo)
 }
 
-func (b *Builder) TagLatest(tagFrom, tagTo string) error {
-	if !build.IsLatest() {
-		return nil
-	}
-
-	return b.Tag(tagFrom, tagTo)
-}
-
 func (b *Builder) Push(tag string) error {
+	fmt.Println("Pushing image", tag)
 	return b.Docker("push", tag)
 }

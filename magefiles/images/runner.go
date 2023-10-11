@@ -23,6 +23,8 @@ const (
 )
 
 var (
+	runnerImageName = env.New("RUNNER_IMAGE_NAME")
+
 	dockerMachineVersion       = env.NewDefault("DOCKER_MACHINE_VERSION", "v0.16.2-gitlab.21")
 	dockerMachineAmd64Checksum = env.NewDefault("DOCKER_MACHINE_AMD64_CHECKSUM", "a4e9a416f30406772e76c3b9e795121d5a7e677978923f96b7fb72f0d8354740")
 	dockerMachineArm64Checksum = env.NewDefault("DOCKER_MACHINE_ARM64_CHECKSUM", "124ceefbe1a1eec44eeb932edf9f85dab1e532d449f5e3e236faed5e8b19caba")
@@ -106,6 +108,7 @@ func AssembleBuildRunner(flavor, targetArchs string) build.TargetBlueprint[runne
 		ci.RegistryImage,
 		ci.RegistryAuthBundle,
 		docker.BuilderEnvBundle,
+		runnerImageName,
 		dockerMachineVersion,
 		dumbInitVersion,
 		gitLfsVersion,
@@ -133,7 +136,12 @@ func AssembleBuildRunner(flavor, targetArchs string) build.TargetBlueprint[runne
 	return runnerBlueprintImpl{
 		BlueprintBase: base,
 		dependencies:  assembleDependencies(archs),
-		artifacts:     tags(flavors, base.Env().Value(ci.RegistryImage), build.RefTag()),
+		artifacts: tags(
+			flavors,
+			base.Env().Value(ci.RegistryImage),
+			base.Env().Value(runnerImageName),
+			build.RefTag(),
+		),
 		params: buildRunnerParams{
 			flavor: flavor,
 			archs:  archs,
@@ -358,18 +366,24 @@ func buildx(
 	return builder.Buildx(append([]string{"build"}, args...)...)
 }
 
-func tags(baseImages []string, repo, refTag string) []string {
+func tags(baseImages []string, registryImage, imageName, refTag string) []string {
 	var tags []string
+
+	image := registryImage
+	if imageName != "" {
+		image = fmt.Sprintf("%s/%s", registryImage, imageName)
+	}
+
 	for _, base := range baseImages {
-		tags = append(tags, fmt.Sprintf("%s:%s-%s", repo, base, refTag))
+		tags = append(tags, fmt.Sprintf("%s:%s-%s", image, base, refTag))
 		if base == DefaultFlavor {
-			tags = append(tags, fmt.Sprintf("%s:%s", repo, refTag))
+			tags = append(tags, fmt.Sprintf("%s:%s", image, refTag))
 		}
 
 		if build.IsLatest() {
-			tags = append(tags, fmt.Sprintf("%s:%s", repo, base))
+			tags = append(tags, fmt.Sprintf("%s:%s", image, base))
 			if base == DefaultFlavor {
-				tags = append(tags, fmt.Sprintf("%s:latest", repo))
+				tags = append(tags, fmt.Sprintf("%s:latest", image))
 			}
 		}
 	}
