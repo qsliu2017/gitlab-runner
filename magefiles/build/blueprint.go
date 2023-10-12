@@ -12,6 +12,8 @@ import (
 	"gitlab.com/gitlab-org/gitlab-runner/magefiles/mageutils"
 )
 
+// Read magefiles/docs/writing_mage_targets.md for details of blueprints
+
 const (
 	// Don't look at me, the linter made me do it
 	messageYes = "Yes"

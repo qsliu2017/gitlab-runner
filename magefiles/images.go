@@ -28,7 +28,7 @@ func runRunnerBuild(flavor, targetArchs string, publish bool) error {
 		return err
 	}
 
-	return images.BuildRunner(blueprint, true)
+	return images.BuildRunner(blueprint, publish)
 }
 
 func (Images) TagHelperDefault() error {
