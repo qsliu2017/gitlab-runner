@@ -162,6 +162,9 @@ helper-dockerarchive-host:
 .PHONY: helper-dockerarchive
 helper-dockerarchive: helper-dockerarchive-alpine helper-dockerarchive-alpine3.15 helper-dockerarchive-alpine3.16 helper-dockerarchive-alpine3.17 helper-dockerarchive-alpine3.18 helper-dockerarchive-alpine-latest helper-dockerarchive-ubuntu
 
+.PHONY: helper-dockerarchive-flavor-%
+helper-dockerarchive-flavor-%: ${BASE_TAR_PATH}-%.tar.xz ;
+
 .PHONY: helper-dockerarchive-alpine
 helper-dockerarchive-alpine: $(TAR_XZ_ALPINE)
 

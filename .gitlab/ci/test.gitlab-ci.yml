@@ -201,7 +201,8 @@ integration test:
   - .linux test
   needs:
   - 'clone test repo'
-  - 'helper images'
+  - 'helper images: [alpine, x86_64]'
+  - 'helper images: [ubuntu, x86_64]'
   - 'prepare done'
   script:
   - >

@@ -8,7 +8,7 @@
   variables:
     TAR_XZ_ARGS: -f -9
   script:
-  - make "helper-dockerarchive-${IMAGE_BASE}"
+  - make "helper-dockerarchive-flavor-${IMAGE_BASE}-${FLAVOR}"
   retry: 2
   artifacts:
     paths:
@@ -21,13 +21,21 @@ helper images:
   parallel:
     matrix:
     - IMAGE_BASE: "alpine"
+      FLAVOR: [x86_64, x86_64-pwsh, arm, arm64, s390x, ppc64le]
     - IMAGE_BASE: "alpine3.15"
+      FLAVOR: [x86_64, x86_64-pwsh, arm, arm64, s390x, ppc64le]
     - IMAGE_BASE: "alpine3.16"
+      FLAVOR: [x86_64, x86_64-pwsh, arm, arm64, s390x, ppc64le]
     - IMAGE_BASE: "alpine3.17"
+      FLAVOR: [x86_64, x86_64-pwsh, arm, arm64, s390x, ppc64le]
     - IMAGE_BASE: "alpine3.18"
+      FLAVOR: [x86_64, x86_64-pwsh, arm, arm64, s390x, ppc64le]
     - IMAGE_BASE: "alpine-latest"
+      FLAVOR: [x86_64, x86_64-pwsh, arm, arm64, s390x, ppc64le]
     - IMAGE_BASE: "alpine-edge"
+      FLAVOR: [x86_64, x86_64-pwsh, arm, arm64, s390x, ppc64le, riscv64]
     - IMAGE_BASE: "ubuntu"
+      FLAVOR: [x86_64, x86_64-pwsh, arm, arm64, s390x, ppc64le]
 
 helper images fips:
   extends:
@@ -37,6 +45,7 @@ helper images fips:
   parallel:
     matrix:
       - IMAGE_BASE: "ubi-fips"
+        FLAVOR: "x86_64"
 
 helper images binaries:
   extends:
