@@ -9,7 +9,7 @@ test coverage report:
   coverage: /regular total:\s+\(statements\)\s+\d+.\d+\%/
   needs:
   - unit test
-  - integration test
+#  - integration test
   - job: windows 1809 integration tests
     optional: true
   - job: windows 21H2 integration tests
