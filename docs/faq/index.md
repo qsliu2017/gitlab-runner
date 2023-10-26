@@ -333,3 +333,17 @@ Elasticsearch has a `vm.max_map_count` requirement that has to be set on the ins
 
 See the [Elasticsearch Docs](https://www.elastic.co/guide/en/elasticsearch/reference/current/docker.html#docker-prod-prerequisites)
 for how to set this value correctly depending on the platform.
+
+## Error: Connection refused to `d20rj4el6vkp4c.cloudfront.net` on port 443 
+
+When you install a package hosted under our package repository in `packages.gitlab.com`, it redirects to the CloudFront address `d20rj4el6vkp4c.cloudfront.net`. If your server is in an air-gapped environment, you can get the following errors: 
+
+```shell
+E: connection refused to d20rj4el6vkp4c.cloudfront.net 443
+```
+
+```shell
+Failed to connect to d20rj4el6vkp4c.cloudfront.net port 443: Connection refused
+```
+
+You can add the endpoint `d20rj4el6vkp4c.cloudfront.net` to your firewall settings. If this is not desired, you can download the package file from https://packages.gitlab.com/gitlab/gitlab-ee and manually upload it to your air-gapped server. 
