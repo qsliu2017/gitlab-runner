@@ -99,7 +99,7 @@ func ExtractZipArchive(archive *zip.Reader) error {
 		// Update file permissions. Pass through the symlink bit for symlinks,
 		// but no others -- lchmod() observes it.
 		fileMode := file.Mode().Perm()
-		fileMode |= file.Mode()&os.ModeSymlink
+		fileMode |= file.Mode() & os.ModeSymlink
 		if err := lchmod(file.Name, fileMode); tracker.actionable(err) {
 			logrus.Warningf("%s: %s (suppressing repeats)", file.Name, err)
 		}
