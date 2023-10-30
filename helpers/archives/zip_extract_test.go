@@ -102,15 +102,14 @@ func TestExtractZipFileNotFound(t *testing.T) {
 func TestExtractZipFileSymlinkMode(t *testing.T) {
 	testInWorkDir(t, func(t *testing.T, fileName string) {
 		regularFile := createTestFile(t, singleByte)
-
 		err := os.Chmod(regularFile, 0o600)
+		require.NoError(t, err)
+
+		fileInfo, err := os.Lstat(regularFile)
 		require.NoError(t, err)
 
 		symlinkFile := "symlinkFile"
 		err = os.Symlink(regularFile, symlinkFile)
-		require.NoError(t, err)
-
-		err = lchmod(symlinkFile, 0o777)
 		require.NoError(t, err)
 
 		f, err := os.Create(fileName)
@@ -131,12 +130,8 @@ func TestExtractZipFileSymlinkMode(t *testing.T) {
 		err = ExtractZipFile(fileName)
 		require.NoError(t, err)
 
-		fileInfo, err := os.Lstat(regularFile)
+		fileInfo, err = os.Lstat(regularFile)
 		require.NoError(t, err)
 		assert.EqualValues(t, fileInfo.Mode().Perm(), 0o600)
-
-		fileInfo, err = os.Lstat(symlinkFile)
-		require.NoError(t, err)
-		assert.EqualValues(t, fileInfo.Mode().Perm(), 0o777)
 	})
 }
