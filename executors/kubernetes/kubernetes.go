@@ -536,6 +536,7 @@ func (s *executor) logPodWarningEvents(eventType string) {
 
 	kubeRequest := newRetryableKubeAPICallWithValue(func() (*api.EventList, error) {
 		// TODO: handle the context properly with https://gitlab.com/gitlab-org/gitlab-runner/-/issues/27932
+		// kubeAPI: events, list
 		return s.kubeClient.CoreV1().Events(s.pod.Namespace).
 			List(context.Background(), metav1.ListOptions{
 				FieldSelector: fmt.Sprintf("involvedObject.name=%s,type=%s", s.pod.Name, eventType),
@@ -1013,6 +1014,7 @@ func (s *executor) cleanupResources() {
 
 	if s.pod != nil {
 		kubeRequest := newRetryableKubeAPICall(func() error {
+			// kubeAPI: pods, delete
 			return s.kubeClient.CoreV1().
 				Pods(s.pod.Namespace).
 				Delete(ctx, s.pod.Name, metav1.DeleteOptions{
@@ -1028,6 +1030,7 @@ func (s *executor) cleanupResources() {
 
 	if s.credentials != nil && len(s.credentials.OwnerReferences) == 0 {
 		kubeRequest := newRetryableKubeAPICall(func() error {
+			// kubeAPI: secrets, delete
 			return s.kubeClient.CoreV1().
 				Secrets(s.configurationOverwrites.namespace).
 				Delete(ctx, s.credentials.Name, metav1.DeleteOptions{
@@ -1538,6 +1541,7 @@ func (s *executor) requestSecretCreation(
 	secret *api.Secret,
 	namespace string,
 ) (*api.Secret, error) {
+	// kubeAPI: secrets, create
 	creds, err := s.kubeClient.CoreV1().
 		Secrets(namespace).Create(ctx, secret, metav1.CreateOptions{})
 	if isConflict(err) {
@@ -1548,6 +1552,7 @@ func (s *executor) requestSecretCreation(
 			),
 		)
 
+		// kubeAPI: secrets, get
 		creds, err = s.kubeClient.CoreV1().
 			Secrets(namespace).Get(ctx, secret.Name, metav1.GetOptions{})
 	}
@@ -1620,6 +1625,7 @@ func (s *executor) setupBuildPod(ctx context.Context, initContainers []api.Conta
 }
 
 func (s *executor) requestPodCreation(ctx context.Context, pod *api.Pod, namespace string) (*api.Pod, error) {
+	// kubeAPI: pods, create
 	p, err := s.kubeClient.CoreV1().
 		Pods(namespace).Create(ctx, pod, metav1.CreateOptions{})
 	if isConflict(err) {
@@ -1630,6 +1636,7 @@ func (s *executor) requestPodCreation(ctx context.Context, pod *api.Pod, namespa
 			),
 		)
 
+		// kubeAPI: pods, get
 		p, err = s.kubeClient.CoreV1().
 			Pods(namespace).Get(ctx, pod.Name, metav1.GetOptions{})
 	}
@@ -1931,6 +1938,7 @@ func (s *executor) setOwnerReferencesForResources(ctx context.Context, ownerRefe
 		credentials := s.credentials.DeepCopy()
 		credentials.SetOwnerReferences(ownerReferences)
 
+		// kubeAPI: secrets, update
 		return s.kubeClient.CoreV1().
 			Secrets(s.configurationOverwrites.namespace).
 			Update(ctx, credentials, metav1.UpdateOptions{})
@@ -1996,6 +2004,7 @@ func (s *executor) serviceAccountExists() func(context.Context, string) bool {
 		}
 
 		kubeRequest := newRetryableKubeAPICall(func() error {
+			// kubeAPI: serviceAccounts, get
 			_, err := s.kubeClient.CoreV1().
 				ServiceAccounts(s.configurationOverwrites.namespace).Get(ctx, saName, metav1.GetOptions{})
 			return err
@@ -2008,6 +2017,7 @@ func (s *executor) serviceAccountExists() func(context.Context, string) bool {
 func (s *executor) secretExists() func(context.Context, string) bool {
 	return func(ctx context.Context, secretName string) bool {
 		kubeRequest := newRetryableKubeAPICall(func() error {
+			// kubeAPI: secrets, get
 			_, err := s.kubeClient.CoreV1().
 				Secrets(s.configurationOverwrites.namespace).Get(ctx, secretName, metav1.GetOptions{})
 			return err
@@ -2126,6 +2136,7 @@ func (s *executor) requestServiceCreation(
 	service *api.Service,
 	namespace string,
 ) (*api.Service, error) {
+	// kubeAPI: services, create
 	srv, err := s.kubeClient.CoreV1().
 		Services(namespace).Create(ctx, service, metav1.CreateOptions{})
 	if isConflict(err) {
@@ -2136,6 +2147,7 @@ func (s *executor) requestServiceCreation(
 			),
 		)
 
+		// kubeAPI: services, get
 		srv, err = s.kubeClient.CoreV1().
 			Services(namespace).Get(ctx, service.Name, metav1.GetOptions{})
 	}
@@ -2173,6 +2185,7 @@ func (s *executor) watchPodStatus(ctx context.Context) <-chan error {
 
 func (s *executor) checkPodStatus(ctx context.Context) error {
 	kubeRequest := newRetryableKubeAPICallWithValue(func() (*api.Pod, error) {
+		// kubeAPI: pods, get
 		return s.kubeClient.CoreV1().
 			Pods(s.pod.Namespace).Get(ctx, s.pod.Name, metav1.GetOptions{})
 	})
@@ -2451,6 +2464,7 @@ func (s *executor) captureContainerLogs(ctx context.Context, containerName strin
 	}
 
 	kubeRequest := newRetryableKubeAPICallWithValue(func() (io.ReadCloser, error) {
+		// kubeAPI: pods/logs, get, FF_USE_LEGACY_KUBERNETES_EXECUTION_STRATEGY=false
 		return s.kubeClient.CoreV1().
 			Pods(s.pod.Namespace).GetLogs(s.pod.Name, &podLogOpts).Stream(ctx)
 	})

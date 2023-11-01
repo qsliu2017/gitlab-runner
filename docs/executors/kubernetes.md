@@ -531,6 +531,8 @@ You can either:
 - Specify a service account `rbac.serviceAccountName: <service_account_name>` with the following
   permissions in the `values.yml` file.
 
+<!-- k8s_api_permissions_list_start -->
+
   - For `exec strategy`:
 
     | Resource          | Permissions                                     |
@@ -554,6 +556,8 @@ You can either:
     | serviceAccounts   | get (1)                                 |
     | configmaps        | get, create, update, delete (2)         |
     | events            | get, list (3)                           |
+
+<!-- k8s_api_permissions_list_end -->
 
 _(1) The `serviceAccount` permission is needed only:_
 
