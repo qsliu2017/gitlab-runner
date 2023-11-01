@@ -4,7 +4,11 @@ import (
 	"bytes"
 	"fmt"
 	"os"
+	"strings"
 	"text/template"
+
+	"github.com/samber/lo"
+	"golang.org/x/exp/slices"
 )
 
 const (
@@ -15,13 +19,18 @@ const (
 
 var tableTemplate = fmt.Sprintf(` %s
 
-| Resource | Verb | Feature flag |
-|----------|------|--------------|
-{{ range $_, $permission := . -}}
-| {{ $permission.resource }} | {{ $permission.verb }} | {{ $permission.ff }}={{ $permission.ffValue }} |
+| Resource | Verb (Optional Feature Flags) |
+|----------|-------------------------------|
+{{ range $_, $permissions := . -}}
+| {{ $permissions.Resource }} | {{ $permissions.Verbs | joinVerbs }} |
 {{ end }}
+%s
+`, startPlaceholder, endPlaceholder)
 
-%s`, startPlaceholder, endPlaceholder)
+type permissionsRender struct {
+	Resource string
+	Verbs    []verb
+}
 
 func GeneratePermissionsDocs() error {
 	permissions, err := parsePermissions()
@@ -34,7 +43,7 @@ func GeneratePermissionsDocs() error {
 		return err
 	}
 
-	table, err := renderTable(permissions)
+	table, err := renderTable(mergePermissions(permissions))
 	if err != nil {
 		return err
 	}
@@ -51,8 +60,31 @@ func GeneratePermissionsDocs() error {
 	return nil
 }
 
-func renderTable(permissions []permission) (string, error) {
+func mergePermissions(permissions permissionsGroup) []permissionsRender {
+	render := lo.Map(lo.Keys(permissions), func(key string, _ int) permissionsRender {
+		return permissionsRender{
+			Resource: key,
+			Verbs:    permissions[key],
+		}
+	})
+
+	slices.SortFunc(render, func(i, j permissionsRender) bool {
+		return strings.Compare(i.Resource, j.Resource) < 0
+	})
+
+	return render
+}
+
+func renderTable(permissions []permissionsRender) (string, error) {
 	tpl := template.New("permissionsTable")
+	tpl.Funcs(template.FuncMap{
+		"joinVerbs": func(input []verb) string {
+			return strings.Join(lo.Map(input, func(item verb, _ int) string {
+				return item.String()
+			}), ", ")
+		},
+	})
+
 	tpl, err := tpl.Parse(tableTemplate)
 	if err != nil {
 		return "", err

@@ -502,6 +502,7 @@ func (s *executor) watchPodEvents() error {
 	// This strategy can be revised in the future if needed.
 	kubeRequest := newRetryableKubeAPICallWithValue(func() (watch.Interface, error) {
 		// TODO: handle the context properly with https://gitlab.com/gitlab-org/gitlab-runner/-/issues/27932
+		// kubeAPI: events, watch, FF_PRINT_POD_EVENTS=true
 		return s.kubeClient.CoreV1().Events(s.pod.Namespace).Watch(context.Background(), metav1.ListOptions{
 			FieldSelector: fmt.Sprintf("involvedObject.name=%s", s.pod.Name),
 		})
@@ -536,7 +537,7 @@ func (s *executor) logPodWarningEvents(eventType string) {
 
 	kubeRequest := newRetryableKubeAPICallWithValue(func() (*api.EventList, error) {
 		// TODO: handle the context properly with https://gitlab.com/gitlab-org/gitlab-runner/-/issues/27932
-		// kubeAPI: events, list
+		// kubeAPI: events, list, FF_RETRIEVE_POD_WARNING_EVENTS=true
 		return s.kubeClient.CoreV1().Events(s.pod.Namespace).
 			List(context.Background(), metav1.ListOptions{
 				FieldSelector: fmt.Sprintf("involvedObject.name=%s,type=%s", s.pod.Name, eventType),
@@ -2464,7 +2465,7 @@ func (s *executor) captureContainerLogs(ctx context.Context, containerName strin
 	}
 
 	kubeRequest := newRetryableKubeAPICallWithValue(func() (io.ReadCloser, error) {
-		// kubeAPI: pods/logs, get, FF_USE_LEGACY_KUBERNETES_EXECUTION_STRATEGY=false
+		// kubeAPI: pods/logs, get, list, FF_USE_LEGACY_KUBERNETES_EXECUTION_STRATEGY=false
 		return s.kubeClient.CoreV1().
 			Pods(s.pod.Namespace).GetLogs(s.pod.Name, &podLogOpts).Stream(ctx)
 	})
