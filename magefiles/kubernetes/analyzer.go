@@ -172,29 +172,28 @@ func groupPermissions(comment *ast.Comment, permissions permissionsGroup) {
 }
 
 func parseComment(comment *ast.Comment) (string, []string, []verbFeatureFlag) {
-	i := strings.Index(comment.Text, "kubeAPI:")
-	components := lo.Map(strings.Split(comment.Text[i:], ","), func(c string, _ int) string {
+	components := lo.Map(strings.Split(comment.Text, ","), func(c string, _ int) string {
 		return strings.TrimSpace(c)
 	})
 
-	resource := strings.TrimSpace(strings.Split(components[0], ":")[1])
+	i := strings.Index(comment.Text, "kubeAPI:") + len("kubeAPI:")
+	resource := strings.TrimSpace(components[0][i:])
 	var verbs []string
-	var verbsIndex int
-	for i, c := range components[1:] {
+	var ffs []string
+	for _, c := range components[1:] {
 		if strings.Contains(c, "=") {
-			break
+			ffs = append(ffs, c)
+			continue
 		}
 
 		verbs = append(verbs, c)
-		verbsIndex = i + 2
 	}
 
-	ffs := components[verbsIndex:]
 	featureFlags := lo.Map(ffs, func(ff string, _ int) verbFeatureFlag {
-		ffSplit := strings.Split(ff, "=")
+		split := strings.Split(ff, "=")
 		return verbFeatureFlag{
-			Name:  strings.TrimSpace(ffSplit[0]),
-			Value: strings.TrimSpace(ffSplit[1]),
+			Name:  strings.TrimSpace(split[0]),
+			Value: strings.TrimSpace(split[1]),
 		}
 	})
 
