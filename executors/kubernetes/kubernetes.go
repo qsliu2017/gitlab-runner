@@ -1581,7 +1581,6 @@ var allowedInitObjects = map[string]initObject{
 }
 
 func (s *executor) setupInitObjects(ctx context.Context) error {
-	var err error
 	dynamicClient := dynamic.New(s.kubeClient.RESTClient())
 
 	for _, o := range s.Config.Kubernetes.InitializationObjects {
@@ -1593,6 +1592,7 @@ func (s *executor) setupInitObjects(ctx context.Context) error {
 		initObject.name = s.ExpandValue(o.Name)
 		initObject.persist = o.Persist
 
+		var err error
 		o.KubernetesObjPatchSpec, err = s.expandPatchesVariables(o.KubernetesObjPatchSpec)
 		if err != nil {
 			return fmt.Errorf("expanding object patches %s: %v", initObject.kind, err)
@@ -1649,36 +1649,35 @@ func (s *executor) generateResourceCreationRequest(
 	resources map[string]any,
 	namespace string,
 ) retry.Retryable {
-	return nil
-	//return retry.WithBuildLog(
-	//	&retryableKubeAPICall{
-	//		maxTries: defaultTries,
-	//		fn: func() error {
-	//			obj, err := client.
-	//				Resource(initObject.groupVersionResource()).
-	//				Namespace(namespace).
-	//				Create(ctx, &unstructured.Unstructured{
-	//					Object: resources,
-	//				}, metav1.CreateOptions{})
-	//
-	//			if err != nil && !isConflict(err) {
-	//				return err
-	//			}
-	//
-	//			s.Debugln(
-	//				fmt.Sprintf(
-	//					"Conflict while trying to create the %s  %s ... Retrieving the existing resource",
-	//					initObject.groupVersionResource().String(), obj.GetName(),
-	//				),
-	//			)
-	//
-	//			initObject.kubernetesObject = obj
-	//
-	//			return nil
-	//		},
-	//	},
-	//	&s.BuildLogger,
-	//)
+	return retry.WithBuildLog(
+		&retryableKubeAPICall{
+			maxTries: defaultTries,
+			fn: func() error {
+				obj, err := client.
+					Resource(initObject.groupVersionResource()).
+					Namespace(namespace).
+					Create(ctx, &unstructured.Unstructured{
+						Object: resources,
+					}, metav1.CreateOptions{})
+
+				if err != nil && !isConflict(err) {
+					return err
+				}
+
+				s.Debugln(
+					fmt.Sprintf(
+						"Conflict while trying to create the %s  %s ... Retrieving the existing resource",
+						initObject.groupVersionResource().String(), obj.GetName(),
+					),
+				)
+
+				initObject.kubernetesObject = obj
+
+				return nil
+			},
+		},
+		&s.BuildLogger,
+	)
 }
 
 func (s *executor) getHostAliases() ([]api.HostAlias, error) {
@@ -2000,13 +1999,107 @@ func (s *executor) createBuildAndHelperContainers() (api.Container, api.Containe
 }
 
 func (s *executor) expandPatchesVariables(patchSpec common.KubernetesObjPatchSpec) (common.KubernetesObjPatchSpec, error) {
-	patch, err := patchSpec.GetPatch()
+	patch, _, err := patchSpec.SpecPatch()
 	if err != nil {
 		return common.KubernetesObjPatchSpec{}, err
 	}
 
-	patchSpec.Patch = s.ExpandValue(patch)
+	var data map[string]any
+	if err := json.Unmarshal(patch, &data); err != nil {
+		return common.KubernetesObjPatchSpec{}, err
+	}
+
+	if err := s.expandAndValidateJSON(".", data); err != nil {
+		return common.KubernetesObjPatchSpec{}, err
+	}
+
+	expandedData, err := json.Marshal(data)
+	if err != nil {
+		return common.KubernetesObjPatchSpec{}, err
+	}
+
+	patchSpec.Patch = string(expandedData)
 	return patchSpec, nil
+}
+
+func (s *executor) expandAndValidateJSON(parentKey string, data map[string]any) error {
+	for k, v := range data {
+		key := fmt.Sprintf("%s.%s", parentKey, k)
+		if strings.Contains(key, "$") {
+			return fmt.Errorf("patch can expand variables only in the value, not in the key: %s", key)
+		}
+
+		switch moreData := v.(type) {
+		case map[string]any:
+			return s.expandAndValidateJSON(key, moreData)
+		default:
+			expanded, err := s.validateJSONString(key, fmt.Sprintf("%v", v))
+			if err != nil {
+				return err
+			}
+
+			data[k] = expanded
+		}
+	}
+
+	return nil
+}
+
+func (s *executor) validateJSONString(key, v string) (string, error) {
+	variables := s.extractVariables(v)
+	if len(variables) == 0 {
+		return v, nil
+	}
+
+	for _, variable := range variables {
+		variableClean := variable[1:]
+		var exists bool
+		for _, init := range s.Config.Kubernetes.InitializationObjectsVariables {
+			if init.Name != variable[1:] {
+				continue
+			}
+
+			exists = true
+			regex, err := regexp.Compile(init.Validate)
+			if err != nil {
+				return "", fmt.Errorf("compiling regex expression for variable %s: %w", init.Name, err)
+			}
+
+			expanded := s.ExpandValue(variable)
+			if !regex.MatchString(expanded) {
+				return "", fmt.Errorf("validation for init object variable %s failed: %s", init.Name, init.Validate)
+			}
+
+			return expanded, nil
+		}
+
+		if !exists {
+			return "", fmt.Errorf("variable %s (in %s) is not defined in the `initialization_objects_variables` whitelist", variableClean, key)
+		}
+	}
+
+	return v, nil
+}
+
+func (s *executor) extractVariables(v string) (res []string) {
+	i := -1
+	for j, ch := range v {
+		switch ch {
+		case '$':
+			i = j
+		case ' ':
+			i = -1
+			res = append(res, v[i:j])
+		default:
+			continue
+		}
+	}
+
+	if i > -1 {
+		res = append(res, v[i:])
+	}
+
+	return
 }
 
 func (s *executor) applyPodSpecMerge(podSpec *api.PodSpec) (api.PodSpec, error) {

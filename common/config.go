@@ -576,6 +576,12 @@ type KubernetesConfig struct {
 	PriorityClassName                                 string                             `toml:"priority_class_name,omitempty" json:"priority_class_name" long:"priority_class_name" env:"KUBERNETES_PRIORITY_CLASS_NAME" description:"If set, the Kubernetes Priority Class to be set to the Pods"`
 	PodSpec                                           []KubernetesObjPatchSpec           `toml:"pod_spec" json:",omitempty"`
 	InitializationObjects                             []KubernetesInitObjectPatchSpec    `toml:"init_objects" json:",omitempty"`
+	InitializationObjectsVariables                    []KubernetesInitObjectsVariables   `toml:"init_objects_variables" json:",omitempty"`
+}
+
+type KubernetesInitObjectsVariables struct {
+	Name     string `toml:"name"`
+	Validate string `toml:"validator"`
 }
 
 type KubernetesPodSpecPatchType string
@@ -603,7 +609,7 @@ type KubernetesInitObjectPatchSpec struct {
 // GetPatch return the patch data provided as string. It also returns an error
 // if both Patch and PatchPath are set or if not able to read the PatchPath provided
 func (s *KubernetesObjPatchSpec) GetPatch() (string, error) {
-	if s.PatchPath != "" && len(s.Patch) > 0 {
+	if s.PatchPath != "" && s.Patch != "" {
 		return "", fmt.Errorf("%w (%s)", errPatchAmbiguous, s.Name)
 	}
 
