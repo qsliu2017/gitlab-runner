@@ -94,7 +94,7 @@ func renderTable(permissions []permissionsRender) (string, error) {
 
 	err = tpl.Execute(buffer, permissions)
 	if err != nil {
-		panic(fmt.Sprintf("Error while executing the template: %v", err))
+		return "", fmt.Errorf("error while executing the template: %w", err)
 	}
 
 	return buffer.String(), nil
