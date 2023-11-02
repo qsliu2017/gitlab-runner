@@ -535,9 +535,9 @@ You can either:
 
 | Resource | Verb (Optional Feature Flags) |
 |----------|-------------------------------|
-| events | watch (FF_PRINT_POD_EVENTS=true), list (FF_RETRIEVE_POD_WARNING_EVENTS=true) |
+| events | watch (`FF_PRINT_POD_EVENTS=true`), list (`FF_RETRIEVE_POD_WARNING_EVENTS=true`) |
 | pods | delete, create, get |
-| pods/logs | get (FF_USE_LEGACY_KUBERNETES_EXECUTION_STRATEGY=false), list (FF_USE_LEGACY_KUBERNETES_EXECUTION_STRATEGY=false) |
+| pods/logs | get (`FF_USE_LEGACY_KUBERNETES_EXECUTION_STRATEGY=false`), list (`FF_USE_LEGACY_KUBERNETES_EXECUTION_STRATEGY=false`) |
 | secrets | delete, create, get, update |
 | serviceAccounts | get |
 | services | create, get |

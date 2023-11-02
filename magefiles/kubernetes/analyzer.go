@@ -41,7 +41,7 @@ func (p verb) String() string {
 		return p.Verb
 	}
 
-	return fmt.Sprintf("%s (%s)", p.Verb, strings.Join(lo.Map(p.FeatureFlags, func(ff verbFeatureFlag, _ int) string {
+	return fmt.Sprintf("%s (`%s`)", p.Verb, strings.Join(lo.Map(p.FeatureFlags, func(ff verbFeatureFlag, _ int) string {
 		return ff.String()
 	}), ", "))
 }
