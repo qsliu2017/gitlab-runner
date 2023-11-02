@@ -2228,9 +2228,9 @@ func (s *executor) runInContainer(
 			ContainerName: name,
 			Command:       command,
 
-			Config:   s.kubeConfig,
-			Client:   s.kubeClient,
-			Executor: &DefaultRemoteExecutor{},
+			Config:     s.kubeConfig,
+			KubeClient: s.kubeClient,
+			Executor:   &DefaultRemoteExecutor{},
 
 			Context: ctx,
 		}
@@ -2296,7 +2296,7 @@ func (s *executor) runInContainerWithExec(
 			Err:           s.Trace,
 			Stdin:         true,
 			Config:        s.kubeConfig,
-			Client:        s.kubeClient,
+			KubeClient:    s.kubeClient,
 			Executor:      &DefaultRemoteExecutor{},
 
 			Context: ctx,

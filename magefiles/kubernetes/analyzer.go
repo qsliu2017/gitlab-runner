@@ -5,7 +5,6 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
-	"io/fs"
 	"strings"
 
 	"github.com/samber/lo"
@@ -50,10 +49,7 @@ type permissionsGroup map[string][]verb
 
 func parsePermissions() (permissionsGroup, error) {
 	fset := token.NewFileSet()
-	f, err := parser.ParseDir(fset, "executors/kubernetes", func(info fs.FileInfo) bool {
-		// TODO: for now focus only on kubernetes.go
-		return info.Name() == "kubernetes.go"
-	}, parser.ParseComments)
+	f, err := parser.ParseDir(fset, "executors/kubernetes", nil, parser.ParseComments)
 	if err != nil {
 		return nil, err
 	}
@@ -143,6 +139,9 @@ func processPermissions(fset *token.FileSet, comments []*ast.CommentGroup, posit
 
 func groupPermissions(comment *ast.Comment, permissions permissionsGroup) {
 	resource, verbs, featureFlags := parseComment(comment)
+	if resource == "ignore" {
+		return
+	}
 
 	if _, ok := permissions[resource]; !ok {
 		permissions[resource] = []verb{}
@@ -151,7 +150,7 @@ func groupPermissions(comment *ast.Comment, permissions permissionsGroup) {
 	_, verbIndex, _ := lo.FindIndexOf(permissions[resource], func(item verb) bool {
 		return lo.Contains(verbs, item.Verb)
 	})
-	if verbIndex > 0 {
+	if verbIndex > -1 {
 		for _, ff := range featureFlags {
 			if !lo.ContainsBy(permissions[resource][verbIndex].FeatureFlags, func(item verbFeatureFlag) bool {
 				return item.Name == ff.Name
