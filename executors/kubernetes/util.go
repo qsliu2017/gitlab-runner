@@ -1,6 +1,7 @@
 package kubernetes
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -336,4 +337,18 @@ func sanitizeLabel(value string) string {
 
 	// trim again if required after shortening
 	return strings.Trim(value, "-_.")
+}
+
+func convertObjectTo[T any](obj any) (T, error) {
+	b, err := json.Marshal(obj)
+	if err != nil {
+		return *new(T), err
+	}
+
+	var res T
+	if err := json.Unmarshal(b, &res); err != nil {
+		return *new(T), err
+	}
+
+	return res, nil
 }

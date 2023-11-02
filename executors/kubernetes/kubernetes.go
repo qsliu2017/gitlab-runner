@@ -15,6 +15,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/samber/lo"
 	api "k8s.io/api/core/v1"
 	kubeerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -35,7 +36,6 @@ import (
 	jsonpatch "github.com/evanphx/json-patch"
 
 	"gitlab.com/gitlab-org/gitlab-runner/common"
-	"gitlab.com/gitlab-org/gitlab-runner/common/utils"
 	"gitlab.com/gitlab-org/gitlab-runner/executors"
 	"gitlab.com/gitlab-org/gitlab-runner/executors/kubernetes/internal/pull"
 	"gitlab.com/gitlab-org/gitlab-runner/helpers/container/helperimage"
@@ -1545,7 +1545,7 @@ var allowedInitObjects = map[string]initObject{
 		resource:          "persistentvolumeclaims",
 		defaultObjectSpec: api.PersistentVolumeClaimSpec{},
 		defaultObjectFactory: func(name, namespace string, spec any) (any, error) {
-			specType, err := utils.ConvertObjectTo[api.PersistentVolumeClaimSpec](spec)
+			specType, err := convertObjectTo[api.PersistentVolumeClaimSpec](spec)
 			if err != nil {
 				return nil, err
 			}
@@ -1564,7 +1564,7 @@ var allowedInitObjects = map[string]initObject{
 		resource:          "persistentvolumes",
 		defaultObjectSpec: api.PersistentVolumeSpec{},
 		defaultObjectFactory: func(name, namespace string, spec any) (any, error) {
-			specType, err := utils.ConvertObjectTo[api.PersistentVolumeSpec](spec)
+			specType, err := convertObjectTo[api.PersistentVolumeSpec](spec)
 			if err != nil {
 				return nil, err
 			}
@@ -1609,7 +1609,7 @@ func (s *executor) setupInitObjects(ctx context.Context) error {
 			return err
 		}
 
-		objMap, err := utils.ConvertObjectTo[map[string]any](obj)
+		objMap, err := convertObjectTo[map[string]any](obj)
 		if err != nil {
 			return fmt.Errorf("converting %s object to json: %w", initObject.kind, err)
 		}
@@ -1635,7 +1635,7 @@ func (s *executor) retrieveInitObject(objPatchSpec common.KubernetesInitObjectPa
 		s.Warningln(fmt.Sprintf(
 			"Init object with type %s is unknown or not allowed. Allowed objects are %v, skipping...",
 			objPatchSpec.Kind,
-			utils.Keys(allowedInitObjects),
+			lo.Keys(allowedInitObjects),
 		))
 	}
 
@@ -1649,35 +1649,36 @@ func (s *executor) generateResourceCreationRequest(
 	resources map[string]any,
 	namespace string,
 ) retry.Retryable {
-	return retry.WithBuildLog(
-		&retryableKubeAPICall{
-			maxTries: defaultTries,
-			fn: func() error {
-				obj, err := client.
-					Resource(initObject.groupVersionResource()).
-					Namespace(namespace).
-					Create(ctx, &unstructured.Unstructured{
-						Object: resources,
-					}, metav1.CreateOptions{})
-
-				if err != nil && !isConflict(err) {
-					return err
-				}
-
-				s.Debugln(
-					fmt.Sprintf(
-						"Conflict while trying to create the %s  %s ... Retrieving the existing resource",
-						initObject.groupVersionResource().String(), obj.GetName(),
-					),
-				)
-
-				initObject.kubernetesObject = obj
-
-				return nil
-			},
-		},
-		&s.BuildLogger,
-	)
+	return nil
+	//return retry.WithBuildLog(
+	//	&retryableKubeAPICall{
+	//		maxTries: defaultTries,
+	//		fn: func() error {
+	//			obj, err := client.
+	//				Resource(initObject.groupVersionResource()).
+	//				Namespace(namespace).
+	//				Create(ctx, &unstructured.Unstructured{
+	//					Object: resources,
+	//				}, metav1.CreateOptions{})
+	//
+	//			if err != nil && !isConflict(err) {
+	//				return err
+	//			}
+	//
+	//			s.Debugln(
+	//				fmt.Sprintf(
+	//					"Conflict while trying to create the %s  %s ... Retrieving the existing resource",
+	//					initObject.groupVersionResource().String(), obj.GetName(),
+	//				),
+	//			)
+	//
+	//			initObject.kubernetesObject = obj
+	//
+	//			return nil
+	//		},
+	//	},
+	//	&s.BuildLogger,
+	//)
 }
 
 func (s *executor) getHostAliases() ([]api.HostAlias, error) {
@@ -2111,7 +2112,7 @@ func (s *executor) setOwnerReferencesForResources(ctx context.Context, ownerRefe
 
 	var ownerReferencesMap []map[string]any
 	for _, ref := range ownerReferences {
-		ownerReferenceMap, err := utils.ConvertObjectTo[map[string]any](ref)
+		ownerReferenceMap, err := convertObjectTo[map[string]any](ref)
 		if err != nil {
 			return err
 		}
