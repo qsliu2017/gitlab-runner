@@ -92,7 +92,11 @@ type RunCommand struct {
 	User             string `short:"u" long:"user" description:"Use specific user to execute shell scripts"`
 	Syslog           bool   `long:"syslog" description:"Log to system service logger" env:"LOG_SYSLOG"`
 
-	sentryLogHook     sentry.LogHook
+	// sentry.LogHook is a struct, so accesses are not atomic. A getter and setter enforce
+	// mutual exclusion.
+	sentryLogHookMutex sync.Mutex
+	sentryLogHook      sentry.LogHook
+
 	prometheusLogHook prometheus_helper.LogHook
 
 	failuresCollector    *prometheus_helper.FailuresCollector
@@ -133,6 +137,18 @@ type RunCommand struct {
 	runnerWorkersFeedFailures     *prometheus.CounterVec
 	runnerWorkerSlotOperations    *prometheus.CounterVec
 	runnerWorkerProcessingFailure *prometheus.CounterVec
+}
+
+func (mr *RunCommand) SentryLogHook() sentry.LogHook {
+	mr.sentryLogHookMutex.Lock()
+	defer mr.sentryLogHookMutex.Unlock()
+	return mr.sentryLogHook
+}
+
+func (mr *RunCommand) SetSentryLogHook(slh sentry.LogHook) {
+	mr.sentryLogHookMutex.Lock()
+	mr.sentryLogHook = slh
+	mr.sentryLogHookMutex.Unlock()
 }
 
 func (mr *RunCommand) log() *logrus.Entry {
@@ -342,13 +358,13 @@ func (mr *RunCommand) reloadConfig() error {
 
 	// initialize sentry
 	if config.SentryDSN != nil {
-		var err error
-		mr.sentryLogHook, err = sentry.NewLogHook(*config.SentryDSN)
+		slh, err := sentry.NewLogHook(*config.SentryDSN)
 		if err != nil {
 			mr.log().WithError(err).Errorln("Sentry failure")
 		}
+		mr.SetSentryLogHook(slh)
 	} else {
-		mr.sentryLogHook = sentry.LogHook{}
+		mr.SetSentryLogHook(sentry.LogHook{})
 	}
 
 	mr.configReloaded <- 1
@@ -1203,7 +1219,8 @@ func (mr *RunCommand) Execute(_ *cli.Context) {
 		log.SetSystemLogger(logrus.StandardLogger(), svc)
 	}
 
-	logrus.AddHook(&mr.sentryLogHook)
+	slh := mr.SentryLogHook()
+	logrus.AddHook(&slh)
 	logrus.AddHook(&mr.prometheusLogHook)
 
 	err = svc.Run()
