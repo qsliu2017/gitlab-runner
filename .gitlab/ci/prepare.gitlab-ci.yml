@@ -78,6 +78,17 @@ prepare go fips:
     - apk add --no-cache --upgrade curl make bash
     - make go-fips-docker
 
+prepare ubi base:
+  extends:
+    - .docker
+    - .rules:prepare:ubi-base:image:merge-requests
+  timeout: 4h
+  stage: prepare
+  image: docker:${DOCKER_VERSION}-git
+  script:
+    - apk add --no-cache --upgrade curl make bash
+    - make ubi-fips-base-docker
+
 prepare runner-incept variables:
   stage: prepare
   extends:
