@@ -10,14 +10,18 @@ import (
 
 type Images mg.Namespace
 
+// BuildRunnerDefault builds gitlab-runner images for ubuntu amd64 without pushing the resulting tags
 func (Images) BuildRunnerDefault() error {
 	return runRunnerBuild(images.DefaultFlavor, images.DefaultArchs, false)
 }
 
+// BuildRunner builds gitlab-runner images for the specified flavor and target archs without pushing the resulting tags
 func (Images) BuildRunner(flavor, targetArchs string) error {
 	return runRunnerBuild(flavor, targetArchs, false)
 }
 
+// ReleaseRunner builds gitlab-runner images for the specified flavor and target archs and pushes the resulting
+// tags to the configured repository
 func (Images) ReleaseRunner(flavor, targetArchs string) error {
 	return runRunnerBuild(flavor, targetArchs, true)
 }
@@ -31,14 +35,20 @@ func runRunnerBuild(flavor, targetArchs string, publish bool) error {
 	return images.BuildRunner(blueprint, publish)
 }
 
+// TagHelperDefault generates gitlab-runner-helper images tags from already generated image archives
+// without pushing the resulting tags
 func (Images) TagHelperDefault() error {
 	return runHelperBuild(images.DefaultFlavor, "", false)
 }
 
+// TagHelper generates gitlab-runner-helper images tags from already generated image archives for the specified flavor and prefix
+// without pushing the resulting tags
 func (Images) TagHelper(flavor, prefix string) error {
 	return runHelperBuild(flavor, prefix, false)
 }
 
+// ReleaseHelper generates gitlab-runner-helper images tags from already generated image archives for the specified flavor and prefix
+// and pushes the resulting tags to the configured repository
 func (Images) ReleaseHelper(flavor, prefix string) error {
 	return runHelperBuild(flavor, prefix, true)
 }

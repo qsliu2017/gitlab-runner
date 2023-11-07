@@ -33,6 +33,7 @@ func (PackageCloud) Yank(version string) error {
 	})
 }
 
+// Deps installs package_cloud CLI
 func (PackageCloud) Deps() error {
 	if err := sh.RunV("package_cloud", "version"); err != nil {
 		return sh.RunV("gem", "install", "package_cloud", "--version", "~> 0.3.0", "--no-document")

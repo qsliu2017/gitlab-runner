@@ -18,6 +18,8 @@ import (
 
 type Resources mg.Namespace
 
+// Verify verifies that the resources exported match the expected blueprint
+// blueprints are expected to be exported to the `out/release_artifacts/<typ>.json` file
 func (Resources) Verify(typ string) error {
 	rows, err := verify(build.ReleaseArtifactsPath(typ))
 	renderTable(rows)
@@ -69,6 +71,8 @@ func renderTable(rows []table.Row) {
 	fmt.Println(t.Render())
 }
 
+// VerifyAll verifies that all resources exported match the expected blueprint
+// blueprints are expected to be exported to the `out/release_artifacts/*.json` files
 func (Resources) VerifyAll() error {
 	// TODO: verify that the resources exported match the expected blueprint
 
