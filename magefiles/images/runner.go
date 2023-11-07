@@ -134,7 +134,7 @@ func AssembleBuildRunner(flavor, targetArchs string) build.TargetBlueprint[runne
 
 	return runnerBlueprintImpl{
 		BlueprintBase: base,
-		dependencies:  assembleDependencies(archs),
+		dependencies:  assembleDependencies(flavor, archs),
 		artifacts: tags(
 			flavors,
 			base.Env().Value(ci.RegistryImage),
@@ -247,7 +247,7 @@ func copyDependencies(deps []runnerImageFileDependency) error {
 	return nil
 }
 
-func assembleDependencies(archs []string) []runnerImageFileDependency {
+func assembleDependencies(flavor string, archs []string) []runnerImageFileDependency {
 	installDeps := []string{
 		filepath.Join(runnerHomeDir, "install-deps"),
 	}
@@ -278,7 +278,7 @@ func assembleDependencies(archs []string) []runnerImageFileDependency {
 			fmt.Sprintf("out/binaries/gitlab-runner-linux-%s", arch),
 		)
 
-		if arch == "amd64" {
+		if flavor == "ubi-fips" && arch == "amd64" {
 			copyMap["ubi-fips"] = append(
 				copyMap["ubi-fips"],
 				checksumsFile,
