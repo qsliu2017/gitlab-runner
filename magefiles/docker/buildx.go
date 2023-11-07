@@ -110,7 +110,7 @@ func (b *Builder) SetupContext() error {
 
 func (b *Builder) Login(username, password, registry string) (func(), error) {
 	if username == "" || password == "" {
-		return nil, nil
+		return func() {}, nil
 	}
 
 	loginCmd := fmt.Sprintf("echo %s | docker login --username %s --password-stdin %s", password, username, registry)
