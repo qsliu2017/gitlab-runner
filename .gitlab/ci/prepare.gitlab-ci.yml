@@ -63,31 +63,32 @@ prepare helper-entrypoint image:
   - cp out/binaries/gitlab-runner-helper/gitlab-runner-helper.x86_64 "$BUILD_DOCKERFILE_BASEDIR/binaries/gitlab-runner-helper"
   - source ./ci/build_ci_image
 
-prepare go fips:
-  extends:
-    - .docker
-    - .rules:prepare:go-fips:image:merge-requests
-  stage: prepare
-  image: docker:${DOCKER_VERSION}-git
-  needs:
-    - prepare ubi base
-  variables:
-    BUILD_IMAGE: $GO_FIPS_IMAGE
-    GO_VERSION: $GO_FIPS_VERSION
-  script:
-    - apk add --no-cache --upgrade curl make bash
-    - make go-fips-docker
-
-prepare ubi base:
-  extends:
-    - .docker
-    - .rules:prepare:ubi-base:image:merge-requests
-  timeout: 4h
-  stage: prepare
-  image: docker:${DOCKER_VERSION}-git
-  script:
-    - apk add --no-cache --upgrade curl make bash
-    - make ubi-fips-base-docker
+# Comment temporary to make the pipeline go faster
+#prepare go fips:
+#  extends:
+#    - .docker
+#    - .rules:prepare:go-fips:image:merge-requests
+#  stage: prepare
+#  image: docker:${DOCKER_VERSION}-git
+#  needs:
+#    - prepare ubi base
+#  variables:
+#    BUILD_IMAGE: $GO_FIPS_IMAGE
+#    GO_VERSION: $GO_FIPS_VERSION
+#  script:
+#    - apk add --no-cache --upgrade curl make bash
+#    - make go-fips-docker
+#
+#prepare ubi base:
+#  extends:
+#    - .docker
+#    - .rules:prepare:ubi-base:image:merge-requests
+#  timeout: 4h
+#  stage: prepare
+#  image: docker:${DOCKER_VERSION}-git
+#  script:
+#    - apk add --no-cache --upgrade curl make bash
+#    - make ubi-fips-base-docker
 
 prepare runner-incept variables:
   stage: prepare
