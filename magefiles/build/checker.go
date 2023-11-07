@@ -64,14 +64,7 @@ func (d *dockerImageChecker) Exists() error {
 		"inspect", "--raw", "--no-tags",
 		"docker://" + d.image,
 	}
-	command := "skopeo"
-	_, err := exec.LookPath("skopeo")
-	if err != nil {
-		command = "docker"
-		args = append([]string{"run", "--rm", skopeoImage}, args...)
-	}
-
-	out, err := exec.Command(command, args...).CombinedOutput()
+	out, err := exec.Command("skopeo", args...).CombinedOutput()
 	if err == nil {
 		return nil
 	}

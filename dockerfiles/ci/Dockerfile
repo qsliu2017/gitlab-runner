@@ -8,7 +8,7 @@ RUN apt-get update -yq && \
     apt-get install -yq locales make xz-utils \
     ruby ruby-dev python3-pip \
     dpkg-sig createrepo-c rpm \
-    zip libffi-dev jq git-lfs && \
+    zip libffi-dev jq git-lfs skopeo && \
     rm -rf /var/lib/apt/lists/*
 
 # Set default locale for the environment
