@@ -56,7 +56,6 @@ var (
 var checksumsFiles = map[string]string{
 	"DOCKER_MACHINE": "/usr/bin/docker-machine",
 	"DUMB_INIT":      "/usr/bin/dumb-init",
-	"GIT_LFS":        "/tmp/git-lfs.tar.gz",
 }
 
 var flavorAliases = map[string][]string{
@@ -251,7 +250,6 @@ func copyDependencies(deps []runnerImageFileDependency) error {
 func assembleDependencies(archs []string) []runnerImageFileDependency {
 	installDeps := []string{
 		filepath.Join(runnerHomeDir, "install-deps"),
-		"dockerfiles/install_git_lfs",
 	}
 
 	copyMap := map[string][]string{
