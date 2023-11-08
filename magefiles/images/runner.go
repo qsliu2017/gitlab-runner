@@ -51,6 +51,8 @@ var (
 	alpine318Version = env.NewDefault("ALPINE_318_VERSION", "3.18.2")
 	ubiFIPSBaseImage = env.NewDefault("UBI_FIPS_BASE_IMAGE", "registry.gitlab.com/gitlab-org/gitlab-runner/ubi-fips-base")
 	ubiFIPSVersion   = env.NewDefault("UBI_FIPS_VERSION", "8.8-860")
+
+	buildxRetry = env.NewDefault("DOCKER_BUILDX_RETRY", "0")
 )
 
 var checksumsFiles = map[string]string{
@@ -130,6 +132,7 @@ func AssembleBuildRunner(flavor, targetArchs string) build.TargetBlueprint[runne
 		gitLfsArm64Checksum,
 		gitLfsS390xChecksum,
 		gitLfsPpc64leChecksum,
+		buildxRetry,
 	)
 
 	return runnerBlueprintImpl{
@@ -337,7 +340,7 @@ func buildx(
 	builder := docker.NewBuilder(
 		env.Value(docker.Host),
 		env.Value(docker.CertPath),
-	)
+	).WithRetry(env.Int(buildxRetry))
 	defer func() {
 		_ = builder.CleanupContext()
 	}()

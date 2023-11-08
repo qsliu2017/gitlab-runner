@@ -3,6 +3,7 @@ package build
 import (
 	"fmt"
 	"sort"
+	"strconv"
 	"sync"
 
 	"github.com/fatih/color"
@@ -51,6 +52,11 @@ func (e BlueprintEnv) ValueFrom(env string) string {
 
 func (e BlueprintEnv) Value(env env.Variable) string {
 	return e.ValueFrom(env.Key)
+}
+
+func (e BlueprintEnv) Int(env env.Variable) int {
+	value, _ := strconv.Atoi(e.Value(env))
+	return value
 }
 
 type BlueprintBase struct {

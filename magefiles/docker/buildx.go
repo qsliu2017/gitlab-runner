@@ -7,6 +7,7 @@ import (
 
 	"github.com/magefile/mage/sh"
 	"github.com/samber/lo"
+	"gitlab.com/gitlab-org/gitlab-runner/helpers/retry"
 	"gitlab.com/gitlab-org/gitlab-runner/magefiles/env"
 )
 
@@ -31,6 +32,8 @@ type Builder struct {
 
 	builderName string
 	contextName string
+
+	retryCount int
 }
 
 func NewBuilder(host, certPath string) *Builder {
@@ -41,6 +44,11 @@ func NewBuilder(host, certPath string) *Builder {
 		builderName: defaultBuilderName,
 		contextName: defaultContextName,
 	}
+}
+
+func (b *Builder) WithRetry(count int) *Builder {
+	b.retryCount = count
+	return b
 }
 
 func (b *Builder) Docker(args ...string) error {
@@ -54,7 +62,9 @@ func (b *Builder) Docker(args ...string) error {
 }
 
 func (b *Builder) Buildx(args ...string) error {
-	return b.Docker(append([]string{"buildx"}, args...)...)
+	return retry.New(func() error {
+		return b.Docker(append([]string{"buildx"}, args...)...)
+	}).WithStdout().WithMaxTries(b.retryCount).Run()
 }
 
 func (b *Builder) CleanupContext() error {
