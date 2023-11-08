@@ -136,7 +136,6 @@ development docker images:
   - .release_docker_images
   - .rules:release:development:merge-requests
   - .release_artifacts
-  # TODO: fix environments and push destinations for dev docker images
   variables:
     RUNNER_IMAGE_NAME: "gitlab-runner-dev"
 

@@ -23,7 +23,7 @@ const (
 )
 
 var (
-	runnerImageName = env.New("RUNNER_IMAGE_NAME")
+	runnerImageName = env.NewDefault("RUNNER_IMAGE_NAME", "")
 
 	dockerMachineVersion       = env.NewDefault("DOCKER_MACHINE_VERSION", "v0.16.2-gitlab.21")
 	dockerMachineAmd64Checksum = env.NewDefault("DOCKER_MACHINE_AMD64_CHECKSUM", "a4e9a416f30406772e76c3b9e795121d5a7e677978923f96b7fb72f0d8354740")
