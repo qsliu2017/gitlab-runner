@@ -171,15 +171,16 @@ func AssembleReleaseHelper(flavor, prefix string) build.TargetBlueprint[build.Co
 }
 
 func ReleaseHelper(blueprint build.TargetBlueprint[build.Component, build.Component, []helperBuild], publish bool) error {
+	env := blueprint.Env()
 	builder := docker.NewBuilder(
-		blueprint.Env().Value(docker.Host),
-		blueprint.Env().Value(docker.CertPath),
+		env.Value(docker.Host),
+		env.Value(docker.CertPath),
 	)
 
 	logout, err := builder.Login(
-		blueprint.Env().Value(ci.RegistryUser),
-		blueprint.Env().Value(ci.RegistryPassword),
-		blueprint.Env().Value(ci.Registry),
+		env.Value(ci.RegistryUser),
+		env.Value(ci.RegistryPassword),
+		env.Value(ci.Registry),
 	)
 	if err != nil {
 		return err
@@ -222,7 +223,7 @@ func releaseImageTags(builder *docker.Builder, build helperBuild, publish bool) 
 		return nil
 	}
 
-	tagsToPush := []string{baseTag, latestTag}
+	tagsToPush := []string{baseTag}
 	if isLatest {
 		tagsToPush = append(tagsToPush, latestTag)
 	}
