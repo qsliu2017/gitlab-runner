@@ -49,6 +49,7 @@ static QA:
 verify development resources:
   extends:
   - .verify-resources
+  - .rules:release:development:merge-requests
   needs:
   - job: "development docker images"
     artifacts: true
@@ -58,6 +59,7 @@ verify development resources:
 verify bleeding edge resources:
   extends:
   - .verify-resources
+  - .rules:release:bleeding-edge
   needs:
   - job: "bleeding edge docker images"
     artifacts: true
@@ -67,6 +69,7 @@ verify bleeding edge resources:
 verify stable resources:
   extends:
   - .verify-resources
+  - .rules:release:stable:branch
   needs:
   - job: "stable docker images"
     artifacts: true
