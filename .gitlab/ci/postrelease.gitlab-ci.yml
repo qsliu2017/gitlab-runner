@@ -47,6 +47,8 @@ static QA:
     - mage resources:verifyAll
 
 verify development resources:
+  extends:
+  - .verify-resources
   needs:
   - job: "development docker images"
     artifacts: true
@@ -54,15 +56,19 @@ verify development resources:
     artifacts: true
 
 verify bleeding edge resources:
+  extends:
+  - .verify-resources
   needs:
-    - job: "bleeding edge docker images"
-      artifacts: true
-    - job: "bleeding edge helper docker images"
-      artifacts: true
+  - job: "bleeding edge docker images"
+    artifacts: true
+  - job: "bleeding edge helper docker images"
+    artifacts: true
 
 verify stable resources:
+  extends:
+  - .verify-resources
   needs:
-    - job: "stable docker images"
-      artifacts: true
-    - job: "stable helper docker images"
-      artifacts: true
+  - job: "stable docker images"
+    artifacts: true
+  - job: "stable helper docker images"
+    artifacts: true
